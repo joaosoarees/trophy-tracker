@@ -52,6 +52,7 @@ export default defineConfig({
         'src/main/system/autoUpdate.ts',
         'src/main/system/browser.ts',
         'src/main/system/notify.ts',
+        'src/main/storage/createCipher.ts',
       ],
       reporter: ['text-summary', 'text'],
       // A little under what is covered today (89 / 82 / 85 / 90), so coverage
