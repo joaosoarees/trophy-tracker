@@ -60,6 +60,7 @@ export const en = {
 
   common: {
     cancel: 'Cancel',
+    undo: 'Undo',
     retry: 'Try again',
     refresh: 'Refresh',
     back: 'Back',
@@ -113,7 +114,8 @@ export const en = {
   },
 
   checklist: {
-    rename: 'Click to rename',
+    rename: 'Rename item',
+    removed: (text: string) => `Removed “${text}”`,
     remove: 'Remove item',
     newItem: 'New item',
     add: 'Add item',

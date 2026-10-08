@@ -25,11 +25,15 @@ export function useAchievementCardController({
   onChange,
 }: IParams) {
   const [isNoteOpen, setIsNoteOpen] = useState(false);
-  const [isChecklistOpen, setIsChecklistOpen] = useState(false);
+  // `null` until the user decides: a checklist with items left to check
+  // starts open, since which ones are left is what it is for.
+  const [checklistChoice, setChecklistChoice] = useState<boolean | null>(null);
 
   const checklist = data?.checklist ?? [];
   const note = data?.note ?? '';
   const isPinned = data?.pinned === true;
+  const isChecklistOpen =
+    checklistChoice ?? checklist.some((item) => !item.done);
 
   return {
     checklist,
@@ -43,13 +47,16 @@ export function useAchievementCardController({
     progress: achievement.unlocked ? null : shownProgress(achievement, data),
     handleOpenGuide: (site: GuideSite) =>
       void SystemService.openGuide(site, appid, game, achievement.name),
-    handleToggleChecklist: () => setIsChecklistOpen((open) => !open),
+    handleToggleChecklist: () => setChecklistChoice(!isChecklistOpen),
     handleOpenNote: () => setIsNoteOpen(true),
     handleCloseNote: () => setIsNoteOpen(false),
     handleTogglePin: () => onChange(achievement.id, { pinned: !isPinned }),
     handleNoteChange: (value: string) =>
       onChange(achievement.id, { note: value }),
-    handleChecklistChange: (items: IChecklistItem[]) =>
-      onChange(achievement.id, { checklist: items }),
+    handleChecklistChange: (items: IChecklistItem[]) => {
+      // Working on the list keeps it open, also after its last item is checked.
+      setChecklistChoice(true);
+      onChange(achievement.id, { checklist: items });
+    },
   };
 }

@@ -68,6 +68,7 @@ export const fr: Messages = {
 
   common: {
     cancel: 'Annuler',
+    undo: 'Annuler',
     retry: 'Réessayer',
     refresh: 'Actualiser',
     back: 'Retour',
@@ -121,7 +122,8 @@ export const fr: Messages = {
   },
 
   checklist: {
-    rename: 'Cliquez pour renommer',
+    rename: 'Renommer l’élément',
+    removed: (text) => `« ${text} » retiré`,
     remove: 'Retirer l’élément',
     newItem: 'Nouvel élément',
     add: 'Ajouter un élément',

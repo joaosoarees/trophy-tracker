@@ -62,6 +62,7 @@ export const ptBR: Messages = {
 
   common: {
     cancel: 'Cancelar',
+    undo: 'Desfazer',
     retry: 'Tentar de novo',
     refresh: 'Atualizar',
     back: 'Voltar',
@@ -115,7 +116,8 @@ export const ptBR: Messages = {
   },
 
   checklist: {
-    rename: 'Clique para renomear',
+    rename: 'Renomear item',
+    removed: (text) => `“${text}” removido`,
     remove: 'Remover item',
     newItem: 'Novo item',
     add: 'Adicionar item',

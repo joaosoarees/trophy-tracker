@@ -1,4 +1,5 @@
-import { X } from 'lucide-react';
+import { Pencil, X } from 'lucide-react';
+import { useId } from 'react';
 
 import { useT } from '@app/hooks/useT';
 import { type IChecklistItem } from '@shared/types/UserData';
@@ -18,6 +19,10 @@ interface IChecklistRowProps {
   onRemove: () => void;
 }
 
+// Shown on hover and on keyboard focus: hover alone would hide them from the keyboard.
+const ROW_ACTION =
+  'text-muted-foreground hover:bg-accent p-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100';
+
 export function ChecklistRow({
   item,
   isEditing,
@@ -28,11 +33,12 @@ export function ChecklistRow({
   onRemove,
 }: IChecklistRowProps) {
   const t = useT();
+  const id = useId();
 
   return (
-    <li className="group hover:bg-muted/60 -mx-1.5 flex items-center gap-2 rounded px-1.5 py-1">
+    <li className="group hover:bg-muted/60 -mx-1.5 flex items-center gap-2 rounded px-1.5">
       <Checkbox
-        aria-label={item.text}
+        id={id}
         checked={item.done}
         className="hover:border-primary"
         onCheckedChange={(checked) => onToggle(checked === true)}
@@ -41,8 +47,9 @@ export function ChecklistRow({
       {isEditing ? (
         <Input
           autoFocus
+          aria-label={t.checklist.rename}
           defaultValue={item.text}
-          className="h-6 flex-1 px-1.5 text-sm"
+          className="my-1 h-6 flex-1 px-1.5 text-sm"
           onBlur={(event) => onRename(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') onRename(event.currentTarget.value);
@@ -50,27 +57,37 @@ export function ChecklistRow({
           }}
         />
       ) : (
-        <Hint label={t.checklist.rename} side="top">
+        // The text is the checkbox's label: clicking anywhere on it checks
+        // the item, which is what is done most, mid-game.
+        <label
+          htmlFor={id}
+          className={cn(
+            'min-w-0 flex-1 cursor-pointer py-1 wrap-break-word',
+            item.done && 'text-muted-foreground line-through',
+          )}
+        >
+          {item.text}
+        </label>
+      )}
+
+      {!isEditing && (
+        <Hint label={t.checklist.rename}>
           <Pressable
+            aria-label={t.checklist.rename}
             onClick={onStartEditing}
-            className={cn(
-              'hover:bg-accent/50 min-w-0 flex-1 cursor-text rounded-sm px-1 text-left wrap-break-word select-text active:scale-100',
-              item.done && 'text-muted-foreground line-through',
-            )}
+            className={cn(ROW_ACTION, 'hover:text-foreground')}
           >
-            {item.text}
+            <Pencil className="size-4" />
           </Pressable>
         </Hint>
       )}
-
       <Hint label={t.checklist.remove}>
         <Pressable
           aria-label={t.checklist.remove}
           onClick={onRemove}
-          // Also shown on keyboard focus: hover alone would hide it from the keyboard.
-          className="text-muted-foreground hover:bg-accent hover:text-destructive p-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+          className={cn(ROW_ACTION, 'hover:text-destructive')}
         >
-          <X className="size-3.5" />
+          <X className="size-4" />
         </Pressable>
       </Hint>
     </li>
