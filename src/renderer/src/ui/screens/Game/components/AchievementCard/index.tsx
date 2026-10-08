@@ -14,6 +14,7 @@ import { Button } from '@ui/primitives/button';
 import { Textarea } from '@ui/primitives/textarea';
 import { cn } from '@ui/utils/cn';
 import { formatDate, formatNumber, formatPercent } from '@ui/utils/format';
+import { TOGGLE_ON } from '@ui/utils/toggle';
 
 import { Checklist } from '../Checklist';
 
@@ -86,12 +87,12 @@ export const AchievementCard = memo(function AchievementCard(
             </Badge>
           )}
           {achievement.rarity !== null && (
-            <span
-              className="text-muted-foreground pt-0.5 text-xs tabular-nums"
-              title={t.card.rarityTitle}
-            >
-              {formatPercent(achievement.rarity, locale)}
-            </span>
+            <Hint label={t.card.rarityTitle}>
+              <span className="text-muted-foreground pt-0.5 text-xs tabular-nums">
+                <span className="sr-only">{t.card.rarityTitle}: </span>
+                {formatPercent(achievement.rarity, locale)}
+              </span>
+            </Hint>
           )}
         </div>
         <p className="text-foreground/75 mt-0.5 select-text">
@@ -99,25 +100,33 @@ export const AchievementCard = memo(function AchievementCard(
         </p>
 
         {progress && (
-          <div
-            className="mt-2 flex items-center gap-2.5"
-            title={
-              progress.source === 'checklist'
-                ? t.card.checklistCounter
-                : t.card.steamCounter
-            }
-          >
+          <div className="mt-2 flex items-center gap-2.5">
             <ProgressBar
               value={(progress.current / progress.target) * 100}
               className="flex-1"
             />
-            <span className="text-muted-foreground flex items-center gap-1 text-xs tabular-nums">
-              {progress.source === 'checklist' && (
-                <ListChecks className="size-3" />
-              )}
-              {formatNumber(progress.current, locale)} /{' '}
-              {formatNumber(progress.target, locale)}
-            </span>
+            {/* Says whose count this is: Steam's, or the user's own checklist. */}
+            <Hint
+              label={
+                progress.source === 'checklist'
+                  ? t.card.checklistCounter
+                  : t.card.steamCounter
+              }
+            >
+              <span className="text-muted-foreground flex items-center gap-1 text-xs tabular-nums">
+                {progress.source === 'checklist' && (
+                  <ListChecks className="size-3" />
+                )}
+                <span className="sr-only">
+                  {progress.source === 'checklist'
+                    ? t.card.checklistCounter
+                    : t.card.steamCounter}
+                  :{' '}
+                </span>
+                {formatNumber(progress.current, locale)} /{' '}
+                {formatNumber(progress.target, locale)}
+              </span>
+            </Hint>
           </div>
         )}
 
@@ -134,7 +143,8 @@ export const AchievementCard = memo(function AchievementCard(
             <Hint label={t.card.listTitle}>
               <Button
                 size="xs"
-                variant={isChecklistOpen ? 'default' : 'ghost'}
+                variant="ghost"
+                className={cn(isChecklistOpen && TOGGLE_ON)}
                 aria-expanded={isChecklistOpen}
                 onClick={handleToggleChecklist}
               >

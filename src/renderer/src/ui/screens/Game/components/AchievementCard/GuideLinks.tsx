@@ -32,7 +32,14 @@ export function GuideLinks({ onOpen }: IGuideLinksProps) {
               : t.guides.searchOn(SITE_NAMES[site])
           }
         >
-          <Button size="xs" variant="secondary" onClick={() => onOpen(site)}>
+          <Button
+            size="xs"
+            variant="ghost"
+            // Quiet at rest: fifteen of these share a screen with the names
+            // and descriptions, which are what is being read.
+            className="text-muted-foreground"
+            onClick={() => onOpen(site)}
+          >
             {icon}
             {site === 'steam' ? t.guides.steam : SITE_NAMES[site]}
           </Button>
