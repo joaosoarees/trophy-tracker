@@ -1,7 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { AchievementUserData, GameUserData, GameView, Profile } from '../shared/types'
-import type { Credentials, RawOwnedGame } from './steam/client'
+import type { Credentials, RawOwnedGame, RawSchemaAchievement, StoreArt } from './steam/client'
 
 /** Cifra opcional da chave (safeStorage do Electron, quando há keyring). */
 export interface Cipher {
@@ -27,6 +27,12 @@ interface CacheFile {
   library?: { fetchedAt: number; games: RawOwnedGame[] }
   games: Record<string, GameView>
   summaries: Record<string, SummaryEntry>
+  art: Record<string, StoreArt>
+  schemas: Record<string, { fetchedAt: number; items: RawSchemaAchievement[] }>
+}
+
+interface SettingsFile {
+  alwaysOnTop: boolean
 }
 
 type UserDataFile = Record<string, GameUserData>
@@ -43,7 +49,7 @@ export class Store {
   ) {
     mkdirSync(dir, { recursive: true })
     this.config = this.read('config.json', {})
-    this.cache = this.read('cache.json', { games: {}, summaries: {} })
+    this.cache = this.read('cache.json', { games: {}, summaries: {}, art: {}, schemas: {} })
     this.userData = this.read('userdata.json', {})
     this.settings = this.read('settings.json', { alwaysOnTop: false })
   }
@@ -89,7 +95,7 @@ export class Store {
   clearCredentials(): void {
     this.config = {}
     this.write('config.json', this.config, 0o600)
-    this.cache = { games: {}, summaries: {} }
+    this.cache = { games: {}, summaries: {}, art: this.cache.art, schemas: this.cache.schemas }
     this.saveCache()
   }
 
@@ -122,6 +128,33 @@ export class Store {
   setSummaries(entries: Record<string, SummaryEntry>): void {
     Object.assign(this.cache.summaries, entries)
     this.saveCache()
+  }
+
+  getSchema(appid: number): CacheFile['schemas'][string] | null {
+    return this.cache.schemas[appid] ?? null
+  }
+
+  setSchema(appid: number, items: RawSchemaAchievement[], now = Date.now()): void {
+    this.cache.schemas[appid] = { fetchedAt: now, items }
+    this.saveCache()
+  }
+
+  getArt(appid: number): StoreArt | null {
+    return this.cache.art[appid] ?? null
+  }
+
+  setArt(entries: Map<number, StoreArt>): void {
+    for (const [appid, art] of entries) this.cache.art[appid] = art
+    this.saveCache()
+  }
+
+  getAlwaysOnTop(): boolean {
+    return this.settings.alwaysOnTop
+  }
+
+  setAlwaysOnTop(value: boolean): void {
+    this.settings.alwaysOnTop = value
+    this.write('settings.json', this.settings)
   }
 
   getUserData(appid: number): GameUserData {

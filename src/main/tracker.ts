@@ -1,4 +1,5 @@
-import type { GameSummary, GameView } from '../shared/types'
+import type { DashboardMode, GameSummary, GameView } from '../shared/types'
+import { mergeView } from '../shared/view'
 import { buildGameView } from './steam/achievements'
 import {
   SteamClient,
@@ -12,6 +13,8 @@ import type { Store, SummaryEntry } from './store'
 
 const LIBRARY_TTL = 10 * 60_000
 const GAME_TTL = 60_000
+/** A lista de conquistas de um jogo quase nunca muda. */
+const SCHEMA_TTL = 24 * 60 * 60_000
 const CONCURRENCY = 4
 
 export interface TrackerDeps {
@@ -26,12 +29,23 @@ export class Tracker {
   private client: SteamClient
   private readStatMap: TrackerDeps['readStatMap']
   private now: () => number
+  private inflight = new Map<string, Promise<unknown>>()
+  private statMaps = new Map<number, Map<string, string>>()
 
   constructor(deps: TrackerDeps) {
     this.store = deps.store
     this.client = deps.client
     this.readStatMap = deps.readStatMap
     this.now = deps.now ?? Date.now
+  }
+
+  /** Pedidos idênticos simultâneos compartilham a mesma leitura. */
+  private once<T>(key: string, run: () => Promise<T>): Promise<T> {
+    const running = this.inflight.get(key) as Promise<T> | undefined
+    if (running) return running
+    const promise = run().finally(() => this.inflight.delete(key))
+    this.inflight.set(key, promise)
+    return promise
   }
 
   private credentials(): Credentials {
@@ -43,12 +57,14 @@ export class Tracker {
   async library(force = false): Promise<RawOwnedGame[]> {
     const cached = this.store.getLibrary()
     if (cached && !force && this.now() - cached.fetchedAt < LIBRARY_TTL) return cached.games
-    const games = await this.client.getOwnedGames(this.credentials())
-    if (games === null) {
-      throw new SteamError('private', 'Os detalhes dos jogos do seu perfil não estão públicos.')
-    }
-    this.store.setLibrary(games, this.now())
-    return games
+    return this.once('library', async () => {
+      const games = await this.client.getOwnedGames(this.credentials())
+      if (games === null) {
+        throw new SteamError('private', 'Os detalhes dos jogos do seu perfil não estão públicos.')
+      }
+      this.store.setLibrary(games, this.now())
+      return games
+    })
   }
 
   /** Jogo jogado mais recentemente, para quando não há jogo aberto. */
@@ -84,26 +100,61 @@ export class Tracker {
     return find(await this.library()) ?? find(await this.library(true)) ?? `App ${appid}`
   }
 
-  async getGame(appid: number, force = false): Promise<GameView> {
-    const cached = this.store.getGame(appid)
-    if (cached && !force && this.now() - cached.fetchedAt < GAME_TTL) return cached
+  private async schema(appid: number, fresh: boolean): Promise<RawSchemaAchievement[]> {
+    const cached = this.store.getSchema(appid)
+    if (cached && !fresh && this.now() - cached.fetchedAt < SCHEMA_TTL) return cached.items
+    const items = await this.client.getGameAchievements(appid)
+    this.store.setSchema(appid, items, this.now())
+    return items
+  }
 
+  private async statMap(appid: number): Promise<Map<string, string>> {
+    const known = this.statMaps.get(appid)
+    if (known) return known
+    const map = await this.readStatMap(appid)
+    // Vazio pode ser só o cliente Steam ainda sem o arquivo; tenta de novo depois.
+    if (map.size > 0) this.statMaps.set(appid, map)
+    return map
+  }
+
+  /**
+   * `false`: serve do cache se for recente. `'poll'`: relê só o que muda enquanto se joga
+   * (estado do jogador e contadores). `true`: relê tudo, inclusive a lista de conquistas.
+   * Devolve o mesmo objeto da leitura anterior quando nada mudou.
+   */
+  async getGame(appid: number, mode: boolean | 'poll' = false): Promise<GameView> {
+    const cached = this.store.getGame(appid)
+    if (cached && mode === false && this.now() - cached.fetchedAt < GAME_TTL) return cached
+    return this.once(`game:${appid}:${mode}`, () => this.readGame(appid, mode === true, cached))
+  }
+
+  private async readGame(appid: number, fresh: boolean, cached: GameView | null): Promise<GameView> {
     const creds = this.credentials()
     const [name, schema, player, art] = await Promise.all([
       this.gameName(appid),
-      this.client.getGameAchievements(appid),
-      this.client.getPlayerAchievements(creds, appid)
+      this.schema(appid, fresh),
+      this.client.getPlayerAchievements(creds, appid),
+      this.art([appid])
     ])
 
     let statMap = new Map<string, string>()
     let stats: Record<string, number> = {}
     if (schema.some((s) => (s.max_progress_int ?? 0) > 0)) {
-      statMap = await this.readStatMap(appid)
+      statMap = await this.statMap(appid)
       // Contadores são um extra: se falharem, a lista continua valendo.
       if (statMap.size > 0) stats = await this.client.getUserStats(creds, appid).catch(() => ({}))
     }
 
-    const view = buildGameView({ appid, name, schema, player, stats, statMap, now: this.now() })
+    const read: GameView = {
+      ...buildGameView({ appid, name, schema, player, stats, statMap, now: this.now() }),
+      header: art.get(appid)?.header ?? ''
+    }
+    const view = mergeView(cached, read)
+    if (view === cached) {
+      cached.fetchedAt = read.fetchedAt
+      this.store.setGame(cached)
+      return cached
+    }
     this.store.setGame(view)
     this.store.setSummaries({ [appid]: { ...this.summaryPlaytime(appid), total: view.total, unlocked: view.unlockedCount } })
     return view
@@ -115,9 +166,14 @@ export class Tracker {
   }
 
   /** Jogos já jogados que têm conquistas, do mais perto dos 100% para o mais longe; completos por último. */
-  async getDashboard(force = false, onProgress?: (done: number, total: number) => void): Promise<GameSummary[]> {
+  getDashboard(mode: DashboardMode = 'cached', onProgress?: (done: number, total: number) => void): Promise<GameSummary[]> {
+    return this.once(`dashboard:${mode}`, () => this.readDashboard(mode, onProgress))
+  }
+
+  private async readDashboard(mode: DashboardMode, onProgress?: (done: number, total: number) => void): Promise<GameSummary[]> {
+    const force = mode === 'all'
     const creds = this.credentials()
-    const played = (await this.library(force)).filter((g) => g.playtime_forever > 0)
+    const played = (await this.library(mode !== 'cached')).filter((g) => g.playtime_forever > 0)
 
     const entries = new Map<number, SummaryEntry>()
     const pending: RawOwnedGame[] = []
@@ -181,7 +237,6 @@ export class Tracker {
           unlocked: e.unlocked
         }
       })
-      .filter((s) => s.total > 0)
       .sort((a, b) => {
         const doneA = a.unlocked === a.total
         const doneB = b.unlocked === b.total

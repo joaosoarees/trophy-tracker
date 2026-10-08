@@ -211,6 +211,50 @@ describe('Tracker', () => {
     expect(count()).toBe(3)
   })
 
+  it('na verificação periódica relê só o estado do jogador e devolve o mesmo objeto se nada mudou', async () => {
+    let unlocked = 1
+    const { tracker, fetchImpl, advance } = setup({
+      GetOwnedGames: owned(game(3681010, 'Nioh 3', 500)),
+      GetGameAchievements: { json: nioh },
+      GetPlayerAchievements: () => ({
+        json: { playerstats: { achievements: nioh.response.achievements.slice(0, unlocked).map((a) => ({ apiname: a.internal_name, achieved: 1, unlocktime: 9 })) } }
+      })
+    })
+    const count = (name: string) => fetchImpl.calls.filter((u) => u.includes(name)).length
+    const first = await tracker.getGame(3681010)
+    advance(60_000)
+    const second = await tracker.getGame(3681010, 'poll')
+    expect(second).toBe(first)
+    expect(count('GetGameAchievements')).toBe(1)
+    expect(count('GetPlayerAchievements')).toBe(2)
+
+    unlocked = 2
+    advance(60_000)
+    const third = await tracker.getGame(3681010, 'poll')
+    expect(third).not.toBe(first)
+    expect(third.unlockedCount).toBe(2)
+    expect(third.achievements[5]).toBe(first.achievements[5])
+    expect(count('GetGameAchievements')).toBe(1)
+
+    await tracker.getGame(3681010, true)
+    expect(count('GetGameAchievements')).toBe(2)
+  })
+
+  it('junta pedidos idênticos simultâneos numa leitura só', async () => {
+    const { tracker, fetchImpl } = setup({
+      GetOwnedGames: owned(game(1, 'A', 10), game(2, 'B', 10)),
+      GetGameAchievements: { json: { response: { achievements: [] } } },
+      GetPlayerAchievements: player(1, 4)
+    })
+    const count = (name: string) => fetchImpl.calls.filter((u) => u.includes(name)).length
+    const [a, b] = await Promise.all([tracker.getGame(1), tracker.getGame(1)])
+    expect(a).toBe(b)
+    expect(count('GetPlayerAchievements')).toBe(1)
+    expect(count('GetOwnedGames')).toBe(1)
+    await Promise.all([tracker.getDashboard(), tracker.getDashboard()])
+    expect(count('GetPlayerAchievements')).toBe(1 + 1)
+  })
+
   it('escolhe o último jogo jogado quando não há jogo aberto', async () => {
     const { tracker } = setup({ GetOwnedGames: owned(game(1, 'Antigo', 10, 100), game(2, 'Recente', 10, 900), game(3, 'Nunca', 0, 0)) })
     expect(await tracker.lastPlayedAppId()).toBe(2)
@@ -231,7 +275,7 @@ describe('Tracker', () => {
       'appid=4': NO_STATS
     })
     const progress: number[] = []
-    const list = await tracker.getDashboard(false, (done) => progress.push(done))
+    const list = await tracker.getDashboard('cached', (done) => progress.push(done))
     expect(list.map((g) => g.name)).toEqual(['Quase', 'Metade', 'Completo'])
     expect(list[0]).toMatchObject({ unlocked: 9, total: 10 })
     expect(progress.sort()).toEqual([1, 2, 3, 4])
@@ -253,8 +297,50 @@ describe('Tracker', () => {
     advance(11 * 60_000)
     await tracker.getDashboard()
     expect(count()).toBe(3)
-    await tracker.getDashboard(true)
+    await tracker.getDashboard('all')
     expect(count()).toBe(5)
+  })
+
+  it('anexa as capas da loja e não pergunta de novo pelo que já sabe', async () => {
+    const { tracker, fetchImpl } = setup({
+      GetOwnedGames: owned(game(1, 'A', 10), game(2, 'B', 10)),
+      GetPlayerAchievements: player(1, 4),
+      GetGameAchievements: { json: { response: { achievements: [] } } },
+      GetItems: (url) => {
+        const ids = JSON.parse(url.searchParams.get('input_json')!).ids.map((i: { appid: number }) => i.appid)
+        return {
+          json: {
+            response: {
+              store_items: ids
+                .filter((appid: number) => appid === 1)
+                .map((appid: number) => ({
+                  appid,
+                  assets: { asset_url_format: 'steam/apps/1/${FILENAME}?t=9', header: 'abc/header.jpg', small_capsule: 'def/capsule_231x87.jpg' }
+                }))
+            }
+          }
+        }
+      }
+    })
+    const list = await tracker.getDashboard()
+    expect(list.find((g) => g.appid === 1)?.capsule).toBe(
+      'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1/def/capsule_231x87.jpg?t=9'
+    )
+    expect(list.find((g) => g.appid === 2)?.capsule).toBe('')
+    expect((await tracker.getGame(1)).header).toContain('/abc/header.jpg')
+    await tracker.getDashboard('all')
+    expect(fetchImpl.calls.filter((u) => u.includes('GetItems'))).toHaveLength(1)
+  })
+
+  it('mostra o jogo mesmo quando a loja falha ao dar a capa', async () => {
+    const { tracker } = setup({
+      GetOwnedGames: owned(game(1, 'A', 10)),
+      GetPlayerAchievements: player(1, 4),
+      GetGameAchievements: { json: { response: { achievements: [] } } },
+      GetItems: { status: 500, text: 'erro' }
+    })
+    expect(await tracker.getDashboard()).toHaveLength(1)
+    expect((await tracker.getGame(1)).header).toBe('')
   })
 
   it('propaga perfil privado em vez de mostrar painel vazio', async () => {

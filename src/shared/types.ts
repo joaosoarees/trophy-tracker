@@ -74,6 +74,9 @@ export type GameUserData = Record<string, AchievementUserData>
 
 export type GuideSite = 'steam' | 'youtube' | 'google'
 
+/** `cached`: usa o que já tem; `changed`: relê a biblioteca e só os jogos que mudaram; `all`: relê tudo. */
+export type DashboardMode = 'cached' | 'changed' | 'all'
+
 export interface Api {
   getState(): Promise<AppState>
   detectSteamId(): Promise<string | null>
@@ -85,7 +88,7 @@ export interface Api {
 
   getCurrentAppId(): Promise<{ appid: number; running: boolean } | null>
   getGame(appid: number, force?: boolean): Promise<CheckResult<GameView>>
-  getDashboard(force?: boolean): Promise<CheckResult<GameSummary[]>>
+  getDashboard(mode?: DashboardMode): Promise<CheckResult<GameSummary[]>>
   getUserData(appid: number): Promise<GameUserData>
   setUserData(appid: number, achievementId: string, data: AchievementUserData): Promise<void>
 

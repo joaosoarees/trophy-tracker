@@ -65,6 +65,8 @@ async function resolveCurrent(): Promise<typeof current> {
 async function checkRunningGame(): Promise<void> {
   const next = await resolveCurrent()
   if (next?.appid === current?.appid && next?.running === current?.running) return
+  // Fechou o jogo: uma última leitura pega o que foi desbloqueado no minuto final.
+  if (current?.running && !(next?.running && next.appid === current.appid)) await checkUnlocks()
   current = next
   lastView = null
   win?.webContents.send('game-changed', current)
@@ -73,9 +75,11 @@ async function checkRunningGame(): Promise<void> {
 async function checkUnlocks(): Promise<void> {
   if (!current?.running || !state().configured) return
   const { appid } = current
-  const result = await attempt(() => tracker.getGame(appid, true))
+  const result = await attempt(() => tracker.getGame(appid, 'poll'))
   if (!result.ok || current?.appid !== appid) return
   const view = result.value
+  // O tracker devolve o mesmo objeto quando nada mudou; aí não há o que avisar.
+  if (view === lastView) return
   if (lastView?.appid === appid) {
     for (const a of newlyUnlocked(lastView, view)) {
       const left = view.total - view.unlockedCount
@@ -121,8 +125,8 @@ function registerIpc(): void {
         if (current?.appid === appid) lastView = view
         return view
       }),
-    getDashboard: (force) =>
-      attempt(() => tracker.getDashboard(force, (done, total) => win?.webContents.send('dashboard-progress', done, total))),
+    getDashboard: (mode) =>
+      attempt(() => tracker.getDashboard(mode, (done, total) => win?.webContents.send('dashboard-progress', done, total))),
     getUserData: async (appid) => store.getUserData(appid),
     setUserData: async (appid, achievementId, data) => store.setUserData(appid, achievementId, data),
     getAlwaysOnTop: async () => store.getAlwaysOnTop(),
