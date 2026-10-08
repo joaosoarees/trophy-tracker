@@ -2,7 +2,7 @@
   "name": "trophy-tracker",
   "productName": "Trophy Tracker",
   "desktopName": "trophy-tracker.desktop",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Tracks your Steam achievements: what is missing, the hidden ones, counters, checklists and guides. Not affiliated with Valve.",
   "author": {
