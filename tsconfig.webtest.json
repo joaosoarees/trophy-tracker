@@ -1,0 +1,16 @@
+{
+  // Tests of the interface store: they need the browser types the code under
+  // test uses, plus Node for the test helpers.
+  "extends": "./tsconfig.web.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    "paths": {
+      "@app/*": ["./src/renderer/src/app/*"],
+      "@ui/*": ["./src/renderer/src/ui/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@main/*": ["./src/main/*"],
+      "@test/*": ["./test/*"]
+    }
+  },
+  "include": ["test/renderer/app/store", "src/renderer/src/env.d.ts"]
+}

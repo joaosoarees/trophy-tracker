@@ -29,6 +29,10 @@ export default defineConfig({
         'src/main/**/*.ts',
         'src/shared/**/*.ts',
         'src/renderer/src/app/lib/saver.ts',
+        // The store slices that hold logic, tested against a fake main process.
+        'src/renderer/src/app/store/slices/updatesSlice.ts',
+        'src/renderer/src/app/store/slices/settingsSlice.ts',
+        'src/renderer/src/app/store/slices/userDataSlice.ts',
         'src/renderer/src/ui/screens/**/achievementList.ts',
         'src/renderer/src/ui/screens/**/gameList.ts',
         'src/renderer/src/ui/screens/**/schema.ts',
