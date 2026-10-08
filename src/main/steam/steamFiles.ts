@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { posix } from 'node:path';
 
 import { type ITextVdf, parseTextVdf } from './textVdf';
 
@@ -7,6 +7,9 @@ export function steamDirCandidates(
   platform: NodeJS.Platform,
   home: string,
 ): string[] {
+  // The platform is an argument, so the separator must not depend on the
+  // system this code happens to run on.
+  const { join } = posix;
   switch (platform) {
     case 'darwin':
       return [join(home, 'Library', 'Application Support', 'Steam')];

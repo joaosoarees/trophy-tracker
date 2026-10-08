@@ -160,7 +160,11 @@ describe('Store', () => {
   it('stores the key in a user-only file and reads it back', () => {
     const dir = tempDir();
     new Store(dir).setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
-    expect(statSync(join(dir, 'config.json')).mode & 0o777).toBe(0o600);
+    // Windows has no permission bits; there the user's profile folder is
+    // what keeps other accounts out.
+    if (process.platform !== 'win32') {
+      expect(statSync(join(dir, 'config.json')).mode & 0o777).toBe(0o600);
+    }
     const again = new Store(dir);
     expect(again.getCredentials()).toEqual({ steamId: STEAM_ID, apiKey: KEY });
     expect(again.getProfile()).toEqual(profile);
