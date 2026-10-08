@@ -13,6 +13,11 @@ export class SystemService extends Service {
     return this.api.openGuide(site, appid, game, achievement);
   }
 
+  /** Fire and forget: a failure to log is not worth reporting. */
+  static logError(source: string, detail: string): void {
+    void this.api.logError(source, detail).catch(() => {});
+  }
+
   static openExternal(target: ExternalPage): Promise<void> {
     return this.api.openExternal(target);
   }

@@ -36,6 +36,7 @@ const calls = [
   'setAlwaysOnTop',
   'openGuide',
   'openExternal',
+  'logError',
 ] as const;
 
 const api = {

@@ -4,6 +4,13 @@ export const ptBR: Messages = {
   appTitle: 'Trophy Tracker',
   notAffiliated: 'Sem afiliação com a Valve ou a Steam.',
 
+  crash: {
+    title: 'Algo deu errado',
+    description:
+      'Não foi possível mostrar esta tela. Recarregar costuma resolver; os detalhes foram gravados no registro de erros.',
+    reload: 'Recarregar',
+  },
+
   errors: {
     invalidKey: 'A Steam recusou a chave da Web API.',
     private: 'Os detalhes dos jogos do seu perfil não estão públicos.',

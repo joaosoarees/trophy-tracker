@@ -39,6 +39,12 @@ export class MainWindow {
       void openUrl(url);
       return { action: 'deny' };
     });
+    // The window only ever shows the app itself; anything else opens in the browser.
+    win.webContents.on('will-navigate', (event, url) => {
+      if (url === win.webContents.getURL()) return;
+      event.preventDefault();
+      void openUrl(url);
+    });
 
     if (process.env.ELECTRON_RENDERER_URL) {
       void win.loadURL(process.env.ELECTRON_RENDERER_URL);
@@ -50,6 +56,13 @@ export class MainWindow {
   /** Pushes an event to the interface. */
   send(event: IpcEvent, ...args: unknown[]): void {
     this.win?.webContents.send(event, ...args);
+  }
+
+  /** Brings the window back in front (a second launch of the app lands here). */
+  focus(): void {
+    if (!this.win) return;
+    if (this.win.isMinimized()) this.win.restore();
+    this.win.focus();
   }
 
   setTitle(title: string): void {

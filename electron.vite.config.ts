@@ -20,6 +20,8 @@ export default defineConfig({
     },
     plugins: [react(), tailwindcss()],
     build: {
+      // electron-vite leaves the interface unminified by default; minifying cuts it to about a third.
+      minify: true,
       rollupOptions: {
         // Dependencies ship optimisation hints (`@__PURE__`) in places Rollup
         // cannot use. It drops them safely; there is nothing for us to fix.

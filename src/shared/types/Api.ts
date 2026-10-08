@@ -55,6 +55,8 @@ export interface IApi {
     achievement: string,
   ) => Promise<void>;
   openExternal: (target: ExternalPage) => Promise<void>;
+  /** Records an interface error in the local log file. */
+  logError: (source: string, detail: string) => Promise<void>;
 
   onGameChanged: (cb: (current: CurrentGame) => void) => () => void;
   onGameUpdated: (cb: (view: IGameView) => void) => () => void;

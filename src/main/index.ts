@@ -14,6 +14,7 @@ import { createSteamLocal } from './steam/local';
 import { createCipher } from './storage/createCipher';
 import { migrateUserData } from './storage/migrateUserData';
 import { Store } from './storage/Store';
+import { logError } from './system/errorLog';
 import { notify } from './system/notify';
 import { MainWindow } from './window';
 
@@ -23,6 +24,24 @@ const appData = app.getPath('appData');
 if (!app.commandLine.hasSwitch('user-data-dir')) {
   app.setPath('userData', join(appData, 'trophy-tracker'));
 }
+
+const errorLog = (): string =>
+  join(app.getPath('userData'), 'logs', 'errors.log');
+const log = (source: string, detail: string): void =>
+  logError(errorLog(), source, detail);
+
+process.on('uncaughtException', (error) =>
+  log('main: uncaughtException', error.stack ?? error.message),
+);
+process.on('unhandledRejection', (reason) =>
+  log(
+    'main: unhandledRejection',
+    reason instanceof Error ? (reason.stack ?? reason.message) : String(reason),
+  ),
+);
+
+// A second launch focuses the window that is already open instead of starting another app.
+if (!app.requestSingleInstanceLock()) app.quit();
 
 // Composition root: builds each piece once and hands it what it depends on.
 void app.whenReady().then(() => {
@@ -52,7 +71,8 @@ void app.whenReady().then(() => {
     onGameUpdated: (view) => window.send(IpcEvent.gameUpdated, view),
   });
 
-  registerIpc({ setup, tracker, watcher, store, window, local });
+  registerIpc({ setup, tracker, watcher, store, window, local, logError: log });
+  app.on('second-instance', () => window.focus());
   window.open({
     title: setup.messages.appTitle,
     alwaysOnTop: store.getAlwaysOnTop(),

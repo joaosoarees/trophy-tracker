@@ -3,6 +3,13 @@ export const en = {
   appTitle: 'Trophy Tracker',
   notAffiliated: 'Not affiliated with Valve or Steam.',
 
+  crash: {
+    title: 'Something went wrong',
+    description:
+      'This screen could not be shown. Reloading usually fixes it; the details were saved to the error log.',
+    reload: 'Reload',
+  },
+
   errors: {
     invalidKey: 'Steam rejected the Web API key.',
     private: 'Your profile’s game details are not public.',

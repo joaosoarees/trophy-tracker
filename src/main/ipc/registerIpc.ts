@@ -31,6 +31,7 @@ interface IIpcDeps {
   store: Store;
   window: MainWindow;
   local: ISteamLocal;
+  logError: (source: string, detail: string) => void;
 }
 
 /** Answers everything the interface can ask (`IApi`). Handlers only route: the work lives in the services. */
@@ -41,6 +42,7 @@ export function registerIpc({
   store,
   window,
   local,
+  logError,
 }: IIpcDeps): void {
   const handlers: IpcHandlers = {
     getState: () => setup.getState(),
@@ -106,6 +108,7 @@ export function registerIpc({
         guideUrl(site, appid, game, achievement, setup.messages.guides.query),
       ),
     openExternal: (page) => openExternalPage(page),
+    logError: (source, detail) => logError(`interface: ${source}`, detail),
   };
 
   for (const [name, handler] of Object.entries(handlers)) {
