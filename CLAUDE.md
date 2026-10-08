@@ -25,9 +25,9 @@ Electron needs `libnss3 libnspr4 libasound2t64` installed on WSL.
 Enforced by tooling; do not work around it.
 
 - **Formatting:** Prettier with `{ "singleQuote": true }`: single quotes, semicolons, 80 columns, trailing commas. `.editorconfig` covers indentation and line endings.
-- **Lint:** ESLint 9 flat config in `eslint.config.mjs`: typescript-eslint type-checked rules, React, React Hooks, jsx-a11y and import ordering. `src/renderer/src/components/ui` (generated shadcn/ui) is formatted but not linted. Exceptions for tests, config files and async JSX handlers are written down in the config with the reason.
+- **Lint:** ESLint 9 flat config in `eslint.config.mjs`: typescript-eslint type-checked rules, React, React Hooks, jsx-a11y and import ordering. `src/renderer/src/ui/primitives` (generated shadcn/ui) is formatted but not linted. Exceptions for tests, config files and async JSX handlers are written down in the config with the reason.
 - **Interfaces start with `I`** (`IAchievement`, `IGameView`, `IStepperProps`); the rule is `@typescript-eslint/naming-convention`. Type aliases (`type X = ...`) have no prefix. The global `Window` augmentation is the only exception.
-- **Imports** are grouped (builtin, external, internal `@/`, parent, sibling, index), alphabetised, with a blank line between groups, and type imports are inline (`import { type X }`). `pnpm lint:fix` sorts them.
+- **Imports** are grouped (builtin, external, internal `@app`/`@ui`/`@shared`, parent, sibling, index), alphabetised, with a blank line between groups, and type imports are inline (`import { type X }`). `pnpm lint:fix` sorts them.
 - **Function-typed members** use property syntax (`onClick: () => void`), not method syntax.
 - **No untyped JSON:** responses from Steam are typed where they are read (`Envelope<T>`, `PlayerStats<T>` in `steam/client.ts`).
 - **TypeScript projects:** `tsconfig.node.json` (main, preload, shared, tests; no DOM) and `tsconfig.web.json` (interface and shared; no Node types), both extending `tsconfig.base.json`. Using a browser API in the main process, or a Node API in the interface, is a compile error.
@@ -45,36 +45,91 @@ It does not produce an `.exe`; becoming a native Windows app requires Node on Wi
 
 ## Architecture
 
+Three processes' worth of code, each with its own layers:
+
 ```
-src/shared/     types and pure logic used by both sides
-  types.ts        model (IAchievement, IGameView, IGameSummary...) and the IPC IApi interface
-  checklist.ts    parseChecklist (pasted text → items) and shownProgress (which counter to show)
-  view.ts         mergeView: merges reads, reusing what did not change
-  validation.ts   SteamID and key formats, used by the form and by the main process
-  i18n/           languages: index.ts (registry) and locales/ (one file per language)
-src/main/       main process: the only part that talks to Steam and to the disk
-  steam/client.ts       HTTP calls to the Web API; turns failures into SteamError
-  steam/achievements.ts buildGameView (merges the sources), newlyUnlocked, guideUrl
-  steam/vdf.ts          reader for the binary KeyValues of the Steam client cache
-  steam/windows.ts      Windows interop
-  tracker.ts            orchestration: cache, deduplication, game, dashboard, art
-  store.ts              JSON persistence (not to be confused with the interface store)
-  onboarding.ts         SteamID, key and privacy checks
-  index.ts              window, IPC handlers, periodic checks
-src/preload/    exposes `window.api` (contextBridge), typed by `IApi`
-src/renderer/src/
-  App.tsx, Onboarding.tsx, GameScreen.tsx, Dashboard.tsx
-  components/     AchievementCard, Checklist, bits (ProgressBar, Segmented, SearchBox, Empty)
-  components/Stepper/, StepHeader, FieldError, ControlledLanguageSelect   multi-step form parts
-  components/steps/<Name>Step/   one folder per onboarding step: index.tsx + schema.ts
-  components/ui/  shadcn/ui components (generated; do not hand-edit without a reason)
-  store/          interface state (Zustand)
-  lib/            utils (cn, safe sessionStorage), i18n (useT, useLocale), text (accent-free search),
-                  saver (debounced writes), useSessionState (state that survives a reload)
-test/           Vitest, with real API responses in test/fixtures
+src/shared/            the contract between the two sides: types and pure logic
+  types/                 one file per entity: Achievement, Game, Profile, Check, AppState,
+                         UserData, Guide, and Api (IApi: everything the interface can ask)
+  ipcEvents.ts           names of the events the main process pushes to the interface
+  checklist.ts           parseChecklist, createChecklistItem, shownProgress
+  view.ts                mergeView: merges reads, reusing what did not change
+  validation.ts          SteamID and key formats
+  i18n/                  languages: index.ts (registry) and locales/ (one file per language)
+
+src/main/              main process: the only part that talks to Steam and to the disk
+  index.ts               composition root: builds each piece once and wires them together
+  window.ts              MainWindow: the single window and the events pushed to it
+  ipc/registerIpc.ts     answers IApi; handlers only route, the work lives in the services
+  services/
+    Tracker.ts             reads games and the dashboard: cache, deduplication, art
+    SetupService.ts        setup state, language, and the checks that get the app set up
+    GameWatcher.ts         follows the running game and announces unlocked achievements
+    onboardingChecks.ts    SteamID, key and privacy checks against Steam
+  steam/                 client.ts (Web API), achievements.ts (buildGameView, guideUrl),
+                         vdf.ts (Steam client cache reader), windows.ts (Windows interop)
+  storage/               Store.ts (JSON persistence), createCipher.ts (key encryption)
+  system/browser.ts      opening pages in the user's browser
+
+src/preload/           exposes `window.api` (contextBridge), typed by `IApi`
+
+src/renderer/src/      the interface, in two layers
+  app/                 everything that is not visual
+    services/            classes with static methods; the ONLY code that touches window.api
+    store/               Zustand store and its slices
+    hooks/               useT, useLocale, useActiveGame
+    lib/                 saver (debounced writes), safeSessionStorageGetItem
+  ui/                  everything that is drawn
+    App.tsx + useAppController.ts   decides between onboarding and the app
+    screens/             one folder per screen: Game, Dashboard, Settings, Onboarding
+    components/          shared between screens: AppShell, ProgressBar, Segmented, SearchBox, Empty
+    primitives/          shadcn/ui components (generated; do not hand-edit without a reason)
+    styles/index.css     Tailwind and the theme tokens
+    utils/               cn, text (accent-free search), format (dates and numbers)
+
+test/                  Vitest, with real API responses in test/fixtures
 ```
 
-Boundary rule: the interface never calls `fetch` against Steam and never touches files; everything goes through `window.api`. To add a call: a method on `IApi` (`shared/types.ts`), a handler in `main/index.ts`, and the name in the list in `preload/index.ts`.
+### Path aliases
+
+- `@app/*` → `src/renderer/src/app/*` and `@ui/*` → `src/renderer/src/ui/*` (interface only)
+- `@shared/*` → `src/shared/*` (interface, main process and preload)
+
+Import through the alias, except for files inside the importing file's own folder (`./useGameController`, `./components/GameHeader`). Tests use relative paths.
+
+### Layers and who may call whom
+
+```
+ui (screens, components) → app/store and app/hooks → app/services → window.api → main/ipc → main/services → steam / storage
+```
+
+- A screen or component never calls `window.api`; a lint rule enforces it. It reads the store, calls a store action, or (for one-off requests such as opening a link or an onboarding check) calls a service.
+- Services hold no state: they are typed doors to the main process. State lives in the store.
+- In the main process, `registerIpc` holds no logic and services receive what they depend on through the constructor (see `index.ts`), which is what makes them testable without Electron.
+- To add a call: a method on `IApi` (`shared/types/Api.ts`), a handler in `main/ipc/registerIpc.ts`, the name in the list in `preload/index.ts`, and a method on the matching class in `app/services`.
+
+### Screens and components
+
+A screen is a folder in `ui/screens/<Name>/`:
+
+```
+Game/
+  index.tsx              the view: layout only, no state or effects of its own
+  useGameController.ts   state, store access, derived values and handlers
+  achievementList.ts     pure logic of the screen (tested)
+  components/            what only this screen uses
+    GameHeader.tsx
+    AchievementCard/       index.tsx + useAchievementCardController.ts + GuideLinks.tsx
+    Checklist/             index.tsx + useChecklistController.ts + ChecklistRow.tsx + PasteListDialog.tsx
+```
+
+- **View and controller.** `index.tsx` calls `useXController()` and renders what it returns. The controller owns `useState`, `useEffect`, store selection and handlers, and returns them named `isX` for booleans and `handleX` for actions.
+- **Who gets a controller:** anything with state or effects. A component that only draws its props (`GameHeader`, `GameRow`, `ProgressBar`) is a single file with no controller.
+- **Where a component lives:** used by one screen → that screen's `components/`; used by more than one → `ui/components/`. Move it up only when the second use appears.
+- A component with parts is a folder with `index.tsx`; a simple one is a single `.tsx` file.
+- Props are an interface named `I<Component>Props`, declared right above the component.
+- Logic that needs no React goes into a plain function next to the screen (or into `shared/` when the main process needs it too) and gets a test.
+- Forms add `schema.ts` to the folder (see Forms).
 
 ## Data sources
 
@@ -100,18 +155,28 @@ Things that have already cost time:
 
 - One file per language in `src/shared/i18n/locales/`. `en.ts` is the reference: the `Messages` type comes from it, so a new key starts there and the compiler flags whatever is missing elsewhere. Messages are strings or functions (`left: (n) => ...`) for interpolation and plurals; there is no translation library.
 - New language: create the file and register it in `i18n/index.ts` with the name Steam uses (`steam`), the locale for dates and numbers (`locale`) and the store country.
-- The language changes **the whole app**: texts, error messages and the notification (the main process translates with `messagesFor(store.getLanguage())`), achievement names and descriptions and game art (requested from Steam in that language), and the suffix of guide searches.
+- The language changes **the whole app**: texts, error messages and the notification (the main process translates with `SetupService.messages`), achievement names and descriptions and game art (requested from Steam in that language), and the suffix of guide searches.
 - No user-facing text is hard-coded: in the interface use `const t = useT()`; in the main process, take `Messages` as a parameter. `SteamError` carries only the kind of error; the text comes from `steamErrorMessage(m, e)`.
 - The language lives in `settings.json`. Changing it drops the translated cache (games, achievement lists, art); `cache.json` records which language it was read in and is dropped on startup if it does not match.
 - In Settings, changing the language saves and **reloads the window**. In the onboarding the change is immediate, with no reload, because there is no Steam data on screen yet.
-- The tab, the picked game and the already-seen running game are kept in `sessionStorage` (`useSessionState`) so the reload does not lose them.
+- The tab, the picked game and the already-seen running game are kept in `sessionStorage` by `navigationSlice` so the reload does not lose them.
 
 ## Forms (react-hook-form + zod)
 
-The onboarding is a single multi-step form:
+The onboarding (`ui/screens/Onboarding/`) is a single multi-step form:
 
-- `Onboarding.tsx` owns the form: `useForm` with `zodResolver`, `FormProvider`, and the overall schema built from one schema per step (`languageStep`, `accountStep`, `apiKeyStep`, `privacyStep`). `DoneStep` has no schema: it is just the submit.
-- Each step lives in `components/steps/<Name>Step/` with `index.tsx` and `schema.ts`, reads the form with `useFormContext<OnboardingFormData>()`, and only advances after `form.trigger('<name>Step', { shouldFocus: true })`.
+```
+Onboarding/
+  index.tsx                  FormProvider + Stepper with the five steps
+  useOnboardingController.ts useForm, the watch subscription, the submit
+  schema.ts                  onboardingSchema: one schema per step, and OnboardingFormData
+  draft.ts                   what survives a reload (sessionStorage)
+  components/                Stepper/, StepHeader, FieldError, ControlledLanguageSelect
+  steps/<Name>Step/          index.tsx + schema.ts (+ use<Name>StepController.ts when it has state)
+```
+
+- The controller owns the form: `useForm` with `zodResolver(onboardingSchema)`. `DoneStep` has no schema: it is just the submit.
+- Each step reads the form with `useFormContext<OnboardingFormData>()` and only advances after `form.trigger('<name>Step', { shouldFocus: true })`.
 - `Stepper` holds the current step and exposes `previousStep`/`nextStep` through context (`useStepper`); `StepperFooter`, `StepperPreviousButton` and `StepperNextButton` build the footer.
 - The check against Steam runs when advancing: on failure, `form.setError('<field>', { message })` shows the error on the field itself.
 - Schemas hold the message **key** (`'steamIdFormat'`), not the text; `FieldError` translates it when rendering, so the error follows a language change. Every key used in a schema must exist under `validation` in the locales (there is a test for it).
@@ -127,9 +192,41 @@ The onboarding is a single multi-step form:
 - **No change, no event:** `Tracker.getGame` returns the same object when nothing changed, and the main process only emits `game-updated` when the object is a different one.
 - **Dashboard:** loads on startup, on ↻ (`all`) and when a game closes (`changed`: only games whose playtime changed).
 - **Identical simultaneous requests** share one read (`Tracker.once`).
+- The periodic checks live in `GameWatcher` (running game every 10 s, unlocks every 60 s).
 - **Art and names** are cached on disk; a store failure never takes the screen down.
 
 When touching this, measure before and after: count HTTP and IPC calls on startup, while idle and when switching tabs.
+
+## Interface state (Zustand)
+
+A single store in `src/renderer/src/app/store/`, split into namespaced slices:
+
+```
+store/
+  Store.ts              the Store type (one field per slice) and the StoreSlice<T> type
+  index.ts              create() with the devtools (dev only) and immer middlewares
+  connect.ts            wires the store to the main process events once the app is set up
+  slices/
+    sessionSlice.ts       language, current game and failure counter
+    settingsSlice.ts      app state from the main process, always on top, language change, erase
+    navigationSlice.ts    current tab, game picked in the dashboard, redoing the setup
+    gamesSlice.ts         game views already read, by appid
+    userDataSlice.ts      notes, pins and checklists
+    dashboardSlice.ts     dashboard
+```
+
+Conventions:
+
+- Each slice declares `XStore` (data), `XActions` (actions) and `XSlice = XStore & XActions`, and exports `createXSlice: StoreSlice<XSlice>`.
+- State is namespaced: `state.games.entries`, `state.dashboard.load`. A slice can read and change another one through the whole-store `get()`/`set()`.
+- Actions mutate the Immer draft directly (`prevState.games.entries[appid].loading = true`) and pass a name for the devtools: `set(fn, false, 'games/load')`.
+- Slices reach the main process through `@app/services`, never through `window.api`.
+- Controllers read state and actions together with `useStore(useShallow(state => ({ ... })))`. Default values inside the selector must be stable constants (e.g. `NONE_UNLOCKED`), otherwise the component re-renders every time.
+- Do not use `persist`: what must survive closing the app is written by the main process (`main/storage/Store.ts`). The navigation slice keeps the tab and the picked game in `sessionStorage` only so they survive the window reload of a language change.
+- Screen-only state (filter, search, open field) stays in `useState` in the controller.
+- There is no router: `navigationSlice` holds the tab and `AppShell` draws it. The Game and Dashboard tabs stay mounted; switching tabs only hides the other one.
+- Edits to notes and checklists update the screen right away and are written half a second later (`app/lib/saver.ts`), with a flush when the window closes.
+- `connectStore` drops what was read from Steam when the app leaves the configured state; language, settings and navigation are kept.
 
 ## Interface state (Zustand)
 
@@ -160,8 +257,8 @@ Conventions:
 
 ## Interface
 
-- Tailwind v4 (config in `src/renderer/src/styles.css`, no `tailwind.config`) + shadcn/ui components + Lucide icons. New shadcn component: `pnpm dlx shadcn@latest add <name>`; the command tends to install a wrong `cn` package and import from it: remove it with `pnpm remove cn` and point the import to `@/lib/utils`.
-- Dark theme only, with the Steam palette in the tokens in `styles.css` (`--primary` light blue, `--success` green, `--warning` amber).
+- Tailwind v4 (config in `src/renderer/src/ui/styles/index.css`, no `tailwind.config`) + shadcn/ui components + Lucide icons. New shadcn component: `pnpm dlx shadcn@latest add <name>` (it lands in `ui/primitives`); the command tends to install a wrong `cn` package and import from it: remove it with `pnpm remove cn` and point the import to `@ui/utils/cn`.
+- Dark theme only, with the Steam palette in the tokens in `ui/styles/index.css` (`--primary` light blue, `--success` green, `--warning` amber).
 - The window is narrow (about 520 px, for a second monitor): check that toolbars and buttons fit that width.
 - Lightness is the priority: no library with runtime styling.
 
@@ -171,9 +268,9 @@ Conventions:
 
 ## Tests
 
-- Main process and `shared/` logic is tested; the interface is validated by running the app.
+- Main process and `shared/` logic is tested, as is the pure logic of the screens (`achievementList`, step schemas, `saver`); views and controllers are validated by running the app.
 - `test/helpers.ts` has the route-based `fakeFetch`; fixtures are real responses (Nioh 3 and Onimusha: Way of the Sword).
-- A behaviour change in `tracker`, `client`, `onboarding`, `store` (main) or `shared/` comes with a test.
+- A behaviour change in a main-process service, `steam/client`, `storage/Store` or `shared/` comes with a test. Services are tested with fakes passed to the constructor (see `test/gameWatcher.test.ts`).
 
 ## Commits
 
