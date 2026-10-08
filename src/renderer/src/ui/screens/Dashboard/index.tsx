@@ -9,19 +9,16 @@ import { Button } from '@ui/primitives/button';
 import { cn } from '@ui/utils/cn';
 import { matches } from '@ui/utils/text';
 
-interface IProps {
-  onPick: (appid: number) => void;
-}
-
-export function Dashboard({ onPick }: IProps) {
+export function Dashboard() {
   const t = useT();
-  const { games, loading, error, progress, load } = useStore(
+  const { games, loading, error, progress, load, onPick } = useStore(
     useShallow((state) => ({
       games: state.dashboard.games,
       loading: state.dashboard.loading,
       error: state.dashboard.error,
       progress: state.dashboard.progress,
       load: state.dashboard.load,
+      onPick: state.navigation.pickGame,
     })),
   );
   const [query, setQuery] = useState('');

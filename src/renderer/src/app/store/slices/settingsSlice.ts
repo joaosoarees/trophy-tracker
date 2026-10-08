@@ -1,0 +1,79 @@
+import { SettingsService } from '@app/services/SettingsService';
+import type { StoreSlice } from '@app/store/Store';
+import { type Language } from '@shared/i18n';
+import { type IAppState } from '@shared/types';
+
+type SettingsStore = {
+  /** What the main process knows about the setup; `null` until the first read. */
+  appState: IAppState | null;
+  alwaysOnTop: boolean;
+};
+
+type SettingsActions = {
+  load: () => Promise<void>;
+  /** Takes a fresh state from the main process and syncs the interface language with it. */
+  apply: (appState: IAppState) => void;
+  toggleAlwaysOnTop: () => Promise<void>;
+  /**
+   * Achievement names and art come from Steam already translated, so the
+   * window is reloaded to guarantee nothing in the old language stays on screen.
+   */
+  changeLanguage: (language: Language) => Promise<void>;
+  /** Erases the key and the SteamID; the app goes back to the onboarding. */
+  eraseCredentials: () => Promise<void>;
+};
+
+export type SettingsSlice = SettingsStore & SettingsActions;
+
+export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
+  appState: null,
+  alwaysOnTop: false,
+
+  load: async () => {
+    const [appState, alwaysOnTop] = await Promise.all([
+      SettingsService.getState(),
+      SettingsService.getAlwaysOnTop(),
+    ]);
+    get().settings.apply(appState);
+    set(
+      (prevState) => {
+        prevState.settings.alwaysOnTop = alwaysOnTop;
+      },
+      false,
+      'settings/load',
+    );
+  },
+
+  apply: (appState) =>
+    set(
+      (prevState) => {
+        prevState.settings.appState = appState;
+        prevState.session.language = appState.language;
+      },
+      false,
+      'settings/apply',
+    ),
+
+  toggleAlwaysOnTop: async () => {
+    const alwaysOnTop = await SettingsService.setAlwaysOnTop(
+      !get().settings.alwaysOnTop,
+    );
+    set(
+      (prevState) => {
+        prevState.settings.alwaysOnTop = alwaysOnTop;
+      },
+      false,
+      'settings/toggleAlwaysOnTop',
+    );
+  },
+
+  changeLanguage: async (language) => {
+    if (language === get().session.language) return;
+    await SettingsService.setLanguage(language);
+    window.location.reload();
+  },
+
+  eraseCredentials: async () => {
+    get().settings.apply(await SettingsService.resetConfig());
+  },
+});

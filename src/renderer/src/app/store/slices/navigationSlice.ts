@@ -1,0 +1,108 @@
+import { safeSessionStorageGetItem } from '@app/lib/safeSessionStorageGetItem';
+import type { StoreSlice } from '@app/store/Store';
+import { type Language } from '@shared/i18n';
+
+export type Tab = 'game' | 'dashboard' | 'settings';
+
+type NavigationStore = {
+  tab: Tab;
+  /** Game picked in the dashboard; holds until a game is opened on Steam. */
+  pickedAppId: number | null;
+  /** Running game the app has already jumped to, so a reload does not jump again. */
+  seenRunningAppId: number | null;
+  /** Language in use when the user started redoing the setup, or `null` outside of it. */
+  reconfiguringFrom: Language | null;
+};
+
+type NavigationActions = {
+  goTo: (tab: Tab) => void;
+  pickGame: (appid: number) => void;
+  /** Opening a game on Steam brings the app to it, once per opened game. */
+  followRunningGame: (appid: number | null) => void;
+  startReconfiguring: () => void;
+  stopReconfiguring: () => void;
+};
+
+export type NavigationSlice = NavigationStore & NavigationActions;
+
+// Where the user was survives the window reload of a language change (but not closing the app).
+const KEYS = {
+  tab: 'view-tab',
+  pickedAppId: 'view-picked',
+  seenRunningAppId: 'view-seen-running',
+} as const;
+
+function remember(key: keyof typeof KEYS, value: unknown): void {
+  sessionStorage.setItem(KEYS[key], JSON.stringify(value));
+}
+
+export const createNavigationSlice: StoreSlice<NavigationSlice> = (
+  set,
+  get,
+) => ({
+  tab: safeSessionStorageGetItem<Tab>(KEYS.tab) ?? 'game',
+  pickedAppId: safeSessionStorageGetItem<number>(KEYS.pickedAppId),
+  seenRunningAppId: safeSessionStorageGetItem<number>(KEYS.seenRunningAppId),
+  reconfiguringFrom: null,
+
+  goTo: (tab) => {
+    remember('tab', tab);
+    set(
+      (prevState) => {
+        prevState.navigation.tab = tab;
+      },
+      false,
+      'navigation/goTo',
+    );
+  },
+
+  pickGame: (appid) => {
+    remember('pickedAppId', appid);
+    remember('tab', 'game');
+    set(
+      (prevState) => {
+        prevState.navigation.pickedAppId = appid;
+        prevState.navigation.tab = 'game';
+      },
+      false,
+      'navigation/pickGame',
+    );
+  },
+
+  followRunningGame: (appid) => {
+    if (appid === get().navigation.seenRunningAppId) return;
+    remember('seenRunningAppId', appid);
+    if (appid !== null) {
+      remember('pickedAppId', null);
+      remember('tab', 'game');
+    }
+    set(
+      (prevState) => {
+        prevState.navigation.seenRunningAppId = appid;
+        if (appid === null) return;
+        prevState.navigation.pickedAppId = null;
+        prevState.navigation.tab = 'game';
+      },
+      false,
+      'navigation/followRunningGame',
+    );
+  },
+
+  startReconfiguring: () =>
+    set(
+      (prevState) => {
+        prevState.navigation.reconfiguringFrom = prevState.session.language;
+      },
+      false,
+      'navigation/startReconfiguring',
+    ),
+
+  stopReconfiguring: () =>
+    set(
+      (prevState) => {
+        prevState.navigation.reconfiguringFrom = null;
+      },
+      false,
+      'navigation/stopReconfiguring',
+    ),
+});

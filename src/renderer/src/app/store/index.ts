@@ -4,7 +4,9 @@ import { immer } from 'zustand/middleware/immer';
 
 import { createDashboardSlice } from './slices/dashboardSlice';
 import { createGamesSlice } from './slices/gamesSlice';
+import { createNavigationSlice } from './slices/navigationSlice';
 import { createSessionSlice } from './slices/sessionSlice';
+import { createSettingsSlice } from './slices/settingsSlice';
 import { createUserDataSlice } from './slices/userDataSlice';
 import type { Store } from './Store';
 
@@ -13,6 +15,8 @@ export const useStore = create<Store>()(
   devtools(
     immer((...params) => ({
       session: { ...createSessionSlice(...params) },
+      settings: { ...createSettingsSlice(...params) },
+      navigation: { ...createNavigationSlice(...params) },
       games: { ...createGamesSlice(...params) },
       userData: { ...createUserDataSlice(...params) },
       dashboard: { ...createDashboardSlice(...params) },

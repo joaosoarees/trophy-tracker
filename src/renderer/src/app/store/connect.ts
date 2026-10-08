@@ -3,7 +3,11 @@ import { GamesService } from '@app/services/GamesService';
 
 import { useStore } from '.';
 
-/** Wires the store to the main process events. Returns the function that unwires it and resets the store (except the language). */
+/**
+ * Wires the store to the main process events once the app is set up.
+ * Returns the function that unwires it and drops what was read from Steam;
+ * language, settings and navigation are kept.
+ */
 export function connectStore(): () => void {
   const { session, games, dashboard, userData } = useStore.getState();
 
@@ -21,8 +25,14 @@ export function connectStore(): () => void {
     offs.forEach((off) => off());
     window.removeEventListener('beforeunload', userData.flush);
     userData.flush();
-    const { language } = useStore.getState().session;
-    useStore.setState(useStore.getInitialState(), true);
-    useStore.getState().session.setLanguage(language);
+
+    const initial = useStore.getInitialState();
+    useStore.setState((state) => {
+      state.games = initial.games;
+      state.userData = initial.userData;
+      state.dashboard = initial.dashboard;
+      state.session.current = null;
+      state.session.failures = 0;
+    });
   };
 }

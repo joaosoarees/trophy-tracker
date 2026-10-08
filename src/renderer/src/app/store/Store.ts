@@ -2,11 +2,15 @@ import type { StateCreator } from 'zustand';
 
 import type { DashboardSlice } from './slices/dashboardSlice';
 import type { GamesSlice } from './slices/gamesSlice';
+import type { NavigationSlice } from './slices/navigationSlice';
 import type { SessionSlice } from './slices/sessionSlice';
+import type { SettingsSlice } from './slices/settingsSlice';
 import type { UserDataSlice } from './slices/userDataSlice';
 
 export type Store = {
   session: SessionSlice;
+  settings: SettingsSlice;
+  navigation: NavigationSlice;
   games: GamesSlice;
   userData: UserDataSlice;
   dashboard: DashboardSlice;
