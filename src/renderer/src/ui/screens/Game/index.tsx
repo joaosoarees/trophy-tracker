@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
+import { Collapsible } from '@ui/components/Collapsible';
 import { Empty } from '@ui/components/Empty';
 import { IconButton } from '@ui/components/IconButton';
 import { Button } from '@ui/primitives/button';
@@ -99,14 +100,16 @@ export function Game({ appid, running }: IGameProps) {
         isDetailsOpen={isDetailsOpen}
         onToggleDetails={handleToggleDetails}
       >
-        {isDetailsOpen && details && (
-          <GameDetails
-            details={details}
-            playtimeMinutes={playtimeMinutes}
-            lastPlayed={lastPlayed}
-            onFind={handleFindAchievement}
-          />
-        )}
+        <Collapsible open={isDetailsOpen && details !== null}>
+          {details && (
+            <GameDetails
+              details={details}
+              playtimeMinutes={playtimeMinutes}
+              lastPlayed={lastPlayed}
+              onFind={handleFindAchievement}
+            />
+          )}
+        </Collapsible>
       </GameHeader>
 
       {justUnlocked.length > 0 && (

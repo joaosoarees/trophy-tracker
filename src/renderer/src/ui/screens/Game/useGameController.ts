@@ -142,6 +142,8 @@ export function useGameController(appid: number) {
     // Shows one achievement: its list, with the search set to its name.
     handleFindAchievement: (achievement: IAchievement) => {
       setFilter(achievement.unlocked ? 'unlocked' : 'pending');
+      // The user asked for this one: a filter that would hide it goes off.
+      if (hiddenOnly && !achievement.hidden) toggleHiddenOnly();
       setQuery(achievement.name);
     },
     otherFilter,

@@ -41,70 +41,68 @@ export function GameDetails({
       : formatPercent(achievement.rarity, locale);
 
   return (
-    <div className="expand-in">
-      <div className="flex flex-col gap-4 pt-4">
-        <DetailGroup title={t.game.details.progress}>
-          {playtimeMinutes !== null && (
-            <DetailRow label={t.game.details.playtime}>
-              {formatPlaytime(playtimeMinutes)}
-            </DetailRow>
-          )}
-          {lastPlayed !== null && (
-            <DetailRow label={t.game.details.lastPlayed}>
-              {lastPlayed > 0
-                ? formatDate(lastPlayed, locale)
-                : t.game.details.never}
-            </DetailRow>
-          )}
-          {lastUnlocked ? (
+    <div className="flex flex-col gap-4 pt-4">
+      <DetailGroup title={t.game.details.progress}>
+        {playtimeMinutes !== null && (
+          <DetailRow label={t.game.details.playtime}>
+            {formatPlaytime(playtimeMinutes)}
+          </DetailRow>
+        )}
+        {lastPlayed !== null && (
+          <DetailRow label={t.game.details.lastPlayed}>
+            {lastPlayed > 0
+              ? formatDate(lastPlayed, locale)
+              : t.game.details.never}
+          </DetailRow>
+        )}
+        {lastUnlocked ? (
+          <DetailRow
+            label={t.game.details.lastUnlocked}
+            description={lastUnlocked.name}
+            onClick={() => onFind(lastUnlocked)}
+          >
+            {lastUnlocked.unlockedAt !== null &&
+              formatDate(lastUnlocked.unlockedAt, locale)}
+          </DetailRow>
+        ) : (
+          <DetailRow label={t.game.details.lastUnlocked}>
+            {t.game.details.never}
+          </DetailRow>
+        )}
+      </DetailGroup>
+
+      {hasLeft && (
+        <DetailGroup title={t.game.details.left}>
+          {closest && (
             <DetailRow
-              label={t.game.details.lastUnlocked}
-              description={lastUnlocked.name}
-              onClick={() => onFind(lastUnlocked)}
+              label={t.game.details.closest}
+              description={closest.achievement.name}
+              onClick={() => onFind(closest.achievement)}
             >
-              {lastUnlocked.unlockedAt !== null &&
-                formatDate(lastUnlocked.unlockedAt, locale)}
+              {formatNumber(closest.current, locale)} /{' '}
+              {formatNumber(closest.target, locale)}
             </DetailRow>
-          ) : (
-            <DetailRow label={t.game.details.lastUnlocked}>
-              {t.game.details.never}
+          )}
+          {easiest && (
+            <DetailRow
+              label={t.game.details.easiest}
+              description={easiest.name}
+              onClick={() => onFind(easiest)}
+            >
+              {rarity(easiest)}
+            </DetailRow>
+          )}
+          {rarest && (
+            <DetailRow
+              label={t.game.details.rarest}
+              description={rarest.name}
+              onClick={() => onFind(rarest)}
+            >
+              {rarity(rarest)}
             </DetailRow>
           )}
         </DetailGroup>
-
-        {hasLeft && (
-          <DetailGroup title={t.game.details.left}>
-            {closest && (
-              <DetailRow
-                label={t.game.details.closest}
-                description={closest.achievement.name}
-                onClick={() => onFind(closest.achievement)}
-              >
-                {formatNumber(closest.current, locale)} /{' '}
-                {formatNumber(closest.target, locale)}
-              </DetailRow>
-            )}
-            {easiest && (
-              <DetailRow
-                label={t.game.details.easiest}
-                description={easiest.name}
-                onClick={() => onFind(easiest)}
-              >
-                {rarity(easiest)}
-              </DetailRow>
-            )}
-            {rarest && (
-              <DetailRow
-                label={t.game.details.rarest}
-                description={rarest.name}
-                onClick={() => onFind(rarest)}
-              >
-                {rarity(rarest)}
-              </DetailRow>
-            )}
-          </DetailGroup>
-        )}
-      </div>
+      )}
     </div>
   );
 }

@@ -147,8 +147,10 @@
   }
 }
 
-/* A section that opens inside a card grows to its height instead of popping in. */
-@utility expand-in {
+/* A section that opens grows to its height instead of popping in, and
+   shrinks back when it closes. `Collapsible` sets `data-open` and takes the
+   section out of the page once it has closed. */
+@utility collapsible {
   interpolate-size: allow-keywords;
   overflow: clip;
   /* Room for the focus ring of the fields inside. */
@@ -158,6 +160,11 @@
     opacity 180ms ease-out;
 
   @starting-style {
+    height: 0;
+    opacity: 0;
+  }
+
+  &[data-open='false'] {
     height: 0;
     opacity: 0;
   }

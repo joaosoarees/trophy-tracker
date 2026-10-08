@@ -41,18 +41,23 @@ export function GameHeader({
 
   return (
     <header className="relative overflow-hidden border-b">
-      {/* Decorative: if the art fails, the header simply has no background. */}
-      <RemoteImage
-        src={view.header}
-        fallback={null}
-        showSkeleton={false}
-        // A finished game shows its art clearly; until then it stays back.
-        className={cn(
-          'absolute inset-0 size-full rounded-none',
-          isComplete ? 'opacity-60' : 'opacity-35 blur-[2px]',
-        )}
-      />
-      <div className="from-background via-background/80 absolute inset-0 bg-linear-to-t to-transparent" />
+      {/* Decorative: if the art fails, the header simply has no background.
+          The art keeps to a band behind the title: details that open below
+          sit on the plain field, and the image is never rescaled. The band
+          clips its content, or the blur would bleed a faint line under it. */}
+      <div className="absolute inset-x-0 top-0 h-36 overflow-hidden">
+        <RemoteImage
+          src={view.header}
+          fallback={null}
+          showSkeleton={false}
+          // A finished game shows its art clearly; until then it stays back.
+          className={cn(
+            'absolute inset-0 size-full rounded-none',
+            isComplete ? 'opacity-60' : 'opacity-35 blur-[2px]',
+          )}
+        />
+        <div className="from-background via-background/80 absolute inset-0 bg-linear-to-t to-transparent" />
+      </div>
 
       <div className="relative px-4 pt-10 pb-3.5">
         <div className="flex items-center gap-2">

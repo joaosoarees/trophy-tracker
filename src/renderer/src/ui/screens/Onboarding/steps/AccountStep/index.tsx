@@ -143,7 +143,7 @@ export function AccountStep() {
       )}
 
       {verified && (
-        <div className="bg-card expand-in mt-4 flex items-center gap-3 rounded-lg border p-3">
+        <div className="bg-card collapsible mt-4 flex items-center gap-3 rounded-lg border p-3">
           <RemoteImage
             src={verified.avatar}
             fallback={<User className="size-5" />}

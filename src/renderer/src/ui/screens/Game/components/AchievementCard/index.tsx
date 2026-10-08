@@ -5,6 +5,7 @@ import { useLocale } from '@app/hooks/useLocale';
 import { useT } from '@app/hooks/useT';
 import { type IAchievement } from '@shared/types/Achievement';
 import { type IAchievementUserData } from '@shared/types/UserData';
+import { Collapsible } from '@ui/components/Collapsible';
 import { Hint } from '@ui/components/Hint';
 import { IconButton } from '@ui/components/IconButton';
 import { ProgressBar } from '@ui/components/ProgressBar';
@@ -176,29 +177,25 @@ export const AchievementCard = memo(function AchievementCard(
           </div>
         )}
 
-        {isChecklistOpen && !achievement.unlocked && (
-          <div className="expand-in">
-            <Checklist
-              achievement={achievement.name}
-              items={checklist}
-              onChange={handleChecklistChange}
-            />
-          </div>
-        )}
+        <Collapsible open={isChecklistOpen && !achievement.unlocked}>
+          <Checklist
+            achievement={achievement.name}
+            items={checklist}
+            onChange={handleChecklistChange}
+          />
+        </Collapsible>
 
-        {isNoteVisible && (
-          <div className="expand-in">
-            <Textarea
-              value={note}
-              rows={2}
-              autoFocus={shouldFocusNote}
-              placeholder={t.card.notePlaceholder}
-              className="mt-2.5 min-h-0 text-sm"
-              onChange={(event) => handleNoteChange(event.target.value)}
-              onBlur={handleCloseNote}
-            />
-          </div>
-        )}
+        <Collapsible open={isNoteVisible}>
+          <Textarea
+            value={note}
+            rows={2}
+            autoFocus={shouldFocusNote}
+            placeholder={t.card.notePlaceholder}
+            className="mt-2.5 min-h-0 text-sm"
+            onChange={(event) => handleNoteChange(event.target.value)}
+            onBlur={handleCloseNote}
+          />
+        </Collapsible>
       </div>
     </li>
   );
