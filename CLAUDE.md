@@ -1,6 +1,6 @@
 # Trophy Tracker
 
-Desktop app (Electron + React + TypeScript) that shows, for the game open on Steam, which achievements are missing, what the hidden ones are, progress counters, user checklists and shortcuts to guides. Personal use; may become a product.
+Desktop app (Electron + React + TypeScript) that shows, for the game open on Steam, which achievements are missing, what the hidden ones are, progress counters, user checklists and shortcuts to guides. It runs natively on Windows, macOS and Linux, and is developed on WSL.
 
 **Language rules:** everything in the repository is written in English: code, comments, test names, docs and commit messages. The interface ships in two languages, **English (default) and Brazilian Portuguese**; Portuguese text belongs only in `src/shared/i18n/locales/pt-BR.ts` and in test data that checks that locale. The user talks to you in Portuguese; answer in Portuguese.
 
@@ -14,9 +14,13 @@ pnpm test            # Vitest
 pnpm typecheck   # tsc on both projects (main process and interface)
 pnpm lint        # ESLint (lint:fix to auto-fix)
 pnpm format      # Prettier (format:check to only verify)
+
+pnpm dist:linux  # AppImage and .deb into dist/ (dist:win, dist:mac, dist for the current system)
+pnpm dist:docker # Linux and Windows installers built inside a container
+pnpm test:package # installs the .deb in a clean container and checks that the app starts
 ```
 
-Electron needs `libnss3 libnspr4 libasound2t64` installed on WSL.
+Electron needs `libnss3 libnspr4 libasound2t64` installed on WSL. `dist:docker` and `test:package` need Docker.
 
 **Package manager: pnpm only.** The exact version is pinned in `packageManager` and provided by Corepack (`corepack enable`, once). `devEngines.packageManager` makes npm refuse to install, and the `preinstall` script (`only-allow pnpm`) refuses any other manager. Never run `npm install` or commit a `package-lock.json`. Use `pnpm add` / `pnpm add -D` / `pnpm remove`, and `pnpm dlx` instead of `npx`. pnpm blocks dependency install scripts unless they are allowed in `pnpm-workspace.yaml` (`allowBuilds`); only `esbuild` is allowed. Electron needs no entry because it downloads its binary on first run. pnpm's `node_modules` is strict: a package must be listed in `package.json` to be imported.
 
@@ -33,15 +37,41 @@ Enforced by tooling; do not work around it.
 - **TypeScript projects:** `tsconfig.node.json` (main, preload, shared, tests; no DOM) and `tsconfig.web.json` (interface and shared; no Node types), both extending `tsconfig.base.json`. Using a browser API in the main process, or a Node API in the interface, is a compile error.
 - **Version pins with a reason:** TypeScript stays on 6.0 because typescript-eslint does not support 7 yet, and ESLint stays on 9 because the React and jsx-a11y plugins do not support 10 yet. Revisit both when the plugins catch up.
 
-## Environment: WSL talking to Windows
+## Platforms
 
-The project runs on WSL, but the Steam client runs on Windows. The bridge is `src/main/steam/windows.ts`, which calls Windows executables through interop:
+The same code runs on Windows, macOS, Linux and, for development, WSL. What differs per system is isolated in `main/steam/` (`local.ts`, `windows.ts`, `steamFiles.ts`), `main/system/` and `storage/createCipher.ts`; services, IPC handlers and the interface never test `process.platform`.
 
-- `reg.exe`: running game (`HKCU\Software\Valve\Steam\RunningAppID`), signed-in account (`ActiveProcess\ActiveUser`) and Steam folder (`SteamPath`).
-- `rundll32.exe`: opens links in the Windows browser.
-- `powershell.exe`: Windows notification (Electron notifications inside WSLg do not show up).
+| What                            | Windows (and WSL)                                  | macOS and Linux                                             |
+| ------------------------------- | -------------------------------------------------- | ----------------------------------------------------------- |
+| Running game                    | registry, `HKCU\Software\Valve\Steam\RunningAppID` | Web API: `gameid` in `GetPlayerSummaries`, asked every 30 s |
+| Signed-in account               | registry, `ActiveProcess\ActiveUser`               | `config/loginusers.vdf` in the Steam folder (`MostRecent`)  |
+| Steam folder (counter stat map) | registry, `SteamPath`                              | the known install paths, first one that exists              |
+| Notification                    | Electron (PowerShell toast on WSL)                 | Electron                                                    |
+| Opening links                   | Electron (`rundll32.exe` on WSL)                   | Electron                                                    |
 
-It does not produce an `.exe`; becoming a native Windows app requires Node on Windows.
+- `steam/local.ts` builds `ISteamLocal` (registry or files) once; services receive it and never ask which system they are on. `services/runningGame.ts` picks the registry when there is one and the Web API otherwise, reusing the last answer when a call fails so a network hiccup does not look like the game closing.
+- `steam/windows.ts` is the Windows side. On WSL it calls the same `.exe` files through interop (`reg.exe`, `rundll32.exe`, `powershell.exe`); WSL is recognised by the kernel name **and** `WSL_DISTRO_NAME`, so a container on a WSL host counts as plain Linux.
+- `system/notify.ts` and `system/browser.ts` hide the WSL detour (Electron notifications inside WSLg never show up, and links must open in the Windows browser).
+- The Web API only reports the running game when the profile shows it; on macOS and Linux a profile that hides the game status simply never switches games on its own.
+- The data folder is `trophy-tracker` on every system (set in `main/index.ts`); `storage/migrateUserData.ts` moves the files of the old `steam-trophy-tracker` folder once.
+- A second launch focuses the open window (`requestSingleInstanceLock`).
+
+## Packaging and releases
+
+- **electron-builder**, configured in `electron-builder.yml`: NSIS installer for Windows, dmg for macOS (Intel and Apple Silicon), AppImage and deb for Linux. Everything the app runs is bundled into `out/` by electron-vite, so **every dependency is a devDependency** and no `node_modules` go into the package; a new runtime dependency goes to `devDependencies` too.
+- **Not signed with a paid certificate.** Windows shows the SmartScreen warning; macOS uses an ad-hoc signature (`identity: '-'`, without it an Apple Silicon Mac refuses to start the app) and the user has to allow the app in System Settings. Revisit if the app is published for real.
+- **`deb.depends` is written out** because the default list misses libraries a minimal system lacks (`libgbm1`); it was found by installing the package in a clean container, which `pnpm test:package` repeats (`scripts/package-test/`).
+- **Docker builds and tests, it does not run the app for the user:** `scripts/docker-dist.sh` builds the Linux and Windows installers in a container (the image brings Wine), and the package test installs the deb under a virtual display. macOS installers can only be built on macOS.
+- **GitHub Actions:** `ci.yml` checks formatting, lint, types, tests and the build on every push; `release.yml` runs on a `v*.*.*` tag (which must match `version` in `package.json`), builds the installers on the three systems and gathers them in a **draft** release. The release is published by hand.
+- **Update notice:** `services/UpdateChecker.ts` asks GitHub for the latest published release at most every six hours; `shared/version.ts` compares versions. The Settings screen shows the notice and the gear icon gets a dot. The app only opens the download page: it never downloads or installs anything. Any failure (offline, no release, private repository) means "nothing new".
+- To release: bump `version` in `package.json`, commit, tag `vX.Y.Z`, push the tag, then publish the draft on GitHub.
+
+## Production behaviour
+
+- **Errors are logged locally, never sent anywhere:** `system/errorLog.ts` writes to `logs/errors.log` in the data folder (rotated at 512 KB). The main process logs uncaught exceptions and rejections; the interface reports its own through `SystemService.logError` (`app/lib/reportUnhandledErrors.ts` and `ui/components/ErrorBoundary`).
+- **A render error does not leave a blank window:** `ErrorBoundary` wraps the app and shows `CrashScreen` with a reload button.
+- **Code only needed sometimes is loaded lazily:** the onboarding is loaded with `app/lib/namedLazyLoad.ts` inside `Suspense`.
+- The interface bundle is minified (`electron.vite.config.ts`).
 
 ## Architecture
 
@@ -67,11 +97,16 @@ src/main/              main process: the only part that talks to Steam and to th
     Tracker.ts             reads games and the dashboard: cache, deduplication, art
     SetupService.ts        setup state, language, and the checks that get the app set up
     GameWatcher.ts         follows the running game and announces unlocked achievements
+    runningGame.ts         which game is running: registry, or the Web API where there is none
+    UpdateChecker.ts       asks GitHub whether a newer version was released
     onboardingChecks.ts    key + SteamID and privacy checks against Steam
   steam/                 client.ts (Web API), achievements.ts (buildGameView, guideUrl),
-                         vdf.ts (Steam client cache reader), windows.ts (Windows interop)
-  storage/               Store.ts (JSON persistence), createCipher.ts (key encryption)
-  system/browser.ts      opening pages in the user's browser
+                         local.ts (ISteamLocal: what the installed Steam client tells),
+                         windows.ts (registry and WSL interop), steamFiles.ts and textVdf.ts
+                         (Steam folder on macOS and Linux), vdf.ts (binary cache reader)
+  storage/               Store.ts (JSON persistence), createCipher.ts (key encryption),
+                         migrateUserData.ts (one-off move from the old data folder)
+  system/                browser.ts (links), notify.ts (notifications), errorLog.ts (local log)
 
 src/preload/           exposes `window.api` (contextBridge), typed by `IApi`
 
@@ -80,12 +115,13 @@ src/renderer/src/      the interface, in two layers
     services/            classes with static methods; the ONLY code that touches window.api
     store/               Zustand store and its slices
     hooks/               useT, useLocale, useActiveGame
-    lib/                 saver (debounced writes), safeSessionStorageGetItem
+    lib/                 saver (debounced writes), safeSessionStorageGetItem, namedLazyLoad,
+                         reportUnhandledErrors
   ui/                  everything that is drawn
     App.tsx + useAppController.ts   decides between onboarding and the app
     screens/             one folder per screen: Game, Dashboard, Settings, Onboarding
     components/          shared between screens: AppShell, Pressable, IconButton, Hint, OptionSelect,
-                         RemoteImage, ProgressBar, Segmented, SearchBox, Empty
+                         RemoteImage, ProgressBar, Segmented, SearchBox, Empty, ErrorBoundary, CrashScreen
     primitives/          shadcn/ui components (generated; do not hand-edit without a reason)
     styles/index.css     Tailwind and the theme tokens
     utils/               cn, text (accent-free search), format (dates and numbers)
@@ -144,7 +180,7 @@ Game/
 | Which stat feeds each counter                                 | local file `appcache/stats/UserGameStatsSchema_<appid>.bin` | —    |
 | Library and playtime                                          | `IPlayerService/GetOwnedGames`                              | yes  |
 | Game art                                                      | `IStoreBrowseService/GetItems` (batched)                    | no   |
-| Name and avatar in the onboarding                             | `ISteamUser/GetPlayerSummaries`                             | yes  |
+| Name and avatar in the onboarding; running game off Windows   | `ISteamUser/GetPlayerSummaries`                             | yes  |
 
 Things that have already cost time:
 
@@ -209,7 +245,8 @@ The screen never waits for something it can already show, and never keeps showin
 - **No change, no event:** `Tracker.getGame` returns the same object when nothing changed, and the main process only emits `game-updated` when the object is a different one.
 - **Dashboard:** loads on startup, on ↻ (`all`) and when a game closes (`changed`: only games whose playtime changed).
 - **Identical simultaneous requests** share one read (`Tracker.once`).
-- The periodic checks live in `GameWatcher` (running game every 10 s, unlocks every 60 s).
+- The periodic checks live in `GameWatcher` (running game every 10 s, unlocks every 60 s). Where the running game comes from the Web API, that check reaches Steam at most every 30 s.
+- **Update check:** one request to GitHub on startup and then at most every six hours.
 - **Art and names** are cached on disk; a store failure never takes the screen down.
 
 When touching this, measure before and after: count HTTP and IPC calls on startup, while idle and when switching tabs.
