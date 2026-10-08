@@ -11,6 +11,8 @@ import { OptionSelect } from '@ui/components/OptionSelect';
 import { SearchBox } from '@ui/components/SearchBox';
 import { Segmented } from '@ui/components/Segmented';
 import { Button } from '@ui/primitives/button';
+import { cn } from '@ui/utils/cn';
+import { TOGGLE_ON } from '@ui/utils/toggle';
 
 interface IAchievementToolbarProps {
   filter: AchievementFilter;
@@ -53,18 +55,21 @@ export function AchievementToolbar({
           { value: 'unlocked', label: t.game.unlocked(unlocked) },
         ]}
       />
-      <Hint label={t.game.hiddenOnlyTitle}>
-        <Button
-          size="sm"
-          variant={hiddenOnly ? 'default' : 'ghost'}
-          className="h-8 px-2 text-xs"
-          aria-pressed={hiddenOnly}
-          onClick={onHiddenOnlyToggle}
-        >
-          <EyeOff />
-          {t.game.hiddenOnly(hiddenCount)}
-        </Button>
-      </Hint>
+      {/* Not offered when this list has no hidden achievement to show. */}
+      {hiddenCount > 0 && (
+        <Hint label={t.game.hiddenOnlyTitle}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={cn('h-8 px-2 text-xs', hiddenOnly && TOGGLE_ON)}
+            aria-pressed={hiddenOnly}
+            onClick={onHiddenOnlyToggle}
+          >
+            <EyeOff />
+            {t.game.hiddenOnly(hiddenCount)}
+          </Button>
+        </Hint>
+      )}
       <OptionSelect
         // Takes the room that is left; when a narrow window wraps it to its own
         // row, that is the whole row.

@@ -100,11 +100,9 @@ export function Game({ appid, running }: IGameProps) {
             <Empty>
               {query.trim() !== ''
                 ? t.game.nothingFound(query.trim())
-                : hiddenOnly
-                  ? t.game.nothingHidden
-                  : filter === 'pending'
-                    ? t.game.nothingPending
-                    : t.game.nothingUnlocked}
+                : filter === 'pending'
+                  ? t.game.nothingPending
+                  : t.game.nothingUnlocked}
             </Empty>
           )}
 

@@ -92,7 +92,6 @@ export const es: Messages = {
     search: 'Buscar logros por nombre o descripción',
     hiddenOnly: (n) => `Ocultos ${n}`,
     hiddenOnlyTitle: 'Mostrar solo los logros ocultos',
-    nothingHidden: 'No hay logros ocultos en esta lista.',
     sort: {
       common: 'Más comunes primero',
       rare: 'Más raros primero',

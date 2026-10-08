@@ -124,10 +124,14 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
   pickGame: (appid) => {
     remember('pickedAppId', appid);
     remember('tab', 'game');
+    remember('hiddenOnly', false);
     set(
       (prevState) => {
         prevState.navigation.pickedAppId = appid;
         prevState.navigation.tab = 'game';
+        // A filter the user turned on for another game would leave this one
+        // looking empty for no reason they can see.
+        prevState.navigation.hiddenOnly = false;
       },
       false,
       'navigation/pickGame',
@@ -140,6 +144,7 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
     if (appid !== null) {
       remember('pickedAppId', null);
       remember('tab', 'game');
+      remember('hiddenOnly', false);
     }
     set(
       (prevState) => {
@@ -147,6 +152,8 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
         if (appid === null) return;
         prevState.navigation.pickedAppId = null;
         prevState.navigation.tab = 'game';
+        // The app switched games by itself: see `pickGame`.
+        prevState.navigation.hiddenOnly = false;
       },
       false,
       'navigation/followRunningGame',

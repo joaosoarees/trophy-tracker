@@ -84,7 +84,6 @@ export const en = {
     search: 'Search achievements by name or description',
     hiddenOnly: (n: number) => `Hidden ${n}`,
     hiddenOnlyTitle: 'Show only hidden achievements',
-    nothingHidden: 'No hidden achievements in this list.',
     sort: {
       common: 'Most common first',
       rare: 'Rarest first',

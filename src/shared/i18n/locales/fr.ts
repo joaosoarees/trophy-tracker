@@ -92,7 +92,6 @@ export const fr: Messages = {
     search: 'Chercher des succès par nom ou description',
     hiddenOnly: (n) => `Cachés ${n}`,
     hiddenOnlyTitle: 'Afficher uniquement les succès cachés',
-    nothingHidden: 'Aucun succès caché dans cette liste.',
     sort: {
       common: 'Les plus courants d’abord',
       rare: 'Les plus rares d’abord',

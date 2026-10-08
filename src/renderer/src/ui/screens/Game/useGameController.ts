@@ -63,6 +63,11 @@ export function useGameController(appid: number) {
 
   useEffect(() => open(appid), [open, appid]);
 
+  const hiddenCount = view ? countHidden(view, filter) : 0;
+  // With nothing hidden in this list the toggle is not drawn, so it must not
+  // filter either: the list would be empty with no control to explain it.
+  const isHiddenOnly = hiddenOnly && hiddenCount > 0;
+
   const achievements = useMemo(
     () =>
       view
@@ -71,10 +76,10 @@ export function useGameController(appid: number) {
             sort,
             query,
             locale,
-            hiddenOnly,
+            hiddenOnly: isHiddenOnly,
           })
         : [],
-    [view, userData, filter, sort, query, locale, hiddenOnly],
+    [view, userData, filter, sort, query, locale, isHiddenOnly],
   );
 
   const handleUserDataChange = useCallback(
@@ -102,8 +107,8 @@ export function useGameController(appid: number) {
     filter,
     sort,
     query,
-    hiddenOnly,
-    hiddenCount: view ? countHidden(view, filter) : 0,
+    hiddenOnly: isHiddenOnly,
+    hiddenCount,
     handleToggleHiddenOnly: toggleHiddenOnly,
     setFilter,
     setQuery,
