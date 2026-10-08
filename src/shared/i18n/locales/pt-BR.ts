@@ -141,11 +141,10 @@ export const ptBR: Messages = {
       complete: (n) =>
         `${n} ${n === 1 ? 'resultado' : 'resultados'} em Completos`,
     },
-    completedOn: (date) => `completado em ${date}`,
+    achievementCount: (n) => `${n} ${n === 1 ? 'conquista' : 'conquistas'}`,
     search: 'Buscar jogo',
     nothingFound: (query) => `Nenhum jogo encontrado para “${query}”.`,
     empty: 'Nenhum jogo jogado com conquistas.',
-    completeLabel: 'completo',
     left: (n) => `faltam ${n}`,
   },
 

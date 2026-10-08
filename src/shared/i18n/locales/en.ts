@@ -140,11 +140,11 @@ export const en = {
       complete: (n: number) =>
         `${n} ${n === 1 ? 'result' : 'results'} in Complete`,
     },
-    completedOn: (date: string) => `completed ${date}`,
+    achievementCount: (n: number) =>
+      `${n} ${n === 1 ? 'achievement' : 'achievements'}`,
     search: 'Search games',
     nothingFound: (query: string) => `No game found for “${query}”.`,
     empty: 'No played games with achievements.',
-    completeLabel: 'complete',
     left: (n: number) => `${n} left`,
   },
 

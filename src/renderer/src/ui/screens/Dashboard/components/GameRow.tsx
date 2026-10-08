@@ -1,4 +1,4 @@
-import { Gamepad2 } from 'lucide-react';
+import { CircleCheck, Gamepad2 } from 'lucide-react';
 
 import { useLocale } from '@app/hooks/useLocale';
 import { useT } from '@app/hooks/useT';
@@ -39,27 +39,35 @@ export function GameRow({ game, onPick }: IGameRowProps) {
 
         <div className="min-w-0 flex-1">
           <strong className="block truncate font-medium">{game.name}</strong>
-          <ProgressBar
-            value={percent}
-            tone={isComplete ? 'success' : 'primary'}
-            className="mt-1.5"
-          />
+          {isComplete ? (
+            // A full bar says nothing new; the line under the name says when it was finished.
+            <small className="text-muted-foreground mt-0.5 block truncate text-xs">
+              {[
+                // Just the date: the list is already the complete games.
+                game.completedAt && formatDate(game.completedAt, locale),
+                t.dashboard.achievementCount(game.total),
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </small>
+          ) : (
+            <ProgressBar value={percent} className="mt-1.5" />
+          )}
         </div>
 
-        <div className="w-[84px] flex-none text-right">
-          <strong
-            className={cn('block tabular-nums', isComplete && 'text-success')}
-          >
-            {percent}%
+        {isComplete ? (
+          <strong className="text-success flex flex-none items-center gap-1 tabular-nums">
+            <CircleCheck className="size-4" />
+            100%
           </strong>
-          <small className="text-muted-foreground text-[11px]">
-            {!isComplete
-              ? t.dashboard.left(game.total - game.unlocked)
-              : game.completedAt
-                ? t.dashboard.completedOn(formatDate(game.completedAt, locale))
-                : t.dashboard.completeLabel}
-          </small>
-        </div>
+        ) : (
+          <div className="w-[72px] flex-none text-right">
+            <strong className="block tabular-nums">{percent}%</strong>
+            <small className="text-muted-foreground text-[11px]">
+              {t.dashboard.left(game.total - game.unlocked)}
+            </small>
+          </div>
+        )}
       </Pressable>
     </li>
   );

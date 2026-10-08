@@ -26,17 +26,19 @@ export function Settings() {
 
       <LanguageField value={language} onChange={handleChangeLanguage} />
 
-      <Button variant="secondary" onClick={handleRedoSetup}>
-        {t.settings.redo}
-      </Button>
-      <Button
-        variant="ghost"
-        // Red on the usual hover tint fails contrast; a red tint keeps it readable.
-        className="text-destructive hover:bg-destructive/15 hover:text-destructive dark:hover:bg-destructive/15"
-        onClick={() => setIsConfirmingErase(true)}
-      >
-        {t.settings.erase}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" onClick={handleRedoSetup}>
+          {t.settings.redo}
+        </Button>
+        <Button
+          variant="outline"
+          // Red on the usual hover tint fails contrast; a red tint keeps it readable.
+          className="border-destructive/50 text-destructive hover:bg-destructive/15 hover:text-destructive dark:border-destructive/50 dark:bg-transparent dark:hover:bg-destructive/15"
+          onClick={() => setIsConfirmingErase(true)}
+        >
+          {t.settings.erase}
+        </Button>
+      </div>
 
       <EraseDialog
         open={isConfirmingErase}
