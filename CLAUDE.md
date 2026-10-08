@@ -10,7 +10,9 @@ Desktop app (Electron + React + TypeScript) that shows, for the game open on Ste
 pnpm dev         # app with reload (window through WSLg)
 pnpm build       # builds into out/
 pnpm start           # runs the build
-pnpm test            # Vitest (test:coverage also measures coverage, as CI does)
+pnpm test            # Vitest, once (test:coverage also measures coverage, as CI does)
+pnpm test:watch      # re-runs the tests affected by each file you save
+pnpm test:verbose    # lists every test by name, grouped by file
 pnpm typecheck   # tsc on both projects (main process and interface)
 pnpm lint        # ESLint (lint:fix to auto-fix)
 pnpm format      # Prettier (format:check to only verify)
@@ -354,6 +356,7 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 - **Fakes, not mocks:** services receive fakes through the constructor (`fakeFetch` in `test/helpers.ts`, a fake updater, an injected clock) and tests assert on results, not on which method was called. No mocking library. `vi.fn` is fine for a callback whose calls are the result.
 - **Fixtures are real responses** (`test/fixtures`: Nioh 3 and Onimusha: Way of the Sword).
 - **Coverage:** `pnpm test:coverage` measures what is listed above (the Electron-only wiring and the texts are excluded in `vitest.config.ts`, with the reason). CI fails under the thresholds set there; they sit a little below the current numbers and only go up. The commit hook runs the tests without measuring; the push hook runs `pnpm test:coverage`, so a drop in coverage is stopped before it leaves the machine.
+- **Console output** of passing tests is hidden (`--silent=passed-only`); a failing test shows everything it printed. `test:watch` hides nothing, since that is where `console.log` is used to debug.
 - **Module cache:** a run made by hand reuses transformed modules (`fsModuleCache`, stored in `node_modules/.vitest-cache`). The hooks and the CI set `CI`, which turns the cache off, so nothing is committed or pushed on the strength of a stale cache. If a manual run behaves oddly, delete that folder.
 
 ## Commits
