@@ -1,19 +1,22 @@
-// Opens the built app and checks every screen the way a release should be
-// checked by hand, in each interface language: accessibility (axe), no
-// scrollbar on the window itself, no sideways overflow, and a visible hover
-// and keyboard-focus state on every kind of clickable element, none of them
-// wider than what contains it. Saves a capture of each screen to .audit-ui/
-// and exits with an error when something fails.
+// Opens the built app and checks it the way a release should be checked by
+// hand. Saves a capture of each screen and each step to .audit-ui/ and exits
+// with an error when something fails.
 //
 //   pnpm audit:ui
 //
-// The onboarding is audited on an empty data folder. The screens that need
-// Steam data are audited on a throwaway copy of this computer's data folder,
-// when there is one; the copy is deleted afterwards and the Web API key in it
-// is never read or printed by this script.
+// The app runs for real, against a fake Steam (scripts/fake-steam.mjs) that
+// answers from the real responses in test/fixtures. Nothing of this
+// computer's Trophy Tracker data, account or key is read. The audit:
+// - goes through the onboarding as a new user, including a rejected key, a
+//   private profile and Steam being unreachable;
+// - checks every screen in each language: accessibility (axe), no scrollbar
+//   on the window, no sideways overflow, and a visible hover and keyboard
+//   focus on every kind of clickable element, none wider than what holds it;
+// - runs the flows no single capture shows: the game details opening and
+//   closing, an achievement being unlocked, a game being finished, and Steam
+//   going off the air with the app open and before it opens.
 import { spawn } from 'node:child_process';
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -22,8 +25,10 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
-import { homedir, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { startFakeSteam } from './fake-steam.mjs';
 
 const PORT = 9333;
 const LANGUAGES = ['en', 'pt-BR', 'es', 'fr'];
@@ -39,21 +44,8 @@ const electronBinary = createRequire(import.meta.url)('electron');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const failures = [];
 
-function dataFolder() {
-  if (process.platform === 'win32') {
-    return join(process.env.APPDATA ?? '', 'trophy-tracker');
-  }
-  if (process.platform === 'darwin') {
-    return join(homedir(), 'Library', 'Application Support', 'trophy-tracker');
-  }
-  return join(
-    process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config'),
-    'trophy-tracker',
-  );
-}
-
 /** Starts the built app on the given data folder and connects to its window. */
-async function launch(userData) {
+async function launch(userData, steamUrl) {
   const isPortBusy = await fetch(`http://127.0.0.1:${PORT}/json`).then(
     () => true,
     () => false,
@@ -67,7 +59,10 @@ async function launch(userData) {
   const app = spawn(
     electronBinary,
     ['.', `--remote-debugging-port=${PORT}`, `--user-data-dir=${userData}`],
-    { stdio: 'ignore' },
+    {
+      stdio: 'ignore',
+      env: { ...process.env, TROPHY_TRACKER_FAKE_STEAM: steamUrl },
+    },
   );
 
   let target;
@@ -374,87 +369,299 @@ const detailsToggle = `document.querySelector('header [aria-expanded]')?.click()
 const navButton = (index) =>
   `[...document.querySelectorAll('nav button')].at(${index}).click()`;
 
-async function auditOnboarding() {
-  const userData = mkdtempSync(join(tmpdir(), 'tt-audit-'));
-  const page = await launch(userData);
-  try {
-    await sleep(6000);
-    await audit(page, 'onboarding-language');
-    // The step's own "advance" is its last button.
-    await page.evaluate(
-      `[...document.querySelectorAll('main button')].at(-1).click()`,
-    );
-    await sleep(1000);
-    await audit(page, 'onboarding-account');
-  } finally {
-    await page.close();
-    rmSync(userData, { recursive: true, force: true });
-  }
+/** A flow step that either holds or is reported. */
+function expectThat(flow, condition, problem) {
+  if (condition) return;
+  console.log(`       ${problem}`);
+  failures.push(`${flow}: ${problem}`);
 }
 
-async function auditApp() {
-  const source = dataFolder();
-  if (!existsSync(join(source, 'config.json'))) {
-    console.log(
-      'skip the app screens: this computer has no Trophy Tracker setup to copy',
-    );
-    return;
-  }
+const visibleText = (selector) =>
+  `[...document.querySelectorAll(${JSON.stringify(selector)})].filter((el) => el.offsetParent !== null).map((el) => el.innerText.trim()).join(' | ')`;
 
-  const userData = mkdtempSync(join(tmpdir(), 'tt-audit-'));
-  for (const file of [
-    'config.json',
-    'cache.json',
-    'userdata.json',
-    'settings.json',
-  ]) {
-    if (existsSync(join(source, file))) {
-      cpSync(join(source, file), join(userData, file));
-    }
-  }
+/** Clicks the last button of the onboarding step: its own "advance". */
+const advance = `[...document.querySelectorAll('main button')].filter((el) => el.offsetParent !== null).at(-1).click()`;
 
-  const page = await launch(userData);
-  try {
-    await sleep(7000);
-    // Without this the loop below would happily audit the onboarding.
-    const isSetUp = await page.evaluate(
-      `window.api.getState().then((state) => state.configured)`,
+async function type(page, selector, text) {
+  await page.evaluate(
+    `document.querySelector(${JSON.stringify(selector)}).focus()`,
+  );
+  await page.send('Input.insertText', { text });
+}
+
+/**
+ * The onboarding as a new user meets it, with Steam answering badly before
+ * it answers well. Leaves the app set up, on its first screen.
+ */
+async function auditOnboarding(page, steam) {
+  const FLOW = 'onboarding';
+  await audit(page, 'onboarding-language');
+  await page.evaluate(advance);
+  await sleep(1000);
+  await audit(page, 'onboarding-account');
+
+  await type(page, 'input[placeholder^="7656119"]', '76561198000000042');
+  await type(
+    page,
+    'input[type="password"]',
+    '0123456789ABCDEF0123456789ABCDEF',
+  );
+
+  const verify = async () => {
+    await page.evaluate(advance);
+    await sleep(1800);
+    return page.evaluate(visibleText('main [role="alert"]'));
+  };
+
+  steam.state.mode = 'bad-key';
+  let alert = await verify();
+  expectThat(
+    FLOW,
+    /key/i.test(alert),
+    `a rejected key shows no error about the key (shown: "${alert}")`,
+  );
+  await audit(page, 'onboarding-key-rejected');
+
+  steam.state.mode = 'down';
+  alert = await verify();
+  expectThat(
+    FLOW,
+    /reach|connection/i.test(alert),
+    `Steam being unreachable shows no error about it (shown: "${alert}")`,
+  );
+  await audit(page, 'onboarding-steam-down');
+
+  steam.state.mode = 'private';
+  alert = await verify();
+  expectThat(
+    FLOW,
+    /privacy|public/i.test(alert),
+    `a private profile shows no error about privacy (shown: "${alert}")`,
+  );
+  await audit(page, 'onboarding-profile-private');
+
+  steam.state.mode = 'ok';
+  alert = await verify();
+  expectThat(
+    FLOW,
+    alert === '',
+    `a good key still shows an error ("${alert}")`,
+  );
+  const verified = await page.evaluate(
+    `document.querySelector('main').innerText`,
+  );
+  expectThat(
+    FLOW,
+    /Verified/.test(verified),
+    'a good key is not shown as verified',
+  );
+  await audit(page, 'onboarding-verified');
+
+  await page.evaluate(advance);
+  await sleep(1000);
+  await audit(page, 'onboarding-done');
+  await page.evaluate(advance);
+  await sleep(4000);
+  const isInTheApp = await page.evaluate(
+    `document.querySelector('nav') !== null`,
+  );
+  expectThat(FLOW, isInTheApp, 'finishing the setup does not open the app');
+  console.log(
+    `${isInTheApp ? 'ok  ' : 'FAIL'} flow: onboarding, through a rejected key, Steam down and a private profile`,
+  );
+}
+
+/** Every screen of the app, in every language. */
+async function auditScreens(page) {
+  for (const language of LANGUAGES) {
+    await page.evaluate(
+      `window.api.setLanguage(${JSON.stringify(language)}).then(() => location.reload())`,
     );
-    if (!isSetUp) {
-      throw new Error('The copy of the data folder did not open as set up.');
-    }
-    for (const language of LANGUAGES) {
-      await page.evaluate(
-        `window.api.setLanguage(${JSON.stringify(language)}).then(() => location.reload())`,
-      );
-      await sleep(6000);
-      await page.evaluate(navButton(0));
-      await sleep(900);
-      await audit(page, `game-${language}`);
-      // Flows do not depend on the language: once is enough.
-      if (language === LANGUAGES[0]) await auditDetailsFlow(page);
-      // The details open from the header; they close again for the next pass.
-      await page.evaluate(detailsToggle);
-      await sleep(500);
-      await audit(page, `game-details-${language}`);
-      await page.evaluate(detailsToggle);
-      await page.evaluate(navButton(1));
-      await sleep(1200);
-      await audit(page, `dashboard-${language}`);
-      await page.evaluate(navButton(-1));
-      await sleep(800);
-      await audit(page, `settings-${language}`);
-      // Settings is taller than the window: capture its end as well.
-      await page.evaluate(
-        `document.querySelector('main > div:last-child > section').scrollTo(0, 99999)`,
-      );
-      await sleep(300);
-      await audit(page, `settings-end-${language}`);
-    }
-  } finally {
-    await page.close();
-    rmSync(userData, { recursive: true, force: true });
+    await sleep(6000);
+    await page.evaluate(navButton(0));
+    await sleep(900);
+    await audit(page, `game-${language}`);
+    // Flows do not depend on the language: once is enough.
+    if (language === LANGUAGES[0]) await auditDetailsFlow(page);
+    // The details open from the header; they close again for the next pass.
+    await page.evaluate(detailsToggle);
+    await sleep(500);
+    await audit(page, `game-details-${language}`);
+    await page.evaluate(detailsToggle);
+    await page.evaluate(navButton(1));
+    await sleep(1200);
+    await audit(page, `dashboard-${language}`);
+    await page.evaluate(navButton(-1));
+    await sleep(800);
+    await audit(page, `settings-${language}`);
+    // Settings is taller than the window: capture its end as well.
+    await page.evaluate(
+      `document.querySelector('main > div:last-child > section').scrollTo(0, 99999)`,
+    );
+    await sleep(300);
+    await audit(page, `settings-end-${language}`);
   }
+  await page.evaluate(
+    `window.api.setLanguage(${JSON.stringify(LANGUAGES[0])}).then(() => location.reload())`,
+  );
+  await sleep(6000);
+}
+
+const refreshGame = `document.querySelector('header [aria-label="Refresh"]').click()`;
+const gameTitle = `document.querySelector('header h1')?.innerText ?? ''`;
+const showList = (name) =>
+  `[...document.querySelectorAll('[role="group"] button')].filter((el) => el.offsetParent !== null).find((el) => el.innerText.startsWith(${JSON.stringify(name)}))?.click()`;
+
+/** Opens a game from the dashboard by its name. */
+async function openGame(page, name) {
+  await page.evaluate(navButton(1));
+  await sleep(1000);
+  await page.evaluate(
+    `[...document.querySelectorAll('ul button')].find((el) => el.innerText.includes(${JSON.stringify(name)}))?.click()`,
+  );
+  await sleep(2500);
+}
+
+/** An achievement is unlocked while the game is on screen, and then the last one. */
+async function auditUnlocks(page, steam) {
+  const FLOW = 'unlock';
+  const failuresBefore = failures.length;
+  const game = steam.games.find((g) => g.appid === 2638890);
+  await openGame(page, game.name);
+  // The app was last left on a list chosen by an earlier step.
+  await page.evaluate(showList('Pending'));
+  await sleep(600);
+  const leftBefore = game.schema.length - game.unlocked;
+
+  const unlocked = steam.unlockNext(game.appid);
+  await page.evaluate(refreshGame);
+  await sleep(2500);
+  const notice = await page.evaluate(visibleText('section [role="status"]'));
+  expectThat(
+    FLOW,
+    notice.includes(unlocked),
+    `the notice does not name "${unlocked}" (shown: "${notice}")`,
+  );
+  const header = await page.evaluate(
+    `document.querySelector('header').innerText`,
+  );
+  expectThat(
+    FLOW,
+    header.includes(`${leftBefore - 1} left`),
+    `the header does not say ${leftBefore - 1} left`,
+  );
+  const stillPending = await page.evaluate(visibleText('ul h2'));
+  expectThat(
+    FLOW,
+    !stillPending.split(' | ').includes(unlocked),
+    `"${unlocked}" is still in the pending list`,
+  );
+  await audit(page, 'flow-unlocked-one');
+  await page.evaluate(showList('Unlocked'));
+  await sleep(700);
+  const nowUnlocked = await page.evaluate(visibleText('ul h2'));
+  expectThat(
+    FLOW,
+    nowUnlocked.split(' | ').includes(unlocked),
+    `"${unlocked}" is not in the unlocked list`,
+  );
+  await page.evaluate(showList('Pending'));
+  await sleep(600);
+
+  steam.unlockNext(game.appid);
+  await page.evaluate(refreshGame);
+  await sleep(2500);
+  const finished = await page.evaluate(
+    `document.querySelector('main').innerText`,
+  );
+  expectThat(
+    FLOW,
+    /100%/.test(finished) && /Every achievement unlocked/.test(finished),
+    'finishing the game does not show the completion state',
+  );
+  const lastNotice = await page.evaluate(
+    visibleText('section [role="status"]'),
+  );
+  expectThat(
+    FLOW,
+    /Every achievement unlocked!/.test(lastNotice),
+    `the last unlock is not announced as the end (shown: "${lastNotice}")`,
+  );
+  await audit(page, 'flow-game-finished');
+  console.log(
+    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: "${unlocked}" unlocked, then the last one`,
+  );
+}
+
+/** Steam stops answering with the app open: what is on screen must stay, with an error. */
+async function auditOutage(page, steam) {
+  const FLOW = 'Steam down';
+  const failuresBefore = failures.length;
+  await openGame(page, 'Nioh 3');
+  const title = await page.evaluate(gameTitle);
+  const cards = await page.evaluate(
+    `document.querySelectorAll('ul h2').length`,
+  );
+
+  steam.state.mode = 'down';
+  await page.evaluate(refreshGame);
+  await sleep(3000);
+  expectThat(
+    FLOW,
+    (await page.evaluate(gameTitle)) === title,
+    'the game left the screen when Steam stopped answering',
+  );
+  expectThat(
+    FLOW,
+    (await page.evaluate(`document.querySelectorAll('ul h2').length`)) ===
+      cards,
+    'the list changed when Steam stopped answering',
+  );
+  const error = await page.evaluate(visibleText('header .text-destructive'));
+  expectThat(
+    FLOW,
+    /reach|connection/i.test(error),
+    `no error says Steam cannot be reached (shown: "${error}")`,
+  );
+  await audit(page, 'flow-steam-down-game');
+
+  await page.evaluate(navButton(1));
+  await sleep(800);
+  await page.evaluate(
+    `document.querySelector('main [aria-label="Refresh everything"]')?.click()`,
+  );
+  await sleep(3000);
+  const rows = await page.evaluate(
+    `[...document.querySelectorAll('ul button')].filter((el) => el.offsetParent !== null).length`,
+  );
+  expectThat(
+    FLOW,
+    rows > 0,
+    'the dashboard emptied when Steam stopped answering',
+  );
+  await audit(page, 'flow-steam-down-dashboard');
+  console.log(
+    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: Steam stops answering with the app open`,
+  );
+}
+
+/** The app is opened while Steam is unreachable: it must come up with what it had. */
+async function auditColdStartOffline(page) {
+  const FLOW = 'Steam down at start';
+  await sleep(7000);
+  const title = await page.evaluate(gameTitle);
+  expectThat(
+    FLOW,
+    title !== '',
+    'opened with Steam unreachable, the app shows no game',
+  );
+  const body = await page.evaluate(
+    `document.querySelector('main')?.innerText.slice(0, 200) ?? document.body.innerText.slice(0, 200)`,
+  );
+  await audit(page, 'flow-steam-down-at-start');
+  console.log(
+    `${title !== '' ? 'ok  ' : 'FAIL'} flow: the app opened with Steam unreachable (shows: "${(title || body).replace(/\s+/g, ' ').slice(0, 70)}")`,
+  );
 }
 
 if (!existsSync('out/main/index.js')) {
@@ -464,8 +671,31 @@ if (!existsSync('out/main/index.js')) {
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 
-await auditOnboarding();
-await auditApp();
+const steam = await startFakeSteam();
+const userData = mkdtempSync(join(tmpdir(), 'tt-audit-'));
+try {
+  let page = await launch(userData, steam.url);
+  try {
+    await sleep(6000);
+    await auditOnboarding(page, steam);
+    await auditScreens(page);
+    await auditUnlocks(page, steam);
+    await auditOutage(page, steam);
+  } finally {
+    await page.close();
+  }
+
+  // Same data folder, Steam still off the air.
+  page = await launch(userData, steam.url);
+  try {
+    await auditColdStartOffline(page);
+  } finally {
+    await page.close();
+  }
+} finally {
+  await steam.stop();
+  rmSync(userData, { recursive: true, force: true });
+}
 
 console.log(
   failures.length === 0
