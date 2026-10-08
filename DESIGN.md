@@ -170,7 +170,7 @@ A cool navy ramp carries the whole interface; four signal colors each mean exact
 
 ### Tertiary
 
-- **Pin Amber** (`pin-amber`): the user's own emphasis. A pinned achievement's border and pin, and the "hidden" badge.
+- **Pin Amber** (`pin-amber`): what is set apart from the rest of a list. A pinned achievement's border and pin, which are the user's own mark, and the "hidden" badge, which is Steam's.
 - **Erase Red** (`erase-red`): destruction and failure only. The erase action, an error line, a field in error.
 
 ### Neutral
@@ -190,7 +190,7 @@ A cool navy ramp carries the whole interface; four signal colors each mean exact
 
 **The One Signal Rule.** Signal Blue is the only color that means "you can act here" or "you are here". If it appears on something that is neither, it is wrong.
 
-**The One Meaning Rule.** Green is done, amber is the user's own mark, red is loss. None of them is ever used for decoration or to add variety to a list.
+**The One Meaning Rule.** Green is done, amber is set apart, red is loss. None of them is ever used for decoration or to add variety to a list.
 
 **The Tint Rule.** Hover is a translucent wash of Hover Steel (40 to 50 percent) over whatever is underneath, not a new opaque color. Red text never sits on that wash, because it fails contrast; a destructive control hovers on a 15 percent wash of Erase Red instead.
 
@@ -271,6 +271,8 @@ Compact and responsive: small, dense, and every touch answers.
 
 A 32px square ghost button holding one 16px icon. It always has a label, which is both its accessible name and its tooltip. A toggle that is on takes the color of what it means (Signal Blue, or Pin Amber for a pin) and fills its icon.
 
+A toggle with a text label that is on (an open checklist, the hidden-only filter) takes a 15 percent wash of Signal Blue with Signal Blue text. It never takes the primary button's solid fill: a state must not outshine the one action that moves the user forward.
+
 ### Cards / Containers
 
 - **Corner Style:** softly rounded (8px).
@@ -305,11 +307,11 @@ A fully round track of Control Slate, 6px tall (8px in a header), filled with Si
 
 ### Achievement card (signature)
 
-The unit the whole app is built around. A 48px icon at the left; to its right the name in title weight, with the rarity percentage in caption text at the far end and an amber "hidden" badge when it applies; the description below at 75 percent opacity; then, when there is one, a progress bar with its count; and a last row of ghost buttons, with guide searches at the left and the user's own tools (checklist, note, pin) at the right. A checklist or a note opens inside the card, growing to its height over 180ms.
+The unit the whole app is built around. A 48px icon at the left; to its right the name in title weight, with the rarity percentage in caption text at the far end and an amber "hidden" badge when it applies; the description below at 75 percent opacity; then, when there is one, a progress bar with its count; and a last row of ghost buttons, with guide searches at the left in Quiet Steel and the user's own tools (checklist, note, pin) at the right. A checklist or a note opens inside the card, growing to its height over 180ms. A checklist with items left to check starts open. In it, an item's text is its checkbox's label, so clicking anywhere on the text checks it; renaming and removing are 24px actions that appear on hover and on keyboard focus.
 
 ### Game header
 
-The game's art fills the header at 35 percent opacity with a slight blur, under a gradient that fades to the field color, so the title stays readable over any image. The title, a "running" indicator in Unlocked Green with a pulsing dot, the overall progress bar and the count sit on top.
+The game's art fills the header at 35 percent opacity with a slight blur, under a gradient that fades to the field color, so the title stays readable over any image. The title and a "running" indicator in Unlocked Green with a pulsing dot sit on top. Below them the overall progress bar shares a row with what is left ("80 left"), in title weight and the text color: it is the figure the header is glanced at for, and the only one that stands out. The full count sits under it in caption text.
 
 ### Tooltip
 
