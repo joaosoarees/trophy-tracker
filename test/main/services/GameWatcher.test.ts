@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GameWatcher, type IGameWatcherDeps } from '@main/services/GameWatcher';
 import { en } from '@shared/i18n/locales/en';
@@ -162,5 +162,103 @@ describe('GameWatcher', () => {
       ['updated', 3],
       ['changed', { appid: 7, running: false }],
     ]);
+  });
+
+  it('shows no game when the last played one cannot be read', async () => {
+    const { watcher } = setup({
+      lastPlayedAppId: () => Promise.reject(new Error('offline')),
+    });
+
+    expect(await watcher.resolveCurrent()).toBeNull();
+  });
+
+  it('announces nothing as unlocked after forgetting what the interface had seen', async () => {
+    const { watcher, deps, run, poll } = setup();
+    run(42);
+    await watcher.refreshCurrent();
+    watcher.remember(view(42, ['a']));
+
+    watcher.forget();
+    poll(view(42, ['a', 'b']));
+    await watcher.checkUnlocks();
+
+    expect(deps.notify).not.toHaveBeenCalled();
+  });
+
+  it('announces the current game again after forgetting it too', async () => {
+    const { watcher, deps, run } = setup();
+    run(42);
+    await watcher.checkRunningGame();
+
+    watcher.forget({ current: true });
+    await watcher.checkRunningGame();
+
+    expect(deps.onCurrentChanged).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores a view of a game that is not the current one', async () => {
+    const { watcher, deps, run, poll } = setup();
+    run(42);
+    await watcher.refreshCurrent();
+
+    watcher.remember(view(7, ['a']));
+    poll(view(42, ['a', 'b']));
+    await watcher.checkUnlocks();
+
+    // With nothing to compare against, the first poll announces no unlock.
+    expect(deps.notify).not.toHaveBeenCalled();
+  });
+
+  it('does not announce an update when the poll fails', async () => {
+    const { watcher, deps, run } = setup();
+    run(42);
+    await watcher.refreshCurrent();
+
+    await watcher.checkUnlocks();
+
+    expect(deps.onGameUpdated).not.toHaveBeenCalled();
+  });
+});
+
+describe('GameWatcher: the periodic checks', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('looks for the running game every ten seconds', async () => {
+    const { watcher, deps } = setup();
+    watcher.start();
+
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(deps.getRunningAppId).toHaveBeenCalledTimes(3);
+  });
+
+  it('notices a game that was opened, without being asked', async () => {
+    const { watcher, deps, run } = setup();
+    watcher.start();
+
+    run(42);
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(deps.onCurrentChanged).toHaveBeenLastCalledWith({
+      appid: 42,
+      running: true,
+    });
+  });
+
+  it('reads the running game again every minute', async () => {
+    const { watcher, deps, run } = setup();
+    run(42);
+    await watcher.refreshCurrent();
+    watcher.start();
+
+    await vi.advanceTimersByTimeAsync(120_000);
+
+    expect(deps.pollGame).toHaveBeenCalledTimes(2);
   });
 });
