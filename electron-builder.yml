@@ -1,0 +1,67 @@
+appId: com.joaosoarees.trophytracker
+productName: Trophy Tracker
+copyright: Copyright © 2026 Joao Soares. Not affiliated with Valve or Steam.
+
+directories:
+  output: dist
+  buildResources: build
+
+# Everything the app runs is already bundled into out/ by electron-vite, so no
+# node_modules go into the package (every dependency is a devDependency).
+files:
+  - out/**
+  - build/icon.png
+  - package.json
+
+# Installers are not code-signed yet: Windows shows the SmartScreen warning and
+# macOS asks the user to allow the app in System Settings.
+win:
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: Trophy-Tracker-Setup-${version}.${ext}
+
+mac:
+  category: public.app-category.utilities
+  identity: null
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+dmg:
+  artifactName: Trophy-Tracker-${version}-${arch}.${ext}
+
+linux:
+  category: Utility
+  # Lets desktop environments tie the running window to its launcher entry.
+  syncDesktopName: true
+  maintainer: Joao Soares <joaosoarees@users.noreply.github.com>
+  synopsis: Tracks your Steam achievements
+  target:
+    - AppImage
+    - deb
+  artifactName: Trophy-Tracker-${version}-${arch}.${ext}
+
+publish:
+  provider: github
+  owner: joaosoarees
+  repo: trophy-tracker
+  releaseType: draft
+
+deb:
+  # electron-builder's default list plus what a minimal system lacks (found by
+  # installing the package in a clean container).
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+    - libsecret-1-0
+    - libgbm1
+    - libasound2 | libasound2t64

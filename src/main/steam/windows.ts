@@ -5,8 +5,12 @@ import { promisify } from 'node:util';
 // The Windows side of the Steam client: its registry, the browser and the notification area.
 // Works natively on Windows and, from WSL, by calling the same .exe files through interop.
 
+// The kernel alone is not enough: a container on a WSL host has the same kernel
+// but no way to reach Windows. WSL itself sets this variable for every process.
 export const isWsl =
-  process.platform === 'linux' && /microsoft/i.test(release());
+  process.platform === 'linux' &&
+  /microsoft/i.test(release()) &&
+  process.env.WSL_DISTRO_NAME !== undefined;
 export const hasWindows = isWsl || process.platform === 'win32';
 
 const STEAM_KEY = 'HKCU\\Software\\Valve\\Steam';

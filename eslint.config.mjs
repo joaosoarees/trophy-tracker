@@ -180,7 +180,7 @@ export default defineConfig(
 
   {
     // Config files are plain JavaScript modules outside the TypeScript projects.
-    files: ['*.config.mjs'],
+    files: ['*.config.mjs', 'scripts/**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: {
       ...tseslint.configs.disableTypeChecked.languageOptions,

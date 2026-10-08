@@ -4,3 +4,5 @@
 allowBuilds:
   esbuild: true
   unrs-resolver: false
+  # Squirrel installer support that electron-builder pulls in; the app ships NSIS, so its script is not needed.
+  electron-winstaller: false
