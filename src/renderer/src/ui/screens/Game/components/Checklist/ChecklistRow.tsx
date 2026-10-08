@@ -54,7 +54,7 @@ export function ChecklistRow({
           <Pressable
             onClick={onStartEditing}
             className={cn(
-              'hover:bg-accent/50 min-w-0 flex-1 cursor-text rounded-sm px-1 text-left break-words select-text active:scale-100',
+              'hover:bg-accent/50 min-w-0 flex-1 cursor-text rounded-sm px-1 text-left wrap-break-word select-text active:scale-100',
               item.done && 'text-muted-foreground line-through',
             )}
           >

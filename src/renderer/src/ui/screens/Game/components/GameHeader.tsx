@@ -39,7 +39,7 @@ export function GameHeader({
         showSkeleton={false}
         className="absolute inset-0 size-full rounded-none opacity-35 blur-[2px]"
       />
-      <div className="from-background via-background/80 absolute inset-0 bg-gradient-to-t to-transparent" />
+      <div className="from-background via-background/80 absolute inset-0 bg-linear-to-t to-transparent" />
 
       <div className="relative px-4 pt-10 pb-3.5">
         <div className="flex items-center gap-2">

@@ -88,7 +88,7 @@ export function Dashboard() {
           isLoading &&
           SKELETON_ROWS.map((row) => (
             <li key={row}>
-              <Skeleton className="h-[60px] w-full rounded-lg" />
+              <Skeleton className="h-15 w-full rounded-lg" />
             </li>
           ))}
         {shownGames.map((game) => (
