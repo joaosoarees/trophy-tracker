@@ -24,8 +24,8 @@ import type {
 
 /** Optional cipher for the key (Electron's safeStorage, when there is a keyring). */
 export interface Cipher {
-  encrypt(plain: string): string;
-  decrypt(encoded: string): string;
+  encrypt: (plain: string) => string;
+  decrypt: (encoded: string) => string;
 }
 
 interface ConfigFile {
@@ -86,7 +86,10 @@ export class Store {
     const file = join(this.dir, name);
     if (!existsSync(file)) return fallback;
     try {
-      return { ...fallback, ...JSON.parse(readFileSync(file, 'utf8')) };
+      return {
+        ...fallback,
+        ...(JSON.parse(readFileSync(file, 'utf8')) as Partial<T>),
+      };
     } catch {
       return fallback;
     }

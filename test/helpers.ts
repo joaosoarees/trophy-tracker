@@ -12,7 +12,7 @@ export function fakeFetch(
 ): typeof fetch & { calls: string[] } {
   const calls: string[] = [];
   const impl = async (input: string | URL | Request): Promise<Response> => {
-    const url = new URL(String(input));
+    const url = new URL(input instanceof Request ? input.url : input);
     calls.push(url.toString());
     for (const [fragment, route] of Object.entries(routes)) {
       if (!url.toString().includes(fragment)) continue;

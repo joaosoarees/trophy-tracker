@@ -58,6 +58,13 @@ export default tseslint.config(
         'error',
         { fixStyle: 'inline-type-imports' },
       ],
+      // `onClick: () => void`, not `onClick(): void`: properties are safe to pass around unbound.
+      '@typescript-eslint/method-signature-style': ['error', 'property'],
+      // Async handlers on JSX attributes (onClick, onSubmit) are the React norm.
+      '@typescript-eslint/no-misused-promises': [
+        'error',
+        { checksVoidReturn: { attributes: false } },
+      ],
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
@@ -89,12 +96,42 @@ export default tseslint.config(
     },
   },
   { files: renderer, ...jsxA11y.flatConfigs.recommended },
+  {
+    files: renderer,
+    rules: {
+      // Focus is moved on purpose into fields the user has just opened (dialog, inline rename).
+      'jsx-a11y/no-autofocus': ['error', { ignoreNonDOM: true }],
+    },
+  },
+
+  {
+    // Tests poke at untyped JSON and use fakes that are async only by signature.
+    files: ['test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/require-await': 'off',
+    },
+  },
 
   {
     // Config files are plain JavaScript modules outside the TypeScript projects.
     files: ['*.config.mjs'],
     ...tseslint.configs.disableTypeChecked,
-    languageOptions: { globals: globals.node },
+    languageOptions: {
+      ...tseslint.configs.disableTypeChecked.languageOptions,
+      globals: globals.node,
+    },
+    rules: {
+      ...tseslint.configs.disableTypeChecked.rules,
+      // Plugins are consumed through their default export by design.
+      'import-x/no-named-as-default': 'off',
+      'import-x/no-named-as-default-member': 'off',
+    },
   },
 
   prettier,

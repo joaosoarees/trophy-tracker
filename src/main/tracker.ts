@@ -21,7 +21,7 @@ const CONCURRENCY = 4;
 export interface TrackerDeps {
   store: Store;
   client: SteamClient;
-  readStatMap(appid: number): Promise<Map<string, string>>;
+  readStatMap: (appid: number) => Promise<Map<string, string>>;
   now?: () => number;
 }
 
@@ -37,7 +37,7 @@ export class Tracker {
     this.store = deps.store;
     this.client = deps.client;
     this.readStatMap = deps.readStatMap;
-    this.now = deps.now ?? Date.now;
+    this.now = deps.now ?? (() => Date.now());
   }
 
   /** Identical simultaneous requests share the same read. */

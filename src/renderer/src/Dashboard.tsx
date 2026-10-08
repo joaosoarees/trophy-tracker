@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { useStore } from '@/store';
 
 interface Props {
-  onPick(appid: number): void;
+  onPick: (appid: number) => void;
 }
 
 export function Dashboard({ onPick }: Props) {

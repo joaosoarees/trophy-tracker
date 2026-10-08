@@ -32,7 +32,7 @@ function TabButton({
   children,
 }: {
   active: boolean;
-  onClick(): void;
+  onClick: () => void;
   children: ReactNode;
 }) {
   return (

@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { release } from 'node:os';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
 
 import { achievementStatMap, parseBinaryVdf } from './vdf';
 
@@ -14,15 +15,14 @@ export const hasWindows = isWsl || process.platform === 'win32';
 const STEAM_KEY = 'HKCU\\Software\\Valve\\Steam';
 const STEAM_ID64_BASE = 76561197960265728n;
 
-function run(file: string, args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      file,
-      args,
-      { timeout: 10_000, windowsHide: true },
-      (err, stdout) => (err ? reject(err) : resolve(stdout)),
-    );
+const execFileAsync = promisify(execFile);
+
+async function run(file: string, args: string[]): Promise<string> {
+  const { stdout } = await execFileAsync(file, args, {
+    timeout: 10_000,
+    windowsHide: true,
   });
+  return stdout;
 }
 
 /** Extracts the value from the output of `reg query ... /v name`. */

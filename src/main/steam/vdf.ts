@@ -3,15 +3,15 @@ export interface VdfObject {
   [key: string]: VdfValue;
 }
 
-const enum T {
-  Object = 0,
-  String = 1,
-  Int32 = 2,
-  Float32 = 3,
-  UInt64 = 7,
-  End = 8,
-  Int64 = 10,
-}
+const T = {
+  Object: 0,
+  String: 1,
+  Int32: 2,
+  Float32: 3,
+  UInt64: 7,
+  End: 8,
+  Int64: 10,
+} as const;
 
 /** Reads the binary KeyValues format the Steam client uses in appcache/stats. */
 export function parseBinaryVdf(buf: Buffer): VdfObject {

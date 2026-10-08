@@ -36,7 +36,7 @@ export function ProgressBar({
 interface SegmentedProps<T extends string> {
   value: T;
   options: { value: T; label: ReactNode }[];
-  onChange(value: T): void;
+  onChange: (value: T) => void;
 }
 
 export function Segmented<T extends string>({
@@ -70,7 +70,7 @@ export function SearchBox({
   placeholder,
 }: {
   value: string;
-  onChange(v: string): void;
+  onChange: (v: string) => void;
   placeholder: string;
 }) {
   const t = useT();

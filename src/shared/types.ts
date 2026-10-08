@@ -82,44 +82,49 @@ export type GuideSite = 'steam' | 'youtube' | 'google';
 export type DashboardMode = 'cached' | 'changed' | 'all';
 
 export interface Api {
-  getState(): Promise<AppState>;
-  detectSteamId(): Promise<string | null>;
-  checkSteamId(steamId: string): Promise<SteamIdCheck>;
-  checkApiKey(steamId: string, apiKey: string): Promise<CheckResult<Profile>>;
-  checkPrivacy(
+  getState: () => Promise<AppState>;
+  detectSteamId: () => Promise<string | null>;
+  checkSteamId: (steamId: string) => Promise<SteamIdCheck>;
+  checkApiKey: (
     steamId: string,
     apiKey: string,
-  ): Promise<CheckResult<{ gamesWithPlaytime: number }>>;
-  saveConfig(steamId: string, apiKey: string): Promise<AppState>;
-  resetConfig(): Promise<AppState>;
+  ) => Promise<CheckResult<Profile>>;
+  checkPrivacy: (
+    steamId: string,
+    apiKey: string,
+  ) => Promise<CheckResult<{ gamesWithPlaytime: number }>>;
+  saveConfig: (steamId: string, apiKey: string) => Promise<AppState>;
+  resetConfig: () => Promise<AppState>;
 
-  getCurrentAppId(): Promise<{ appid: number; running: boolean } | null>;
-  getGame(appid: number, force?: boolean): Promise<CheckResult<GameView>>;
-  getDashboard(mode?: DashboardMode): Promise<CheckResult<GameSummary[]>>;
-  getUserData(appid: number): Promise<GameUserData>;
-  setUserData(
+  getCurrentAppId: () => Promise<{ appid: number; running: boolean } | null>;
+  getGame: (appid: number, force?: boolean) => Promise<CheckResult<GameView>>;
+  getDashboard: (mode?: DashboardMode) => Promise<CheckResult<GameSummary[]>>;
+  getUserData: (appid: number) => Promise<GameUserData>;
+  setUserData: (
     appid: number,
     achievementId: string,
     data: AchievementUserData,
-  ): Promise<void>;
+  ) => Promise<void>;
 
   /** Saves the language and drops the translated cache; the caller decides whether to reload the window. */
-  setLanguage(language: Language): Promise<AppState>;
+  setLanguage: (language: Language) => Promise<AppState>;
 
-  getAlwaysOnTop(): Promise<boolean>;
-  setAlwaysOnTop(value: boolean): Promise<boolean>;
+  getAlwaysOnTop: () => Promise<boolean>;
+  setAlwaysOnTop: (value: boolean) => Promise<boolean>;
 
-  openGuide(
+  openGuide: (
     site: GuideSite,
     appid: number,
     game: string,
     achievement: string,
-  ): Promise<void>;
-  openExternal(target: 'apikey' | 'privacy' | 'account'): Promise<void>;
+  ) => Promise<void>;
+  openExternal: (target: 'apikey' | 'privacy' | 'account') => Promise<void>;
 
-  onGameChanged(
+  onGameChanged: (
     cb: (current: { appid: number; running: boolean } | null) => void,
-  ): () => void;
-  onGameUpdated(cb: (view: GameView) => void): () => void;
-  onDashboardProgress(cb: (done: number, total: number) => void): () => void;
+  ) => () => void;
+  onGameUpdated: (cb: (view: GameView) => void) => () => void;
+  onDashboardProgress: (
+    cb: (done: number, total: number) => void,
+  ) => () => void;
 }

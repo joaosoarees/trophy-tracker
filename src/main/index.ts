@@ -114,12 +114,21 @@ async function checkUnlocks(): Promise<void> {
   win?.webContents.send('game-updated', view);
 }
 
+type Invokable = Omit<
+  Api,
+  'onGameChanged' | 'onGameUpdated' | 'onDashboardProgress'
+>;
+
+/** A handler may answer right away; Electron wraps the value in a promise for the interface. */
+type IpcHandlers = {
+  [K in keyof Invokable]: (
+    ...args: Parameters<Invokable[K]>
+  ) => ReturnType<Invokable[K]> | Awaited<ReturnType<Invokable[K]>>;
+};
+
 function registerIpc(): void {
-  const handlers: Omit<
-    Api,
-    'onGameChanged' | 'onGameUpdated' | 'onDashboardProgress'
-  > = {
-    getState: async () => state(),
+  const handlers: IpcHandlers = {
+    getState: () => state(),
     detectSteamId: () => getActiveSteamId(),
     checkSteamId: async (steamId) => {
       const result = await checkSteamId(m(), steamId);
@@ -141,7 +150,7 @@ function registerIpc(): void {
       }
       return state();
     },
-    resetConfig: async () => {
+    resetConfig: () => {
       store.clearCredentials();
       configError = null;
       current = null;
@@ -161,18 +170,18 @@ function registerIpc(): void {
           win?.webContents.send('dashboard-progress', done, total),
         ),
       ),
-    getUserData: async (appid) => store.getUserData(appid),
-    setUserData: async (appid, achievementId, data) =>
+    getUserData: (appid) => store.getUserData(appid),
+    setUserData: (appid, achievementId, data) =>
       store.setUserData(appid, achievementId, data),
-    setLanguage: async (language) => {
+    setLanguage: (language) => {
       store.setLanguage(language);
       client.language = language;
       lastView = null;
       win?.setTitle(m().appTitle);
       return state();
     },
-    getAlwaysOnTop: async () => store.getAlwaysOnTop(),
-    setAlwaysOnTop: async (value) => {
+    getAlwaysOnTop: () => store.getAlwaysOnTop(),
+    setAlwaysOnTop: (value) => {
       store.setAlwaysOnTop(value);
       win?.setAlwaysOnTop(value);
       return value;
@@ -182,7 +191,7 @@ function registerIpc(): void {
     openExternal: (target) => openUrl(EXTERNAL[target]),
   };
   for (const [name, fn] of Object.entries(handlers)) {
-    ipcMain.handle(name, (_event, ...args) =>
+    ipcMain.handle(name, (_event, ...args: unknown[]) =>
       (fn as (...a: unknown[]) => unknown)(...args),
     );
   }
@@ -213,7 +222,7 @@ function createWindow(): void {
   else void win.loadFile(join(__dirname, '../renderer/index.html'));
 }
 
-app.whenReady().then(() => {
+void app.whenReady().then(() => {
   // Without a keyring (common on WSL) safeStorage would fall back to a weak scheme; the 600-permission file is used instead.
   const secure =
     safeStorage.isEncryptionAvailable() &&

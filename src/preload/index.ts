@@ -7,8 +7,9 @@ const invoke =
   (...args: unknown[]) =>
     ipcRenderer.invoke(channel, ...args);
 
-const listen = (channel: string) => (cb: (...args: any[]) => void) => {
-  const handler = (_e: unknown, ...args: unknown[]): void => cb(...args);
+const listen = (channel: string) => (cb: (...args: never[]) => void) => {
+  const handler = (_e: unknown, ...args: unknown[]): void =>
+    cb(...(args as never[]));
   ipcRenderer.on(channel, handler);
   return () => {
     ipcRenderer.removeListener(channel, handler);

@@ -22,7 +22,7 @@ import type { ChecklistItem } from '../../../shared/types';
 interface Props {
   achievement: string;
   items: ChecklistItem[];
-  onChange(items: ChecklistItem[]): void;
+  onChange: (items: ChecklistItem[]) => void;
 }
 
 export function Checklist({ achievement, items, onChange }: Props) {
@@ -88,16 +88,17 @@ export function Checklist({ achievement, items, onChange }: Props) {
                   }}
                 />
               ) : (
-                <span
+                <button
+                  type="button"
                   title={t.checklist.rename}
                   onClick={() => setEditing(item.id)}
                   className={cn(
-                    'min-w-0 flex-1 cursor-text break-words',
+                    'min-w-0 flex-1 cursor-text text-left break-words select-text',
                     item.done && 'text-muted-foreground line-through',
                   )}
                 >
                   {item.text}
-                </span>
+                </button>
               )}
               <button
                 title={t.checklist.remove}

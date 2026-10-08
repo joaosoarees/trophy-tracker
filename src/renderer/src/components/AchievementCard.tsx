@@ -36,7 +36,7 @@ interface Props {
   game: string;
   appid: number;
   data: AchievementUserData | undefined;
-  onChange(id: string, patch: Partial<AchievementUserData>): void;
+  onChange: (id: string, patch: Partial<AchievementUserData>) => void;
 }
 
 export const AchievementCard = memo(function AchievementCard({

@@ -95,16 +95,34 @@ export interface Credentials {
 
 export type Fetch = typeof fetch;
 
+/** Shapes of the Steam responses, as far as this app reads them. */
+interface Envelope<T> {
+  response?: T;
+}
+
+interface PlayerStats<T> {
+  playerstats?: T & { error?: string };
+}
+
+interface StoreItem {
+  appid: number;
+  assets?: {
+    asset_url_format?: string;
+    header?: string;
+    small_capsule?: string;
+  };
+}
+
 export class SteamClient {
   constructor(
     private fetchImpl: Fetch = fetch,
     public language: Language = DEFAULT_LANGUAGE,
   ) {}
 
-  private async get(
+  private async get<T>(
     path: string,
     params: Record<string, string | number>,
-  ): Promise<any> {
+  ): Promise<T> {
     const url = new URL(API + path);
     for (const [k, v] of Object.entries(params))
       url.searchParams.set(k, String(v));
@@ -117,16 +135,16 @@ export class SteamClient {
     }
 
     const text = await res.text();
-    let body: any = null;
+    let body: (T & PlayerStats<object>) | null = null;
     try {
-      body = JSON.parse(text);
+      body = JSON.parse(text) as T & PlayerStats<object>;
     } catch {
       // Key errors come back as HTML.
     }
 
     if (res.ok && body) return body;
 
-    const apiError: string = body?.playerstats?.error ?? '';
+    const apiError = body?.playerstats?.error ?? '';
     if (/no stats/i.test(apiError)) throw new SteamError('no-stats');
     if (/not public/i.test(apiError)) throw new SteamError('private');
     if (res.status === 401 || (res.status === 403 && !body)) {
@@ -140,10 +158,13 @@ export class SteamClient {
     steamId,
     apiKey,
   }: Credentials): Promise<RawPlayerSummary> {
-    const body = await this.get('/ISteamUser/GetPlayerSummaries/v2/', {
-      key: apiKey,
-      steamids: steamId,
-    });
+    const body = await this.get<Envelope<{ players?: RawPlayerSummary[] }>>(
+      '/ISteamUser/GetPlayerSummaries/v2/',
+      {
+        key: apiKey,
+        steamids: steamId,
+      },
+    );
     const player = body.response?.players?.[0];
     if (!player) throw new SteamError('not-found');
     return player;
@@ -154,7 +175,9 @@ export class SteamClient {
     steamId,
     apiKey,
   }: Credentials): Promise<RawOwnedGame[] | null> {
-    const body = await this.get('/IPlayerService/GetOwnedGames/v1/', {
+    const body = await this.get<
+      Envelope<{ games?: RawOwnedGame[]; game_count?: number }>
+    >('/IPlayerService/GetOwnedGames/v1/', {
       key: apiKey,
       steamid: steamId,
       include_appinfo: 1,
@@ -167,7 +190,9 @@ export class SteamClient {
 
   /** Needs no key and includes the description of hidden achievements. */
   async getGameAchievements(appid: number): Promise<RawSchemaAchievement[]> {
-    const body = await this.get('/IPlayerService/GetGameAchievements/v1/', {
+    const body = await this.get<
+      Envelope<{ achievements?: RawSchemaAchievement[] }>
+    >('/IPlayerService/GetGameAchievements/v1/', {
       appid,
       language: LANGUAGES[this.language].steam,
     });
@@ -186,11 +211,14 @@ export class SteamClient {
         },
         data_request: { include_assets: true },
       };
-      const body = await this.get('/IStoreBrowseService/GetItems/v1/', {
-        input_json: JSON.stringify(input),
-      });
+      const body = await this.get<Envelope<{ store_items?: StoreItem[] }>>(
+        '/IStoreBrowseService/GetItems/v1/',
+        {
+          input_json: JSON.stringify(input),
+        },
+      );
       for (const item of body.response?.store_items ?? []) {
-        const format: string | undefined = item.assets?.asset_url_format;
+        const format = item.assets?.asset_url_format;
         const url = (file: string | undefined): string =>
           format && file ? ASSETS + format.replace('${FILENAME}', file) : '';
         art.set(item.appid, {
@@ -206,7 +234,9 @@ export class SteamClient {
     { steamId, apiKey }: Credentials,
     appid: number,
   ): Promise<RawPlayerAchievement[]> {
-    const body = await this.get('/ISteamUserStats/GetPlayerAchievements/v1/', {
+    const body = await this.get<
+      PlayerStats<{ achievements?: RawPlayerAchievement[] }>
+    >('/ISteamUserStats/GetPlayerAchievements/v1/', {
       key: apiKey,
       steamid: steamId,
       appid,
@@ -218,7 +248,9 @@ export class SteamClient {
     { steamId, apiKey }: Credentials,
     appid: number,
   ): Promise<Record<string, number>> {
-    const body = await this.get('/ISteamUserStats/GetUserStatsForGame/v2/', {
+    const body = await this.get<
+      PlayerStats<{ stats?: { name: string; value: number }[] }>
+    >('/ISteamUserStats/GetUserStatsForGame/v2/', {
       key: apiKey,
       steamid: steamId,
       appid,
