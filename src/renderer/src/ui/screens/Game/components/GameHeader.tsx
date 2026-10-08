@@ -37,7 +37,11 @@ export function GameHeader({
         src={view.header}
         fallback={null}
         showSkeleton={false}
-        className="absolute inset-0 size-full rounded-none opacity-35 blur-[2px]"
+        // A finished game shows its art clearly; until then it stays back.
+        className={cn(
+          'absolute inset-0 size-full rounded-none',
+          isComplete ? 'opacity-60' : 'opacity-35 blur-[2px]',
+        )}
       />
       <div className="from-background via-background/80 absolute inset-0 bg-linear-to-t to-transparent" />
 
@@ -65,6 +69,7 @@ export function GameHeader({
             one figure that stands out; the full count sits below it. */}
         <div className="mt-2.5 flex items-center gap-3">
           <ProgressBar
+            label={view.name}
             value={percent}
             tone={isComplete ? 'success' : 'primary'}
             className="h-2 flex-1"

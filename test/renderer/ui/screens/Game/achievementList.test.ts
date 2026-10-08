@@ -4,7 +4,9 @@ import { type IAchievement } from '@shared/types/Achievement';
 import { makeAchievement } from '@test/factories/makeAchievement';
 import { makeGameView } from '@test/factories/makeGameView';
 import {
+  completionOf,
   countHidden,
+  countMatchesInOtherList,
   listAchievements,
 } from '@ui/screens/Game/achievementList';
 
@@ -156,5 +158,60 @@ describe('listAchievements', () => {
     expect(listAchievements(accented, {}, { ...base, query: 'xyz' })).toEqual(
       [],
     );
+  });
+});
+
+describe('countMatchesInOtherList', () => {
+  const lists = view([
+    achievement('a', { name: 'Bridge Kodama' }),
+    achievement('b', { name: 'Cave Kodama', unlocked: true, unlockedAt: 5 }),
+    achievement('c', { name: 'Temple Kodama', unlocked: true, unlockedAt: 9 }),
+    achievement('d', { name: 'Boss' }),
+  ]);
+
+  it('counts the matches that are in the unlocked list while pending is shown', () => {
+    expect(countMatchesInOtherList(lists, 'pending', 'kodama')).toBe(2);
+  });
+
+  it('counts the matches that are in the pending list while unlocked is shown', () => {
+    expect(countMatchesInOtherList(lists, 'unlocked', 'kodama')).toBe(1);
+  });
+
+  it('counts nothing without a search', () => {
+    expect(countMatchesInOtherList(lists, 'pending', '  ')).toBe(0);
+  });
+});
+
+describe('completionOf', () => {
+  it('takes the completion date from the last achievement unlocked', () => {
+    const done = view([
+      achievement('a', { unlocked: true, unlockedAt: 100 }),
+      achievement('b', { unlocked: true, unlockedAt: 900 }),
+      achievement('c', { unlocked: true, unlockedAt: 500 }),
+    ]);
+
+    expect(completionOf(done).completedAt).toBe(900);
+  });
+
+  it('has no completion date when Steam reports none', () => {
+    const undated = view([achievement('a', { unlocked: true })]);
+
+    expect(completionOf(undated).completedAt).toBeNull();
+  });
+
+  it('names the achievement fewest players have', () => {
+    const done = view([
+      achievement('common', { unlocked: true, rarity: 80 }),
+      achievement('rare', { unlocked: true, rarity: 0.4 }),
+      achievement('unknown', { unlocked: true, rarity: null }),
+    ]);
+
+    expect(completionOf(done).rarest?.id).toBe('rare');
+  });
+
+  it('names no rarest achievement when no rarity is known', () => {
+    const unrated = view([achievement('a', { unlocked: true, rarity: null })]);
+
+    expect(completionOf(unrated).rarest).toBeNull();
   });
 });

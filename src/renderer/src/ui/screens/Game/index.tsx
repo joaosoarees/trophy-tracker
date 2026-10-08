@@ -1,10 +1,13 @@
+import { X } from 'lucide-react';
+
 import { useT } from '@app/hooks/useT';
 import { Empty } from '@ui/components/Empty';
-import { Pressable } from '@ui/components/Pressable';
+import { IconButton } from '@ui/components/IconButton';
 import { Button } from '@ui/primitives/button';
 
 import { AchievementCard } from './components/AchievementCard';
 import { AchievementToolbar } from './components/AchievementToolbar';
+import { GameComplete } from './components/GameComplete';
 import { GameHeader } from './components/GameHeader';
 import { GameSkeleton } from './components/GameSkeleton';
 import { useGameController } from './useGameController';
@@ -26,6 +29,9 @@ export function Game({ appid, running }: IGameProps) {
     pending,
     percent,
     isComplete,
+    completion,
+    otherFilter,
+    matchesInOtherList,
     filter,
     sort,
     query,
@@ -34,6 +40,9 @@ export function Game({ appid, running }: IGameProps) {
     handleToggleHiddenOnly,
     setFilter,
     setQuery,
+    handleClearSearch,
+    handleShowOtherList,
+    handleShowUnlocked,
     handleSortChange,
     handleUserDataChange,
     handleRefresh,
@@ -55,6 +64,16 @@ export function Game({ appid, running }: IGameProps) {
     );
   }
 
+  const otherListLink = matchesInOtherList > 0 && (
+    <Button
+      variant="link"
+      className="mx-auto flex"
+      onClick={handleShowOtherList}
+    >
+      {t.game.inOtherList[otherFilter](matchesInOtherList)}
+    </Button>
+  );
+
   return (
     // `relative`: the scrolling box must contain what is positioned inside it.
     // Visually hidden text is absolutely positioned; without this it sits in
@@ -73,17 +92,33 @@ export function Game({ appid, running }: IGameProps) {
       />
 
       {justUnlocked.length > 0 && (
-        <Pressable
+        <div
           role="status"
-          onClick={handleDismissUnlocked}
-          className="bg-success/15 text-success hover:bg-success/25 active:bg-success/35 mx-4 active:scale-[0.99] mt-3 block w-[calc(100%-2rem)] rounded-md px-3 py-2 text-left"
+          className="bg-success/15 text-success mx-4 mt-3 flex items-center gap-2 rounded-md py-1 pr-1 pl-3"
         >
-          {t.game.justUnlocked(justUnlocked.join(', '))}
-        </Pressable>
+          <p className="min-w-0 flex-1 py-1">
+            {isComplete
+              ? t.game.justCompleted
+              : t.game.justUnlocked(justUnlocked.join(', '))}
+          </p>
+          <IconButton
+            label={t.common.dismiss}
+            className="hover:bg-success/20 hover:text-success dark:hover:bg-success/20 flex-none"
+            onClick={handleDismissUnlocked}
+          >
+            <X />
+          </IconButton>
+        </div>
       )}
 
       {view.total === 0 ? (
         <Empty>{t.game.noAchievements}</Empty>
+      ) : completion && filter === 'pending' ? (
+        // Nothing is pending: the list and its filters give way to the result.
+        <GameComplete
+          completion={completion}
+          onSeeUnlocked={handleShowUnlocked}
+        />
       ) : (
         <div className="p-4">
           <AchievementToolbar
@@ -104,9 +139,18 @@ export function Game({ appid, running }: IGameProps) {
             <Empty>
               {query.trim() !== ''
                 ? t.game.nothingFound(query.trim())
-                : filter === 'pending'
-                  ? t.game.nothingPending
-                  : t.game.nothingUnlocked}
+                : t.game.nothingUnlocked}
+              {/* Where the matches are comes first: it is the likelier next step. */}
+              {otherListLink}
+              {query.trim() !== '' && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleClearSearch}
+                >
+                  {t.common.clearSearch}
+                </Button>
+              )}
             </Empty>
           )}
 
@@ -123,6 +167,10 @@ export function Game({ appid, running }: IGameProps) {
               />
             ))}
           </ul>
+
+          {achievements.length > 0 && otherListLink && (
+            <div className="mt-3">{otherListLink}</div>
+          )}
         </div>
       )}
     </section>

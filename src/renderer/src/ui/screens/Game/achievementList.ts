@@ -66,3 +66,45 @@ export function countHidden(
     (a) => a.hidden && a.unlocked === (filter === 'unlocked'),
   ).length;
 }
+
+/**
+ * How many achievements of the list that is NOT shown match the search, so a
+ * search that finds nothing here can say where the matches are.
+ */
+export function countMatchesInOtherList(
+  view: IGameView,
+  filter: AchievementFilter,
+  query: string,
+): number {
+  if (query.trim() === '') return 0;
+  return view.achievements.filter(
+    (a) =>
+      a.unlocked !== (filter === 'unlocked') &&
+      matches(query, a.name, a.description),
+  ).length;
+}
+
+export interface ICompletion {
+  /** When the last achievement was unlocked (epoch in seconds), if Steam reports it. */
+  completedAt: number | null;
+  /** The achievement fewest players have, among those with a known rarity. */
+  rarest: IAchievement | null;
+}
+
+/** What there is to say about a game with every achievement unlocked. */
+export function completionOf(view: IGameView): ICompletion {
+  const dates = view.achievements
+    .map((a) => a.unlockedAt)
+    .filter((at): at is number => at !== null);
+  const withRarity = view.achievements.filter((a) => a.rarity !== null);
+
+  return {
+    completedAt: dates.length > 0 ? Math.max(...dates) : null,
+    rarest:
+      withRarity.length > 0
+        ? withRarity.reduce((rarest, a) =>
+            (a.rarity ?? 101) < (rarest.rarity ?? 101) ? a : rarest,
+          )
+        : null,
+  };
+}

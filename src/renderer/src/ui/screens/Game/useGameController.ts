@@ -3,13 +3,21 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { useLocale } from '@app/hooks/useLocale';
 import { useStore } from '@app/store';
-import { type AchievementSort } from '@shared/achievementSort';
+import {
+  type AchievementFilter,
+  type AchievementSort,
+} from '@shared/achievementSort';
 import {
   type GameUserData,
   type IAchievementUserData,
 } from '@shared/types/UserData';
 
-import { countHidden, listAchievements } from './achievementList';
+import {
+  completionOf,
+  countHidden,
+  countMatchesInOtherList,
+  listAchievements,
+} from './achievementList';
 
 // Stable defaults: a new array or object on every render would re-render the screen each time.
 const NONE_UNLOCKED: string[] = [];
@@ -89,6 +97,13 @@ export function useGameController(appid: number) {
   );
 
   const pending = view ? view.total - view.unlockedCount : 0;
+  const isComplete = view !== null && view.total > 0 && pending === 0;
+  const completion = useMemo(
+    () => (view && isComplete ? completionOf(view) : null),
+    [view, isComplete],
+  );
+  const otherFilter: AchievementFilter =
+    filter === 'pending' ? 'unlocked' : 'pending';
   const percent =
     !view || view.total === 0
       ? 0
@@ -103,7 +118,11 @@ export function useGameController(appid: number) {
     achievements,
     pending,
     percent,
-    isComplete: view !== null && view.total > 0 && pending === 0,
+    isComplete,
+    completion,
+    otherFilter,
+    // A search that finds nothing here may have matches one tab away.
+    matchesInOtherList: view ? countMatchesInOtherList(view, filter, query) : 0,
     filter,
     sort,
     query,
@@ -112,6 +131,9 @@ export function useGameController(appid: number) {
     handleToggleHiddenOnly: toggleHiddenOnly,
     setFilter,
     setQuery,
+    handleClearSearch: () => setQuery(''),
+    handleShowOtherList: () => setFilter(otherFilter),
+    handleShowUnlocked: () => setFilter('unlocked'),
     handleSortChange: (next: AchievementSort) =>
       void setAchievementSort(filter, next),
     handleUserDataChange,
