@@ -31,7 +31,8 @@ export function Settings() {
       </Button>
       <Button
         variant="ghost"
-        className="text-destructive hover:text-destructive"
+        // Red on the usual hover tint fails contrast; a red tint keeps it readable.
+        className="text-destructive hover:bg-destructive/15 hover:text-destructive dark:hover:bg-destructive/15"
         onClick={() => setIsConfirmingErase(true)}
       >
         {t.settings.erase}

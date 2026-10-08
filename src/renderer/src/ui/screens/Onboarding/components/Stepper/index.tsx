@@ -87,8 +87,10 @@ export function Stepper({
                   disabled={!isReached}
                   onClick={() => dispatch({ type: 'goTo', step: index })}
                   className={cn(
-                    'text-muted-foreground w-full rounded-none border-t-[3px] pt-1.5 text-left text-xs duration-200',
-                    isReached && !isCurrent && 'hover:text-foreground',
+                    'text-muted-foreground w-full rounded-none border-t-[3px] pt-1.5 text-left text-xs duration-200 active:scale-100',
+                    isReached &&
+                      !isCurrent &&
+                      'hover:text-foreground active:text-primary',
                     isCurrent && 'border-primary text-foreground',
                     index < current && 'border-success',
                     // Reached but ahead of the current one: the way back forward.

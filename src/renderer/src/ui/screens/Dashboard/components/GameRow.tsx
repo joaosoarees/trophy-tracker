@@ -25,7 +25,7 @@ export function GameRow({ game, onPick }: IGameRowProps) {
     <li>
       <Pressable
         onClick={() => onPick(game.appid)}
-        className="bg-card hover:border-primary/60 hover:bg-accent/40 flex w-full items-center gap-3 rounded-lg border p-2 text-left"
+        className="bg-card hover:border-primary/60 hover:bg-accent/40 active:bg-accent/70 flex w-full active:scale-[0.99] items-center gap-3 rounded-lg border p-2 text-left"
       >
         <RemoteImage
           src={art}

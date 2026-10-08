@@ -85,8 +85,18 @@
   a[href],
   select:not(:disabled),
   summary,
+  [role='option'],
+  [role='menuitem'],
+  [role='tab'],
   label:has(select, input) {
     cursor: pointer;
+  }
+
+  /* Pressing something gives it a small "push"; wide elements tone it down with `active:scale-*`. */
+  :is(button, [role='radio'], [role='checkbox'], [role='tab'], summary):not(
+      :disabled
+    ):active {
+    scale: 0.96;
   }
 
   /* Honour "reduce motion": no pulsing, spinning or sliding. */

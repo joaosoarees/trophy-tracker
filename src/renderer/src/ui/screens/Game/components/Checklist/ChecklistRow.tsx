@@ -32,7 +32,9 @@ export function ChecklistRow({
   return (
     <li className="group hover:bg-muted/60 -mx-1.5 flex items-center gap-2 rounded px-1.5 py-1">
       <Checkbox
+        aria-label={item.text}
         checked={item.done}
+        className="hover:border-primary"
         onCheckedChange={(checked) => onToggle(checked === true)}
       />
 
@@ -52,7 +54,7 @@ export function ChecklistRow({
           <Pressable
             onClick={onStartEditing}
             className={cn(
-              'min-w-0 flex-1 cursor-text text-left break-words select-text',
+              'hover:bg-accent/50 min-w-0 flex-1 cursor-text rounded-sm px-1 text-left break-words select-text active:scale-100',
               item.done && 'text-muted-foreground line-through',
             )}
           >

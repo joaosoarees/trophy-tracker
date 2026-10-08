@@ -260,7 +260,9 @@ Conventions:
 An automated audit (axe) of every screen reports zero violations; keep it that way.
 
 - **Nothing clickable is a raw element.** Use `Button` (primitive), `IconButton` (icon only), or `Pressable` (the base of hand-made clickables such as tabs and rows). They carry the keyboard focus ring and the disabled state; a raw `<button>` or `<select>` in `ui/` fails the lint. The pointer cursor comes from a global rule in `styles/index.css`.
-- **Every clickable has a visible hover**, normally a background tint (`hover:bg-accent/40`), not only a text colour change.
+- **Every clickable has three visible states besides rest:** hover (normally a background tint, `hover:bg-accent/40`), pressed, and keyboard focus. The pressed state comes from a global rule (`scale: 0.96` while `:active`); wide elements such as rows and cards tone it down with `active:scale-[0.99]` and darken instead, and list options use a tint (`active:bg-primary/25`).
+- In the dark theme a `dark:` background class can silently cancel a `hover:` one; give it a `dark:hover:` too (that is why the destructive button and the select options were hand-edited in `primitives/`).
+- Red text on the usual hover tint fails contrast: a destructive ghost button hovers with a red tint (`hover:bg-destructive/15`).
 - **Icon-only buttons** use `IconButton`, whose `label` is mandatory: it is both the accessible name and the tooltip. Explain other controls with `Hint`, never with the native `title` (it is slow and does not show on keyboard focus).
 - **State is announced, not just drawn:** `aria-pressed` on toggles (Segmented, pin, always on top, hidden only), `aria-current="page"` on the current tab, `aria-expanded` on what opens a section.
 - **Selects** go through `OptionSelect`, whose `label` is mandatory. Its list is drawn inside the page; a native `<select>` opens an OS-level popup that is slow to close under WSLg and cannot be themed, so it is forbidden by lint.
@@ -278,7 +280,7 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 - An animation that moves an element makes it overflow its parent while it runs. The parent must clip it (`overflow-hidden` on `<main>` in `AppShell`), or the window gets a scrollbar for the length of the transition.
 - Only entries are animated. Animating exits would need the element to outlive its state, which is what an animation library is for; add one only if that becomes a real need.
 - An element shown only on hover must also show on keyboard focus (`focus-visible:opacity-100`).
-- After changing a screen, run the axe audit against the running app and tab through it with the keyboard.
+- After changing a screen, audit it in the running app, element by element and in every state (lists open, dialogs open, sections expanded): pointer cursor, accessible name, reachable by keyboard, and a visible change on hover, on press and on keyboard focus. Forcing the `:hover`, `:active` and `:focus-visible` states through the DevTools protocol and comparing computed styles does this reliably; park the mouse pointer first, or a really hovered element hides a missing hover style. Then run axe.
 
 ## Local data
 
