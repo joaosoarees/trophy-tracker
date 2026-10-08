@@ -273,6 +273,7 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 - `animate-list-in` (fade, 160 ms) on a list keyed by its filter, so switching Pending/Unlocked or In progress/Complete fades the new list in.
 - `animate-step-forward` / `animate-step-backward` (20 px slide, 200 ms) on onboarding steps; `Stepper` tracks the direction.
 - `expand-in` on a section that opens inside a card (checklist, note): it grows to its height instead of popping in.
+- An animation that moves an element makes it overflow its parent while it runs. The parent must clip it (`overflow-hidden` on `<main>` in `AppShell`), or the window gets a scrollbar for the length of the transition.
 - Only entries are animated. Animating exits would need the element to outlive its state, which is what an animation library is for; add one only if that becomes a real need.
 - An element shown only on hover must also show on keyboard focus (`focus-visible:opacity-100`).
 - After changing a screen, run the axe audit against the running app and tab through it with the keyboard.

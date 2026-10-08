@@ -60,7 +60,8 @@ export function AppShell() {
         </IconButton>
       </nav>
 
-      <main className="flex min-h-0 flex-1 flex-col">
+      {/* Clipped: a screen sliding in must not make the window itself scroll. */}
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {/* Both screens stay mounted; switching tabs only hides one, with no reload and no lost scroll position. */}
         <div
           className={cn(
