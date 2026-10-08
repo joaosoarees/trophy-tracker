@@ -65,7 +65,6 @@ export const ptBR: Messages = {
 
   game: {
     none: 'Nenhum jogo aberto e nenhum jogo jogado ainda. Escolha um no Painel.',
-    loading: 'Carregando conquistas…',
     running: 'em execução',
     summary: (unlocked, total, percent) =>
       `${unlocked} de ${total} conquistas · ${percent}%`,

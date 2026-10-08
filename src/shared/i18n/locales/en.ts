@@ -64,7 +64,6 @@ export const en = {
 
   game: {
     none: 'No game is open and nothing has been played yet. Pick one in the Dashboard.',
-    loading: 'Loading achievements…',
     running: 'running',
     summary: (unlocked: number, total: number, percent: number) =>
       `${unlocked} of ${total} achievements · ${percent}%`,

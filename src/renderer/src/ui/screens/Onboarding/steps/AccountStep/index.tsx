@@ -1,7 +1,8 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, User } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { SystemService } from '@app/services/SystemService';
+import { RemoteImage } from '@ui/components/RemoteImage';
 import { Button } from '@ui/primitives/button';
 import { Input } from '@ui/primitives/input';
 import { Label } from '@ui/primitives/label';
@@ -82,9 +83,11 @@ export function AccountStep() {
 
       {profile && (
         <div className="bg-card my-3 flex items-center gap-3 rounded-lg border p-3">
-          {profile.avatar && (
-            <img src={profile.avatar} alt="" className="size-12 rounded-md" />
-          )}
+          <RemoteImage
+            src={profile.avatar}
+            fallback={<User className="size-5" />}
+            className="size-12 flex-none"
+          />
           <div>
             <strong className="block">{profile.name}</strong>
             <small className="text-muted-foreground">

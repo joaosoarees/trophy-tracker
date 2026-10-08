@@ -53,6 +53,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --animate-fade-in: fade-in 200ms ease-out;
 }
 
 @layer base {
@@ -76,5 +77,11 @@
 
   ::-webkit-scrollbar-thumb {
     @apply bg-secondary rounded-full border-2 border-solid border-transparent bg-clip-content;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
   }
 }

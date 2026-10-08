@@ -3,6 +3,7 @@ import { RefreshCw, Trophy } from 'lucide-react';
 import { useT } from '@app/hooks/useT';
 import { type IGameView } from '@shared/types/Game';
 import { ProgressBar } from '@ui/components/ProgressBar';
+import { RemoteImage } from '@ui/components/RemoteImage';
 import { Button } from '@ui/primitives/button';
 import { cn } from '@ui/utils/cn';
 
@@ -31,13 +32,13 @@ export function GameHeader({
 
   return (
     <header className="relative overflow-hidden border-b">
-      {view.header && (
-        <img
-          src={view.header}
-          alt=""
-          className="absolute inset-0 size-full object-cover opacity-35 blur-[2px]"
-        />
-      )}
+      {/* Decorative: if the art fails, the header simply has no background. */}
+      <RemoteImage
+        src={view.header}
+        fallback={null}
+        showSkeleton={false}
+        className="absolute inset-0 size-full rounded-none opacity-35 blur-[2px]"
+      />
       <div className="from-background via-background/80 absolute inset-0 bg-gradient-to-t to-transparent" />
 
       <div className="relative px-4 pt-10 pb-3.5">

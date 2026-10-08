@@ -5,6 +5,7 @@ import { Button } from '@ui/primitives/button';
 import { AchievementCard } from './components/AchievementCard';
 import { AchievementToolbar } from './components/AchievementToolbar';
 import { GameHeader } from './components/GameHeader';
+import { GameSkeleton } from './components/GameSkeleton';
 import { useGameController } from './useGameController';
 
 interface IGameProps {
@@ -36,18 +37,16 @@ export function Game({ appid, running }: IGameProps) {
   } = useGameController(appid);
 
   if (!view) {
+    if (!error) {
+      return <GameSkeleton />;
+    }
+
     return (
       <Empty>
-        {error ? (
-          <>
-            <p className="text-destructive">{error}</p>
-            <Button variant="secondary" onClick={handleRefresh}>
-              {t.common.retry}
-            </Button>
-          </>
-        ) : (
-          <p>{t.game.loading}</p>
-        )}
+        <p className="text-destructive">{error}</p>
+        <Button variant="secondary" onClick={handleRefresh}>
+          {t.common.retry}
+        </Button>
       </Empty>
     );
   }

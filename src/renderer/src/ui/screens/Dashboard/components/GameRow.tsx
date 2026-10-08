@@ -1,6 +1,9 @@
+import { Gamepad2 } from 'lucide-react';
+
 import { useT } from '@app/hooks/useT';
 import { type IGameSummary } from '@shared/types/Game';
 import { ProgressBar } from '@ui/components/ProgressBar';
+import { RemoteImage } from '@ui/components/RemoteImage';
 import { cn } from '@ui/utils/cn';
 
 interface IGameRowProps {
@@ -20,19 +23,15 @@ export function GameRow({ game, onPick }: IGameRowProps) {
         onClick={() => onPick(game.appid)}
         className="bg-card hover:border-primary/60 flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-colors"
       >
-        {art ? (
-          <img
-            src={art}
-            alt=""
-            loading="lazy"
-            className={cn(
-              'bg-muted h-[42px] flex-none rounded object-cover',
-              game.capsule ? 'w-28' : 'w-[42px]',
-            )}
-          />
-        ) : (
-          <span className="bg-muted h-[42px] w-28 flex-none rounded" />
-        )}
+        <RemoteImage
+          src={art}
+          fallback={<Gamepad2 className="size-5" />}
+          className={cn(
+            'h-[42px] flex-none rounded',
+            // Without a capsule the small square icon is all there is.
+            game.capsule || !game.icon ? 'w-28' : 'w-[42px]',
+          )}
+        />
 
         <div className="min-w-0 flex-1">
           <strong className="block truncate font-medium">{game.name}</strong>

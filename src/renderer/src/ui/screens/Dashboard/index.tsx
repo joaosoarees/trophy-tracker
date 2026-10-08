@@ -4,10 +4,13 @@ import { useT } from '@app/hooks/useT';
 import { Empty } from '@ui/components/Empty';
 import { SearchBox } from '@ui/components/SearchBox';
 import { Button } from '@ui/primitives/button';
+import { Skeleton } from '@ui/primitives/skeleton';
 import { cn } from '@ui/utils/cn';
 
 import { GameRow } from './components/GameRow';
 import { useDashboardController } from './useDashboardController';
+
+const SKELETON_ROWS = Array.from({ length: 6 }, (_, index) => index);
 
 export function Dashboard() {
   const t = useT();
@@ -70,6 +73,13 @@ export function Dashboard() {
       )}
 
       <ul className="flex flex-col gap-1.5">
+        {!games &&
+          isLoading &&
+          SKELETON_ROWS.map((row) => (
+            <li key={row}>
+              <Skeleton className="h-[60px] w-full rounded-lg" />
+            </li>
+          ))}
         {shownGames.map((game) => (
           <GameRow key={game.appid} game={game} onPick={handlePickGame} />
         ))}

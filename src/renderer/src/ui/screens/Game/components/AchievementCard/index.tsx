@@ -1,4 +1,4 @@
-import { EyeOff, ListChecks, Pin, StickyNote } from 'lucide-react';
+import { EyeOff, ListChecks, Pin, StickyNote, Trophy } from 'lucide-react';
 import { memo } from 'react';
 
 import { useLocale } from '@app/hooks/useLocale';
@@ -6,6 +6,7 @@ import { useT } from '@app/hooks/useT';
 import { type IAchievement } from '@shared/types/Achievement';
 import { type IAchievementUserData } from '@shared/types/UserData';
 import { ProgressBar } from '@ui/components/ProgressBar';
+import { RemoteImage } from '@ui/components/RemoteImage';
 import { Badge } from '@ui/primitives/badge';
 import { Button } from '@ui/primitives/button';
 import { Textarea } from '@ui/primitives/textarea';
@@ -58,15 +59,14 @@ export const AchievementCard = memo(function AchievementCard(
         achievement.unlocked && 'opacity-90',
       )}
     >
-      <img
+      <RemoteImage
         src={
           achievement.unlocked
             ? achievement.icon
             : achievement.iconGray || achievement.icon
         }
-        alt=""
-        loading="lazy"
-        className="bg-muted size-12 flex-none rounded-md"
+        fallback={<Trophy className="size-5" />}
+        className="size-12 flex-none"
       />
 
       <div className="min-w-0 flex-1">
