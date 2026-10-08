@@ -63,6 +63,7 @@ export const ptBR: Messages = {
   common: {
     cancel: 'Cancelar',
     undo: 'Desfazer',
+    close: 'Fechar',
     retry: 'Tentar de novo',
     refresh: 'Atualizar',
     back: 'Voltar',

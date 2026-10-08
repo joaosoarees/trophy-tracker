@@ -69,6 +69,7 @@ export const es: Messages = {
   common: {
     cancel: 'Cancelar',
     undo: 'Deshacer',
+    close: 'Cerrar',
     retry: 'Reintentar',
     refresh: 'Actualizar',
     back: 'Atrás',

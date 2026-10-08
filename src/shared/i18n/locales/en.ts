@@ -61,6 +61,7 @@ export const en = {
   common: {
     cancel: 'Cancel',
     undo: 'Undo',
+    close: 'Close',
     retry: 'Try again',
     refresh: 'Refresh',
     back: 'Back',
