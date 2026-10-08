@@ -16,6 +16,10 @@ export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
     environment: 'node',
+    // Reuses transformed modules between runs made by hand. The commit and
+    // push hooks and the CI set `CI`, so the runs that gate a change always
+    // transform everything again and cannot pass on a stale cache.
+    fsModuleCache: !process.env.CI,
     coverage: {
       provider: 'v8',
       // What the project commits to testing: the main process, the shared

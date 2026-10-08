@@ -1,0 +1,3 @@
+# The same check the CI makes, before anything leaves this machine: every
+# test, with no module cache, and the coverage thresholds.
+CI=true pnpm test:coverage

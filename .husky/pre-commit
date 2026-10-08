@@ -1,3 +1,4 @@
 pnpm exec lint-staged
 pnpm typecheck
-pnpm test
+# CI=true: no module cache, as on the CI (see vitest.config.ts).
+CI=true pnpm test
