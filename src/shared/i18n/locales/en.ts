@@ -11,6 +11,7 @@ export const en = {
     notConfigured: 'The app has not been set up yet.',
     steamStatus: (status: number) => `Steam responded with error ${status}.`,
     unexpected: 'Unexpected error. Try again.',
+    changeNotSaved: 'Could not save your change, so it was undone.',
   },
 
   validation: {

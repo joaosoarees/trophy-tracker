@@ -1,6 +1,8 @@
+import { toast } from 'sonner';
+
 import { SettingsService } from '@app/services/SettingsService';
 import type { StoreSlice } from '@app/store/Store';
-import { type Language } from '@shared/i18n';
+import { type Language, messagesFor } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
 
 type SettingsStore = {
@@ -54,17 +56,29 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
       'settings/apply',
     ),
 
+  // Optimistic update: the button responds at once and is put back if the
+  // main process could not apply the change.
   toggleAlwaysOnTop: async () => {
-    const alwaysOnTop = await SettingsService.setAlwaysOnTop(
-      !get().settings.alwaysOnTop,
-    );
-    set(
-      (prevState) => {
-        prevState.settings.alwaysOnTop = alwaysOnTop;
-      },
-      false,
-      'settings/toggleAlwaysOnTop',
-    );
+    const previous = get().settings.alwaysOnTop;
+    const setAlwaysOnTop = (value: boolean, action: string) =>
+      set(
+        (prevState) => {
+          prevState.settings.alwaysOnTop = value;
+        },
+        false,
+        action,
+      );
+
+    setAlwaysOnTop(!previous, 'settings/toggleAlwaysOnTop');
+    try {
+      const applied = await SettingsService.setAlwaysOnTop(!previous);
+      if (applied === previous) {
+        setAlwaysOnTop(applied, 'settings/alwaysOnTopNotApplied');
+      }
+    } catch {
+      setAlwaysOnTop(previous, 'settings/rollbackAlwaysOnTop');
+      toast.error(messagesFor(get().session.language).errors.changeNotSaved);
+    }
   },
 
   changeLanguage: async (language) => {

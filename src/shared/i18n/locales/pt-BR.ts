@@ -12,6 +12,8 @@ export const ptBR: Messages = {
     notConfigured: 'O app ainda não foi configurado.',
     steamStatus: (status) => `A Steam respondeu com erro ${status}.`,
     unexpected: 'Erro inesperado. Tente de novo.',
+    changeNotSaved:
+      'Não foi possível salvar a alteração, então ela foi desfeita.',
   },
 
   validation: {

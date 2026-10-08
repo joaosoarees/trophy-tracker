@@ -1,8 +1,10 @@
+import { Toaster } from 'sonner';
+
 import { AppShell } from './components/AppShell';
 import { Onboarding } from './screens/Onboarding';
 import { useAppController } from './useAppController';
 
-export function App() {
+function Content() {
   const {
     appState,
     showOnboarding,
@@ -26,4 +28,13 @@ export function App() {
   }
 
   return <AppShell />;
+}
+
+export function App() {
+  return (
+    <>
+      <Content />
+      <Toaster theme="dark" position="bottom-center" richColors />
+    </>
+  );
 }

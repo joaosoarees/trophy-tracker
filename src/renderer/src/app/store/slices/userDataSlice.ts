@@ -1,6 +1,9 @@
+import { toast } from 'sonner';
+
 import { createSaver } from '@app/lib/saver';
 import { UserDataService } from '@app/services/UserDataService';
 import type { StoreSlice } from '@app/store/Store';
+import { messagesFor } from '@shared/i18n';
 import {
   type GameUserData,
   type IAchievementUserData,
@@ -24,45 +27,84 @@ type UserDataActions = {
 
 export type UserDataSlice = UserDataStore & UserDataActions;
 
-const saver = createSaver<{
+type Edit = {
   appid: number;
   achievementId: string;
-  data: IAchievementUserData;
-}>(
-  (_key, { appid, achievementId, data }) =>
-    void UserDataService.setUserData(appid, achievementId, data),
-);
+  /** `undefined` when the achievement had no user data before the edit. */
+  data: IAchievementUserData | undefined;
+};
 
-export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => ({
-  byGame: {},
+export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => {
+  // Optimistic update: the edit is on screen at once and saved after a pause.
+  // If the save fails, the screen goes back to what is actually saved.
+  const saver = createSaver<Edit>({
+    save: (_key, { appid, achievementId, data }) =>
+      UserDataService.setUserData(
+        appid,
+        achievementId,
+        data ?? { note: '', pinned: false },
+      ),
+    onRollback: (key, saved) => {
+      const [appid, achievementId] = splitKey(key);
+      set(
+        (prevState) => {
+          const game = prevState.userData.byGame[appid];
+          if (!game) return;
+          if (saved?.data) game[achievementId] = saved.data;
+          else delete game[achievementId];
+        },
+        false,
+        'userData/rollback',
+      );
+      toast.error(messagesFor(get().session.language).errors.changeNotSaved);
+    },
+  });
 
-  load: async (appid) => {
-    if (get().userData.byGame[appid]) return;
-    const data = await UserDataService.getUserData(appid);
-    set(
-      (prevState) => {
-        prevState.userData.byGame[appid] ??= data;
-      },
-      false,
-      'userData/load',
-    );
-  },
+  return {
+    byGame: {},
 
-  update: (appid, achievementId, patch) => {
-    set(
-      (prevState) => {
-        const game = (prevState.userData.byGame[appid] ??= {});
-        game[achievementId] = {
-          ...(game[achievementId] ?? { note: '', pinned: false }),
-          ...patch,
-        };
-      },
-      false,
-      'userData/update',
-    );
-    const data = get().userData.byGame[appid][achievementId];
-    saver.schedule(`${appid}:${achievementId}`, { appid, achievementId, data });
-  },
+    load: async (appid) => {
+      if (get().userData.byGame[appid]) return;
+      const data = await UserDataService.getUserData(appid);
+      set(
+        (prevState) => {
+          prevState.userData.byGame[appid] ??= data;
+        },
+        false,
+        'userData/load',
+      );
+    },
 
-  flush: () => saver.flush(),
-});
+    update: (appid, achievementId, patch) => {
+      const previous = get().userData.byGame[appid]?.[achievementId];
+      set(
+        (prevState) => {
+          const game = (prevState.userData.byGame[appid] ??= {});
+          game[achievementId] = {
+            ...(game[achievementId] ?? { note: '', pinned: false }),
+            ...patch,
+          };
+        },
+        false,
+        'userData/update',
+      );
+
+      const data = get().userData.byGame[appid][achievementId];
+      saver.schedule(
+        joinKey(appid, achievementId),
+        { appid, achievementId, data },
+        { appid, achievementId, data: previous },
+      );
+    },
+
+    flush: () => saver.flush(),
+  };
+};
+
+const joinKey = (appid: number, achievementId: string): string =>
+  `${appid}:${achievementId}`;
+
+function splitKey(key: string): [number, string] {
+  const separator = key.indexOf(':');
+  return [Number(key.slice(0, separator)), key.slice(separator + 1)];
+}
