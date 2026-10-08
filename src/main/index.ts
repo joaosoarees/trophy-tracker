@@ -2,6 +2,7 @@ import { join } from 'node:path';
 
 import { app, screen } from 'electron';
 
+import { DEFAULT_LANGUAGE } from '@shared/i18n';
 import { IpcEvent } from '@shared/ipcEvents';
 
 import { registerIpc } from './ipc/registerIpc';
@@ -63,9 +64,20 @@ void app.whenReady().then(() => {
     );
   }
   const store = new Store(app.getPath('userData'), createCipher());
-  const client = new SteamClient();
+  // Development only: `pnpm audit:ui` points the app at a fake Steam, so it
+  // can be driven through unlocks, errors and outages with no real account.
+  // An installed app ignores the variable: the user's key is sent to whatever
+  // address this is, so it must not be redirectable outside development.
+  const fakeSteam = app.isPackaged
+    ? undefined
+    : process.env.TROPHY_TRACKER_FAKE_STEAM;
+  const client = new SteamClient(fetch, DEFAULT_LANGUAGE, fakeSteam);
   const setup = new SetupService(store, client);
-  const local = createSteamLocal();
+  // With a fake Steam there is no local client either: the account is typed
+  // in and the running game comes from the (fake) Web API.
+  const local = fakeSteam
+    ? createSteamLocal({ hasWindows: false, exists: () => false })
+    : createSteamLocal();
   const tracker = new Tracker({
     store,
     client,
@@ -78,6 +90,7 @@ void app.whenReady().then(() => {
     checker: new UpdateChecker({
       currentVersion: app.getVersion(),
       repository: RELEASES_REPOSITORY,
+      apiBase: fakeSteam ? `${fakeSteam}/github` : undefined,
     }),
     isInstallBlocked: isInstallBlockedBySystem,
     attempt: {

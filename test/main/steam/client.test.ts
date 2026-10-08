@@ -103,4 +103,19 @@ describe('SteamClient', () => {
     });
     expect(await kind(client.getGameAchievements(1))).toBe('network');
   });
+
+  it('asks the address it was given instead of Steam', async () => {
+    const fetchImpl = fakeFetch({
+      GetPlayerSummaries: {
+        json: { response: { players: [{ steamid: STEAM_ID }] } },
+      },
+    });
+    const client = new SteamClient(fetchImpl, 'en', 'http://127.0.0.1:9999');
+
+    await client.getPlayerSummary(creds);
+
+    expect(fetchImpl.calls[0]).toMatch(
+      /^http:\/\/127\.0\.0\.1:9999\/ISteamUser\/GetPlayerSummaries/,
+    );
+  });
 });

@@ -119,13 +119,15 @@ export class SteamClient {
   constructor(
     private fetchImpl: Fetch = fetch,
     public language: Language = DEFAULT_LANGUAGE,
+    /** Where the Web API is; only the interface audit points it elsewhere. */
+    private apiBase: string = API,
   ) {}
 
   private async get<T>(
     path: string,
     params: Record<string, string | number>,
   ): Promise<T> {
-    const url = new URL(API + path);
+    const url = new URL(this.apiBase + path);
     for (const [k, v] of Object.entries(params))
       url.searchParams.set(k, String(v));
 

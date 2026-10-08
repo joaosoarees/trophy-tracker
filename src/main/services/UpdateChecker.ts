@@ -8,6 +8,8 @@ interface IUpdateCheckerDeps {
   /** `owner/name` of the GitHub repository that publishes the releases. */
   repository: string;
   fetchImpl?: typeof fetch;
+  /** Where GitHub's API is; only the interface audit points it elsewhere. */
+  apiBase?: string;
   now?: () => number;
 }
 
@@ -30,10 +32,11 @@ export class UpdateChecker {
     currentVersion,
     repository,
     fetchImpl = fetch,
+    apiBase = 'https://api.github.com',
     now = Date.now,
   }: IUpdateCheckerDeps) {
     this.currentVersion = currentVersion;
-    this.url = `https://api.github.com/repos/${repository}/releases/latest`;
+    this.url = `${apiBase}/repos/${repository}/releases/latest`;
     this.fetchImpl = fetchImpl;
     this.now = now;
   }

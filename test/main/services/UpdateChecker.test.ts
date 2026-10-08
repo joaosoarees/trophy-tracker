@@ -83,4 +83,22 @@ describe('UpdateChecker', () => {
     clock.now = 7 * HOUR;
     expect((await checker.getAppInfo()).newVersion).toBe('1.3.0');
   });
+
+  it('asks the address it was given instead of GitHub', async () => {
+    const fetchImpl = fakeFetch({
+      '/releases/latest': { json: { tag_name: 'v1.3.0' } },
+    });
+    const checker = new UpdateChecker({
+      currentVersion: '1.2.0',
+      repository: 'someone/app',
+      fetchImpl,
+      apiBase: 'http://127.0.0.1:9999/github',
+    });
+
+    await checker.getAppInfo();
+
+    expect(fetchImpl.calls).toEqual([
+      'http://127.0.0.1:9999/github/repos/someone/app/releases/latest',
+    ]);
+  });
 });
