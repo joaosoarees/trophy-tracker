@@ -20,10 +20,20 @@ export function Checklist({ achievement, items, onChange }: Props) {
   const [pasting, setPasting] = useState(false)
   const [pasted, setPasted] = useState('')
   const [editing, setEditing] = useState<string | null>(null)
+  const [duplicate, setDuplicate] = useState(false)
 
   const add = (text: string): void => {
     const added = parseChecklist(text, items)
     if (added.length > 0) onChange([...items, ...added])
+  }
+  /** Item digitado à mão entra como foi escrito; se já existe, o texto fica no campo com um aviso. */
+  const addDraft = (): void => {
+    const text = draft.trim()
+    if (text === '') return
+    const key = text.toLocaleLowerCase('pt-BR')
+    if (items.some((i) => i.text.toLocaleLowerCase('pt-BR') === key)) return setDuplicate(true)
+    onChange([...items, { id: `${Date.now().toString(36)}-${items.length}`, text, done: false }])
+    setDraft('')
   }
   const patch = (id: string, change: Partial<ChecklistItem>): void =>
     onChange(items.map((i) => (i.id === id ? { ...i, ...change } : i)))
@@ -80,11 +90,14 @@ export function Checklist({ achievement, items, onChange }: Props) {
           value={draft}
           placeholder="Novo item"
           className="h-7 flex-1 text-sm"
-          onChange={(e) => setDraft(e.target.value)}
+          aria-invalid={duplicate}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            setDuplicate(false)
+          }}
           onKeyDown={(e) => {
-            if (e.key !== 'Enter' || draft.trim() === '') return
-            add(draft)
-            setDraft('')
+            // Enter que só confirma um acento ou composição não adiciona.
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) addDraft()
           }}
         />
         <Button
@@ -93,10 +106,7 @@ export function Checklist({ achievement, items, onChange }: Props) {
           className="size-7"
           title="Adicionar item"
           disabled={draft.trim() === ''}
-          onClick={() => {
-            add(draft)
-            setDraft('')
-          }}
+          onClick={addDraft}
         >
           <Plus />
         </Button>
@@ -105,6 +115,8 @@ export function Checklist({ achievement, items, onChange }: Props) {
           Colar lista
         </Button>
       </div>
+
+      {duplicate && <p className="text-warning text-xs">Esse item já está na lista.</p>}
 
       <Dialog
         open={pasting}
