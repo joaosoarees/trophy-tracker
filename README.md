@@ -16,7 +16,7 @@ Download the installer for your system from the [latest release](https://github.
 
 The installers are not signed with a paid certificate yet, so the system warns on first run:
 
-- **Windows:** on the SmartScreen warning, choose "More info" and then "Run anyway".
+- **Windows:** on the SmartScreen warning, choose "More info" and then "Run anyway". If **Smart App Control** is on (Windows Security → App & browser control), Windows may refuse to run the installer altogether, with no way to allow it: an unsigned installer only runs there when Microsoft's reputation service happens to accept it. Signing the installers is being arranged.
 - **macOS:** after the first attempt to open the app, go to System Settings → Privacy & Security and choose "Open Anyway".
 - **Linux:** `sudo apt install ./Trophy-Tracker-<version>-amd64.deb`, or make the AppImage executable (`chmod +x`) and run it.
 
@@ -49,3 +49,25 @@ pnpm test:package  # installs the .deb in a clean container and checks that the 
 ```
 
 macOS installers can only be built on macOS. Pushing a `v<version>` tag makes GitHub Actions build the installers for the three systems and publish them as a release.
+
+## Privacy
+
+Trophy Tracker has no server and collects nothing. It talks only to:
+
+- **Steam** (`api.steampowered.com` and Steam's image servers), with the Web API key and SteamID you provide, to read your games and achievements;
+- **GitHub** (`api.github.com` and `github.com`), to look for a newer version and, on Windows and the Linux AppImage, to download it.
+
+Your key, notes and checklists are stored only on your computer. Errors are written to a local log file and are never sent anywhere.
+
+## Code signing policy
+
+The installers are built from this repository by GitHub Actions (`.github/workflows/release.yml`), from a version tag that only the maintainer can create.
+
+- **Author, reviewer and approver:** [Joao Soares](https://github.com/joaosoarees), the only person with write access to the repository.
+- Changes from anyone else arrive as pull requests and are reviewed before they are merged.
+
+The installers are not signed yet.
+
+## License
+
+[MIT](LICENSE)
