@@ -21,7 +21,7 @@ const UNLOCK_CHECK_MS = 60_000
 const EXTERNAL = {
   apikey: 'https://steamcommunity.com/dev/apikey',
   privacy: 'https://steamcommunity.com/my/edit/settings',
-  'steamid-help': 'https://help.steampowered.com/pt-br/faqs/view/2816-BE67-5B69-0FEC'
+  account: 'https://store.steampowered.com/account/'
 }
 
 let win: BrowserWindow | null = null
@@ -91,7 +91,11 @@ function registerIpc(): void {
   const handlers: Omit<Api, 'onGameChanged' | 'onGameUpdated' | 'onDashboardProgress'> = {
     getState: async () => state(),
     detectSteamId: () => getActiveSteamId(),
-    checkSteamId: (steamId) => checkSteamId(steamId),
+    checkSteamId: async (steamId) => {
+      const result = await checkSteamId(steamId)
+      if (result.status === 'unconfirmed') console.warn(`SteamID ${result.steamId} não confirmado: ${result.reason}`)
+      return result
+    },
     checkApiKey: (steamId, apiKey) => checkApiKey(client, steamId, apiKey),
     checkPrivacy: (steamId, apiKey) => checkPrivacy(client, steamId, apiKey),
     saveConfig: async (steamId, apiKey) => {

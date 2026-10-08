@@ -32,7 +32,7 @@ const player = (unlocked: number, total: number): Route => ({
 describe('onboarding: SteamID', () => {
   it('recusa formato errado sem ir à rede', async () => {
     const f = fakeFetch({})
-    expect((await checkSteamId('12345', f)).ok).toBe(false)
+    expect((await checkSteamId('12345', f)).status).toBe('invalid')
     expect(f.calls).toHaveLength(0)
   })
 
@@ -43,14 +43,29 @@ describe('onboarding: SteamID', () => {
       }
     })
     expect(await checkSteamId(` ${STEAM_ID} `, f)).toEqual({
-      ok: true,
-      value: { steamId: STEAM_ID, name: 'João', avatar: 'https://a/b.jpg' }
+      status: 'found',
+      profile: { steamId: STEAM_ID, name: 'João', avatar: 'https://a/b.jpg' }
     })
   })
 
-  it('recusa SteamID sem perfil', async () => {
+  it('bloqueia só quando a Steam diz que o perfil não existe', async () => {
     const f = fakeFetch({ profiles: { text: '<response><error><![CDATA[The specified profile could not be found.]]></error></response>' } })
-    expect((await checkSteamId(STEAM_ID, f)).ok).toBe(false)
+    expect((await checkSteamId(STEAM_ID, f)).status).toBe('not-found')
+  })
+
+  it.each([
+    ['limite de requisições', { status: 429, text: '<html>Too Many Requests</html>' }, 'a Steam respondeu com erro 429'],
+    ['página que não é o perfil', { text: '<html><body>Steam Community :: Error</body></html>' }, 'a Steam devolveu uma resposta inesperada'],
+    ['outro erro da Steam', { text: '<response><error><![CDATA[Please try again later.]]></error></response>' }, 'a Steam respondeu: Please try again later.']
+  ])('deixa seguir quando não consegue confirmar: %s', async (_caso, route, reason) => {
+    expect(await checkSteamId(STEAM_ID, fakeFetch({ profiles: route }))).toEqual({ status: 'unconfirmed', steamId: STEAM_ID, reason })
+  })
+
+  it('deixa seguir quando a rede falha', async () => {
+    const offline = (async () => {
+      throw new TypeError('fetch failed')
+    }) as typeof fetch
+    expect(await checkSteamId(STEAM_ID, offline)).toMatchObject({ status: 'unconfirmed', reason: 'não foi possível falar com a Steam' })
   })
 })
 

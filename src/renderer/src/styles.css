@@ -111,6 +111,23 @@ textarea {
   color: var(--bad);
 }
 
+.warning {
+  color: var(--warn);
+}
+
+details {
+  margin: 10px 0;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
 .success {
   color: var(--good);
 }

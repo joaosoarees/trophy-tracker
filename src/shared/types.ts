@@ -40,6 +40,12 @@ export interface Profile {
 
 export type CheckResult<T = undefined> = { ok: true; value: T } | { ok: false; error: string }
 
+/** Resultado do passo do SteamID: só "a Steam disse que não existe" bloqueia. */
+export type SteamIdCheck =
+  | { status: 'found'; profile: Profile }
+  | { status: 'invalid' | 'not-found'; error: string }
+  | { status: 'unconfirmed'; steamId: string; reason: string }
+
 export interface AppState {
   configured: boolean
   profile: Profile | null
@@ -59,7 +65,7 @@ export type GuideSite = 'steam' | 'youtube' | 'google'
 export interface Api {
   getState(): Promise<AppState>
   detectSteamId(): Promise<string | null>
-  checkSteamId(steamId: string): Promise<CheckResult<Profile>>
+  checkSteamId(steamId: string): Promise<SteamIdCheck>
   checkApiKey(steamId: string, apiKey: string): Promise<CheckResult<Profile>>
   checkPrivacy(steamId: string, apiKey: string): Promise<CheckResult<{ gamesWithPlaytime: number }>>
   saveConfig(steamId: string, apiKey: string): Promise<AppState>
@@ -72,7 +78,7 @@ export interface Api {
   setUserData(appid: number, achievementId: string, data: AchievementUserData): Promise<void>
 
   openGuide(site: GuideSite, appid: number, game: string, achievement: string): Promise<void>
-  openExternal(target: 'apikey' | 'privacy' | 'steamid-help'): Promise<void>
+  openExternal(target: 'apikey' | 'privacy' | 'account'): Promise<void>
 
   onGameChanged(cb: (current: { appid: number; running: boolean } | null) => void): () => void
   onGameUpdated(cb: (view: GameView) => void): () => void

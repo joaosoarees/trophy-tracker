@@ -14,6 +14,8 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
   const [steamId, setSteamId] = useState('')
   const [detected, setDetected] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
+  /** Motivo de a Steam não ter confirmado o perfil; não impede de seguir. */
+  const [unconfirmed, setUnconfirmed] = useState<string | null>(null)
   const [apiKey, setApiKey] = useState('')
   const [games, setGames] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -42,7 +44,22 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
     else setError(result.error)
   }
 
-  const confirmSteamId = () => check(() => window.api.checkSteamId(steamId), setProfile)
+  const confirmSteamId = async () => {
+    setBusy(true)
+    setError(null)
+    setUnconfirmed(null)
+    const result = await window.api.checkSteamId(steamId)
+    setBusy(false)
+    if (result.status === 'found') setProfile(result.profile)
+    else if (result.status === 'unconfirmed') setUnconfirmed(result.reason)
+    else setError(result.error)
+  }
+  /** Segue sem nome e avatar; o passo da chave valida o SteamID pela API oficial. */
+  const skipConfirmation = () => {
+    setProfile({ steamId: steamId.trim(), name: '', avatar: '' })
+    setUnconfirmed(null)
+    go(2)
+  }
   const confirmKey = () => check(() => window.api.checkApiKey(profile!.steamId, apiKey), () => void testPrivacy())
   const testPrivacy = async () => {
     setStep(3)
@@ -101,11 +118,20 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
           {detected ? (
             <p>Encontrei a conta logada no cliente Steam deste computador. Confirme se é a sua.</p>
           ) : (
-            <p>
-              Não encontrei uma conta logada no cliente Steam. Cole seu SteamID de 17 dígitos.{' '}
-              <a onClick={() => void window.api.openExternal('steamid-help')}>Onde encontro meu SteamID?</a>
-            </p>
+            <p>Não encontrei uma conta logada no cliente Steam. Cole abaixo o seu SteamID de 17 dígitos.</p>
           )}
+          <details open={!detected}>
+            <summary>Onde encontro meu SteamID?</summary>
+            <ol>
+              <li>No cliente Steam, clique no seu nome no canto superior direito.</li>
+              <li>Escolha “Detalhes da conta”.</li>
+              <li>
+                O número de 17 dígitos em “ID Steam”, logo abaixo do nome da conta, é o seu SteamID. Não é o código de
+                amigo nem o nome de usuário.
+              </li>
+            </ol>
+            <button onClick={() => void window.api.openExternal('account')}>Abrir “Detalhes da conta” no navegador</button>
+          </details>
           <label>
             SteamID
             <input
@@ -115,6 +141,7 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
               onChange={(e) => {
                 setSteamId(e.target.value)
                 setProfile(null)
+                setUnconfirmed(null)
               }}
             />
           </label>
@@ -128,15 +155,22 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
             </div>
           )}
           {error && <p className="error">{error}</p>}
+          {unconfirmed && (
+            <p className="warning">
+              Não consegui confirmar este perfil agora ({unconfirmed}). Você pode tentar de novo ou continuar: o próximo
+              passo confere o SteamID junto com a chave.
+            </p>
+          )}
           <div className="actions">
             <button onClick={() => go(0)}>Voltar</button>
+            {unconfirmed && <button onClick={skipConfirmation}>Continuar mesmo assim</button>}
             {profile ? (
               <button className="primary" onClick={() => go(2)}>
                 É a minha conta
               </button>
             ) : (
               <button className="primary" disabled={busy || steamId.trim() === ''} onClick={confirmSteamId}>
-                {busy ? 'Verificando…' : 'Verificar'}
+                {busy ? 'Verificando…' : unconfirmed ? 'Tentar de novo' : 'Verificar'}
               </button>
             )}
           </div>

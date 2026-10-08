@@ -1,27 +1,42 @@
-import type { CheckResult, Profile } from '../shared/types'
+import type { CheckResult, Profile, SteamIdCheck } from '../shared/types'
 import { SteamClient, SteamError, type Fetch } from './steam/client'
 
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error })
 const message = (e: unknown): string =>
   e instanceof SteamError ? e.message : 'Erro inesperado ao falar com a Steam.'
 
-/** Passo 2: confere o SteamID pelo perfil público, sem precisar de chave. */
-export async function checkSteamId(steamId: string, fetchImpl: Fetch = fetch): Promise<CheckResult<Profile>> {
+/**
+ * Passo 2: confere o SteamID pelo perfil público, sem precisar de chave.
+ * A página da comunidade é instável; se ela não responder direito o usuário
+ * segue adiante, porque o passo da chave valida o SteamID de novo pela API.
+ */
+export async function checkSteamId(steamId: string, fetchImpl: Fetch = fetch): Promise<SteamIdCheck> {
   const id = steamId.trim()
   if (!/^7656119\d{10}$/.test(id)) {
-    return fail('O SteamID tem 17 dígitos e começa com 7656119.')
+    return { status: 'invalid', error: 'O SteamID tem 17 dígitos e começa com 7656119.' }
   }
+  const unconfirmed = (reason: string): SteamIdCheck => ({ status: 'unconfirmed', steamId: id, reason })
+
+  let res: Response
   let xml: string
   try {
-    xml = await (await fetchImpl(`https://steamcommunity.com/profiles/${id}/?xml=1`)).text()
+    res = await fetchImpl(`https://steamcommunity.com/profiles/${id}/?xml=1`)
+    xml = await res.text()
   } catch {
-    return fail('Não foi possível falar com a Steam. Verifique sua conexão.')
+    return unconfirmed('não foi possível falar com a Steam')
   }
   const tag = (name: string): string | null =>
     new RegExp(`<${name}>(?:<!\\[CDATA\\[)?(.*?)(?:\\]\\]>)?</${name}>`, 's').exec(xml)?.[1] ?? null
+
   const name = tag('steamID')
-  if (name === null) return fail('Nenhum perfil da Steam encontrado com esse SteamID.')
-  return { ok: true, value: { steamId: id, name, avatar: tag('avatarFull') ?? '' } }
+  if (name !== null) return { status: 'found', profile: { steamId: id, name, avatar: tag('avatarFull') ?? '' } }
+
+  const steamError = tag('error')
+  if (res.ok && steamError !== null && /could not be found/i.test(steamError)) {
+    return { status: 'not-found', error: 'A Steam não encontrou nenhum perfil com esse SteamID.' }
+  }
+  if (!res.ok) return unconfirmed(`a Steam respondeu com erro ${res.status}`)
+  return unconfirmed(steamError ? `a Steam respondeu: ${steamError}` : 'a Steam devolveu uma resposta inesperada')
 }
 
 /** Passo 3: a chave é válida se a Steam aceitar uma chamada autenticada. */
