@@ -1,0 +1,40 @@
+import { Check } from 'lucide-react'
+import { useController, type Control, type FieldPath, type FieldValues } from 'react-hook-form'
+import { LANGUAGE_CODES, LANGUAGES } from '../../../shared/i18n'
+import { cn } from '@/lib/utils'
+
+interface IControlledLanguageSelectProps<T extends FieldValues> {
+  control?: Control<T>
+  name: FieldPath<T>
+}
+
+export function ControlledLanguageSelect<T extends FieldValues>({ control, name }: IControlledLanguageSelectProps<T>) {
+  const { field } = useController({ name, control })
+
+  return (
+    <div role="radiogroup" ref={field.ref} className="grid grid-cols-2 gap-2">
+      {LANGUAGE_CODES.map((code) => {
+        const selected = field.value === code
+        return (
+          <button
+            key={code}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            name={field.name}
+            disabled={field.disabled}
+            onBlur={field.onBlur}
+            onClick={() => field.onChange(code)}
+            className={cn(
+              'bg-card flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left transition-colors',
+              selected ? 'border-primary text-foreground' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {LANGUAGES[code].label}
+            {selected && <Check className="text-primary size-4" />}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
