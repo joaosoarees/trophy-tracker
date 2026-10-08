@@ -70,6 +70,7 @@ export const fr: Messages = {
     cancel: 'Annuler',
     undo: 'Annuler',
     close: 'Fermer',
+    dismiss: 'Fermer l’avis',
     retry: 'Réessayer',
     refresh: 'Actualiser',
     back: 'Retour',
@@ -102,7 +103,21 @@ export const fr: Messages = {
       name: 'Nom',
     },
     nothingFound: (query) => `Aucun résultat pour « ${query} ».`,
-    nothingPending: 'Rien à obtenir. 100 % !',
+    inOtherList: {
+      pending: (n) =>
+        `${n} ${n === 1 ? 'résultat' : 'résultats'} dans À obtenir`,
+      unlocked: (n) =>
+        `${n} ${n === 1 ? 'résultat' : 'résultats'} dans Déverrouillés`,
+    },
+    filterLabel: 'Succès affichés',
+    justCompleted: 'Tous les succès déverrouillés !',
+    complete: {
+      title: 'Tous les succès déverrouillés',
+      completedOn: (date) => `Terminé le ${date}`,
+      rarest: (name, percent) =>
+        `Le plus rare : ${name} · ${percent} des joueurs`,
+      seeUnlocked: 'Voir ce que vous avez déverrouillé',
+    },
     nothingUnlocked: 'Aucun succès déverrouillé pour l’instant.',
   },
 
@@ -138,6 +153,7 @@ export const fr: Messages = {
 
   dashboard: {
     title: 'Tableau de bord',
+    filterLabel: 'Jeux affichés',
     refreshAll: 'Tout actualiser',
     reading: (done, total) => `Lecture des succès : ${done} jeux sur ${total}…`,
     loadingLibrary: 'Chargement de votre bibliothèque…',

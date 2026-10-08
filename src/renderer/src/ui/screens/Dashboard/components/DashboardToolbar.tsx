@@ -35,6 +35,7 @@ export function DashboardToolbar({
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2">
       <Segmented<DashboardFilter>
+        label={t.dashboard.filterLabel}
         value={filter}
         onChange={onFilterChange}
         options={[

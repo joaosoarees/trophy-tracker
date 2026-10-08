@@ -88,7 +88,7 @@ export function Checklist({ achievement, items, onChange }: IChecklistProps) {
       </div>
 
       {isDuplicate && (
-        <p className="text-warning text-xs">{t.checklist.duplicate}</p>
+        <p className="text-destructive text-xs">{t.checklist.duplicate}</p>
       )}
 
       <PasteListDialog

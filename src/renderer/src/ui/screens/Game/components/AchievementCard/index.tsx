@@ -102,6 +102,7 @@ export const AchievementCard = memo(function AchievementCard(
         {progress && (
           <div className="mt-2 flex items-center gap-2.5">
             <ProgressBar
+              label={achievement.name}
               value={(progress.current / progress.target) * 100}
               className="flex-1"
             />

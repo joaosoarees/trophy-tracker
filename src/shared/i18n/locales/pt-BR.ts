@@ -64,6 +64,7 @@ export const ptBR: Messages = {
     cancel: 'Cancelar',
     undo: 'Desfazer',
     close: 'Fechar',
+    dismiss: 'Dispensar',
     retry: 'Tentar de novo',
     refresh: 'Atualizar',
     back: 'Voltar',
@@ -96,7 +97,21 @@ export const ptBR: Messages = {
       name: 'Nome',
     },
     nothingFound: (query) => `Nada encontrado para “${query}”.`,
-    nothingPending: 'Nada pendente. 100%!',
+    inOtherList: {
+      pending: (n) =>
+        `${n} ${n === 1 ? 'resultado' : 'resultados'} em Pendentes`,
+      unlocked: (n) =>
+        `${n} ${n === 1 ? 'resultado' : 'resultados'} em Obtidas`,
+    },
+    filterLabel: 'Conquistas mostradas',
+    justCompleted: 'Todas as conquistas desbloqueadas!',
+    complete: {
+      title: 'Todas as conquistas desbloqueadas',
+      completedOn: (date) => `Concluído em ${date}`,
+      rarest: (name, percent) =>
+        `Mais rara: ${name} · ${percent} dos jogadores`,
+      seeUnlocked: 'Ver o que você desbloqueou',
+    },
     nothingUnlocked: 'Nenhuma conquista obtida ainda.',
   },
 
@@ -132,6 +147,7 @@ export const ptBR: Messages = {
 
   dashboard: {
     title: 'Painel',
+    filterLabel: 'Jogos mostrados',
     refreshAll: 'Atualizar tudo',
     reading: (done, total) => `Lendo conquistas: ${done} de ${total} jogos…`,
     loadingLibrary: 'Carregando sua biblioteca…',

@@ -62,6 +62,7 @@ export const en = {
     cancel: 'Cancel',
     undo: 'Undo',
     close: 'Close',
+    dismiss: 'Dismiss',
     retry: 'Try again',
     refresh: 'Refresh',
     back: 'Back',
@@ -94,7 +95,21 @@ export const en = {
       name: 'Name',
     },
     nothingFound: (query: string) => `Nothing found for “${query}”.`,
-    nothingPending: 'Nothing pending. 100%!',
+    inOtherList: {
+      pending: (n: number) =>
+        `${n} ${n === 1 ? 'result' : 'results'} in Pending`,
+      unlocked: (n: number) =>
+        `${n} ${n === 1 ? 'result' : 'results'} in Unlocked`,
+    },
+    filterLabel: 'Achievements shown',
+    justCompleted: 'Every achievement unlocked!',
+    complete: {
+      title: 'Every achievement unlocked',
+      completedOn: (date: string) => `Completed on ${date}`,
+      rarest: (name: string, percent: string) =>
+        `Rarest: ${name} · ${percent} of players`,
+      seeUnlocked: 'See what you unlocked',
+    },
     nothingUnlocked: 'No achievements unlocked yet.',
   },
 
@@ -130,6 +145,7 @@ export const en = {
 
   dashboard: {
     title: 'Dashboard',
+    filterLabel: 'Games shown',
     refreshAll: 'Refresh everything',
     reading: (done: number, total: number) =>
       `Reading achievements: ${done} of ${total} games…`,

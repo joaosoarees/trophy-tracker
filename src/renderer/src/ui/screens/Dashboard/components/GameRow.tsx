@@ -51,7 +51,7 @@ export function GameRow({ game, onPick }: IGameRowProps) {
                 .join(' · ')}
             </small>
           ) : (
-            <ProgressBar value={percent} className="mt-1.5" />
+            <ProgressBar label={game.name} value={percent} className="mt-1.5" />
           )}
         </div>
 

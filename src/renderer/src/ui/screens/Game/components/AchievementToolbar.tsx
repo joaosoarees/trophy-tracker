@@ -48,6 +48,7 @@ export function AchievementToolbar({
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2">
       <Segmented<AchievementFilter>
+        label={t.game.filterLabel}
         value={filter}
         onChange={onFilterChange}
         options={[

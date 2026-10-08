@@ -19,7 +19,7 @@ export function Update({ version, percent }: IUpdateProps) {
       className="animate-screen-in flex h-screen flex-col items-center justify-center gap-4 p-8 text-center"
       aria-busy="true"
     >
-      <Trophy className="text-primary size-10" aria-hidden />
+      <Trophy className="text-muted-foreground size-10" aria-hidden />
       <h1 className="text-xl font-semibold">{t.appTitle}</h1>
 
       {version === null ? (
@@ -31,7 +31,11 @@ export function Update({ version, percent }: IUpdateProps) {
           <p role="status" className="font-medium">
             {t.update.found(version)}
           </p>
-          <ProgressBar value={percent} className="h-2" />
+          <ProgressBar
+            label={t.update.found(version)}
+            value={percent}
+            className="h-2"
+          />
           <p className="text-muted-foreground text-sm tabular-nums">
             {t.update.downloading(percent)}
           </p>

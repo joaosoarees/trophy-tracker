@@ -70,6 +70,7 @@ export const es: Messages = {
     cancel: 'Cancelar',
     undo: 'Deshacer',
     close: 'Cerrar',
+    dismiss: 'Descartar',
     retry: 'Reintentar',
     refresh: 'Actualizar',
     back: 'Atrás',
@@ -102,7 +103,21 @@ export const es: Messages = {
       name: 'Nombre',
     },
     nothingFound: (query) => `No se ha encontrado nada para «${query}».`,
-    nothingPending: 'Nada pendiente. ¡100%!',
+    inOtherList: {
+      pending: (n) =>
+        `${n} ${n === 1 ? 'resultado' : 'resultados'} en Pendientes`,
+      unlocked: (n) =>
+        `${n} ${n === 1 ? 'resultado' : 'resultados'} en Desbloqueados`,
+    },
+    filterLabel: 'Logros mostrados',
+    justCompleted: '¡Todos los logros desbloqueados!',
+    complete: {
+      title: 'Todos los logros desbloqueados',
+      completedOn: (date) => `Completado el ${date}`,
+      rarest: (name, percent) =>
+        `El más raro: ${name} · ${percent} de los jugadores`,
+      seeUnlocked: 'Ver lo que has desbloqueado',
+    },
     nothingUnlocked: 'Aún no hay logros desbloqueados.',
   },
 
@@ -138,6 +153,7 @@ export const es: Messages = {
 
   dashboard: {
     title: 'Panel',
+    filterLabel: 'Juegos mostrados',
     refreshAll: 'Actualizar todo',
     reading: (done, total) => `Leyendo logros: ${done} de ${total} juegos…`,
     loadingLibrary: 'Cargando tu biblioteca…',

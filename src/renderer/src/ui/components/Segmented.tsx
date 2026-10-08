@@ -5,18 +5,25 @@ import { cn } from '@ui/utils/cn';
 import { Pressable } from './Pressable';
 
 interface ISegmentedProps<T extends string> {
+  /** What is being chosen, for assistive technology. */
+  label: string;
   value: T;
   options: { value: T; label: ReactNode }[];
   onChange: (value: T) => void;
 }
 
 export function Segmented<T extends string>({
+  label,
   value,
   options,
   onChange,
 }: ISegmentedProps<T>) {
   return (
-    <div className="bg-muted inline-flex rounded-md p-0.5">
+    <div
+      role="group"
+      aria-label={label}
+      className="bg-muted inline-flex rounded-md p-0.5"
+    >
       {options.map((option) => (
         <Pressable
           key={option.value}
@@ -25,7 +32,7 @@ export function Segmented<T extends string>({
           className={cn(
             'rounded-[5px] px-2.5 py-1 text-xs font-medium',
             option.value === value
-              ? 'bg-accent text-accent-foreground shadow-sm'
+              ? 'bg-accent text-accent-foreground'
               : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
           )}
         >
