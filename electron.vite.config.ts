@@ -19,5 +19,17 @@ export default defineConfig({
       },
     },
     plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        // Dependencies ship optimisation hints (`@__PURE__`) in places Rollup
+        // cannot use. It drops them safely; there is nothing for us to fix.
+        // Every other warning, and this one in our own code, still shows.
+        onwarn(warning, warn) {
+          const fromDependency = warning.id?.includes('node_modules') ?? false;
+          if (warning.code === 'INVALID_ANNOTATION' && fromDependency) return;
+          warn(warning);
+        },
+      },
+    },
   },
 });
