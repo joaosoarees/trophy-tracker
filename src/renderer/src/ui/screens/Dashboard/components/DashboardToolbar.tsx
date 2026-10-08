@@ -4,7 +4,7 @@ import {
   type DashboardFilter,
   type DashboardSort,
 } from '@shared/dashboardSort';
-import { NativeSelect } from '@ui/components/NativeSelect';
+import { OptionSelect } from '@ui/components/OptionSelect';
 import { SearchBox } from '@ui/components/SearchBox';
 import { Segmented } from '@ui/components/Segmented';
 
@@ -42,8 +42,9 @@ export function DashboardToolbar({
           { value: 'complete', label: t.dashboard.complete(complete) },
         ]}
       />
-      <span className="flex-1" />
-      <NativeSelect
+      <OptionSelect
+        // Pushed to the right, also when a narrow window wraps it to its own row.
+        className="ml-auto"
         label={t.common.sortBy}
         value={sort}
         onChange={onSortChange}

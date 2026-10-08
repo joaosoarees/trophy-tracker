@@ -84,7 +84,7 @@ src/renderer/src/      the interface, in two layers
   ui/                  everything that is drawn
     App.tsx + useAppController.ts   decides between onboarding and the app
     screens/             one folder per screen: Game, Dashboard, Settings, Onboarding
-    components/          shared between screens: AppShell, Pressable, IconButton, Hint, NativeSelect,
+    components/          shared between screens: AppShell, Pressable, IconButton, Hint, OptionSelect,
                          RemoteImage, ProgressBar, Segmented, SearchBox, Empty
     primitives/          shadcn/ui components (generated; do not hand-edit without a reason)
     styles/index.css     Tailwind and the theme tokens
@@ -263,7 +263,7 @@ An automated audit (axe) of every screen reports zero violations; keep it that w
 - **Every clickable has a visible hover**, normally a background tint (`hover:bg-accent/40`), not only a text colour change.
 - **Icon-only buttons** use `IconButton`, whose `label` is mandatory: it is both the accessible name and the tooltip. Explain other controls with `Hint`, never with the native `title` (it is slow and does not show on keyboard focus).
 - **State is announced, not just drawn:** `aria-pressed` on toggles (Segmented, pin, always on top, hidden only), `aria-current="page"` on the current tab, `aria-expanded` on what opens a section.
-- **Selects** go through `NativeSelect`, whose `label` is mandatory.
+- **Selects** go through `OptionSelect`, whose `label` is mandatory. Its list is drawn inside the page; a native `<select>` opens an OS-level popup that is slow to close under WSLg and cannot be themed, so it is forbidden by lint.
 - **Structure:** one `<main>` per window, `<nav>` with a label, and headings in order (`h1` for the screen, `h2` inside it).
 - **Motion** is turned off globally under `prefers-reduced-motion`; do not add animation that bypasses it.
 

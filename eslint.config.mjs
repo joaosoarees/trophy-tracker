@@ -140,10 +140,7 @@ export default defineConfig(
     // Every clickable element carries the pointer cursor, the focus ring and
     // the disabled state; those live in Button and Pressable.
     files: ['src/renderer/src/ui/**/*.tsx'],
-    ignores: [
-      'src/renderer/src/ui/components/Pressable.tsx',
-      'src/renderer/src/ui/components/NativeSelect.tsx',
-    ],
+    ignores: ['src/renderer/src/ui/components/Pressable.tsx'],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -154,7 +151,8 @@ export default defineConfig(
         },
         {
           selector: "JSXOpeningElement[name.name='select']",
-          message: 'Use NativeSelect, which requires an accessible label.',
+          message:
+            'Use OptionSelect: its list is drawn in the page and it requires a label.',
         },
         {
           selector:

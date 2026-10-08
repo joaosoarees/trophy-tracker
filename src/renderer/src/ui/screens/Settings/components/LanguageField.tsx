@@ -1,6 +1,6 @@
 import { useT } from '@app/hooks/useT';
 import { type Language, LANGUAGE_CODES, LANGUAGES } from '@shared/i18n';
-import { NativeSelect } from '@ui/components/NativeSelect';
+import { OptionSelect } from '@ui/components/OptionSelect';
 
 interface ILanguageFieldProps {
   value: Language;
@@ -11,9 +11,9 @@ export function LanguageField({ value, onChange }: ILanguageFieldProps) {
   const t = useT();
 
   return (
-    <label className="flex w-full flex-col gap-1.5">
+    <div className="flex w-full flex-col gap-1.5">
       <span className="font-medium">{t.settings.language}</span>
-      <NativeSelect
+      <OptionSelect
         label={t.settings.language}
         value={value}
         onChange={onChange}
@@ -24,6 +24,6 @@ export function LanguageField({ value, onChange }: ILanguageFieldProps) {
         className="h-9 w-full text-sm"
       />
       <small className="text-muted-foreground">{t.settings.languageHint}</small>
-    </label>
+    </div>
   );
 }

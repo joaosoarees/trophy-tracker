@@ -7,7 +7,7 @@ import {
   SORTS_BY_FILTER,
 } from '@shared/achievementSort';
 import { Hint } from '@ui/components/Hint';
-import { NativeSelect } from '@ui/components/NativeSelect';
+import { OptionSelect } from '@ui/components/OptionSelect';
 import { SearchBox } from '@ui/components/SearchBox';
 import { Segmented } from '@ui/components/Segmented';
 import { Button } from '@ui/primitives/button';
@@ -65,8 +65,9 @@ export function AchievementToolbar({
           {t.game.hiddenOnly(hiddenCount)}
         </Button>
       </Hint>
-      <span className="flex-1" />
-      <NativeSelect
+      <OptionSelect
+        // Pushed to the right, also when a narrow window wraps it to its own row.
+        className="ml-auto"
         label={t.common.sortBy}
         value={sort}
         onChange={onSortChange}
