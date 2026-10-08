@@ -9,7 +9,7 @@ export function useAppShellController() {
     useShallow((state) => ({
       tab: state.navigation.tab,
       alwaysOnTop: state.settings.alwaysOnTop,
-      hasUpdate: Boolean(state.settings.appInfo?.newVersion),
+      hasUpdate: Boolean(state.updates.appInfo?.newVersion),
       goTo: state.navigation.goTo,
       toggleAlwaysOnTop: state.settings.toggleAlwaysOnTop,
     })),

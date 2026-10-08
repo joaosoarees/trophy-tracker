@@ -188,6 +188,21 @@ export const en = {
     updateCheckFailed: 'Could not check. Check your connection.',
   },
 
+  update: {
+    checking: 'Checking for updates…',
+    found: (version: string) => `Version ${version} found`,
+    downloading: (percent: number) => `Downloading… ${percent}%`,
+    restartNotice:
+      'The app restarts by itself when the download finishes. Your data is kept.',
+    readyTitle: (version: string) => `Version ${version} was downloaded`,
+    readyDescription:
+      'The app needs to restart to finish the update. Your data is kept.',
+    restartNow: 'Restart now',
+    later: 'Later',
+    available: (version: string) => `Version ${version} is available`,
+    see: 'See',
+  },
+
   onboarding: {
     steps: {
       language: 'Language',

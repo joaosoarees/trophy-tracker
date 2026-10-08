@@ -41,6 +41,7 @@ describe('UpdateChecker', () => {
       version: '1.2.0',
       newVersion: '1.3.0',
       updateStatus: 'manual',
+      downloadPercent: null,
     });
     expect(fetchImpl.calls).toEqual([
       'https://api.github.com/repos/someone/app/releases/latest',

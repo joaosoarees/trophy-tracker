@@ -1,7 +1,6 @@
 import { toast } from 'sonner';
 
 import { SettingsService } from '@app/services/SettingsService';
-import { SystemService } from '@app/services/SystemService';
 import type { StoreSlice } from '@app/store/Store';
 import {
   type AchievementFilter,
@@ -16,15 +15,12 @@ import {
   type IDashboardSort,
 } from '@shared/dashboardSort';
 import { type Language, messagesFor } from '@shared/i18n';
-import { type IAppInfo } from '@shared/types/AppInfo';
 import { type IAppState } from '@shared/types/AppState';
 
 type SettingsStore = {
   /** What the main process knows about the setup; `null` until the first read. */
   appState: IAppState | null;
   alwaysOnTop: boolean;
-  /** Running version and whether a later one is out; `null` until asked. */
-  appInfo: IAppInfo | null;
   /** Order chosen for each list of a game; kept across games and restarts. */
   achievementSort: IAchievementSort;
   /** Order chosen for each list of the dashboard; kept across restarts. */
@@ -33,12 +29,6 @@ type SettingsStore = {
 
 type SettingsActions = {
   load: () => Promise<void>;
-  /** Asks for the version in the background; a failure just leaves it unknown. */
-  loadAppInfo: () => Promise<void>;
-  /** Looks for a newer version now; answers whether the check could be made. */
-  checkForUpdates: () => Promise<boolean>;
-  /** Takes what the main process announces while an update downloads. */
-  setAppInfo: (appInfo: IAppInfo) => void;
   /** Takes a fresh state from the main process and syncs the interface language with it. */
   apply: (appState: IAppState) => void;
   toggleAlwaysOnTop: () => Promise<void>;
@@ -64,7 +54,6 @@ export type SettingsSlice = SettingsStore & SettingsActions;
 export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
   appState: null,
   alwaysOnTop: false,
-  appInfo: null,
   achievementSort: DEFAULT_ACHIEVEMENT_SORT,
   dashboardSort: DEFAULT_DASHBOARD_SORT,
 
@@ -82,33 +71,6 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
       'settings/load',
     );
   },
-
-  loadAppInfo: async () => {
-    try {
-      get().settings.setAppInfo(await SystemService.getAppInfo());
-    } catch {
-      // Not knowing the version changes nothing else in the app.
-    }
-  },
-
-  checkForUpdates: async () => {
-    try {
-      const { ok, info } = await SystemService.checkForUpdates();
-      get().settings.setAppInfo(info);
-      return ok;
-    } catch {
-      return false;
-    }
-  },
-
-  setAppInfo: (appInfo) =>
-    set(
-      (prevState) => {
-        prevState.settings.appInfo = appInfo;
-      },
-      false,
-      'settings/setAppInfo',
-    ),
 
   apply: (appState) =>
     set(

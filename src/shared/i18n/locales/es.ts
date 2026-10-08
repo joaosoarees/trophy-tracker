@@ -196,6 +196,21 @@ export const es: Messages = {
     updateCheckFailed: 'No se ha podido comprobar. Revisa tu conexión.',
   },
 
+  update: {
+    checking: 'Buscando actualizaciones…',
+    found: (version) => `Versión ${version} encontrada`,
+    downloading: (percent) => `Descargando… ${percent}%`,
+    restartNotice:
+      'La aplicación se reinicia sola cuando termine la descarga. Tus datos se conservan.',
+    readyTitle: (version) => `Se ha descargado la versión ${version}`,
+    readyDescription:
+      'La aplicación necesita reiniciarse para completar la actualización. Tus datos se conservan.',
+    restartNow: 'Reiniciar ahora',
+    later: 'Más tarde',
+    available: (version) => `La versión ${version} está disponible`,
+    see: 'Ver',
+  },
+
   onboarding: {
     steps: {
       language: 'Idioma',

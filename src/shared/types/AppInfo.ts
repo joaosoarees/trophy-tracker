@@ -18,4 +18,6 @@ export interface IAppInfo {
   /** Version of a later release, when there is one. */
   newVersion: string | null;
   updateStatus: UpdateStatus;
+  /** From 0 to 100 while a version downloads; `null` otherwise. */
+  downloadPercent: number | null;
 }

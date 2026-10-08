@@ -196,6 +196,21 @@ export const fr: Messages = {
     updateCheckFailed: 'La vérification a échoué. Vérifiez votre connexion.',
   },
 
+  update: {
+    checking: 'Recherche de mises à jour…',
+    found: (version) => `Version ${version} trouvée`,
+    downloading: (percent) => `Téléchargement… ${percent} %`,
+    restartNotice:
+      'L’application redémarre toute seule à la fin du téléchargement. Vos données sont conservées.',
+    readyTitle: (version) => `La version ${version} a été téléchargée`,
+    readyDescription:
+      'L’application doit redémarrer pour terminer la mise à jour. Vos données sont conservées.',
+    restartNow: 'Redémarrer maintenant',
+    later: 'Plus tard',
+    available: (version) => `La version ${version} est disponible`,
+    see: 'Voir',
+  },
+
   onboarding: {
     steps: {
       language: 'Langue',

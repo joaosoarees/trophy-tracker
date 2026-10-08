@@ -23,18 +23,21 @@ export function createAutoUpdater(): IAutoUpdater | null {
     return null;
   }
 
-  autoUpdater.autoDownload = true;
-  // The new version is installed when the user asks, never behind their back.
+  // `AppUpdates` decides whether a version that was found is downloaded.
+  autoUpdater.autoDownload = false;
+  // A downloaded version is installed when the interface asks, not on exit.
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.logger = null;
 
   return {
-    start: ({ onDownloading, onReady, onError }) => {
-      autoUpdater.on('update-available', (info) => onDownloading(info.version));
+    start: ({ onProgress, onReady, onError }) => {
+      autoUpdater.on('download-progress', (info) => onProgress(info.percent));
       autoUpdater.on('update-downloaded', (info) => onReady(info.version));
       autoUpdater.on('error', (error) => onError(error.stack ?? error.message));
     },
-    check: () => autoUpdater.checkForUpdates(),
+    check: async () =>
+      (await autoUpdater.checkForUpdates())?.updateInfo.version ?? null,
+    download: () => autoUpdater.downloadUpdate(),
     install: () => autoUpdater.quitAndInstall(),
   };
 }

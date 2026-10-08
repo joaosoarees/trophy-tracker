@@ -46,6 +46,7 @@ export class UpdateChecker {
       version: this.currentVersion,
       newVersion: this.newVersion,
       updateStatus: 'manual',
+      downloadPercent: null,
     };
   }
 

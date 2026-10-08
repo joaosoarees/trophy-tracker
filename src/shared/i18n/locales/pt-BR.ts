@@ -188,6 +188,21 @@ export const ptBR: Messages = {
     updateCheckFailed: 'Não foi possível verificar. Confira sua conexão.',
   },
 
+  update: {
+    checking: 'Buscando atualizações…',
+    found: (version) => `Versão ${version} encontrada`,
+    downloading: (percent) => `Baixando… ${percent}%`,
+    restartNotice:
+      'O app reinicia sozinho quando o download terminar. Seus dados são mantidos.',
+    readyTitle: (version) => `A versão ${version} foi baixada`,
+    readyDescription:
+      'O app precisa reiniciar para concluir a atualização. Seus dados são mantidos.',
+    restartNow: 'Reiniciar agora',
+    later: 'Depois',
+    available: (version) => `A versão ${version} está disponível`,
+    see: 'Ver',
+  },
+
   onboarding: {
     steps: {
       language: 'Idioma',

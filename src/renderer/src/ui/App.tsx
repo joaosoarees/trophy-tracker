@@ -6,8 +6,10 @@ import { namedLazyLoad } from '@app/lib/namedLazyLoad';
 import { AppShell } from './components/AppShell';
 import { CrashScreen } from './components/CrashScreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { UpdateReadyDialog } from './components/UpdateReadyDialog';
 import { Skeleton } from './primitives/skeleton';
 import { TooltipProvider } from './primitives/tooltip';
+import { Update } from './screens/Update';
 import { useAppController } from './useAppController';
 
 // Most launches never show the onboarding, so its code (and the form
@@ -31,25 +33,53 @@ function Content() {
     canCancelOnboarding,
     handleOnboardingDone,
     handleOnboardingCancel,
+    isStartingUp,
+    updateVersion,
+    updatePercent,
+    readyVersion,
+    isUpdateReadyOpen,
+    handleRestartToUpdate,
+    handleUpdateLater,
   } = useAppController();
+
+  if (isStartingUp) {
+    return <Update version={updateVersion} percent={updatePercent} />;
+  }
 
   if (!appState) {
     return null;
   }
 
+  const updateReadyDialog = readyVersion !== null && (
+    <UpdateReadyDialog
+      open={isUpdateReadyOpen}
+      version={readyVersion}
+      onRestart={handleRestartToUpdate}
+      onLater={handleUpdateLater}
+    />
+  );
+
   if (showOnboarding) {
     return (
-      <Suspense fallback={<OnboardingFallback />}>
-        <Onboarding
-          state={appState}
-          onDone={handleOnboardingDone}
-          onCancel={canCancelOnboarding ? handleOnboardingCancel : undefined}
-        />
-      </Suspense>
+      <>
+        <Suspense fallback={<OnboardingFallback />}>
+          <Onboarding
+            state={appState}
+            onDone={handleOnboardingDone}
+            onCancel={canCancelOnboarding ? handleOnboardingCancel : undefined}
+          />
+        </Suspense>
+        {updateReadyDialog}
+      </>
     );
   }
 
-  return <AppShell />;
+  return (
+    <>
+      <AppShell />
+      {updateReadyDialog}
+    </>
+  );
 }
 
 export function App() {

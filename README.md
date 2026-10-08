@@ -20,7 +20,7 @@ The installers are not signed with a paid certificate yet, so the system warns o
 - **macOS:** after the first attempt to open the app, go to System Settings → Privacy & Security and choose "Open Anyway".
 - **Linux:** `sudo apt install ./Trophy-Tracker-<version>-amd64.deb`, or make the AppImage executable (`chmod +x`) and run it.
 
-On first run the app asks for a language, your SteamID and a Web API key (https://steamcommunity.com/dev/apikey), and checks your profile privacy. When a newer version is released, the app on Windows and the Linux AppImage download it and offer to restart; on macOS and with the `.deb`, the Settings screen says so and links to the download.
+On first run the app asks for a language, your SteamID and a Web API key (https://steamcommunity.com/dev/apikey), and checks your profile privacy. The app looks for a newer version as it opens. On Windows and with the Linux AppImage it downloads the version, showing the progress, and restarts into it; a version found while the app is in use downloads in the background and the app asks before restarting. On macOS and with the `.deb`, the app says a version is available and links to the download.
 
 Your data stays on your computer, in `%APPDATA%\trophy-tracker` (Windows), `~/Library/Application Support/trophy-tracker` (macOS) or `~/.config/trophy-tracker` (Linux).
 

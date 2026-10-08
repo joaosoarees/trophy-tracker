@@ -64,9 +64,16 @@ The same code runs on Windows, macOS, Linux and, for development, WSL. What diff
 - **Docker builds and tests, it does not run the app for the user:** `scripts/docker-dist.sh` builds the Linux and Windows installers in a container (the image brings Wine), and the package test installs the deb under a virtual display. macOS installers can only be built on macOS.
 - **GitHub Actions:** `ci.yml` checks formatting, lint, types, tests and the build on every push; `release.yml` runs on a `v*.*.*` tag (which must match `version` in `package.json`), builds the installers on the three systems and, when all three succeed, **publishes** the release with the installers and the update metadata (`latest*.yml`, block maps).
 - **New versions reach the user in two ways**, decided by `system/autoUpdate.ts`:
-  - **Windows and the Linux AppImage update themselves** (`electron-updater`): the new version downloads in the background and Settings offers "Restart to update". Nothing restarts or installs on its own (`autoInstallOnAppQuit` is off).
-  - **macOS and a .deb install only get a notice** with a button to the download page: macOS accepts updates only from apps signed with an Apple certificate, and a .deb needs the administrator password. `services/UpdateChecker.ts` asks GitHub for the latest release at most every six hours.
-  - `services/AppUpdates.ts` joins the two and falls back to the notice whenever the automatic path fails. "Check for updates" in Settings (`checkNow`) ignores the six-hour wait and gives the automatic path another chance. In both cases the gear icon gets a dot. A failure to check (offline, no release) means "nothing new".
+  - **Windows and the Linux AppImage update themselves** (`electron-updater`). `services/AppUpdates.ts` looks for a version, downloads it and reports the progress; the interface decides when the restart happens.
+  - **macOS and a .deb install only get a notice** with a button to the download page: macOS accepts updates only from apps signed with an Apple certificate, and a .deb needs the administrator password. `services/UpdateChecker.ts` asks GitHub for the latest release.
+  - `AppUpdates` falls back to the notice whenever the automatic path fails. A failure to check (offline, no release) means "nothing new".
+- **When the app opens** (`store/slices/updatesSlice.ts`, screen `ui/screens/Update`), before the onboarding or the app is shown, it waits up to 4 s to hear about a new version:
+  - found in time, where the app updates itself → the update screen shows the progress and **the app restarts by itself** when the download ends. Nothing was in use yet, so nothing is lost. If the download fails, the app opens normally;
+  - found in time, elsewhere → the app opens and a toast says a version is available, leading to Settings;
+  - nothing in 4 s (or offline) → the app opens; whatever arrives later is handled as below.
+- **With the app in use** (the hourly timer in `main/index.ts`, which checks once six hours have passed, or "Check for updates" in Settings), a version downloads in the background, Settings shows the progress, and when it is ready a dialog asks: restart now or later. The app never restarts by itself while in use.
+- A window reload (language change) is not the app opening: `sessionStorage` remembers that the startup check ran.
+- **Restart loop guard:** before closing to install, the app records the version in `settings.json` (`updateAttempt`). If it opens and that version is still newer than the running one, the install failed: that version is never installed automatically again, only offered for download. Without this, a blocked installer would close the app on every start.
 - **Smart App Control blocks unsigned installers** (found the hard way: 0.1.0 and 0.2.0 installed, 0.3.0 was refused by the same machine). With it on, Windows runs an unsigned executable only if Microsoft's reputation service accepts it, which cannot be predicted, and there is no per-app exception. So on Windows, when Smart App Control is enforcing and the running app is unsigned (`isInstallBlockedBySystem` in `system/autoUpdate.ts`), the app does not download or restart: the notice says the system would block the install (`updateStatus: 'blocked'`). The check looks at the signature of the running app, so it stops applying by itself once the installers are signed.
 - **Signing plan:** free signing for open source through SignPath Foundation (hence the MIT license and the "Code signing policy" and "Privacy" sections of the README, which their terms require). It needs their approval, and every signed release then needs a manual approval, so releases will stop being fully automatic.
 - **What protects the update:** the installers are not signed, so the only guarantee is the hash in `latest*.yml`, published in the same release. Whoever can publish a release controls what users install; that is why the `v*` tags are protected on GitHub (only the owner creates, moves or deletes them) and `main` refuses force-pushes.
@@ -93,6 +100,8 @@ src/shared/            the contract between the two sides: types and pure logic
   achievementSort.ts     the orders each list of a game can have, and the stored preference
   dashboardSort.ts       the same for the two lists of the dashboard
   view.ts                mergeView: merges reads, reusing what did not change
+  version.ts             isNewerVersion
+  updateFlow.ts          what an update state means for the interface (hold the app, tell the user)
   validation.ts          SteamID and key formats
   i18n/                  languages: index.ts (registry) and locales/ (one file per language)
 
@@ -128,9 +137,10 @@ src/renderer/src/      the interface, in two layers
                          reportUnhandledErrors
   ui/                  everything that is drawn
     App.tsx + useAppController.ts   decides between onboarding and the app
-    screens/             one folder per screen: Game, Dashboard, Settings, Onboarding
+    screens/             one folder per screen: Game, Dashboard, Settings, Onboarding, Update
     components/          shared between screens: AppShell, Pressable, IconButton, Hint, OptionSelect,
-                         RemoteImage, ProgressBar, Segmented, SearchBox, Empty, ErrorBoundary, CrashScreen
+                         RemoteImage, ProgressBar, Segmented, SearchBox, Empty, ErrorBoundary, CrashScreen,
+                         UpdateReadyDialog
     primitives/          shadcn/ui components (generated; do not hand-edit without a reason)
     styles/index.css     Tailwind and the theme tokens
     utils/               cn, text (accent-free search), format (dates and numbers)
@@ -255,7 +265,7 @@ The screen never waits for something it can already show, and never keeps showin
 - **Dashboard:** loads on startup, on ↻ (`all`) and when a game closes (`changed`: only games whose playtime changed).
 - **Identical simultaneous requests** share one read (`Tracker.once`).
 - The periodic checks live in `GameWatcher` (running game every 10 s, unlocks every 60 s). Where the running game comes from the Web API, that check reaches Steam at most every 30 s.
-- **Update check:** one check on startup and then at most every six hours; a version already downloaded is not looked for again.
+- **Update check:** one check when the app opens and then at most every six hours (an hourly timer asks whether they have passed); a version being downloaded or already downloaded is not looked for again. A window reload does not check.
 - **Art and names** are cached on disk; a store failure never takes the screen down.
 
 When touching this, measure before and after: count HTTP and IPC calls on startup, while idle and when switching tabs.
@@ -276,6 +286,7 @@ store/
     gamesSlice.ts         game views already read, by appid
     userDataSlice.ts      notes, pins and checklists
     dashboardSlice.ts     dashboard
+    updatesSlice.ts       new versions: the check as the app opens, download progress, the restart
 ```
 
 Conventions:

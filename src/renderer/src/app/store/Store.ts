@@ -5,6 +5,7 @@ import type { GamesSlice } from './slices/gamesSlice';
 import type { NavigationSlice } from './slices/navigationSlice';
 import type { SessionSlice } from './slices/sessionSlice';
 import type { SettingsSlice } from './slices/settingsSlice';
+import type { UpdatesSlice } from './slices/updatesSlice';
 import type { UserDataSlice } from './slices/userDataSlice';
 
 export type Store = {
@@ -14,6 +15,7 @@ export type Store = {
   games: GamesSlice;
   userData: UserDataSlice;
   dashboard: DashboardSlice;
+  updates: UpdatesSlice;
 };
 
 export type StoreSlice<TSlice> = StateCreator<

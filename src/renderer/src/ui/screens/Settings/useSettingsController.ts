@@ -18,18 +18,18 @@ export function useSettingsController() {
     changeLanguage,
     eraseCredentials,
     startReconfiguring,
-    flushUserData,
     checkForUpdates,
+    restartToUpdate,
   } = useStore(
     useShallow((state) => ({
       profile: state.settings.appState?.profile ?? null,
       language: state.session.language,
-      appInfo: state.settings.appInfo,
+      appInfo: state.updates.appInfo,
       changeLanguage: state.settings.changeLanguage,
       eraseCredentials: state.settings.eraseCredentials,
       startReconfiguring: state.navigation.startReconfiguring,
-      flushUserData: state.userData.flush,
-      checkForUpdates: state.settings.checkForUpdates,
+      checkForUpdates: state.updates.check,
+      restartToUpdate: state.updates.restart,
     })),
   );
 
@@ -49,12 +49,6 @@ export function useSettingsController() {
     setUpdateCheck(ok ? 'upToDate' : 'failed');
   }
 
-  function handleInstallUpdate() {
-    // Notes still waiting to be written must not be lost to the restart.
-    flushUserData();
-    void SystemService.installUpdate();
-  }
-
   return {
     profile,
     language,
@@ -66,7 +60,7 @@ export function useSettingsController() {
     handleRedoSetup: startReconfiguring,
     updateCheck,
     handleCheckForUpdates: () => void handleCheckForUpdates(),
-    handleInstallUpdate,
+    handleInstallUpdate: restartToUpdate,
     handleLearnAboutBlock: () =>
       void SystemService.openExternal('smartAppControl'),
     handleDownload: () => void SystemService.openExternal('download'),

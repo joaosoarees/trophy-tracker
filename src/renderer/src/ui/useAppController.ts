@@ -17,6 +17,12 @@ export function useAppController() {
     apply,
     followRunningGame,
     stopReconfiguring,
+    startUpdates,
+    updateStartup,
+    updateInfo,
+    isUpdateReadyOpen,
+    restartToUpdate,
+    dismissUpdateReady,
   } = useStore(
     useShallow((state) => ({
       appState: state.settings.appState,
@@ -28,6 +34,12 @@ export function useAppController() {
       apply: state.settings.apply,
       followRunningGame: state.navigation.followRunningGame,
       stopReconfiguring: state.navigation.stopReconfiguring,
+      startUpdates: state.updates.start,
+      updateStartup: state.updates.startup,
+      updateInfo: state.updates.appInfo,
+      isUpdateReadyOpen: state.updates.isReadyDialogOpen,
+      restartToUpdate: state.updates.restart,
+      dismissUpdateReady: state.updates.dismissReady,
     })),
   );
 
@@ -36,6 +48,9 @@ export function useAppController() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Runs before anything else is shown, set up or not.
+  useEffect(() => startUpdates(), [startUpdates]);
 
   useEffect(() => {
     document.title = t.appTitle;
@@ -89,5 +104,14 @@ export function useAppController() {
     canCancelOnboarding: configured && reconfiguring,
     handleOnboardingDone,
     handleOnboardingCancel,
+    isStartingUp: updateStartup !== 'done',
+    // While only checking there is no version to show yet.
+    updateVersion:
+      updateStartup === 'updating' ? (updateInfo?.newVersion ?? null) : null,
+    updatePercent: updateInfo?.downloadPercent ?? 0,
+    readyVersion: updateInfo?.newVersion ?? null,
+    isUpdateReadyOpen,
+    handleRestartToUpdate: restartToUpdate,
+    handleUpdateLater: dismissUpdateReady,
   };
 }

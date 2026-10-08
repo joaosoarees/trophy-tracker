@@ -170,6 +170,16 @@ describe('Store', () => {
     expect(again.getProfile()).toEqual(profile);
   });
 
+  it('remembers the version the app closed itself to install', () => {
+    const dir = tempDir();
+    const store = new Store(dir);
+    expect(store.getUpdateAttempt()).toBeNull();
+    store.setUpdateAttempt('1.2.0');
+    expect(new Store(dir).getUpdateAttempt()).toBe('1.2.0');
+    store.setUpdateAttempt(null);
+    expect(new Store(dir).getUpdateAttempt()).toBeNull();
+  });
+
   it('encrypts the key when a cipher is available', () => {
     const dir = tempDir();
     const cipher = {

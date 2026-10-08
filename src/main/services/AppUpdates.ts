@@ -1,11 +1,12 @@
 import { type IAppInfo, type IUpdateCheck } from '@shared/types/AppInfo';
+import { isNewerVersion } from '@shared/version';
 
 const RECHECK_AFTER_MS = 6 * 60 * 60 * 1000;
 
 export interface IAutoUpdaterListener {
-  /** A newer version was found and its download started. */
-  onDownloading: (version: string) => void;
-  /** The download finished; restarting the app installs it. */
+  /** How much of the new version has been downloaded, from 0 to 100. */
+  onProgress: (percent: number) => void;
+  /** The download finished; installing it restarts the app. */
   onReady: (version: string) => void;
   onError: (detail: string) => void;
 }
@@ -13,8 +14,10 @@ export interface IAutoUpdaterListener {
 /** The part of the system that can download and install a new version by itself. */
 export interface IAutoUpdater {
   start: (listener: IAutoUpdaterListener) => void;
-  /** Looks for a newer version and, if there is one, downloads it. */
-  check: () => Promise<unknown>;
+  /** The latest version published, or `null` when there is none. Downloads nothing. */
+  check: () => Promise<string | null>;
+  /** Downloads the version the last check found. */
+  download: () => Promise<unknown>;
   /** Closes the app, installs the downloaded version and opens it again. */
   install: () => void;
 }
@@ -35,6 +38,11 @@ interface IAppUpdatesDeps {
    * Asked once.
    */
   isInstallBlocked?: () => Promise<boolean>;
+  /** The version the app last closed itself to install, kept across restarts. */
+  attempt?: {
+    get: () => string | null;
+    set: (version: string | null) => void;
+  };
   onChange: (info: IAppInfo) => void;
   logError?: (source: string, detail: string) => void;
   now?: () => number;
@@ -42,9 +50,10 @@ interface IAppUpdatesDeps {
 
 /**
  * What the interface knows about new versions. Where the app can update
- * itself, the new version is downloaded in the background and installed when
- * the user asks to restart; nothing restarts on its own. Everywhere else, and
- * whenever the automatic path fails, the user is pointed to the download page.
+ * itself, a new version is downloaded as soon as it is found and installed
+ * when the interface asks (it decides when a restart is acceptable).
+ * Everywhere else, and whenever the automatic path fails, the user is pointed
+ * to the download page.
  */
 export class AppUpdates {
   private readonly currentVersion: string;
@@ -53,8 +62,17 @@ export class AppUpdates {
   private readonly onChange: (info: IAppInfo) => void;
   private readonly now: () => number;
   private readonly isInstallBlocked: () => Promise<boolean>;
+  private readonly attempt: IAppUpdatesDeps['attempt'];
+  /**
+   * A version the app already closed itself to install and that is still not
+   * the running one: installing it failed. Trying again on every start would
+   * close the app in a loop, so that version is only offered for download.
+   */
+  private readonly failedInstall: string | null;
   private blocked: Promise<boolean> | null = null;
+  private looking: Promise<void> | null = null;
   private newVersion: string | null = null;
+  private percent = 0;
   private status: 'idle' | 'downloading' | 'ready' | 'failed' = 'idle';
   private checkedAt: number | null = null;
 
@@ -63,6 +81,7 @@ export class AppUpdates {
     auto,
     checker,
     isInstallBlocked = () => Promise.resolve(false),
+    attempt,
     onChange,
     logError,
     now = Date.now,
@@ -73,10 +92,23 @@ export class AppUpdates {
     this.onChange = onChange;
     this.now = now;
     this.isInstallBlocked = isInstallBlocked;
+    this.attempt = attempt;
+
+    const attempted = attempt?.get() ?? null;
+    this.failedInstall =
+      attempted !== null && isNewerVersion(attempted, currentVersion)
+        ? attempted
+        : null;
+    // The attempt worked (or was for a version since left behind): forget it.
+    if (attempted !== null && this.failedInstall === null) attempt?.set(null);
 
     auto?.start({
-      onDownloading: (version) => this.set(version, 'downloading'),
-      onReady: (version) => this.set(version, 'ready'),
+      onProgress: (percent) => this.progress(percent),
+      onReady: (version) => {
+        this.newVersion = version;
+        this.status = 'ready';
+        this.onChange(this.info());
+      },
       onError: (detail) => {
         logError?.('main: auto-update', detail);
         this.fail();
@@ -94,17 +126,16 @@ export class AppUpdates {
 
     const isStale =
       this.checkedAt === null || this.now() - this.checkedAt > RECHECK_AFTER_MS;
-    // A version already downloaded is not looked for again.
-    if (isStale && this.status !== 'ready') {
-      this.checkedAt = this.now();
-      // Not awaited: the answer arrives through `onChange`.
-      void this.auto.check().catch(() => this.fail());
+    if (isStale && this.status === 'idle') {
+      // Not awaited: what it finds arrives through `onChange`.
+      void this.look();
     }
     return this.info();
   }
 
   /**
-   * The check the user asks for: it ignores the six-hour wait and gives the
+   * A check that waits for the answer: the one made when the app opens and
+   * the one the user asks for. It ignores the six-hour wait and gives the
    * automatic update another chance if it had failed before.
    */
   async checkNow(): Promise<IUpdateCheck> {
@@ -113,18 +144,9 @@ export class AppUpdates {
       return { ok, info: this.asBlocked(await this.checker.getAppInfo()) };
     }
 
-    if (this.auto && this.status === 'ready') {
-      return { ok: true, info: this.info() };
-    }
-
     if (this.auto) {
       if (this.status === 'failed') this.status = 'idle';
-      this.checkedAt = this.now();
-      try {
-        await this.auto.check();
-      } catch {
-        this.fail();
-      }
+      if (this.status === 'idle') await this.look();
       // A failure may also have arrived as an event while the check ran.
       if (this.currentStatus() !== 'failed') {
         return { ok: true, info: this.info() };
@@ -137,7 +159,48 @@ export class AppUpdates {
 
   /** Only does something once a version has finished downloading. */
   install(): void {
-    if (this.status === 'ready') this.auto?.install();
+    if (this.status !== 'ready' || !this.auto) return;
+    this.attempt?.set(this.newVersion);
+    this.auto.install();
+  }
+
+  /** Looks for a newer version and starts downloading it; simultaneous calls share one look. */
+  private look(): Promise<void> {
+    this.looking ??= this.lookOnce().finally(() => (this.looking = null));
+    return this.looking;
+  }
+
+  private async lookOnce(): Promise<void> {
+    if (!this.auto) return;
+    this.checkedAt = this.now();
+    try {
+      const version = await this.auto.check();
+      if (version === null || !isNewerVersion(version, this.currentVersion)) {
+        return;
+      }
+      if (version === this.failedInstall) {
+        this.fail();
+        return;
+      }
+      this.newVersion = version;
+      this.percent = 0;
+      this.status = 'downloading';
+      this.onChange(this.info());
+      // Not awaited: progress and the end arrive as events.
+      void this.auto.download().catch(() => this.fail());
+    } catch {
+      this.fail();
+    }
+  }
+
+  private progress(percent: number): void {
+    if (this.status !== 'downloading') return;
+    const whole = Math.max(0, Math.min(100, Math.floor(percent)));
+    // The updater reports several times a second; the interface only needs
+    // to hear when the number it shows changes.
+    if (whole === this.percent) return;
+    this.percent = whole;
+    this.onChange(this.info());
   }
 
   /**
@@ -164,15 +227,8 @@ export class AppUpdates {
       version: this.currentVersion,
       newVersion: this.newVersion,
       updateStatus: this.status === 'ready' ? 'ready' : 'downloading',
+      downloadPercent: this.status === 'downloading' ? this.percent : null,
     };
-  }
-
-  private set(version: string, status: 'downloading' | 'ready'): void {
-    // A late progress event must not undo a finished download.
-    if (this.status === 'ready' && status === 'downloading') return;
-    this.newVersion = version;
-    this.status = status;
-    this.onChange(this.info());
   }
 
   /** From here on the user is offered the download page instead. */

@@ -67,6 +67,8 @@ interface ISettingsFile {
   language?: string;
   achievementSort?: unknown;
   dashboardSort?: unknown;
+  /** Version the app last closed itself to install. */
+  updateAttempt?: string;
 }
 
 type UserDataFile = Record<string, GameUserData>;
@@ -242,6 +244,17 @@ export class Store {
 
   setDashboardSort(sort: IDashboardSort): void {
     this.settings.dashboardSort = parseDashboardSort(sort);
+    this.write('settings.json', this.settings);
+  }
+
+  getUpdateAttempt(): string | null {
+    const version = this.settings.updateAttempt;
+    return typeof version === 'string' ? version : null;
+  }
+
+  setUpdateAttempt(version: string | null): void {
+    if (version === null) delete this.settings.updateAttempt;
+    else this.settings.updateAttempt = version;
     this.write('settings.json', this.settings);
   }
 

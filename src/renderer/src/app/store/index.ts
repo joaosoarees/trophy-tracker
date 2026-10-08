@@ -7,6 +7,7 @@ import { createGamesSlice } from './slices/gamesSlice';
 import { createNavigationSlice } from './slices/navigationSlice';
 import { createSessionSlice } from './slices/sessionSlice';
 import { createSettingsSlice } from './slices/settingsSlice';
+import { createUpdatesSlice } from './slices/updatesSlice';
 import { createUserDataSlice } from './slices/userDataSlice';
 import type { Store } from './Store';
 
@@ -20,6 +21,7 @@ export const useStore = create<Store>()(
       games: { ...createGamesSlice(...params) },
       userData: { ...createUserDataSlice(...params) },
       dashboard: { ...createDashboardSlice(...params) },
+      updates: { ...createUpdatesSlice(...params) },
     })),
     { enabled: import.meta.env.DEV },
   ),

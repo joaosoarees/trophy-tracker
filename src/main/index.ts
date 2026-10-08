@@ -74,6 +74,10 @@ void app.whenReady().then(() => {
       repository: RELEASES_REPOSITORY,
     }),
     isInstallBlocked: isInstallBlockedBySystem,
+    attempt: {
+      get: () => store.getUpdateAttempt(),
+      set: (version) => store.setUpdateAttempt(version),
+    },
     onChange: (info) => window.send(IpcEvent.appInfoChanged, info),
     logError: log,
   });
@@ -105,6 +109,16 @@ void app.whenReady().then(() => {
     alwaysOnTop: store.getAlwaysOnTop(),
   });
   watcher.start();
+  // The app can stay open for days: ask every hour whether the six hours
+  // since the last check have passed, and tell the interface what was found.
+  setInterval(
+    () =>
+      void updates
+        .getAppInfo()
+        .then((info) => window.send(IpcEvent.appInfoChanged, info))
+        .catch(() => {}),
+    60 * 60 * 1000,
+  );
 });
 
 app.on('window-all-closed', () => app.quit());

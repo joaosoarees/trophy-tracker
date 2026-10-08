@@ -1,6 +1,5 @@
 import { DashboardService } from '@app/services/DashboardService';
 import { GamesService } from '@app/services/GamesService';
-import { SystemService } from '@app/services/SystemService';
 
 import { useStore } from '.';
 
@@ -10,17 +9,15 @@ import { useStore } from '.';
  * language, settings and navigation are kept.
  */
 export function connectStore(): () => void {
-  const { session, settings, games, dashboard, userData } = useStore.getState();
+  const { session, games, dashboard, userData } = useStore.getState();
 
   void session.loadCurrent();
   void dashboard.load();
-  void settings.loadAppInfo();
 
   const offs = [
     GamesService.onCurrentChanged(session.setCurrent),
     GamesService.onGameUpdated(games.accept),
     DashboardService.onProgress(dashboard.setProgress),
-    SystemService.onAppInfoChanged(settings.setAppInfo),
   ];
   window.addEventListener('beforeunload', userData.flush);
 
