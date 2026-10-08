@@ -1,9 +1,9 @@
-import type { GameView } from '../../../../shared/types';
+import type { IGameView } from '../../../../shared/types';
 import { mergeView } from '../../../../shared/view';
 import type { StoreSlice } from '../Store';
 
 export type GameEntry = {
-  view: GameView | null;
+  view: IGameView | null;
   loading: boolean;
   error: string | null;
   /** Names of the achievements unlocked since the last read, until the notice is dismissed. */
@@ -19,7 +19,7 @@ type GamesActions = {
   open: (appid: number) => void;
   load: (appid: number, force?: boolean) => Promise<void>;
   /** Takes a new read, reusing what did not change. */
-  accept: (view: GameView) => void;
+  accept: (view: IGameView) => void;
   dismissUnlocked: (appid: number) => void;
 };
 

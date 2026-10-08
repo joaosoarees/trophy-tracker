@@ -9,50 +9,53 @@ import { join } from 'node:path';
 
 import { DEFAULT_LANGUAGE, isLanguage, type Language } from '../shared/i18n';
 import type {
-  AchievementUserData,
+  IAchievementUserData,
   GameUserData,
-  GameView,
-  Profile,
+  IGameView,
+  IProfile,
 } from '../shared/types';
 
 import type {
-  Credentials,
-  RawOwnedGame,
-  RawSchemaAchievement,
-  StoreArt,
+  ICredentials,
+  IRawOwnedGame,
+  IRawSchemaAchievement,
+  IStoreArt,
 } from './steam/client';
 
 /** Optional cipher for the key (Electron's safeStorage, when there is a keyring). */
-export interface Cipher {
+export interface ICipher {
   encrypt: (plain: string) => string;
   decrypt: (encoded: string) => string;
 }
 
-interface ConfigFile {
+interface IConfigFile {
   steamId?: string;
   apiKey?: string;
   apiKeyEncrypted?: string;
-  profile?: Profile;
+  profile?: IProfile;
 }
 
-export interface SummaryEntry {
+export interface ISummaryEntry {
   total: number;
   unlocked: number;
   /** Playtime at the time of the read; if it has not changed, neither have the achievements. */
   playtime: number;
 }
 
-interface CacheFile {
+interface ICacheFile {
   /** Language the Steam content was read in. */
   language?: string;
-  library?: { fetchedAt: number; games: RawOwnedGame[] };
-  games: Record<string, GameView>;
-  summaries: Record<string, SummaryEntry>;
-  art: Record<string, StoreArt>;
-  schemas: Record<string, { fetchedAt: number; items: RawSchemaAchievement[] }>;
+  library?: { fetchedAt: number; games: IRawOwnedGame[] };
+  games: Record<string, IGameView>;
+  summaries: Record<string, ISummaryEntry>;
+  art: Record<string, IStoreArt>;
+  schemas: Record<
+    string,
+    { fetchedAt: number; items: IRawSchemaAchievement[] }
+  >;
 }
 
-interface SettingsFile {
+interface ISettingsFile {
   alwaysOnTop: boolean;
   language?: string;
 }
@@ -60,14 +63,14 @@ interface SettingsFile {
 type UserDataFile = Record<string, GameUserData>;
 
 export class Store {
-  private config: ConfigFile;
-  private cache: CacheFile;
+  private config: IConfigFile;
+  private cache: ICacheFile;
   private userData: UserDataFile;
-  private settings: SettingsFile;
+  private settings: ISettingsFile;
 
   constructor(
     private dir: string,
-    private cipher: Cipher | null = null,
+    private cipher: ICipher | null = null,
   ) {
     mkdirSync(dir, { recursive: true });
     this.config = this.read('config.json', {});
@@ -101,7 +104,7 @@ export class Store {
     if (mode !== undefined) chmodSync(file, mode);
   }
 
-  getCredentials(): Credentials | null {
+  getCredentials(): ICredentials | null {
     const { steamId, apiKey, apiKeyEncrypted } = this.config;
     if (!steamId) return null;
     try {
@@ -115,11 +118,11 @@ export class Store {
     }
   }
 
-  getProfile(): Profile | null {
+  getProfile(): IProfile | null {
     return this.config.profile ?? null;
   }
 
-  setCredentials({ steamId, apiKey }: Credentials, profile: Profile): void {
+  setCredentials({ steamId, apiKey }: ICredentials, profile: IProfile): void {
     this.config = this.cipher
       ? { steamId, apiKeyEncrypted: this.cipher.encrypt(apiKey), profile }
       : { steamId, apiKey, profile };
@@ -143,51 +146,51 @@ export class Store {
     this.write('cache.json', this.cache);
   }
 
-  getLibrary(): CacheFile['library'] {
+  getLibrary(): ICacheFile['library'] {
     return this.cache.library;
   }
 
-  setLibrary(games: RawOwnedGame[], now = Date.now()): void {
+  setLibrary(games: IRawOwnedGame[], now = Date.now()): void {
     this.cache.library = { fetchedAt: now, games };
     this.saveCache();
   }
 
-  getGame(appid: number): GameView | null {
+  getGame(appid: number): IGameView | null {
     return this.cache.games[appid] ?? null;
   }
 
-  setGame(view: GameView): void {
+  setGame(view: IGameView): void {
     this.cache.games[view.appid] = view;
     this.saveCache();
   }
 
-  getSummary(appid: number): SummaryEntry | null {
+  getSummary(appid: number): ISummaryEntry | null {
     return this.cache.summaries[appid] ?? null;
   }
 
-  setSummaries(entries: Record<string, SummaryEntry>): void {
+  setSummaries(entries: Record<string, ISummaryEntry>): void {
     Object.assign(this.cache.summaries, entries);
     this.saveCache();
   }
 
-  getSchema(appid: number): CacheFile['schemas'][string] | null {
+  getSchema(appid: number): ICacheFile['schemas'][string] | null {
     return this.cache.schemas[appid] ?? null;
   }
 
   setSchema(
     appid: number,
-    items: RawSchemaAchievement[],
+    items: IRawSchemaAchievement[],
     now = Date.now(),
   ): void {
     this.cache.schemas[appid] = { fetchedAt: now, items };
     this.saveCache();
   }
 
-  getArt(appid: number): StoreArt | null {
+  getArt(appid: number): IStoreArt | null {
     return this.cache.art[appid] ?? null;
   }
 
-  setArt(entries: Map<number, StoreArt>): void {
+  setArt(entries: Map<number, IStoreArt>): void {
     for (const [appid, art] of entries) this.cache.art[appid] = art;
     this.saveCache();
   }
@@ -231,7 +234,7 @@ export class Store {
   setUserData(
     appid: number,
     achievementId: string,
-    data: AchievementUserData,
+    data: IAchievementUserData,
   ): void {
     const game = (this.userData[appid] ??= {});
     const empty =

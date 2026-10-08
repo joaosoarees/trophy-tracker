@@ -1,17 +1,17 @@
-import type { Achievement, GameView, GuideSite } from '../../shared/types';
+import type { IAchievement, IGameView, GuideSite } from '../../shared/types';
 
-import type { RawPlayerAchievement, RawSchemaAchievement } from './client';
+import type { IRawPlayerAchievement, IRawSchemaAchievement } from './client';
 
 const iconUrl = (appid: number, file: string): string =>
   file
     ? `https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/${appid}/${file}`
     : '';
 
-export interface GameSources {
+export interface IGameSources {
   appid: number;
   name: string;
-  schema: RawSchemaAchievement[];
-  player: RawPlayerAchievement[];
+  schema: IRawSchemaAchievement[];
+  player: IRawPlayerAchievement[];
   /** Current values of the player's stats. */
   stats: Record<string, number>;
   /** Achievement → stat that feeds its counter. */
@@ -27,10 +27,10 @@ export function buildGameView({
   stats,
   statMap,
   now,
-}: GameSources): GameView {
+}: IGameSources): IGameView {
   const playerById = new Map(player.map((p) => [p.apiname, p]));
 
-  const achievements = schema.map((s): Achievement => {
+  const achievements = schema.map((s): IAchievement => {
     const mine = playerById.get(s.internal_name);
     const unlocked = mine?.achieved === 1;
     const rarity =
@@ -38,7 +38,7 @@ export function buildGameView({
         ? NaN
         : Number(s.player_percent_unlocked);
 
-    let progress: Achievement['progress'] = null;
+    let progress: IAchievement['progress'] = null;
     const target = s.max_progress_int;
     if (target !== undefined && target > 0) {
       const statName = statMap.get(s.internal_name);
@@ -78,9 +78,9 @@ export function buildGameView({
 
 /** Achievements that became unlocked between two reads of the same game. */
 export function newlyUnlocked(
-  previous: GameView,
-  next: GameView,
-): Achievement[] {
+  previous: IGameView,
+  next: IGameView,
+): IAchievement[] {
   const had = new Set(
     previous.achievements.filter((a) => a.unlocked).map((a) => a.id),
   );

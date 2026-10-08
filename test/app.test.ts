@@ -24,7 +24,7 @@ import {
   NO_STATS,
   NOT_PUBLIC,
   STEAM_ID,
-  type Route,
+  type IRoute,
 } from './helpers';
 
 const tempDir = (): string => mkdtempSync(join(tmpdir(), 'stt-'));
@@ -37,10 +37,10 @@ const game = (appid: number, name: string, playtime: number, last = 0) => ({
   img_icon_url: 'abc',
   rtime_last_played: last,
 });
-const owned = (...games: ReturnType<typeof game>[]): Route => ({
+const owned = (...games: ReturnType<typeof game>[]): IRoute => ({
   json: { response: { game_count: games.length, games } },
 });
-const player = (unlocked: number, total: number): Route => ({
+const player = (unlocked: number, total: number): IRoute => ({
   json: {
     playerstats: {
       success: true,

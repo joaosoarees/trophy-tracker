@@ -19,8 +19,8 @@ import { cn } from '@/lib/utils';
 
 import { shownProgress } from '../../../shared/checklist';
 import type {
-  Achievement,
-  AchievementUserData,
+  IAchievement,
+  IAchievementUserData,
   GuideSite,
 } from '../../../shared/types';
 
@@ -31,12 +31,12 @@ const GUIDES: { site: GuideSite; icon: ReactNode }[] = [
 ];
 const SITE_NAMES = { youtube: 'YouTube', google: 'Google' };
 
-interface Props {
-  a: Achievement;
+interface IProps {
+  a: IAchievement;
   game: string;
   appid: number;
-  data: AchievementUserData | undefined;
-  onChange: (id: string, patch: Partial<AchievementUserData>) => void;
+  data: IAchievementUserData | undefined;
+  onChange: (id: string, patch: Partial<IAchievementUserData>) => void;
 }
 
 export const AchievementCard = memo(function AchievementCard({
@@ -45,7 +45,7 @@ export const AchievementCard = memo(function AchievementCard({
   appid,
   data,
   onChange,
-}: Props) {
+}: IProps) {
   const t = useT();
   const locale = useLocale();
   const date = (epoch: number): string =>

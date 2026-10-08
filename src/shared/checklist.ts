@@ -1,14 +1,18 @@
-import type { Achievement, AchievementUserData, ChecklistItem } from './types';
+import type {
+  IAchievement,
+  IAchievementUserData,
+  IChecklistItem,
+} from './types';
 
 const MARKER = /^\s*(?:[-*•·–—]|\[[ xX]?\]|☐|☑|✓|✔|\d+\s*[.)\-:])\s*/;
 
 /** Text pasted from a guide, one item per line, becomes checklist items. */
 export function parseChecklist(
   text: string,
-  existing: ChecklistItem[] = [],
-): ChecklistItem[] {
+  existing: IChecklistItem[] = [],
+): IChecklistItem[] {
   const seen = new Set(existing.map((i) => i.text.toLowerCase()));
-  const items: ChecklistItem[] = [];
+  const items: IChecklistItem[] = [];
   for (const line of text.split(/\r?\n/)) {
     // Repeat for cases like "- [ ] 1. Item".
     let clean = line;
@@ -29,7 +33,7 @@ export function parseChecklist(
   return items;
 }
 
-export interface ShownProgress {
+export interface IShownProgress {
   current: number;
   target: number;
   source: 'steam' | 'checklist';
@@ -37,9 +41,9 @@ export interface ShownProgress {
 
 /** The Steam counter wins; without it, the user's checklist plays the role of the counter. */
 export function shownProgress(
-  a: Achievement,
-  data: AchievementUserData | undefined,
-): ShownProgress | null {
+  a: IAchievement,
+  data: IAchievementUserData | undefined,
+): IShownProgress | null {
   if (a.progress) return { ...a.progress, source: 'steam' };
   const list = data?.checklist ?? [];
   if (list.length === 0) return null;

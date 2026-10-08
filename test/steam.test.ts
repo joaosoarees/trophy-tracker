@@ -9,7 +9,7 @@ import {
   SteamClient,
   SteamError,
   steamErrorMessage,
-  type RawSchemaAchievement,
+  type IRawSchemaAchievement,
 } from '../src/main/steam/client';
 import { achievementStatMap, parseBinaryVdf } from '../src/main/steam/vdf';
 import {
@@ -32,7 +32,7 @@ import {
   STEAM_ID,
 } from './helpers';
 
-const niohSchema = nioh.response.achievements as RawSchemaAchievement[];
+const niohSchema = nioh.response.achievements as IRawSchemaAchievement[];
 const creds = { steamId: STEAM_ID, apiKey: KEY };
 
 describe('buildGameView', () => {

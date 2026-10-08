@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Achievement, GameView } from '../src/shared/types';
+import type { IAchievement, IGameView } from '../src/shared/types';
 import { mergeView } from '../src/shared/view';
 
-const ach = (id: string, over: Partial<Achievement> = {}): Achievement => ({
+const ach = (id: string, over: Partial<IAchievement> = {}): IAchievement => ({
   id,
   name: id,
   description: '',
@@ -16,7 +16,7 @@ const ach = (id: string, over: Partial<Achievement> = {}): Achievement => ({
   progress: null,
   ...over,
 });
-const view = (achievements: Achievement[], fetchedAt = 1): GameView => ({
+const view = (achievements: IAchievement[], fetchedAt = 1): IGameView => ({
   appid: 1,
   name: 'Game',
   total: achievements.length,

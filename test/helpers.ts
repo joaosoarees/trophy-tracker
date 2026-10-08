@@ -1,6 +1,6 @@
 import { SteamClient } from '../src/main/steam/client';
 
-export interface Route {
+export interface IRoute {
   status?: number;
   json?: unknown;
   text?: string;
@@ -8,7 +8,7 @@ export interface Route {
 
 /** Fake `fetch`: the first route whose fragment appears in the URL answers. */
 export function fakeFetch(
-  routes: Record<string, Route | ((url: URL) => Route)>,
+  routes: Record<string, IRoute | ((url: URL) => IRoute)>,
 ): typeof fetch & { calls: string[] } {
   const calls: string[] = [];
   const impl = async (input: string | URL | Request): Promise<Response> => {
@@ -33,15 +33,15 @@ export const clientWith = (
 export const KEY = '0123456789ABCDEF0123456789ABCDEF';
 export const STEAM_ID = '76561198207154409';
 
-export const FORBIDDEN_HTML: Route = {
+export const FORBIDDEN_HTML: IRoute = {
   status: 403,
   text: '<html><head><title>Forbidden</title></head><body><h1>Forbidden</h1>Access is denied. Retrying will not help. Please verify your <pre>key=</pre> parameter.</body></html>',
 };
-export const NOT_PUBLIC: Route = {
+export const NOT_PUBLIC: IRoute = {
   status: 403,
   json: { playerstats: { error: 'Profile is not public', success: false } },
 };
-export const NO_STATS: Route = {
+export const NO_STATS: IRoute = {
   status: 400,
   json: {
     playerstats: { error: 'Requested app has no stats', success: false },

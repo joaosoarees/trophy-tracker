@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseChecklist, shownProgress } from '../src/shared/checklist';
-import type { Achievement } from '../src/shared/types';
+import type { IAchievement } from '../src/shared/types';
 
-const achievement = (progress: Achievement['progress']): Achievement => ({
+const achievement = (progress: IAchievement['progress']): IAchievement => ({
   id: 'A',
   name: 'A',
   description: '',

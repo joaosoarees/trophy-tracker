@@ -16,14 +16,14 @@ import { Label } from '@/components/ui/label';
 import { useT } from '@/lib/i18n';
 import type { OnboardingFormData } from '@/Onboarding';
 
-import type { Profile } from '../../../../../shared/types';
+import type { IProfile } from '../../../../../shared/types';
 
 export function AccountStep() {
   const t = useT();
   const { nextStep } = useStepper();
   const form = useFormContext<OnboardingFormData>();
   const [detected, setDetected] = useState(false);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<IProfile | null>(null);
   /** Why Steam did not confirm the profile; it does not block moving on. */
   const [unconfirmed, setUnconfirmed] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);

@@ -1,5 +1,5 @@
 import type { Messages } from '../shared/i18n';
-import type { CheckResult, Profile, SteamIdCheck } from '../shared/types';
+import type { CheckResult, IProfile, SteamIdCheck } from '../shared/types';
 import { API_KEY_PATTERN, STEAM_ID_PATTERN } from '../shared/validation';
 
 import {
@@ -72,7 +72,7 @@ export async function checkApiKey(
   client: SteamClient,
   steamId: string,
   apiKey: string,
-): Promise<CheckResult<Profile>> {
+): Promise<CheckResult<IProfile>> {
   const key = apiKey.trim();
   if (!API_KEY_PATTERN.test(key)) return fail(m.validation.apiKeyFormat);
   try {

@@ -18,7 +18,7 @@ import { safeSessionStorageGetItem } from '@/lib/utils';
 import { useStore } from '@/store';
 
 import { isLanguage } from '../../shared/i18n';
-import type { AppState } from '../../shared/types';
+import type { IAppState } from '../../shared/types';
 
 const schema = z.object({
   languageStep: languageStepSchema,
@@ -37,8 +37,8 @@ const STEP_KEY = 'onboarding-step';
 const API_KEY_STEP = 2;
 
 interface IOnboardingProps {
-  state: AppState;
-  onDone: (state: AppState) => void;
+  state: IAppState;
+  onDone: (state: IAppState) => void;
   onCancel?: () => void;
 }
 

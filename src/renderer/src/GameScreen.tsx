@@ -12,8 +12,8 @@ import { useStore } from '@/store';
 
 import { shownProgress } from '../../shared/checklist';
 import type {
-  Achievement,
-  AchievementUserData,
+  IAchievement,
+  IAchievementUserData,
   GameUserData,
 } from '../../shared/types';
 
@@ -25,12 +25,12 @@ const SORTS: Sort[] = ['common', 'rare', 'closest', 'name'];
 const NONE_UNLOCKED: string[] = [];
 const NO_USER_DATA: GameUserData = {};
 
-interface Props {
+interface IProps {
   appid: number;
   running: boolean;
 }
 
-export function GameScreen({ appid, running }: Props) {
+export function GameScreen({ appid, running }: IProps) {
   const t = useT();
   const locale = useLocale();
   const {
@@ -66,18 +66,18 @@ export function GameScreen({ appid, running }: Props) {
   useEffect(() => open(appid), [open, appid]);
 
   const update = useCallback(
-    (id: string, patch: Partial<AchievementUserData>) =>
+    (id: string, patch: Partial<IAchievementUserData>) =>
       updateUserData(appid, id, patch),
     [updateUserData, appid],
   );
 
   const list = useMemo(() => {
     if (!view) return [];
-    const ratio = (a: Achievement): number => {
+    const ratio = (a: IAchievement): number => {
       const p = shownProgress(a, userData[a.id]);
       return p ? p.current / p.target : -1;
     };
-    const by: Record<Sort, (a: Achievement, b: Achievement) => number> = {
+    const by: Record<Sort, (a: IAchievement, b: IAchievement) => number> = {
       common: (a, b) => (b.rarity ?? -1) - (a.rarity ?? -1),
       rare: (a, b) => (a.rarity ?? 101) - (b.rarity ?? 101),
       closest: (a, b) =>
@@ -86,10 +86,11 @@ export function GameScreen({ appid, running }: Props) {
     };
     const order =
       filter === 'unlocked'
-        ? (a: Achievement, b: Achievement) =>
+        ? (a: IAchievement, b: IAchievement) =>
             (b.unlockedAt ?? 0) - (a.unlockedAt ?? 0)
         : by[sort];
-    const pinned = (a: Achievement): number => (userData[a.id]?.pinned ? 1 : 0);
+    const pinned = (a: IAchievement): number =>
+      userData[a.id]?.pinned ? 1 : 0;
     return view.achievements
       .filter(
         (a) =>

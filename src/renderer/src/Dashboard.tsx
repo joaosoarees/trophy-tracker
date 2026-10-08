@@ -9,11 +9,11 @@ import { matches } from '@/lib/text';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/store';
 
-interface Props {
+interface IProps {
   onPick: (appid: number) => void;
 }
 
-export function Dashboard({ onPick }: Props) {
+export function Dashboard({ onPick }: IProps) {
   const t = useT();
   const { games, loading, error, progress, load } = useStore(
     useShallow((state) => ({

@@ -47,7 +47,7 @@ export function steamErrorMessage(m: Messages, e: SteamError): string {
   }
 }
 
-export interface RawSchemaAchievement {
+export interface IRawSchemaAchievement {
   internal_name: string;
   localized_name: string;
   localized_desc: string;
@@ -60,13 +60,13 @@ export interface RawSchemaAchievement {
   progress_type?: number;
 }
 
-export interface RawPlayerAchievement {
+export interface IRawPlayerAchievement {
   apiname: string;
   achieved: number;
   unlocktime: number;
 }
 
-export interface RawOwnedGame {
+export interface IRawOwnedGame {
   appid: number;
   name: string;
   playtime_forever: number;
@@ -74,13 +74,13 @@ export interface RawOwnedGame {
   rtime_last_played?: number;
 }
 
-export interface RawPlayerSummary {
+export interface IRawPlayerSummary {
   steamid: string;
   personaname: string;
   avatarfull: string;
 }
 
-export interface StoreArt {
+export interface IStoreArt {
   header: string;
   capsule: string;
 }
@@ -88,7 +88,7 @@ export interface StoreArt {
 const ASSETS = 'https://shared.fastly.steamstatic.com/store_item_assets/';
 const STORE_BATCH = 50;
 
-export interface Credentials {
+export interface ICredentials {
   steamId: string;
   apiKey: string;
 }
@@ -96,15 +96,15 @@ export interface Credentials {
 export type Fetch = typeof fetch;
 
 /** Shapes of the Steam responses, as far as this app reads them. */
-interface Envelope<T> {
+interface IEnvelope<T> {
   response?: T;
 }
 
-interface PlayerStats<T> {
+interface IPlayerStats<T> {
   playerstats?: T & { error?: string };
 }
 
-interface StoreItem {
+interface IStoreItem {
   appid: number;
   assets?: {
     asset_url_format?: string;
@@ -135,9 +135,9 @@ export class SteamClient {
     }
 
     const text = await res.text();
-    let body: (T & PlayerStats<object>) | null = null;
+    let body: (T & IPlayerStats<object>) | null = null;
     try {
-      body = JSON.parse(text) as T & PlayerStats<object>;
+      body = JSON.parse(text) as T & IPlayerStats<object>;
     } catch {
       // Key errors come back as HTML.
     }
@@ -157,8 +157,8 @@ export class SteamClient {
   async getPlayerSummary({
     steamId,
     apiKey,
-  }: Credentials): Promise<RawPlayerSummary> {
-    const body = await this.get<Envelope<{ players?: RawPlayerSummary[] }>>(
+  }: ICredentials): Promise<IRawPlayerSummary> {
+    const body = await this.get<IEnvelope<{ players?: IRawPlayerSummary[] }>>(
       '/ISteamUser/GetPlayerSummaries/v2/',
       {
         key: apiKey,
@@ -174,9 +174,9 @@ export class SteamClient {
   async getOwnedGames({
     steamId,
     apiKey,
-  }: Credentials): Promise<RawOwnedGame[] | null> {
+  }: ICredentials): Promise<IRawOwnedGame[] | null> {
     const body = await this.get<
-      Envelope<{ games?: RawOwnedGame[]; game_count?: number }>
+      IEnvelope<{ games?: IRawOwnedGame[]; game_count?: number }>
     >('/IPlayerService/GetOwnedGames/v1/', {
       key: apiKey,
       steamid: steamId,
@@ -189,9 +189,9 @@ export class SteamClient {
   }
 
   /** Needs no key and includes the description of hidden achievements. */
-  async getGameAchievements(appid: number): Promise<RawSchemaAchievement[]> {
+  async getGameAchievements(appid: number): Promise<IRawSchemaAchievement[]> {
     const body = await this.get<
-      Envelope<{ achievements?: RawSchemaAchievement[] }>
+      IEnvelope<{ achievements?: IRawSchemaAchievement[] }>
     >('/IPlayerService/GetGameAchievements/v1/', {
       appid,
       language: LANGUAGES[this.language].steam,
@@ -200,8 +200,8 @@ export class SteamClient {
   }
 
   /** Game art, batched and with no key. New games use hashed paths that only the store reports. */
-  async getStoreArt(appids: number[]): Promise<Map<number, StoreArt>> {
-    const art = new Map<number, StoreArt>();
+  async getStoreArt(appids: number[]): Promise<Map<number, IStoreArt>> {
+    const art = new Map<number, IStoreArt>();
     for (let i = 0; i < appids.length; i += STORE_BATCH) {
       const input = {
         ids: appids.slice(i, i + STORE_BATCH).map((appid) => ({ appid })),
@@ -211,7 +211,7 @@ export class SteamClient {
         },
         data_request: { include_assets: true },
       };
-      const body = await this.get<Envelope<{ store_items?: StoreItem[] }>>(
+      const body = await this.get<IEnvelope<{ store_items?: IStoreItem[] }>>(
         '/IStoreBrowseService/GetItems/v1/',
         {
           input_json: JSON.stringify(input),
@@ -231,11 +231,11 @@ export class SteamClient {
   }
 
   async getPlayerAchievements(
-    { steamId, apiKey }: Credentials,
+    { steamId, apiKey }: ICredentials,
     appid: number,
-  ): Promise<RawPlayerAchievement[]> {
+  ): Promise<IRawPlayerAchievement[]> {
     const body = await this.get<
-      PlayerStats<{ achievements?: RawPlayerAchievement[] }>
+      IPlayerStats<{ achievements?: IRawPlayerAchievement[] }>
     >('/ISteamUserStats/GetPlayerAchievements/v1/', {
       key: apiKey,
       steamid: steamId,
@@ -245,11 +245,11 @@ export class SteamClient {
   }
 
   async getUserStats(
-    { steamId, apiKey }: Credentials,
+    { steamId, apiKey }: ICredentials,
     appid: number,
   ): Promise<Record<string, number>> {
     const body = await this.get<
-      PlayerStats<{ stats?: { name: string; value: number }[] }>
+      IPlayerStats<{ stats?: { name: string; value: number }[] }>
     >('/ISteamUserStats/GetUserStatsForGame/v2/', {
       key: apiKey,
       steamid: steamId,

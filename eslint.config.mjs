@@ -65,6 +65,16 @@ export default tseslint.config(
         'error',
         { checksVoidReturn: { attributes: false } },
       ],
+      // Interfaces are prefixed with `I`. `Window` is the global being augmented, not ours to rename.
+      '@typescript-eslint/naming-convention': [
+        'error',
+        {
+          selector: 'interface',
+          format: ['PascalCase'],
+          custom: { regex: '^I[A-Z]', match: true },
+          filter: { regex: '^Window$', match: false },
+        },
+      ],
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },

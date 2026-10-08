@@ -1,7 +1,7 @@
 import { createSaver } from '@/lib/saver';
 
 import type {
-  AchievementUserData,
+  IAchievementUserData,
   GameUserData,
 } from '../../../../shared/types';
 import type { StoreSlice } from '../Store';
@@ -16,7 +16,7 @@ type UserDataActions = {
   update: (
     appid: number,
     achievementId: string,
-    patch: Partial<AchievementUserData>,
+    patch: Partial<IAchievementUserData>,
   ) => void;
   /** Writes right away what is still waiting for the typing pause. */
   flush: () => void;
@@ -27,7 +27,7 @@ export type UserDataSlice = UserDataStore & UserDataActions;
 const saver = createSaver<{
   appid: number;
   achievementId: string;
-  data: AchievementUserData;
+  data: IAchievementUserData;
 }>(
   (_key, { appid, achievementId, data }) =>
     void window.api.setUserData(appid, achievementId, data),

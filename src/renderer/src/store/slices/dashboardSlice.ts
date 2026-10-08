@@ -1,8 +1,8 @@
-import type { DashboardMode, GameSummary } from '../../../../shared/types';
+import type { DashboardMode, IGameSummary } from '../../../../shared/types';
 import type { StoreSlice } from '../Store';
 
 type DashboardStore = {
-  games: GameSummary[] | null;
+  games: IGameSummary[] | null;
   loading: boolean;
   error: string | null;
   /** Games read and total, during a load. */

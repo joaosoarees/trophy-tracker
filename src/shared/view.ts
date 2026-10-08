@@ -1,6 +1,6 @@
-import type { Achievement, GameView } from './types';
+import type { IAchievement, IGameView } from './types';
 
-const sameAchievement = (a: Achievement, b: Achievement): boolean =>
+const sameAchievement = (a: IAchievement, b: IAchievement): boolean =>
   a.unlocked === b.unlocked &&
   a.unlockedAt === b.unlockedAt &&
   a.progress?.current === b.progress?.current &&
@@ -18,9 +18,9 @@ const sameAchievement = (a: Achievement, b: Achievement): boolean =>
  * identity (notifying the interface, re-rendering cards) does no needless work.
  */
 export function mergeView(
-  previous: GameView | null | undefined,
-  next: GameView,
-): GameView {
+  previous: IGameView | null | undefined,
+  next: IGameView,
+): IGameView {
   if (!previous || previous.appid !== next.appid) return next;
   const before = new Map(previous.achievements.map((a) => [a.id, a]));
   let changed = previous.achievements.length !== next.achievements.length;

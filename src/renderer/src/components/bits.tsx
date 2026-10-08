@@ -33,7 +33,7 @@ export function ProgressBar({
   );
 }
 
-interface SegmentedProps<T extends string> {
+interface ISegmentedProps<T extends string> {
   value: T;
   options: { value: T; label: ReactNode }[];
   onChange: (value: T) => void;
@@ -43,7 +43,7 @@ export function Segmented<T extends string>({
   value,
   options,
   onChange,
-}: SegmentedProps<T>) {
+}: ISegmentedProps<T>) {
   return (
     <div className="bg-muted inline-flex rounded-md p-0.5">
       {options.map((o) => (

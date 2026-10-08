@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { connectStore, useStore } from '@/store';
 
 import { isLanguage, LANGUAGE_CODES, LANGUAGES } from '../../shared/i18n';
-import type { AppState } from '../../shared/types';
+import type { IAppState } from '../../shared/types';
 
 import { Dashboard } from './Dashboard';
 import { GameScreen } from './GameScreen';
@@ -52,7 +52,7 @@ function TabButton({
 
 export function App() {
   const t = useT();
-  const [state, setState] = useState<AppState | null>(null);
+  const [state, setState] = useState<IAppState | null>(null);
   /** Language in use when reconfiguration started, or `null` outside of it. */
   const [reconfiguring, setReconfiguring] = useState<string | null>(null);
   // Tab, picked game and already-seen running game survive the reload of a language change.
@@ -78,7 +78,7 @@ export function App() {
   const [confirmingReset, setConfirmingReset] = useState(false);
 
   const applyState = useCallback(
-    (next: AppState) => {
+    (next: IAppState) => {
       setLanguage(next.language);
       setState(next);
     },
@@ -125,7 +125,7 @@ export function App() {
   if (!state.configured || reconfiguring !== null) {
     // Redoing the setup with the app already in use: if the language changed along the way, what is
     // loaded came from Steam in the old language, and only a reload guarantees none of it is left.
-    const leave = (next?: AppState): void => {
+    const leave = (next?: IAppState): void => {
       if (reconfiguring !== null && language !== reconfiguring)
         return window.location.reload();
       setReconfiguring(null);

@@ -1,16 +1,16 @@
-import type { DashboardMode, GameSummary, GameView } from '../shared/types';
+import type { DashboardMode, IGameSummary, IGameView } from '../shared/types';
 import { mergeView } from '../shared/view';
 
 import { buildGameView } from './steam/achievements';
 import {
   type SteamClient,
   SteamError,
-  type Credentials,
-  type RawOwnedGame,
-  type RawSchemaAchievement,
-  type StoreArt,
+  type ICredentials,
+  type IRawOwnedGame,
+  type IRawSchemaAchievement,
+  type IStoreArt,
 } from './steam/client';
-import type { Store, SummaryEntry } from './store';
+import type { Store, ISummaryEntry } from './store';
 
 const LIBRARY_TTL = 10 * 60_000;
 const GAME_TTL = 60_000;
@@ -18,7 +18,7 @@ const GAME_TTL = 60_000;
 const SCHEMA_TTL = 24 * 60 * 60_000;
 const CONCURRENCY = 4;
 
-export interface TrackerDeps {
+export interface ITrackerDeps {
   store: Store;
   client: SteamClient;
   readStatMap: (appid: number) => Promise<Map<string, string>>;
@@ -28,12 +28,12 @@ export interface TrackerDeps {
 export class Tracker {
   private store: Store;
   private client: SteamClient;
-  private readStatMap: TrackerDeps['readStatMap'];
+  private readStatMap: ITrackerDeps['readStatMap'];
   private now: () => number;
   private inflight = new Map<string, Promise<unknown>>();
   private statMaps = new Map<number, Map<string, string>>();
 
-  constructor(deps: TrackerDeps) {
+  constructor(deps: ITrackerDeps) {
     this.store = deps.store;
     this.client = deps.client;
     this.readStatMap = deps.readStatMap;
@@ -49,13 +49,13 @@ export class Tracker {
     return promise;
   }
 
-  private credentials(): Credentials {
+  private credentials(): ICredentials {
     const creds = this.store.getCredentials();
     if (!creds) throw new SteamError('not-configured');
     return creds;
   }
 
-  async library(force = false): Promise<RawOwnedGame[]> {
+  async library(force = false): Promise<IRawOwnedGame[]> {
     const cached = this.store.getLibrary();
     if (cached && !force && this.now() - cached.fetchedAt < LIBRARY_TTL)
       return cached.games;
@@ -77,7 +77,7 @@ export class Tracker {
   }
 
   /** Art is decoration: it comes from the cache, and any store failure just leaves it out. */
-  private async art(appids: number[]): Promise<Map<number, StoreArt>> {
+  private async art(appids: number[]): Promise<Map<number, IStoreArt>> {
     const missing = appids.filter((id) => this.store.getArt(id) === null);
     if (missing.length > 0) {
       try {
@@ -90,7 +90,7 @@ export class Tracker {
         // carry on without art
       }
     }
-    const result = new Map<number, StoreArt>();
+    const result = new Map<number, IStoreArt>();
     for (const id of appids) {
       const art = this.store.getArt(id);
       if (art) result.set(id, art);
@@ -99,7 +99,7 @@ export class Tracker {
   }
 
   private async gameName(appid: number): Promise<string> {
-    const find = (games: RawOwnedGame[]): string | undefined =>
+    const find = (games: IRawOwnedGame[]): string | undefined =>
       games.find((g) => g.appid === appid)?.name;
     return (
       find(await this.library()) ??
@@ -111,7 +111,7 @@ export class Tracker {
   private async schema(
     appid: number,
     fresh: boolean,
-  ): Promise<RawSchemaAchievement[]> {
+  ): Promise<IRawSchemaAchievement[]> {
     const cached = this.store.getSchema(appid);
     if (cached && !fresh && this.now() - cached.fetchedAt < SCHEMA_TTL)
       return cached.items;
@@ -137,7 +137,7 @@ export class Tracker {
   async getGame(
     appid: number,
     mode: boolean | 'poll' = false,
-  ): Promise<GameView> {
+  ): Promise<IGameView> {
     const cached = this.store.getGame(appid);
     if (cached && mode === false && this.now() - cached.fetchedAt < GAME_TTL)
       return cached;
@@ -149,8 +149,8 @@ export class Tracker {
   private async readGame(
     appid: number,
     fresh: boolean,
-    cached: GameView | null,
-  ): Promise<GameView> {
+    cached: IGameView | null,
+  ): Promise<IGameView> {
     const creds = this.credentials();
     const [name, schema, player, art] = await Promise.all([
       this.gameName(appid),
@@ -168,7 +168,7 @@ export class Tracker {
         stats = await this.client.getUserStats(creds, appid).catch(() => ({}));
     }
 
-    const read: GameView = {
+    const read: IGameView = {
       ...buildGameView({
         appid,
         name,
@@ -206,7 +206,7 @@ export class Tracker {
   getDashboard(
     mode: DashboardMode = 'cached',
     onProgress?: (done: number, total: number) => void,
-  ): Promise<GameSummary[]> {
+  ): Promise<IGameSummary[]> {
     return this.once(`dashboard:${mode}`, () =>
       this.readDashboard(mode, onProgress),
     );
@@ -215,15 +215,15 @@ export class Tracker {
   private async readDashboard(
     mode: DashboardMode,
     onProgress?: (done: number, total: number) => void,
-  ): Promise<GameSummary[]> {
+  ): Promise<IGameSummary[]> {
     const force = mode === 'all';
     const creds = this.credentials();
     const played = (await this.library(mode !== 'cached')).filter(
       (g) => g.playtime_forever > 0,
     );
 
-    const entries = new Map<number, SummaryEntry>();
-    const pending: RawOwnedGame[] = [];
+    const entries = new Map<number, ISummaryEntry>();
+    const pending: IRawOwnedGame[] = [];
     for (const game of played) {
       const cached = this.store.getSummary(game.appid);
       if (cached && !force && cached.playtime === game.playtime_forever)
@@ -232,10 +232,10 @@ export class Tracker {
     }
 
     let done = 0;
-    const fresh: Record<string, SummaryEntry> = {};
+    const fresh: Record<string, ISummaryEntry> = {};
     const worker = async (): Promise<void> => {
       for (let game = pending.shift(); game; game = pending.shift()) {
-        let entry: SummaryEntry;
+        let entry: ISummaryEntry;
         try {
           const list = await this.client.getPlayerAchievements(
             creds,
@@ -279,9 +279,9 @@ export class Tracker {
     );
     const art = await this.art(withAchievements.map((g) => g.appid));
 
-    const ratio = (s: GameSummary): number => s.unlocked / s.total;
+    const ratio = (s: IGameSummary): number => s.unlocked / s.total;
     return withAchievements
-      .map((g): GameSummary => {
+      .map((g): IGameSummary => {
         const e = entries.get(g.appid)!;
         return {
           appid: g.appid,

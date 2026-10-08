@@ -1,5 +1,5 @@
-export type VdfValue = string | number | bigint | VdfObject;
-export interface VdfObject {
+export type VdfValue = string | number | bigint | IVdfObject;
+export interface IVdfObject {
   [key: string]: VdfValue;
 }
 
@@ -14,7 +14,7 @@ const T = {
 } as const;
 
 /** Reads the binary KeyValues format the Steam client uses in appcache/stats. */
-export function parseBinaryVdf(buf: Buffer): VdfObject {
+export function parseBinaryVdf(buf: Buffer): IVdfObject {
   let pos = 0;
 
   const readString = (): string => {
@@ -25,8 +25,8 @@ export function parseBinaryVdf(buf: Buffer): VdfObject {
     return s;
   };
 
-  const readObject = (): VdfObject => {
-    const obj: VdfObject = {};
+  const readObject = (): IVdfObject => {
+    const obj: IVdfObject = {};
     for (;;) {
       if (pos >= buf.length) throw new Error('Truncated binary VDF');
       const type = buf[pos++];
@@ -64,14 +64,14 @@ export function parseBinaryVdf(buf: Buffer): VdfObject {
   return readObject();
 }
 
-const isObject = (v: VdfValue | undefined): v is VdfObject =>
+const isObject = (v: VdfValue | undefined): v is IVdfObject =>
   typeof v === 'object' && v !== null;
 
 /**
  * From a game's local schema, extracts which stat feeds each achievement's counter
  * (the public Web API does not expose that link).
  */
-export function achievementStatMap(schema: VdfObject): Map<string, string> {
+export function achievementStatMap(schema: IVdfObject): Map<string, string> {
   const map = new Map<string, string>();
   for (const app of Object.values(schema)) {
     if (!isObject(app) || !isObject(app.stats)) continue;

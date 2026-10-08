@@ -17,15 +17,15 @@ import { useLocale, useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 import { parseChecklist } from '../../../shared/checklist';
-import type { ChecklistItem } from '../../../shared/types';
+import type { IChecklistItem } from '../../../shared/types';
 
-interface Props {
+interface IProps {
   achievement: string;
-  items: ChecklistItem[];
-  onChange: (items: ChecklistItem[]) => void;
+  items: IChecklistItem[];
+  onChange: (items: IChecklistItem[]) => void;
 }
 
-export function Checklist({ achievement, items, onChange }: Props) {
+export function Checklist({ achievement, items, onChange }: IProps) {
   const t = useT();
   const locale = useLocale();
   const [draft, setDraft] = useState('');
@@ -51,7 +51,7 @@ export function Checklist({ achievement, items, onChange }: Props) {
     ]);
     setDraft('');
   };
-  const patch = (id: string, change: Partial<ChecklistItem>): void =>
+  const patch = (id: string, change: Partial<IChecklistItem>): void =>
     onChange(items.map((i) => (i.id === id ? { ...i, ...change } : i)));
   const rename = (id: string, text: string): void => {
     setEditing(null);

@@ -4,10 +4,10 @@ import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron';
 
 import { messagesFor, type Messages } from '../shared/i18n';
 import type {
-  Api,
-  AppState,
+  IApi,
+  IAppState,
   CheckResult,
-  GameView,
+  IGameView,
   GuideSite,
 } from '../shared/types';
 
@@ -22,7 +22,7 @@ import {
   readStatMap,
   windowsToast,
 } from './steam/windows';
-import { Store, type Cipher } from './store';
+import { Store, type ICipher } from './store';
 import { Tracker } from './tracker';
 
 const RUNNING_CHECK_MS = 10_000;
@@ -42,14 +42,14 @@ const client = new SteamClient();
 /** Set when Steam starts rejecting the saved key; forces the onboarding again. */
 let configError: string | null = null;
 let current: { appid: number; running: boolean } | null = null;
-let lastView: GameView | null = null;
+let lastView: IGameView | null = null;
 
 const openUrl = (url: string): Promise<void> =>
   isWsl ? openInWindowsBrowser(url) : shell.openExternal(url);
 
 const m = (): Messages => messagesFor(store.getLanguage());
 
-function state(): AppState {
+function state(): IAppState {
   const configured = store.getCredentials() !== null && configError === null;
   return {
     configured,
@@ -115,7 +115,7 @@ async function checkUnlocks(): Promise<void> {
 }
 
 type Invokable = Omit<
-  Api,
+  IApi,
   'onGameChanged' | 'onGameUpdated' | 'onDashboardProgress'
 >;
 
@@ -228,7 +228,7 @@ void app.whenReady().then(() => {
     safeStorage.isEncryptionAvailable() &&
     (process.platform !== 'linux' ||
       safeStorage.getSelectedStorageBackend() !== 'basic_text');
-  const cipher: Cipher | null = secure
+  const cipher: ICipher | null = secure
     ? {
         encrypt: (plain) => safeStorage.encryptString(plain).toString('base64'),
         decrypt: (encoded) =>
