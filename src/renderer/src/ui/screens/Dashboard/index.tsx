@@ -1,32 +1,30 @@
 import { RefreshCw } from 'lucide-react';
-import { useState } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 
 import { useT } from '@app/hooks/useT';
-import { useStore } from '@app/store';
 import { Empty } from '@ui/components/Empty';
-import { ProgressBar } from '@ui/components/ProgressBar';
 import { SearchBox } from '@ui/components/SearchBox';
 import { Button } from '@ui/primitives/button';
 import { cn } from '@ui/utils/cn';
-import { matches } from '@ui/utils/text';
+
+import { GameRow } from './components/GameRow';
+import { useDashboardController } from './useDashboardController';
 
 export function Dashboard() {
   const t = useT();
-  const { games, loading, error, progress, load, onPick } = useStore(
-    useShallow((state) => ({
-      games: state.dashboard.games,
-      loading: state.dashboard.loading,
-      error: state.dashboard.error,
-      progress: state.dashboard.progress,
-      load: state.dashboard.load,
-      onPick: state.navigation.pickGame,
-    })),
-  );
-  const [query, setQuery] = useState('');
-
-  const incomplete = games?.filter((g) => g.unlocked < g.total).length ?? 0;
-  const shown = games?.filter((g) => matches(query, g.name)) ?? [];
+  const {
+    games,
+    shownGames,
+    total,
+    inProgress,
+    complete,
+    isLoading,
+    error,
+    progress,
+    query,
+    setQuery,
+    handleRefreshAll,
+    handlePickGame,
+  } = useDashboardController();
 
   return (
     <section className="flex-1 overflow-y-auto p-4">
@@ -37,28 +35,23 @@ export function Dashboard() {
             size="icon-sm"
             variant="ghost"
             title={t.dashboard.refreshAll}
-            disabled={loading}
-            onClick={() => void load('all')}
+            disabled={isLoading}
+            onClick={handleRefreshAll}
           >
-            <RefreshCw className={cn(loading && 'animate-spin')} />
+            <RefreshCw className={cn(isLoading && 'animate-spin')} />
           </Button>
         </div>
         <p className="text-muted-foreground text-xs">
-          {loading
+          {isLoading
             ? progress
               ? t.dashboard.reading(progress[0], progress[1])
               : t.dashboard.loadingLibrary
-            : games &&
-              t.dashboard.summary(
-                games.length,
-                games.length - incomplete,
-                incomplete,
-              )}
+            : games && t.dashboard.summary(total, complete, inProgress)}
         </p>
         {error && <p className="text-destructive mt-1">{error}</p>}
       </header>
 
-      {games && games.length > 0 && (
+      {total > 0 && (
         <div className="mb-3 flex">
           <SearchBox
             value={query}
@@ -68,7 +61,7 @@ export function Dashboard() {
         </div>
       )}
 
-      {games && !loading && shown.length === 0 && (
+      {games && !isLoading && shownGames.length === 0 && (
         <Empty>
           {query.trim() !== ''
             ? t.dashboard.nothingFound(query.trim())
@@ -77,57 +70,9 @@ export function Dashboard() {
       )}
 
       <ul className="flex flex-col gap-1.5">
-        {shown.map((g) => {
-          const percent = Math.round((g.unlocked / g.total) * 100);
-          const complete = g.unlocked === g.total;
-          return (
-            <li key={g.appid}>
-              <button
-                onClick={() => onPick(g.appid)}
-                className="bg-card hover:border-primary/60 flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-colors"
-              >
-                {g.capsule || g.icon ? (
-                  <img
-                    src={g.capsule || g.icon}
-                    alt=""
-                    loading="lazy"
-                    className={cn(
-                      'bg-muted h-[42px] flex-none rounded object-cover',
-                      g.capsule ? 'w-28' : 'w-[42px]',
-                    )}
-                  />
-                ) : (
-                  <span className="bg-muted h-[42px] w-28 flex-none rounded" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <strong className="block truncate font-medium">
-                    {g.name}
-                  </strong>
-                  <ProgressBar
-                    value={percent}
-                    tone={complete ? 'success' : 'primary'}
-                    className="mt-1.5"
-                  />
-                </div>
-                <div className="w-[72px] flex-none text-right">
-                  <strong
-                    className={cn(
-                      'block tabular-nums',
-                      complete && 'text-success',
-                    )}
-                  >
-                    {percent}%
-                  </strong>
-                  <small className="text-muted-foreground text-[11px]">
-                    {complete
-                      ? t.dashboard.complete
-                      : t.dashboard.left(g.total - g.unlocked)}
-                  </small>
-                </div>
-              </button>
-            </li>
-          );
-        })}
+        {shownGames.map((game) => (
+          <GameRow key={game.appid} game={game} onPick={handlePickGame} />
+        ))}
       </ul>
     </section>
   );
