@@ -10,6 +10,7 @@ import { Empty } from '@/components/bits'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useT } from '@/lib/i18n'
+import { useSessionState } from '@/lib/useSessionState'
 import { cn } from '@/lib/utils'
 import { connectStore, useStore } from '@/store'
 
@@ -34,7 +35,8 @@ export function App() {
   const [state, setState] = useState<AppState | null>(null)
   /** Idioma em uso quando a reconfiguração começou, ou `null` fora dela. */
   const [reconfiguring, setReconfiguring] = useState<string | null>(null)
-  const [tab, setTab] = useState<Tab>('game')
+  // Aba, jogo escolhido e jogo em execução já visto sobrevivem ao recarregamento da troca de idioma.
+  const [tab, setTab] = useSessionState<Tab>('view-tab', 'game')
   const { current, failures, language, setLanguage } = useStore(
     useShallow((state) => ({
       current: state.session.current,
@@ -44,7 +46,8 @@ export function App() {
     }))
   )
   /** Jogo escolhido no painel; vale até um jogo ser aberto na Steam. */
-  const [picked, setPicked] = useState<number | null>(null)
+  const [picked, setPicked] = useSessionState<number | null>('view-picked', null)
+  const [seenRunning, setSeenRunning] = useSessionState<number | null>('view-seen-running', null)
   const [onTop, setOnTop] = useState(false)
   const [confirmingReset, setConfirmingReset] = useState(false)
 
@@ -76,13 +79,16 @@ export function App() {
     if (failures > 0) void refreshState()
   }, [failures, refreshState])
 
-  // Abrir um jogo na Steam traz o app para ele.
-  const runningAppId = current?.running ? current.appid : null
+  // Abrir um jogo na Steam traz o app para ele, uma vez por jogo aberto: recarregar a janela
+  // com o mesmo jogo ainda rodando não desfaz o que o usuário escolheu depois.
+  const runningAppId = current === null ? undefined : current.running ? current.appid : null
   useEffect(() => {
+    if (runningAppId === undefined || runningAppId === seenRunning) return
+    setSeenRunning(runningAppId)
     if (runningAppId === null) return
     setPicked(null)
     setTab('game')
-  }, [runningAppId])
+  }, [runningAppId, seenRunning, setSeenRunning, setPicked, setTab])
 
   if (!state) return null
 
