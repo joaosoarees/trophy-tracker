@@ -1,12 +1,18 @@
 {
   "files": [],
   "references": [
-    { "path": "./tsconfig.node.json" },
-    { "path": "./tsconfig.web.json" }
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.web.json"
+    }
   ],
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/renderer/src/*"]
+      "@app/*": ["./src/renderer/src/app/*"],
+      "@ui/*": ["./src/renderer/src/ui/*"],
+      "@shared/*": ["./src/shared/*"]
     }
   }
 }

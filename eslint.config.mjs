@@ -17,7 +17,7 @@ export default defineConfig(
     'out',
     'dist',
     'node_modules',
-    'src/renderer/src/components/ui',
+    'src/renderer/src/ui/primitives',
   ]),
 
   js.configs.recommended,
@@ -54,7 +54,7 @@ export default defineConfig(
             'sibling',
             'index',
           ],
-          pathGroups: [{ pattern: '@/**', group: 'internal' }],
+          pathGroups: [{ pattern: '@{app,ui,shared}/**', group: 'internal' }],
           alphabetize: { order: 'asc', caseInsensitive: true },
           'newlines-between': 'always',
         },
