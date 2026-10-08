@@ -4,8 +4,8 @@ import { ptBR } from './locales/pt-BR'
 export type { Messages }
 
 /**
- * Para adicionar um idioma: criar o arquivo em `locales/` (o tipo `Messages` acusa o que
- * faltar traduzir) e registrá-lo aqui com o nome que a Steam usa para ele.
+ * To add a language: create the file in `locales/` (the `Messages` type flags whatever is
+ * left untranslated) and register it here with the name Steam uses for it.
  */
 export const LANGUAGES = {
   en: { label: 'English', messages: en, steam: 'english', locale: 'en-US', country: 'US' },

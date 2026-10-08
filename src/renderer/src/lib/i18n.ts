@@ -1,12 +1,12 @@
 import { LANGUAGES, messagesFor, type Messages } from '../../../shared/i18n'
 import { useStore } from '@/store'
 
-/** Mensagens no idioma atual; o componente redesenha quando o idioma muda. */
+/** Messages in the current language; the component re-renders when the language changes. */
 export function useT(): Messages {
   return messagesFor(useStore((state) => state.session.language))
 }
 
-/** Localidade para datas, números e ordenação. */
+/** Locale for dates, numbers and sorting. */
 export function useLocale(): string {
   return LANGUAGES[useStore((state) => state.session.language)].locale
 }

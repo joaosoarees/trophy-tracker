@@ -5,7 +5,7 @@ describe('createSaver', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
-  it('grava só a última versão depois da pausa', () => {
+  it('saves only the latest version after the pause', () => {
     const save = vi.fn()
     const saver = createSaver<string>(save, 500)
     for (const text of ['a', 'ab', 'abc']) {
@@ -17,7 +17,7 @@ describe('createSaver', () => {
     expect(save.mock.calls).toEqual([['nota', 'abc']])
   })
 
-  it('trata chaves diferentes de forma independente', () => {
+  it('handles different keys independently', () => {
     const save = vi.fn()
     const saver = createSaver<string>(save, 500)
     saver.schedule('a', '1')
@@ -29,7 +29,7 @@ describe('createSaver', () => {
     ])
   })
 
-  it('grava na hora o que está pendente ao fechar, uma vez só', () => {
+  it('saves pending work right away on close, only once', () => {
     const save = vi.fn()
     const saver = createSaver<string>(save, 500)
     saver.schedule('a', '1')

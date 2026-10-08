@@ -3,14 +3,14 @@ import { createSaver } from '@/lib/saver'
 import type { StoreSlice } from '../Store'
 
 type UserDataStore = {
-  /** Notas, fixadas e checklists, por jogo e por conquista. */
+  /** Notes, pins and checklists, per game and per achievement. */
   byGame: Record<number, GameUserData>
 }
 
 type UserDataActions = {
   load: (appid: number) => Promise<void>
   update: (appid: number, achievementId: string, patch: Partial<AchievementUserData>) => void
-  /** Grava na hora o que ainda está esperando a pausa de digitação. */
+  /** Writes right away what is still waiting for the typing pause. */
   flush: () => void
 }
 

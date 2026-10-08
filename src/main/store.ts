@@ -4,7 +4,7 @@ import { DEFAULT_LANGUAGE, isLanguage, type Language } from '../shared/i18n'
 import type { AchievementUserData, GameUserData, GameView, Profile } from '../shared/types'
 import type { Credentials, RawOwnedGame, RawSchemaAchievement, StoreArt } from './steam/client'
 
-/** Cifra opcional da chave (safeStorage do Electron, quando há keyring). */
+/** Optional cipher for the key (Electron's safeStorage, when there is a keyring). */
 export interface Cipher {
   encrypt(plain: string): string
   decrypt(encoded: string): string
@@ -20,12 +20,12 @@ interface ConfigFile {
 export interface SummaryEntry {
   total: number
   unlocked: number
-  /** Tempo de jogo na leitura; se não mudou, as conquistas também não. */
+  /** Playtime at the time of the read; if it has not changed, neither have the achievements. */
   playtime: number
 }
 
 interface CacheFile {
-  /** Idioma em que o conteúdo da Steam foi lido. */
+  /** Language the Steam content was read in. */
   language?: string
   library?: { fetchedAt: number; games: RawOwnedGame[] }
   games: Record<string, GameView>
@@ -157,7 +157,7 @@ export class Store {
     return isLanguage(this.settings.language) ? this.settings.language : DEFAULT_LANGUAGE
   }
 
-  /** Trocar de idioma descarta o que veio da Steam já traduzido (conquistas e capas). */
+  /** Changing the language drops what came from Steam already translated (achievements and art). */
   setLanguage(language: Language): void {
     if (language === this.getLanguage()) return
     this.settings.language = language
@@ -165,7 +165,7 @@ export class Store {
     this.dropTranslatedCache()
   }
 
-  /** Conquistas e capas vêm da Steam já traduzidas; cache de outro idioma não serve. */
+  /** Achievements and art come from Steam already translated; a cache in another language is useless. */
   private dropTranslatedCache(): void {
     this.cache.games = {}
     this.cache.schemas = {}

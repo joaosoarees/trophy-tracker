@@ -30,7 +30,7 @@ let store: Store
 let tracker: Tracker
 const client = new SteamClient()
 
-/** Preenchido quando a Steam passa a recusar a chave salva; força o onboarding de novo. */
+/** Set when Steam starts rejecting the saved key; forces the onboarding again. */
 let configError: string | null = null
 let current: { appid: number; running: boolean } | null = null
 let lastView: GameView | null = null
@@ -69,7 +69,7 @@ async function resolveCurrent(): Promise<typeof current> {
 async function checkRunningGame(): Promise<void> {
   const next = await resolveCurrent()
   if (next?.appid === current?.appid && next?.running === current?.running) return
-  // Fechou o jogo: uma última leitura pega o que foi desbloqueado no minuto final.
+  // The game was closed: one last read catches what was unlocked in the final minute.
   if (current?.running && !(next?.running && next.appid === current.appid)) await checkUnlocks()
   current = next
   lastView = null
@@ -82,7 +82,7 @@ async function checkUnlocks(): Promise<void> {
   const result = await attempt(() => tracker.getGame(appid, 'poll'))
   if (!result.ok || current?.appid !== appid) return
   const view = result.value
-  // O tracker devolve o mesmo objeto quando nada mudou; aí não há o que avisar.
+  // The tracker returns the same object when nothing changed; then there is nothing to announce.
   if (view === lastView) return
   if (lastView?.appid === appid) {
     for (const a of newlyUnlocked(lastView, view)) {
@@ -100,7 +100,7 @@ function registerIpc(): void {
     detectSteamId: () => getActiveSteamId(),
     checkSteamId: async (steamId) => {
       const result = await checkSteamId(m(), steamId)
-      if (result.status === 'unconfirmed') console.warn(`SteamID ${result.steamId} não confirmado: ${result.reason}`)
+      if (result.status === 'unconfirmed') console.warn(`SteamID ${result.steamId} not confirmed: ${result.reason}`)
       return result
     },
     checkApiKey: (steamId, apiKey) => checkApiKey(m(), client, steamId, apiKey),
@@ -175,7 +175,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  // Sem keyring (comum no WSL) o safeStorage cairia num esquema fraco; aí vale o arquivo com permissão 600.
+  // Without a keyring (common on WSL) safeStorage would fall back to a weak scheme; the 600-permission file is used instead.
   const secure =
     safeStorage.isEncryptionAvailable() &&
     (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text')

@@ -16,29 +16,29 @@ const achievement = (progress: Achievement['progress']): Achievement => ({
 })
 
 describe('parseChecklist', () => {
-  it('vira um item por linha, sem marcadores, numeração nem linhas vazias', () => {
-    const text = '- Kodama da ponte\n\n* Kodama da caverna\r\n3. Kodama do templo\n[ ] Kodama do rio\n  12) Kodama da torre  \n- [x] 2. Kodama do lago'
+  it('turns each line into an item, dropping bullets, numbering and blank lines', () => {
+    const text = '- Bridge Kodama\n\n* Cave Kodama\r\n3. Temple Kodama\n[ ] River Kodama\n  12) Tower Kodama  \n- [x] 2. Lake Kodama'
     expect(parseChecklist(text).map((i) => i.text)).toEqual([
-      'Kodama da ponte',
-      'Kodama da caverna',
-      'Kodama do templo',
-      'Kodama do rio',
-      'Kodama da torre',
-      'Kodama do lago'
+      'Bridge Kodama',
+      'Cave Kodama',
+      'Temple Kodama',
+      'River Kodama',
+      'Tower Kodama',
+      'Lake Kodama'
     ])
   })
 
-  it('preserva números que fazem parte do nome', () => {
-    expect(parseChecklist('3 Kodamas na vila\nFase 2-1').map((i) => i.text)).toEqual(['3 Kodamas na vila', 'Fase 2-1'])
+  it('keeps numbers that are part of the name', () => {
+    expect(parseChecklist('3 Kodamas in the village\nStage 2-1').map((i) => i.text)).toEqual(['3 Kodamas in the village', 'Stage 2-1'])
   })
 
-  it('ignora repetidos, inclusive os que já estavam na lista', () => {
-    const existing = [{ id: 'x', text: 'Kodama da Ponte', done: true }]
-    const added = parseChecklist('kodama da ponte\nNovo\nnovo', existing)
-    expect(added.map((i) => i.text)).toEqual(['Novo'])
+  it('ignores duplicates, including the ones already on the list', () => {
+    const existing = [{ id: 'x', text: 'Bridge Kodama', done: true }]
+    const added = parseChecklist('bridge kodama\nNew\nnew', existing)
+    expect(added.map((i) => i.text)).toEqual(['New'])
   })
 
-  it('cria itens desmarcados com ids distintos', () => {
+  it('creates unchecked items with distinct ids', () => {
     const items = parseChecklist('a\nb')
     expect(items.every((i) => !i.done)).toBe(true)
     expect(new Set(items.map((i) => i.id)).size).toBe(2)
@@ -52,7 +52,7 @@ describe('shownProgress', () => {
     { id: '3', text: 'c', done: true }
   ]
 
-  it('usa o checklist como contador quando a Steam não tem um', () => {
+  it('uses the checklist as the counter when Steam has none', () => {
     expect(shownProgress(achievement(null), { note: '', pinned: false, checklist })).toEqual({
       current: 2,
       target: 3,
@@ -60,7 +60,7 @@ describe('shownProgress', () => {
     })
   })
 
-  it('dá preferência ao contador da Steam', () => {
+  it('prefers the Steam counter', () => {
     expect(shownProgress(achievement({ current: 5, target: 9 }), { note: '', pinned: false, checklist })).toEqual({
       current: 5,
       target: 9,
@@ -68,7 +68,7 @@ describe('shownProgress', () => {
     })
   })
 
-  it('não mostra nada sem contador nem checklist', () => {
+  it('shows nothing without a counter or a checklist', () => {
     expect(shownProgress(achievement(null), undefined)).toBeNull()
     expect(shownProgress(achievement(null), { note: 'x', pinned: true, checklist: [] })).toBeNull()
   })

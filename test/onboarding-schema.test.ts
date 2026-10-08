@@ -9,19 +9,19 @@ import { KEY, STEAM_ID } from './helpers'
 const firstMessage = (result: { success: boolean; error?: { issues: { message: string }[] } }): string | undefined =>
   result.error?.issues[0]?.message
 
-describe('schemas do onboarding', () => {
-  it('aceitam valores válidos, tirando espaços das pontas', () => {
+describe('onboarding schemas', () => {
+  it('accept valid values, trimming surrounding whitespace', () => {
     expect(languageStepSchema.parse({ language: 'pt-BR' })).toEqual({ language: 'pt-BR' })
     expect(accountStepSchema.parse({ steamId: ` ${STEAM_ID} ` })).toEqual({ steamId: STEAM_ID })
     expect(apiKeyStepSchema.parse({ apiKey: `${KEY}\n` })).toEqual({ apiKey: KEY })
     expect(privacyStepSchema.parse({ gamesWithPlaytime: 0 })).toEqual({ gamesWithPlaytime: 0 })
   })
 
-  it('recusam valores inválidos com uma chave de mensagem que existe nas traduções', () => {
+  it('reject invalid values with a message key that exists in the translations', () => {
     const failures = [
       languageStepSchema.safeParse({ language: 'fr' }),
       accountStepSchema.safeParse({ steamId: '12345' }),
-      apiKeyStepSchema.safeParse({ apiKey: 'curta' }),
+      apiKeyStepSchema.safeParse({ apiKey: 'short' }),
       privacyStepSchema.safeParse({})
     ]
     const keys = failures.map(firstMessage)

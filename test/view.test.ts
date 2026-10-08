@@ -17,7 +17,7 @@ const ach = (id: string, over: Partial<Achievement> = {}): Achievement => ({
 })
 const view = (achievements: Achievement[], fetchedAt = 1): GameView => ({
   appid: 1,
-  name: 'Jogo',
+  name: 'Game',
   total: achievements.length,
   unlockedCount: achievements.filter((a) => a.unlocked).length,
   achievements,
@@ -26,13 +26,13 @@ const view = (achievements: Achievement[], fetchedAt = 1): GameView => ({
 })
 
 describe('mergeView', () => {
-  it('devolve a leitura anterior quando só a hora mudou', () => {
+  it('returns the previous read when only the time changed', () => {
     const before = view([ach('A'), ach('B', { progress: { current: 1, target: 5 } })])
     const after = view([ach('A'), ach('B', { progress: { current: 1, target: 5 } })], 2)
     expect(mergeView(before, after)).toBe(before)
   })
 
-  it('troca só as conquistas que mudaram', () => {
+  it('replaces only the achievements that changed', () => {
     const before = view([ach('A'), ach('B'), ach('C', { progress: { current: 1, target: 5 } })])
     const after = view([ach('A'), ach('B', { unlocked: true, unlockedAt: 9 }), ach('C', { progress: { current: 2, target: 5 } })], 2)
     const merged = mergeView(before, after)
@@ -43,7 +43,7 @@ describe('mergeView', () => {
     expect(merged.achievements[2].progress).toEqual({ current: 2, target: 5 })
   })
 
-  it('percebe conquistas novas, capa nova e jogo diferente', () => {
+  it('notices new achievements, new art and a different game', () => {
     const before = view([ach('A')])
     expect(mergeView(before, view([ach('A'), ach('B')])).achievements).toHaveLength(2)
     expect(mergeView(before, { ...view([ach('A')]), header: 'outra' }).header).toBe('outra')

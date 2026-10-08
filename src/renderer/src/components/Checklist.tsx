@@ -29,7 +29,7 @@ export function Checklist({ achievement, items, onChange }: Props) {
     const added = parseChecklist(text, items)
     if (added.length > 0) onChange([...items, ...added])
   }
-  /** Item digitado à mão entra como foi escrito; se já existe, o texto fica no campo com um aviso. */
+  /** A hand-typed item goes in as written; if it already exists, the text stays in the field with a warning. */
   const addDraft = (): void => {
     const text = draft.trim()
     if (text === '') return
@@ -45,7 +45,7 @@ export function Checklist({ achievement, items, onChange }: Props) {
     if (text.trim() !== '') patch(id, { text: text.trim() })
   }
 
-  // Pendentes primeiro: o que falta é o que interessa.
+  // Pending first: what is missing is what matters.
   const ordered = [...items].sort((a, b) => Number(a.done) - Number(b.done))
   const preview = parseChecklist(pasted, items).length
 
@@ -99,7 +99,7 @@ export function Checklist({ achievement, items, onChange }: Props) {
             setDuplicate(false)
           }}
           onKeyDown={(e) => {
-            // Enter que só confirma um acento ou composição não adiciona.
+            // An Enter that only confirms an accent or a composition does not add anything.
             if (e.key === 'Enter' && !e.nativeEvent.isComposing) addDraft()
           }}
         />

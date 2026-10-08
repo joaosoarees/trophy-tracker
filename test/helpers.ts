@@ -6,7 +6,7 @@ export interface Route {
   text?: string
 }
 
-/** `fetch` falso: a primeira rota cujo trecho aparece na URL responde. */
+/** Fake `fetch`: the first route whose fragment appears in the URL answers. */
 export function fakeFetch(routes: Record<string, Route | ((url: URL) => Route)>): typeof fetch & { calls: string[] } {
   const calls: string[] = []
   const impl = async (input: string | URL | Request): Promise<Response> => {

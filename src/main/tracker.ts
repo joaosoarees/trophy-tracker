@@ -13,7 +13,7 @@ import type { Store, SummaryEntry } from './store'
 
 const LIBRARY_TTL = 10 * 60_000
 const GAME_TTL = 60_000
-/** A lista de conquistas de um jogo quase nunca muda. */
+/** A game's achievement list almost never changes. */
 const SCHEMA_TTL = 24 * 60 * 60_000
 const CONCURRENCY = 4
 
@@ -39,7 +39,7 @@ export class Tracker {
     this.now = deps.now ?? Date.now
   }
 
-  /** Pedidos idênticos simultâneos compartilham a mesma leitura. */
+  /** Identical simultaneous requests share the same read. */
   private once<T>(key: string, run: () => Promise<T>): Promise<T> {
     const running = this.inflight.get(key) as Promise<T> | undefined
     if (running) return running
@@ -65,24 +65,24 @@ export class Tracker {
     })
   }
 
-  /** Jogo jogado mais recentemente, para quando não há jogo aberto. */
+  /** Most recently played game, for when no game is open. */
   async lastPlayedAppId(): Promise<number | null> {
     const played = (await this.library()).filter((g) => g.playtime_forever > 0)
     if (played.length === 0) return null
     return played.reduce((a, b) => ((b.rtime_last_played ?? 0) > (a.rtime_last_played ?? 0) ? b : a)).appid
   }
 
-  /** Capas são enfeite: vêm do cache e qualquer falha da loja só as deixa de fora. */
+  /** Art is decoration: it comes from the cache, and any store failure just leaves it out. */
   private async art(appids: number[]): Promise<Map<number, StoreArt>> {
     const missing = appids.filter((id) => this.store.getArt(id) === null)
     if (missing.length > 0) {
       try {
         const fetched = await this.client.getStoreArt(missing)
-        // Guarda também os que a loja não devolveu, para não perguntar de novo.
+        // Also record the ones the store did not return, so we do not ask again.
         for (const id of missing) if (!fetched.has(id)) fetched.set(id, { header: '', capsule: '' })
         this.store.setArt(fetched)
       } catch {
-        // segue sem capa
+        // carry on without art
       }
     }
     const result = new Map<number, StoreArt>()
@@ -110,15 +110,15 @@ export class Tracker {
     const known = this.statMaps.get(appid)
     if (known) return known
     const map = await this.readStatMap(appid)
-    // Vazio pode ser só o cliente Steam ainda sem o arquivo; tenta de novo depois.
+    // Empty may just mean the Steam client has not written the file yet; try again later.
     if (map.size > 0) this.statMaps.set(appid, map)
     return map
   }
 
   /**
-   * `false`: serve do cache se for recente. `'poll'`: relê só o que muda enquanto se joga
-   * (estado do jogador e contadores). `true`: relê tudo, inclusive a lista de conquistas.
-   * Devolve o mesmo objeto da leitura anterior quando nada mudou.
+   * `false`: serves from the cache if recent. `'poll'`: re-reads only what changes while playing
+   * (player state and counters). `true`: re-reads everything, including the achievement list.
+   * Returns the same object as the previous read when nothing changed.
    */
   async getGame(appid: number, mode: boolean | 'poll' = false): Promise<GameView> {
     const cached = this.store.getGame(appid)
@@ -139,7 +139,7 @@ export class Tracker {
     let stats: Record<string, number> = {}
     if (schema.some((s) => (s.max_progress_int ?? 0) > 0)) {
       statMap = await this.statMap(appid)
-      // Contadores são um extra: se falharem, a lista continua valendo.
+      // Counters are an extra: if they fail, the list still stands.
       if (statMap.size > 0) stats = await this.client.getUserStats(creds, appid).catch(() => ({}))
     }
 
@@ -163,7 +163,7 @@ export class Tracker {
     return { playtime: game?.playtime_forever ?? 0 }
   }
 
-  /** Jogos já jogados que têm conquistas, do mais perto dos 100% para o mais longe; completos por último. */
+  /** Played games that have achievements, from closest to 100% to furthest; complete ones last. */
   getDashboard(mode: DashboardMode = 'cached', onProgress?: (done: number, total: number) => void): Promise<GameSummary[]> {
     return this.once(`dashboard:${mode}`, () => this.readDashboard(mode, onProgress))
   }
@@ -196,7 +196,7 @@ export class Tracker {
         } catch (e) {
           if (!(e instanceof SteamError) || (e.kind !== 'no-stats' && e.kind !== 'unknown')) throw e
           entry = { total: 0, unlocked: 0, playtime: game.playtime_forever }
-          // Falha pontual da Steam não vira "sem conquistas" no cache.
+          // A one-off Steam failure must not become "no achievements" in the cache.
           if (e.kind === 'unknown') {
             entries.set(game.appid, entry)
             onProgress?.(++done, total)

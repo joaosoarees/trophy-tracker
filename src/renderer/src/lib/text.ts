@@ -1,4 +1,4 @@
-/** Minúsculas e sem acentos, para busca. */
+/** Lowercase and without accents, for searching. */
 export const normalize = (s: string): string =>
   s
     .normalize('NFD')

@@ -31,7 +31,7 @@ export function ApiKeyStep() {
       return
     }
 
-    // Chave nova: a privacidade precisa ser conferida de novo com ela.
+    // New key: privacy has to be checked again with it.
     form.resetField('privacyStep.gamesWithPlaytime')
     nextStep()
   }

@@ -32,39 +32,39 @@ describe('buildGameView', () => {
   })
   const byId = (id: string) => view.achievements.find((a) => a.id === id)!
 
-  it('conta desbloqueadas e total', () => {
+  it('counts unlocked and total', () => {
     expect(view.total).toBe(64)
     expect(view.unlockedCount).toBe(2)
   })
 
-  it('revela nome e descrição das conquistas ocultas', () => {
+  it('reveals the name and description of hidden achievements', () => {
     const hidden = view.achievements.filter((a) => a.hidden)
     expect(hidden.length).toBe(25)
     expect(hidden.every((a) => a.name !== '' && a.description !== '')).toBe(true)
     expect(byId('ACH_004').description).toBe('Você viajou no tempo pela primeira vez.')
   })
 
-  it('mostra o contador de uma conquista pendente a partir do stat', () => {
+  it('shows the counter of a pending achievement from its stat', () => {
     expect(byId('ACH_001').progress).toEqual({ current: 31, target: 39 })
   })
 
-  it('considera o contador cheio quando a conquista já foi obtida', () => {
+  it('treats the counter as full when the achievement is already unlocked', () => {
     expect(byId('ACH_002').progress).toEqual({ current: 10, target: 10 })
     expect(byId('ACH_002').unlockedAt).toBe(1770000000)
   })
 
-  it('não inventa contador quando não sabe qual stat o alimenta', () => {
+  it('does not invent a counter when it does not know which stat feeds it', () => {
     const counted = niohSchema.find((s) => s.max_progress_int && !['ACH_001', 'ACH_002'].includes(s.internal_name))!
     expect(byId(counted.internal_name).progress).toBeNull()
     expect(byId('ACH_000').progress).toBeNull()
   })
 
-  it('traz raridade global e ícones', () => {
+  it('includes global rarity and icons', () => {
     expect(byId('ACH_000').rarity).toBe(12.7)
     expect(byId('ACH_000').icon).toMatch(/\/apps\/3681010\/.+\.jpg$/)
   })
 
-  it('trata como pendente o que a Steam não listou para o jogador', () => {
+  it('treats as pending what Steam did not list for the player', () => {
     const empty = buildGameView({
       appid: 2638890,
       name: 'Onimusha: Way of the Sword',
@@ -80,7 +80,7 @@ describe('buildGameView', () => {
 })
 
 describe('newlyUnlocked', () => {
-  it('lista só o que mudou para desbloqueado', () => {
+  it('lists only what changed to unlocked', () => {
     const make = (ids: string[]) =>
       buildGameView({
         appid: 1,
@@ -96,7 +96,7 @@ describe('newlyUnlocked', () => {
 })
 
 describe('guideUrl', () => {
-  it('monta as buscas com o nome codificado e o complemento no idioma do usuário', () => {
+  it('builds the searches with the encoded name and the suffix in the user language', () => {
     expect(guideUrl('steam', 3681010, 'Nioh 3', 'Você é Nioh', 'como conseguir')).toBe(
       'https://steamcommunity.com/app/3681010/guides/?searchText=Voc%C3%AA%20%C3%A9%20Nioh'
     )
@@ -105,7 +105,7 @@ describe('guideUrl', () => {
   })
 })
 
-describe('VDF binário', () => {
+describe('binary VDF', () => {
   const str = (s: string) => Buffer.concat([Buffer.from(s, 'utf8'), Buffer.from([0])])
   const obj = (key: string, ...children: Buffer[]) => Buffer.concat([Buffer.from([0]), str(key), ...children, Buffer.from([8])])
   const text = (key: string, value: string) => Buffer.concat([Buffer.from([1]), str(key), str(value)])
@@ -131,23 +131,23 @@ describe('VDF binário', () => {
     Buffer.from([8])
   ])
 
-  it('lê objetos, textos e inteiros', () => {
+  it('reads objects, strings and integers', () => {
     const root = parseBinaryVdf(schema) as any
     expect(root['3681010'].gamename).toBe('Nioh 3')
     expect(root['3681010'].stats['1376'].bits['3'].progress.max_val).toBe(39)
   })
 
-  it('liga cada conquista com contador ao seu stat', () => {
+  it('links each counted achievement to its stat', () => {
     expect([...achievementStatMap(parseBinaryVdf(schema))]).toEqual([['ACH_001', 'ACH_001_PROGRESS']])
   })
 
-  it('recusa arquivo truncado', () => {
+  it('rejects a truncated file', () => {
     expect(() => parseBinaryVdf(schema.subarray(0, 40))).toThrow()
   })
 })
 
-describe('interop com o Windows', () => {
-  it('lê valores do reg.exe', () => {
+describe('Windows interop', () => {
+  it('reads reg.exe values', () => {
     expect(parseRegValue('\r\nHKEY_CURRENT_USER\\Software\\Valve\\Steam\r\n    RunningAppID    REG_DWORD    0x28442a\r\n\r\n')).toBe(2638890)
     expect(parseRegValue('\r\nHKEY_CURRENT_USER\\Software\\Valve\\Steam\r\n    SteamPath    REG_SZ    c:/program files (x86)/steam\r\n')).toBe(
       'c:/program files (x86)/steam'
@@ -155,11 +155,11 @@ describe('interop com o Windows', () => {
     expect(parseRegValue('ERROR: The system was unable to find the specified registry key or value.')).toBeNull()
   })
 
-  it('converte a conta logada em SteamID64', () => {
+  it('converts the signed-in account to a SteamID64', () => {
     expect(accountIdToSteamId(0xeb738e9)).toBe(STEAM_ID)
   })
 
-  it('traduz caminhos do Windows para o WSL', () => {
+  it('translates Windows paths to WSL', () => {
     expect(toLocalPath('c:/program files (x86)/steam', true)).toBe('/mnt/c/program files (x86)/steam')
     expect(toLocalPath('D:\\Steam', true)).toBe('/mnt/d/Steam')
     expect(toLocalPath('D:\\Steam', false)).toBe('D:\\Steam')
@@ -173,26 +173,26 @@ describe('SteamClient', () => {
     return (e as SteamError).kind
   }
 
-  it('reconhece chave recusada', async () => {
+  it('recognises a rejected key', async () => {
     expect(await kind(clientWith({ GetPlayerSummaries: FORBIDDEN_HTML }).getPlayerSummary(creds))).toBe('invalid-key')
   })
 
-  it('reconhece perfil privado e jogo sem conquistas', async () => {
+  it('recognises a private profile and a game with no achievements', async () => {
     expect(await kind(clientWith({ GetPlayerAchievements: NOT_PUBLIC }).getPlayerAchievements(creds, 1))).toBe('private')
     expect(await kind(clientWith({ GetPlayerAchievements: NO_STATS }).getPlayerAchievements(creds, 1))).toBe('no-stats')
   })
 
-  it('reconhece SteamID sem perfil', async () => {
+  it('recognises a SteamID with no profile', async () => {
     const client = clientWith({ GetPlayerSummaries: { json: { response: { players: [] } } } })
     expect(await kind(client.getPlayerSummary(creds))).toBe('not-found')
   })
 
-  it('distingue biblioteca vazia de biblioteca invisível', async () => {
+  it('tells an empty library from an invisible one', async () => {
     expect(await clientWith({ GetOwnedGames: { json: { response: {} } } }).getOwnedGames(creds)).toBeNull()
     expect(await clientWith({ GetOwnedGames: { json: { response: { game_count: 0 } } } }).getOwnedGames(creds)).toEqual([])
   })
 
-  it('pede as conquistas sem chave e no idioma do usuário', async () => {
+  it('asks for the achievements with no key and in the user language', async () => {
     const asked: (string | null)[] = []
     const fetchImpl = fakeFetch({
       GetGameAchievements: (url) => {
@@ -208,14 +208,14 @@ describe('SteamClient', () => {
     expect(asked).toEqual(['english', 'brazilian'])
   })
 
-  it('traduz cada tipo de erro para o idioma pedido', () => {
+  it('translates each kind of error to the requested language', () => {
     expect(steamErrorMessage(en, new SteamError('invalid-key'))).toBe('Steam rejected the Web API key.')
     expect(steamErrorMessage(ptBR, new SteamError('invalid-key'))).toBe('A Steam recusou a chave da Web API.')
     expect(steamErrorMessage(ptBR, new SteamError('unknown', 502))).toBe('A Steam respondeu com erro 502.')
     expect(steamErrorMessage(en, new SteamError('unknown', 400, 'Bad appid'))).toBe('Bad appid')
   })
 
-  it('reconhece falha de rede', async () => {
+  it('recognises a network failure', async () => {
     const client = new SteamClient((async () => {
       throw new TypeError('fetch failed')
     }) as typeof fetch)

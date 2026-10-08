@@ -4,11 +4,11 @@ import type { StoreSlice } from '../Store'
 export type CurrentGame = { appid: number; running: boolean } | null
 
 type SessionStore = {
-  /** Idioma da interface; espelha o que o processo principal tem salvo. */
+  /** Interface language; mirrors what the main process has saved. */
   language: Language
-  /** Jogo aberto na Steam ou, sem jogo aberto, o último jogado. */
+  /** Game open on Steam or, with no game open, the last one played. */
   current: CurrentGame
-  /** Sobe a cada falha de leitura; o App confere se a configuração ainda vale. */
+  /** Goes up on every failed read; the App checks whether the setup is still valid. */
   failures: number
 }
 
@@ -48,7 +48,7 @@ export const createSessionSlice: StoreSlice<SessionSlice> = (set, get) => ({
       false,
       'session/setCurrent'
     )
-    // O tempo de jogo acabou de mudar; relê só os jogos que mudaram.
+    // Playtime has just changed; re-read only the games that changed.
     if (closed) void get().dashboard.load('changed')
   },
 

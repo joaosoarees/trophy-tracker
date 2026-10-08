@@ -27,7 +27,7 @@ const schema = z.object({
 
 export type OnboardingFormData = z.infer<typeof schema>
 
-/** O rascunho sobrevive a um recarregamento, mas nunca guarda a chave da Web API. */
+/** The draft survives a reload, but never stores the Web API key. */
 type Draft = Pick<OnboardingFormData, 'languageStep' | 'accountStep'>
 
 const DRAFT_KEY = 'onboarding-form'
@@ -65,7 +65,7 @@ export function Onboarding({ state, onDone, onCancel }: IOnboardingProps) {
       const { languageStep, accountStep } = formData
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ languageStep, accountStep }))
 
-      // Escolher o idioma já troca a tela, sem recarregar.
+      // Picking the language switches the screen right away, with no reload.
       if (name === 'languageStep.language' && isLanguage(languageStep?.language)) {
         setLanguage(languageStep.language)
         void window.api.setLanguage(languageStep.language)
@@ -94,7 +94,7 @@ export function Onboarding({ state, onDone, onCancel }: IOnboardingProps) {
     onDone(next)
   })
 
-  // Depois de um recarregamento a chave não está mais lá, então não dá para retomar além da etapa dela.
+  // After a reload the key is gone, so the form cannot resume past the key step.
   const savedStep = Number(sessionStorage.getItem(STEP_KEY) ?? 0)
   const initialStep = Math.min(Number.isInteger(savedStep) ? savedStep : 0, API_KEY_STEP)
 

@@ -5,7 +5,7 @@ type DashboardStore = {
   games: GameSummary[] | null
   loading: boolean
   error: string | null
-  /** Jogos lidos e total, durante uma carga. */
+  /** Games read and total, during a load. */
   progress: [number, number] | null
 }
 

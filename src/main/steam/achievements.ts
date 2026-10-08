@@ -9,9 +9,9 @@ export interface GameSources {
   name: string
   schema: RawSchemaAchievement[]
   player: RawPlayerAchievement[]
-  /** Valores atuais dos stats do jogador. */
+  /** Current values of the player's stats. */
   stats: Record<string, number>
-  /** Conquista → stat que alimenta seu contador. */
+  /** Achievement → stat that feeds its counter. */
   statMap: Map<string, string>
   now?: number
 }
@@ -56,13 +56,13 @@ export function buildGameView({ appid, name, schema, player, stats, statMap, now
   }
 }
 
-/** Conquistas que passaram a estar desbloqueadas entre duas leituras do mesmo jogo. */
+/** Achievements that became unlocked between two reads of the same game. */
 export function newlyUnlocked(previous: GameView, next: GameView): Achievement[] {
   const had = new Set(previous.achievements.filter((a) => a.unlocked).map((a) => a.id))
   return next.achievements.filter((a) => a.unlocked && !had.has(a.id))
 }
 
-/** `howTo` é o complemento da busca no idioma do usuário (ex.: "how to get"). */
+/** `howTo` is the search suffix in the user's language (e.g. "how to get"). */
 export function guideUrl(site: GuideSite, appid: number, game: string, achievement: string, howTo: string): string {
   const q = encodeURIComponent
   switch (site) {

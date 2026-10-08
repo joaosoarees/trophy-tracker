@@ -1,4 +1,4 @@
-/** Idioma de referência: o tipo `Messages` sai deste arquivo, então toda chave nova começa aqui. */
+/** Reference language: the `Messages` type comes from this file, so every new key starts here. */
 export const en = {
   appTitle: 'Steam Achievements',
 

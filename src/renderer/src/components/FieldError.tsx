@@ -4,8 +4,8 @@ import type { OnboardingFormData } from '@/Onboarding'
 import { useT } from '@/lib/i18n'
 
 /**
- * Erro de um campo do onboarding. Os schemas guardam a chave da mensagem (não o texto),
- * para o erro acompanhar a troca de idioma; o que vem da Steam já chega traduzido.
+ * Error of an onboarding field. The schemas hold the message key (not the text),
+ * so the error follows a language change; what comes from Steam is already translated.
  */
 export function FieldError({ name }: { name: FieldPath<OnboardingFormData> | 'root' }) {
   const { formState } = useFormContext<OnboardingFormData>()

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { safeSessionStorageGetItem } from '@/lib/utils'
 
-/** `useState` que sobrevive a um recarregamento da janela (mas não a fechar o app). */
+/** A `useState` that survives a window reload (but not closing the app). */
 export function useSessionState<T>(key: string, initial: T): [T, (value: T) => void] {
   const [value, setValue] = useState<T>(() => safeSessionStorageGetItem<T>(key) ?? initial)
 

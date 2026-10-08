@@ -33,9 +33,9 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick(): 
 export function App() {
   const t = useT()
   const [state, setState] = useState<AppState | null>(null)
-  /** Idioma em uso quando a reconfiguração começou, ou `null` fora dela. */
+  /** Language in use when reconfiguration started, or `null` outside of it. */
   const [reconfiguring, setReconfiguring] = useState<string | null>(null)
-  // Aba, jogo escolhido e jogo em execução já visto sobrevivem ao recarregamento da troca de idioma.
+  // Tab, picked game and already-seen running game survive the reload of a language change.
   const [tab, setTab] = useSessionState<Tab>('view-tab', 'game')
   const { current, failures, language, setLanguage } = useStore(
     useShallow((state) => ({
@@ -45,7 +45,7 @@ export function App() {
       setLanguage: state.session.setLanguage
     }))
   )
-  /** Jogo escolhido no painel; vale até um jogo ser aberto na Steam. */
+  /** Game picked in the dashboard; holds until a game is opened on Steam. */
   const [picked, setPicked] = useSessionState<number | null>('view-picked', null)
   const [seenRunning, setSeenRunning] = useSessionState<number | null>('view-seen-running', null)
   const [onTop, setOnTop] = useState(false)
@@ -74,13 +74,13 @@ export function App() {
     if (state?.configured) return connectStore()
   }, [state?.configured])
 
-  // Uma leitura falhou: confere se foi a chave que deixou de valer.
+  // A read failed: check whether the key stopped being valid.
   useEffect(() => {
     if (failures > 0) void refreshState()
   }, [failures, refreshState])
 
-  // Abrir um jogo na Steam traz o app para ele, uma vez por jogo aberto: recarregar a janela
-  // com o mesmo jogo ainda rodando não desfaz o que o usuário escolheu depois.
+  // Opening a game on Steam brings the app to it, once per opened game: reloading the window
+  // with the same game still running does not undo what the user picked afterwards.
   const runningAppId = current === null ? undefined : current.running ? current.appid : null
   useEffect(() => {
     if (runningAppId === undefined || runningAppId === seenRunning) return
@@ -93,8 +93,8 @@ export function App() {
   if (!state) return null
 
   if (!state.configured || reconfiguring !== null) {
-    // Refazer a configuração com o app já em uso: se o idioma mudou no caminho, o que está
-    // carregado veio da Steam no idioma antigo, e só recarregar garante que nada disso sobra.
+    // Redoing the setup with the app already in use: if the language changed along the way, what is
+    // loaded came from Steam in the old language, and only a reload guarantees none of it is left.
     const leave = (next?: AppState): void => {
       if (reconfiguring !== null && language !== reconfiguring) return window.location.reload()
       setReconfiguring(null)
@@ -109,7 +109,7 @@ export function App() {
     )
   }
 
-  // Nomes de conquistas e capas vêm da Steam já traduzidos; recarregar garante que nada antigo sobra na tela.
+  // Achievement names and art come from Steam already translated; reloading guarantees nothing old stays on screen.
   const changeLanguage = async (value: string): Promise<void> => {
     if (!isLanguage(value) || value === language) return
     await window.api.setLanguage(value)
@@ -151,7 +151,7 @@ export function App() {
         </Button>
       </nav>
 
-      {/* As duas telas ficam montadas; trocar de aba só esconde, sem recarregar nem perder a rolagem. */}
+      {/* Both screens stay mounted; switching tabs only hides one, with no reload and no lost scroll position. */}
       <div className={cn('flex min-h-0 flex-1 flex-col', tab !== 'game' && 'hidden')}>
         {appid === null ? (
           <Empty>{t.game.none}</Empty>

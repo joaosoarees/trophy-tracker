@@ -32,13 +32,13 @@ const player = (unlocked: number, total: number): Route => ({
 })
 
 describe('onboarding: SteamID', () => {
-  it('recusa formato errado sem ir à rede', async () => {
+  it('rejects a bad format without hitting the network', async () => {
     const f = fakeFetch({})
     expect((await checkSteamId(ptBR, '12345', f)).status).toBe('invalid')
     expect(f.calls).toHaveLength(0)
   })
 
-  it('confirma o perfil com nome e avatar', async () => {
+  it('confirms the profile with name and avatar', async () => {
     const f = fakeFetch({
       [`profiles/${STEAM_ID}`]: {
         text: '<profile><steamID64>76561198207154409</steamID64><steamID><![CDATA[João]]></steamID><avatarFull><![CDATA[https://a/b.jpg]]></avatarFull></profile>'
@@ -50,20 +50,20 @@ describe('onboarding: SteamID', () => {
     })
   })
 
-  it('bloqueia só quando a Steam diz que o perfil não existe', async () => {
+  it('blocks only when Steam says the profile does not exist', async () => {
     const f = fakeFetch({ profiles: { text: '<response><error><![CDATA[The specified profile could not be found.]]></error></response>' } })
     expect((await checkSteamId(ptBR, STEAM_ID, f)).status).toBe('not-found')
   })
 
   it.each([
-    ['limite de requisições', { status: 429, text: '<html>Too Many Requests</html>' }, 'a Steam respondeu com erro 429'],
-    ['página que não é o perfil', { text: '<html><body>Steam Community :: Error</body></html>' }, 'a Steam devolveu uma resposta inesperada'],
-    ['outro erro da Steam', { text: '<response><error><![CDATA[Please try again later.]]></error></response>' }, 'a Steam respondeu: Please try again later.']
-  ])('deixa seguir quando não consegue confirmar: %s', async (_caso, route, reason) => {
+    ['rate limit', { status: 429, text: '<html>Too Many Requests</html>' }, 'a Steam respondeu com erro 429'],
+    ['a page that is not the profile', { text: '<html><body>Steam Community :: Error</body></html>' }, 'a Steam devolveu uma resposta inesperada'],
+    ['another Steam error', { text: '<response><error><![CDATA[Please try again later.]]></error></response>' }, 'a Steam respondeu: Please try again later.']
+  ])('lets the user move on when it cannot confirm: %s', async (_caso, route, reason) => {
     expect(await checkSteamId(ptBR, STEAM_ID, fakeFetch({ profiles: route }))).toEqual({ status: 'unconfirmed', steamId: STEAM_ID, reason })
   })
 
-  it('deixa seguir quando a rede falha', async () => {
+  it('lets the user move on when the network fails', async () => {
     const offline = (async () => {
       throw new TypeError('fetch failed')
     }) as typeof fetch
@@ -71,23 +71,23 @@ describe('onboarding: SteamID', () => {
   })
 })
 
-describe('onboarding: chave', () => {
-  it('recusa formato errado', async () => {
-    expect((await checkApiKey(ptBR, clientWith({}), STEAM_ID, 'curta')).ok).toBe(false)
+describe('onboarding: key', () => {
+  it('rejects a bad format', async () => {
+    expect((await checkApiKey(ptBR, clientWith({}), STEAM_ID, 'short')).ok).toBe(false)
   })
 
-  it('recusa chave que a Steam não aceita', async () => {
+  it('rejects a key Steam does not accept', async () => {
     const r = await checkApiKey(ptBR, clientWith({ GetPlayerSummaries: FORBIDDEN_HTML }), STEAM_ID, KEY)
     expect(r).toEqual({ ok: false, error: 'A Steam recusou a chave da Web API.' })
   })
 
-  it('responde no idioma pedido', async () => {
+  it('answers in the requested language', async () => {
     const r = await checkApiKey(en, clientWith({ GetPlayerSummaries: FORBIDDEN_HTML }), STEAM_ID, KEY)
     expect(r).toEqual({ ok: false, error: 'Steam rejected the Web API key.' })
     expect(await checkSteamId(en, '12345')).toEqual({ status: 'invalid', error: 'A SteamID has 17 digits and starts with 7656119.' })
   })
 
-  it('aceita chave válida', async () => {
+  it('accepts a valid key', async () => {
     const client = clientWith({
       GetPlayerSummaries: { json: { response: { players: [{ steamid: STEAM_ID, personaname: 'joao', avatarfull: 'x' }] } } }
     })
@@ -95,19 +95,19 @@ describe('onboarding: chave', () => {
   })
 })
 
-describe('onboarding: privacidade', () => {
-  it('recusa quando a biblioteca não está visível', async () => {
+describe('onboarding: privacy', () => {
+  it('rejects when the library is not visible', async () => {
     expect((await checkPrivacy(ptBR, clientWith({ GetOwnedGames: { json: { response: {} } } }), STEAM_ID, KEY)).ok).toBe(false)
   })
 
-  it('recusa quando as conquistas não estão visíveis', async () => {
+  it('rejects when the achievements are not visible', async () => {
     const client = clientWith({ GetOwnedGames: owned(game(1, 'A', 10)), GetPlayerAchievements: NOT_PUBLIC })
     expect((await checkPrivacy(ptBR, client, STEAM_ID, KEY)).ok).toBe(false)
   })
 
-  it('pula jogos sem conquistas e conta os jogados', async () => {
+  it('skips games with no achievements and counts the played ones', async () => {
     const client = clientWith({
-      GetOwnedGames: owned(game(1, 'Sem conquistas', 10, 200), game(2, 'Com', 10, 100), game(3, 'Nunca aberto', 0)),
+      GetOwnedGames: owned(game(1, 'No achievements', 10, 200), game(2, 'With', 10, 100), game(3, 'Never opened', 0)),
       'appid=1': NO_STATS,
       'appid=2': player(1, 2)
     })
@@ -116,7 +116,7 @@ describe('onboarding: privacidade', () => {
 })
 
 describe('Store', () => {
-  it('guarda a chave num arquivo só do usuário e a relê', () => {
+  it('stores the key in a user-only file and reads it back', () => {
     const dir = tempDir()
     new Store(dir).setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile)
     expect(statSync(join(dir, 'config.json')).mode & 0o777).toBe(0o600)
@@ -125,7 +125,7 @@ describe('Store', () => {
     expect(again.getProfile()).toEqual(profile)
   })
 
-  it('cifra a chave quando há cifra disponível', () => {
+  it('encrypts the key when a cipher is available', () => {
     const dir = tempDir()
     const cipher = { encrypt: (s: string) => `enc:${s}`, decrypt: (s: string) => s.slice(4) }
     new Store(dir, cipher).setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile)
@@ -133,7 +133,7 @@ describe('Store', () => {
     expect(new Store(dir, cipher).getCredentials()?.apiKey).toBe(KEY)
   })
 
-  it('começa em inglês, lembra o idioma e descarta o cache traduzido ao trocar', () => {
+  it('starts in English, remembers the language and drops the translated cache on change', () => {
     const dir = tempDir()
     const store = new Store(dir)
     expect(store.getLanguage()).toBe('en')
@@ -146,7 +146,7 @@ describe('Store', () => {
     expect(again.getSummary(1)).toEqual({ total: 4, unlocked: 1, playtime: 10 })
   })
 
-  it('descarta cache gravado em outro idioma ao abrir (ex.: de uma versão anterior, só em português)', () => {
+  it('drops a cache written in another language on startup (e.g. from an earlier, Portuguese-only version)', () => {
     const dir = tempDir()
     writeFileSync(join(dir, 'cache.json'), JSON.stringify({ games: {}, summaries: {}, art: {}, schemas: { 1: { fetchedAt: 1, items: [] } } }))
     expect(new Store(dir).getSchema(1)).toBeNull()
@@ -156,19 +156,19 @@ describe('Store', () => {
     expect(new Store(dir).getSchema(2)).toEqual({ fetchedAt: expect.any(Number), items: [] })
   })
 
-  it('persiste notas e fixadas, e remove entradas vazias', () => {
+  it('persists notes and pins, and removes empty entries', () => {
     const dir = tempDir()
     const store = new Store(dir)
-    store.setUserData(10, 'A', { note: 'chefe do 3º mapa', pinned: true })
+    store.setUserData(10, 'A', { note: 'boss of the 3rd map', pinned: true })
     store.setUserData(10, 'B', { note: '', pinned: true })
     store.setUserData(10, 'B', { note: ' ', pinned: false })
-    expect(new Store(dir).getUserData(10)).toEqual({ A: { note: 'chefe do 3º mapa', pinned: true } })
+    expect(new Store(dir).getUserData(10)).toEqual({ A: { note: 'boss of the 3rd map', pinned: true } })
   })
 
-  it('mantém a entrada enquanto houver checklist e lembra do sempre no topo', () => {
+  it('keeps the entry while there is a checklist and remembers always-on-top', () => {
     const dir = tempDir()
     const store = new Store(dir)
-    const checklist = [{ id: '1', text: 'Kodama da ponte', done: true }]
+    const checklist = [{ id: '1', text: 'Bridge Kodama', done: true }]
     store.setUserData(10, 'A', { note: '', pinned: false, checklist })
     store.setAlwaysOnTop(true)
     const again = new Store(dir)
@@ -194,7 +194,7 @@ describe('Tracker', () => {
     return { tracker, store, fetchImpl, advance: (ms: number) => (now += ms) }
   }
 
-  it('monta a tela do jogo com contadores vindos dos stats', async () => {
+  it('builds the game view with counters taken from the stats', async () => {
     const { tracker } = setup(
       {
         GetOwnedGames: owned(game(3681010, 'Nioh 3', 500)),
@@ -210,13 +210,13 @@ describe('Tracker', () => {
     expect(view.achievements.find((a) => a.id === 'ACH_001')?.progress).toEqual({ current: 12, target: 39 })
   })
 
-  it('mantém a lista quando os contadores falham', async () => {
+  it('keeps the list when the counters fail', async () => {
     const { tracker } = setup(
       {
         GetOwnedGames: owned(game(3681010, 'Nioh 3', 500)),
         GetGameAchievements: { json: nioh },
         GetPlayerAchievements: { json: { playerstats: { achievements: [] } } },
-        GetUserStatsForGame: { status: 500, text: 'erro' }
+        GetUserStatsForGame: { status: 500, text: 'error' }
       },
       new Map([['ACH_001', 'ACH_001_PROGRESS']])
     )
@@ -225,9 +225,9 @@ describe('Tracker', () => {
     expect(view.achievements.find((a) => a.id === 'ACH_001')?.progress).toBeNull()
   })
 
-  it('usa o cache por um minuto e refaz a leitura quando forçado', async () => {
+  it('uses the cache for a minute and re-reads when forced', async () => {
     const { tracker, fetchImpl, advance } = setup({
-      GetOwnedGames: owned(game(7, 'Jogo', 5)),
+      GetOwnedGames: owned(game(7, 'Game', 5)),
       GetGameAchievements: { json: { response: { achievements: [] } } },
       GetPlayerAchievements: player(0, 0)
     })
@@ -242,7 +242,7 @@ describe('Tracker', () => {
     expect(count()).toBe(3)
   })
 
-  it('na verificação periódica relê só o estado do jogador e devolve o mesmo objeto se nada mudou', async () => {
+  it('on the periodic check re-reads only the player state and returns the same object if nothing changed', async () => {
     let unlocked = 1
     const { tracker, fetchImpl, advance } = setup({
       GetOwnedGames: owned(game(3681010, 'Nioh 3', 500)),
@@ -271,7 +271,7 @@ describe('Tracker', () => {
     expect(count('GetGameAchievements')).toBe(2)
   })
 
-  it('junta pedidos idênticos simultâneos numa leitura só', async () => {
+  it('merges identical simultaneous requests into a single read', async () => {
     const { tracker, fetchImpl } = setup({
       GetOwnedGames: owned(game(1, 'A', 10), game(2, 'B', 10)),
       GetGameAchievements: { json: { response: { achievements: [] } } },
@@ -286,19 +286,19 @@ describe('Tracker', () => {
     expect(count('GetPlayerAchievements')).toBe(1 + 1)
   })
 
-  it('escolhe o último jogo jogado quando não há jogo aberto', async () => {
-    const { tracker } = setup({ GetOwnedGames: owned(game(1, 'Antigo', 10, 100), game(2, 'Recente', 10, 900), game(3, 'Nunca', 0, 0)) })
+  it('picks the last played game when no game is open', async () => {
+    const { tracker } = setup({ GetOwnedGames: owned(game(1, 'Old', 10, 100), game(2, 'Recent', 10, 900), game(3, 'Never', 0, 0)) })
     expect(await tracker.lastPlayedAppId()).toBe(2)
   })
 
-  it('ordena o painel pelo mais perto dos 100%, completos por último, só jogos jogados com conquistas', async () => {
+  it('sorts the dashboard by closest to 100%, complete ones last, only played games with achievements', async () => {
     const { tracker } = setup({
       GetOwnedGames: owned(
-        game(1, 'Metade', 10),
-        game(2, 'Completo', 10),
-        game(3, 'Quase', 10),
-        game(4, 'Sem conquistas', 10),
-        game(5, 'Nunca aberto', 0)
+        game(1, 'Half', 10),
+        game(2, 'Complete', 10),
+        game(3, 'Almost', 10),
+        game(4, 'No achievements', 10),
+        game(5, 'Never opened', 0)
       ),
       'appid=1': player(5, 10),
       'appid=2': player(10, 10),
@@ -307,12 +307,12 @@ describe('Tracker', () => {
     })
     const progress: number[] = []
     const list = await tracker.getDashboard('cached', (done) => progress.push(done))
-    expect(list.map((g) => g.name)).toEqual(['Quase', 'Metade', 'Completo'])
+    expect(list.map((g) => g.name)).toEqual(['Almost', 'Half', 'Complete'])
     expect(list[0]).toMatchObject({ unlocked: 9, total: 10 })
     expect(progress.sort()).toEqual([1, 2, 3, 4])
   })
 
-  it('no painel, só relê jogos cujo tempo de jogo mudou', async () => {
+  it('on the dashboard, re-reads only games whose playtime changed', async () => {
     let playtime = 10
     const { tracker, fetchImpl, advance } = setup({
       GetOwnedGames: () => owned(game(1, 'A', playtime), game(2, 'B', 20)),
@@ -332,7 +332,7 @@ describe('Tracker', () => {
     expect(count()).toBe(5)
   })
 
-  it('anexa as capas da loja e não pergunta de novo pelo que já sabe', async () => {
+  it('attaches the store art and does not ask again for what it already knows', async () => {
     const { tracker, fetchImpl } = setup({
       GetOwnedGames: owned(game(1, 'A', 10), game(2, 'B', 10)),
       GetPlayerAchievements: player(1, 4),
@@ -363,18 +363,18 @@ describe('Tracker', () => {
     expect(fetchImpl.calls.filter((u) => u.includes('GetItems'))).toHaveLength(1)
   })
 
-  it('mostra o jogo mesmo quando a loja falha ao dar a capa', async () => {
+  it('shows the game even when the store fails to provide the art', async () => {
     const { tracker } = setup({
       GetOwnedGames: owned(game(1, 'A', 10)),
       GetPlayerAchievements: player(1, 4),
       GetGameAchievements: { json: { response: { achievements: [] } } },
-      GetItems: { status: 500, text: 'erro' }
+      GetItems: { status: 500, text: 'error' }
     })
     expect(await tracker.getDashboard()).toHaveLength(1)
     expect((await tracker.getGame(1)).header).toBe('')
   })
 
-  it('propaga perfil privado em vez de mostrar painel vazio', async () => {
+  it('propagates a private profile instead of showing an empty dashboard', async () => {
     const { tracker } = setup({ GetOwnedGames: owned(game(1, 'A', 10)), GetPlayerAchievements: NOT_PUBLIC })
     await expect(tracker.getDashboard()).rejects.toMatchObject({ kind: 'private' })
   })

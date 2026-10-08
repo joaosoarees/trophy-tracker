@@ -1,6 +1,6 @@
 import { useStore } from '.'
 
-/** Liga o store aos avisos do processo principal. Devolve a função que desliga e zera o store (menos o idioma). */
+/** Wires the store to the main process events. Returns the function that unwires it and resets the store (except the language). */
 export function connectStore(): () => void {
   const { session, games, dashboard, userData } = useStore.getState()
 

@@ -30,7 +30,7 @@ export function PrivacyStep() {
     }
   }, [form])
 
-  // Testa sozinho ao chegar na etapa, a menos que já tenha passado.
+  // Runs the test on its own when the step opens, unless it has already passed.
   useEffect(() => {
     if (started.current || form.getValues('privacyStep.gamesWithPlaytime') !== undefined) return
     started.current = true

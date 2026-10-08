@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { useT } from '@/lib/i18n'
 
 interface ILanguageStepProps {
-  /** Motivo de o onboarding ter reaparecido (ex.: a chave deixou de funcionar). */
+  /** Why the onboarding showed up again (e.g. the key stopped working). */
   notice: string | null
   onCancel?: () => void
 }

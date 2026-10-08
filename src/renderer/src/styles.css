@@ -2,7 +2,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Escuro neutro com a paleta da Steam: azul-marinho de fundo, azul-claro de destaque, verde de concluído. */
+/* Neutral dark with the Steam palette: navy background, light blue accent, green for done. */
 :root {
   --radius: 0.5rem;
   --background: #171a21;

@@ -11,12 +11,12 @@ export type SteamErrorKind =
   | 'not-configured'
   | 'unknown'
 
-/** Carrega só o tipo do erro; o texto é escolhido no idioma do usuário por `steamErrorMessage`. */
+/** Carries only the kind of error; the text is picked in the user's language by `steamErrorMessage`. */
 export class SteamError extends Error {
   constructor(
     public kind: SteamErrorKind,
     public status?: number,
-    /** Texto que a própria Steam devolveu, quando houver. */
+    /** Text returned by Steam itself, when there is any. */
     public detail?: string
   ) {
     super(kind)
@@ -112,7 +112,7 @@ export class SteamClient {
     try {
       body = JSON.parse(text)
     } catch {
-      // Erros de chave vêm como HTML.
+      // Key errors come back as HTML.
     }
 
     if (res.ok && body) return body
@@ -134,7 +134,7 @@ export class SteamClient {
     return player
   }
 
-  /** Devolve `null` quando a biblioteca não está visível (perfil privado). */
+  /** Returns `null` when the library is not visible (private profile). */
   async getOwnedGames({ steamId, apiKey }: Credentials): Promise<RawOwnedGame[] | null> {
     const body = await this.get('/IPlayerService/GetOwnedGames/v1/', {
       key: apiKey,
@@ -145,13 +145,13 @@ export class SteamClient {
     return body.response?.games ?? (body.response?.game_count === 0 ? [] : null)
   }
 
-  /** Não exige chave e traz a descrição das conquistas ocultas. */
+  /** Needs no key and includes the description of hidden achievements. */
   async getGameAchievements(appid: number): Promise<RawSchemaAchievement[]> {
     const body = await this.get('/IPlayerService/GetGameAchievements/v1/', { appid, language: LANGUAGES[this.language].steam })
     return body.response?.achievements ?? []
   }
 
-  /** Capas dos jogos, em lote e sem chave. Jogos novos usam caminhos com hash, que só a loja informa. */
+  /** Game art, batched and with no key. New games use hashed paths that only the store reports. */
   async getStoreArt(appids: number[]): Promise<Map<number, StoreArt>> {
     const art = new Map<number, StoreArt>()
     for (let i = 0; i < appids.length; i += STORE_BATCH) {

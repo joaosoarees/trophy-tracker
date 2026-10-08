@@ -5,7 +5,7 @@ export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs))
 }
 
-/** Lê um JSON do sessionStorage; devolve `null` se não existir ou estiver corrompido. */
+/** Reads JSON from sessionStorage; returns `null` if it is missing or corrupted. */
 export function safeSessionStorageGetItem<T>(key: string): T | null {
   try {
     const item = sessionStorage.getItem(key)

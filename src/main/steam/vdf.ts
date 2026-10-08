@@ -13,13 +13,13 @@ const enum T {
   Int64 = 10
 }
 
-/** Lê o formato KeyValues binário usado pelo cliente Steam em appcache/stats. */
+/** Reads the binary KeyValues format the Steam client uses in appcache/stats. */
 export function parseBinaryVdf(buf: Buffer): VdfObject {
   let pos = 0
 
   const readString = (): string => {
     const end = buf.indexOf(0, pos)
-    if (end === -1) throw new Error('VDF binário truncado')
+    if (end === -1) throw new Error('Truncated binary VDF')
     const s = buf.toString('utf8', pos, end)
     pos = end + 1
     return s
@@ -28,7 +28,7 @@ export function parseBinaryVdf(buf: Buffer): VdfObject {
   const readObject = (): VdfObject => {
     const obj: VdfObject = {}
     for (;;) {
-      if (pos >= buf.length) throw new Error('VDF binário truncado')
+      if (pos >= buf.length) throw new Error('Truncated binary VDF')
       const type = buf[pos++]
       if (type === T.End) return obj
       const key = readString()
@@ -56,7 +56,7 @@ export function parseBinaryVdf(buf: Buffer): VdfObject {
           pos += 8
           break
         default:
-          throw new Error(`Tipo VDF desconhecido ${type} na posição ${pos - 1}`)
+          throw new Error(`Unknown VDF type ${type} at position ${pos - 1}`)
       }
     }
   }
@@ -67,8 +67,8 @@ export function parseBinaryVdf(buf: Buffer): VdfObject {
 const isObject = (v: VdfValue | undefined): v is VdfObject => typeof v === 'object' && v !== null
 
 /**
- * Do schema local de um jogo, extrai qual stat alimenta o contador de cada conquista
- * (a Web API pública não expõe essa ligação).
+ * From a game's local schema, extracts which stat feeds each achievement's counter
+ * (the public Web API does not expose that link).
  */
 export function achievementStatMap(schema: VdfObject): Map<string, string> {
   const map = new Map<string, string>()

@@ -3,7 +3,7 @@ import { DEFAULT_LANGUAGE, isLanguage, LANGUAGE_CODES, LANGUAGES, messagesFor } 
 
 type Tree = { [key: string]: unknown }
 
-/** Caminho e formato de cada mensagem, para comparar idiomas além do que o tipo já garante. */
+/** Path and shape of every message, to compare languages beyond what the type already guarantees. */
 function shape(node: unknown, path = ''): string[] {
   if (Array.isArray(node)) return [`${path}[${node.length}]`]
   if (typeof node === 'function') return [`${path}(${node.length})`]
@@ -12,31 +12,31 @@ function shape(node: unknown, path = ''): string[] {
 }
 
 describe('i18n', () => {
-  it('usa inglês por padrão', () => {
+  it('defaults to English', () => {
     expect(DEFAULT_LANGUAGE).toBe('en')
     expect(messagesFor('en').nav.dashboard).toBe('Dashboard')
     expect(messagesFor('pt-BR').nav.dashboard).toBe('Painel')
   })
 
-  it('reconhece só idiomas cadastrados', () => {
+  it('recognises only registered languages', () => {
     expect(isLanguage('pt-BR')).toBe(true)
     expect(isLanguage('fr')).toBe(false)
     expect(isLanguage(undefined)).toBe(false)
     expect(isLanguage('toString')).toBe(false)
   })
 
-  it('todo idioma tem as mesmas mensagens, com listas do mesmo tamanho', () => {
+  it('every language has the same messages, with lists of the same length', () => {
     const reference = shape(messagesFor('en')).sort()
     for (const code of LANGUAGE_CODES) expect(shape(messagesFor(code)).sort()).toEqual(reference)
   })
 
-  it('nenhuma mensagem ficou vazia', () => {
+  it('no message is left empty', () => {
     const empty = (node: unknown): boolean =>
       typeof node === 'string' ? node.trim() === '' : typeof node === 'object' && node !== null && Object.values(node).some(empty)
     for (const code of LANGUAGE_CODES) expect(empty(messagesFor(code))).toBe(false)
   })
 
-  it('cada idioma informa o nome que a Steam usa para ele', () => {
+  it('each language reports the name Steam uses for it', () => {
     expect(LANGUAGES.en.steam).toBe('english')
     expect(LANGUAGES['pt-BR'].steam).toBe('brazilian')
   })

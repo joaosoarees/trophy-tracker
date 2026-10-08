@@ -18,11 +18,11 @@ export function AccountStep() {
   const form = useFormContext<OnboardingFormData>()
   const [detected, setDetected] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
-  /** Motivo de a Steam não ter confirmado o perfil; não impede de seguir. */
+  /** Why Steam did not confirm the profile; it does not block moving on. */
   const [unconfirmed, setUnconfirmed] = useState<string | null>(null)
   const [isVerifying, setIsVerifying] = useState(false)
 
-  // Preenche com a conta logada no cliente Steam, sem passar por cima do que já foi digitado.
+  // Fill in the account signed in to the Steam client, without overwriting what was already typed.
   useEffect(() => {
     let active = true
 
@@ -40,7 +40,7 @@ export function AccountStep() {
     }
   }, [form])
 
-  // Mudou o SteamID: a confirmação anterior não vale mais.
+  // The SteamID changed: the previous confirmation no longer holds.
   useEffect(() => {
     const { unsubscribe } = form.watch((_formData, { name }) => {
       if (name === 'accountStep.steamId') {

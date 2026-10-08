@@ -7,7 +7,7 @@ import { createGamesSlice } from './slices/gamesSlice'
 import { createSessionSlice } from './slices/sessionSlice'
 import { createUserDataSlice } from './slices/userDataSlice'
 
-// Sem `persist`: o que precisa sobreviver ao fechar o app já é gravado pelo processo principal.
+// No `persist`: what must survive closing the app is already written by the main process.
 export const useStore = create<Store>()(
   devtools(
     immer((...params) => ({

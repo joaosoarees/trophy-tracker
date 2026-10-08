@@ -6,7 +6,7 @@ export type GameEntry = {
   view: GameView | null
   loading: boolean
   error: string | null
-  /** Nomes das conquistas obtidas desde a última leitura, até o aviso ser dispensado. */
+  /** Names of the achievements unlocked since the last read, until the notice is dismissed. */
   justUnlocked: string[]
 }
 
@@ -15,10 +15,10 @@ type GamesStore = {
 }
 
 type GamesActions = {
-  /** Garante que a tela de um jogo tem dados; o que já foi lido aparece na hora. */
+  /** Makes sure a game's screen has data; what was already read shows up instantly. */
   open: (appid: number) => void
   load: (appid: number, force?: boolean) => Promise<void>
-  /** Recebe uma leitura nova, reaproveitando o que não mudou. */
+  /** Takes a new read, reusing what did not change. */
   accept: (view: GameView) => void
   dismissUnlocked: (appid: number) => void
 }
@@ -76,7 +76,7 @@ export const createGamesSlice: StoreSlice<GamesSlice> = (set, get) => ({
         }
         entry.view = view
 
-        // Mantém a linha do painel em dia sem reler o painel.
+        // Keeps the dashboard row up to date without re-reading the dashboard.
         const row = prevState.dashboard.games?.find((g) => g.appid === view.appid)
         if (row) {
           row.unlocked = view.unlockedCount

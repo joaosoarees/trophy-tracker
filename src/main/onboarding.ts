@@ -9,9 +9,9 @@ const message = (m: Messages, e: unknown): string =>
 
 
 /**
- * Passo da conta: confere o SteamID pelo perfil público, sem precisar de chave.
- * A página da comunidade é instável; se ela não responder direito o usuário
- * segue adiante, porque o passo da chave valida o SteamID de novo pela API.
+ * Account step: checks the SteamID against the public profile, with no key needed.
+ * The community page is unreliable; if it does not answer properly the user
+ * moves on, because the key step validates the SteamID again through the API.
  */
 export async function checkSteamId(m: Messages, steamId: string, fetchImpl: Fetch = fetch): Promise<SteamIdCheck> {
   const id = steamId.trim()
@@ -40,7 +40,7 @@ export async function checkSteamId(m: Messages, steamId: string, fetchImpl: Fetc
   return unconfirmed(steamError ? m.check.reasonSteamSaid(steamError) : m.check.reasonUnexpected)
 }
 
-/** Passo da chave: ela é válida se a Steam aceitar uma chamada autenticada. */
+/** Key step: the key is valid if Steam accepts an authenticated call. */
 export async function checkApiKey(
   m: Messages,
   client: SteamClient,
@@ -57,7 +57,7 @@ export async function checkApiKey(
   }
 }
 
-/** Passo da privacidade: biblioteca e conquistas precisam estar visíveis para a Web API. */
+/** Privacy step: the library and the achievements must be visible to the Web API. */
 export async function checkPrivacy(
   m: Messages,
   client: SteamClient,
@@ -72,7 +72,7 @@ export async function checkPrivacy(
       .filter((g) => g.playtime_forever > 0)
       .sort((a, b) => (b.rtime_last_played ?? 0) - (a.rtime_last_played ?? 0))
 
-    // Um jogo sem conquistas não prova nada; tenta os mais recentes até um responder.
+    // A game with no achievements proves nothing; try the most recent ones until one answers.
     for (const game of played.slice(0, 5)) {
       try {
         await client.getPlayerAchievements(creds, game.appid)

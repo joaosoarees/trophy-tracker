@@ -7,10 +7,10 @@ export interface Achievement {
   hidden: boolean
   icon: string
   iconGray: string
-  /** Percentual global de jogadores que têm a conquista. */
+  /** Global percentage of players who have the achievement. */
   rarity: number | null
   unlocked: boolean
-  /** Epoch em segundos. */
+  /** Epoch in seconds. */
   unlockedAt: number | null
   progress: { current: number; target: number } | null
 }
@@ -22,7 +22,7 @@ export interface GameView {
   unlockedCount: number
   achievements: Achievement[]
   fetchedAt: number
-  /** Capa larga do jogo; vazia quando a loja não informa. */
+  /** Wide game art; empty when the store does not report it. */
   header?: string
 }
 
@@ -30,7 +30,7 @@ export interface GameSummary {
   appid: number
   name: string
   icon: string
-  /** Miniatura de capa; vazia quando a loja não informa. */
+  /** Small capsule art; empty when the store does not report it. */
   capsule: string
   playtimeMinutes: number
   lastPlayed: number
@@ -46,7 +46,7 @@ export interface Profile {
 
 export type CheckResult<T = undefined> = { ok: true; value: T } | { ok: false; error: string }
 
-/** Resultado do passo do SteamID: só "a Steam disse que não existe" bloqueia. */
+/** Result of the SteamID step: only "Steam said it does not exist" blocks. */
 export type SteamIdCheck =
   | { status: 'found'; profile: Profile }
   | { status: 'invalid' | 'not-found'; error: string }
@@ -56,7 +56,7 @@ export interface AppState {
   configured: boolean
   language: Language
   profile: Profile | null
-  /** Motivo de o onboarding ter reaparecido (ex.: chave deixou de funcionar). */
+  /** Why the onboarding showed up again (e.g. the key stopped working). */
   configError: string | null
 }
 
@@ -69,7 +69,7 @@ export interface ChecklistItem {
 export interface AchievementUserData {
   note: string
   pinned: boolean
-  /** Itens que o usuário lista para saber quais faltam (ex.: colecionáveis). */
+  /** Items the user lists to know which ones are missing (e.g. collectibles). */
   checklist?: ChecklistItem[]
 }
 
@@ -77,7 +77,7 @@ export type GameUserData = Record<string, AchievementUserData>
 
 export type GuideSite = 'steam' | 'youtube' | 'google'
 
-/** `cached`: usa o que já tem; `changed`: relê a biblioteca e só os jogos que mudaram; `all`: relê tudo. */
+/** `cached`: uses what it already has; `changed`: re-reads the library and only the games that changed; `all`: re-reads everything. */
 export type DashboardMode = 'cached' | 'changed' | 'all'
 
 export interface Api {
@@ -95,7 +95,7 @@ export interface Api {
   getUserData(appid: number): Promise<GameUserData>
   setUserData(appid: number, achievementId: string, data: AchievementUserData): Promise<void>
 
-  /** Salva o idioma e descarta o cache traduzido; quem chama decide se recarrega a janela. */
+  /** Saves the language and drops the translated cache; the caller decides whether to reload the window. */
   setLanguage(language: Language): Promise<AppState>
 
   getAlwaysOnTop(): Promise<boolean>
