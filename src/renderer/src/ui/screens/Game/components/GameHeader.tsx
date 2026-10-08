@@ -43,7 +43,7 @@ export function GameHeader({
 
       <div className="relative px-4 pt-10 pb-3.5">
         <div className="flex items-center gap-2">
-          <h1 className="min-w-0 flex-1 truncate text-xl font-semibold drop-shadow">
+          <h1 className="min-w-0 flex-1 truncate text-xl font-semibold">
             {view.name}
           </h1>
           {running && (
@@ -61,19 +61,28 @@ export function GameHeader({
           </IconButton>
         </div>
 
-        <ProgressBar
-          value={percent}
-          tone={isComplete ? 'success' : 'primary'}
-          className="mt-2.5 h-2"
-        />
-        <p className="text-muted-foreground mt-1.5 flex items-center gap-1.5 text-xs">
+        {/* What is left is the number looked for at a glance, so it is the
+            one figure that stands out; the full count sits below it. */}
+        <div className="mt-2.5 flex items-center gap-3">
+          <ProgressBar
+            value={percent}
+            tone={isComplete ? 'success' : 'primary'}
+            className="h-2 flex-1"
+          />
+          {pending > 0 && (
+            <strong className="flex-none font-semibold tabular-nums">
+              {t.game.left(pending)}
+            </strong>
+          )}
+          {isComplete && (
+            <strong className="text-success flex-none font-semibold">
+              {t.game.allUnlocked}
+            </strong>
+          )}
+        </div>
+        <p className="text-muted-foreground mt-1.5 flex items-center gap-1.5 text-xs tabular-nums">
           <Trophy className="size-3.5" />
           {t.game.summary(view.unlockedCount, view.total, percent)}
-          {pending > 0
-            ? ` · ${t.game.left(pending)}`
-            : isComplete
-              ? ` · ${t.game.allUnlocked}`
-              : ''}
         </p>
         {error && <p className="text-destructive mt-1 text-xs">{error}</p>}
       </div>
