@@ -1,8 +1,11 @@
+import { DEFAULT_LANGUAGE, type Language } from '../../../../shared/i18n'
 import type { StoreSlice } from '../Store'
 
 export type CurrentGame = { appid: number; running: boolean } | null
 
 type SessionStore = {
+  /** Idioma da interface; espelha o que o processo principal tem salvo. */
+  language: Language
   /** Jogo aberto na Steam ou, sem jogo aberto, o último jogado. */
   current: CurrentGame
   /** Sobe a cada falha de leitura; o App confere se a configuração ainda vale. */
@@ -10,6 +13,7 @@ type SessionStore = {
 }
 
 type SessionActions = {
+  setLanguage: (language: Language) => void
   loadCurrent: () => Promise<void>
   setCurrent: (current: CurrentGame) => void
   reportFailure: () => void
@@ -18,8 +22,18 @@ type SessionActions = {
 export type SessionSlice = SessionStore & SessionActions
 
 export const createSessionSlice: StoreSlice<SessionSlice> = (set, get) => ({
+  language: DEFAULT_LANGUAGE,
   current: null,
   failures: 0,
+
+  setLanguage: (language) =>
+    set(
+      (prevState) => {
+        prevState.session.language = language
+      },
+      false,
+      'session/setLanguage'
+    ),
 
   loadCurrent: async () => {
     get().session.setCurrent(await window.api.getCurrentAppId())

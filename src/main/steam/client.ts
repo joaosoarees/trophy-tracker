@@ -1,13 +1,44 @@
+import { DEFAULT_LANGUAGE, LANGUAGES, type Language, type Messages } from '../../shared/i18n'
+
 const API = 'https://api.steampowered.com'
 
-export type SteamErrorKind = 'invalid-key' | 'private' | 'no-stats' | 'not-found' | 'network' | 'unknown'
+export type SteamErrorKind =
+  | 'invalid-key'
+  | 'private'
+  | 'no-stats'
+  | 'not-found'
+  | 'network'
+  | 'not-configured'
+  | 'unknown'
 
+/** Carrega só o tipo do erro; o texto é escolhido no idioma do usuário por `steamErrorMessage`. */
 export class SteamError extends Error {
   constructor(
     public kind: SteamErrorKind,
-    message: string
+    public status?: number,
+    /** Texto que a própria Steam devolveu, quando houver. */
+    public detail?: string
   ) {
-    super(message)
+    super(kind)
+  }
+}
+
+export function steamErrorMessage(m: Messages, e: SteamError): string {
+  switch (e.kind) {
+    case 'invalid-key':
+      return m.errors.invalidKey
+    case 'private':
+      return m.errors.private
+    case 'no-stats':
+      return m.errors.noStats
+    case 'not-found':
+      return m.errors.notFound
+    case 'network':
+      return m.errors.network
+    case 'not-configured':
+      return m.errors.notConfigured
+    case 'unknown':
+      return e.detail || m.errors.steamStatus(e.status ?? 0)
   }
 }
 
@@ -62,7 +93,7 @@ export type Fetch = typeof fetch
 export class SteamClient {
   constructor(
     private fetchImpl: Fetch = fetch,
-    private language = 'brazilian'
+    public language: Language = DEFAULT_LANGUAGE
   ) {}
 
   private async get(path: string, params: Record<string, string | number>): Promise<any> {
@@ -73,7 +104,7 @@ export class SteamClient {
     try {
       res = await this.fetchImpl(url)
     } catch {
-      throw new SteamError('network', 'Não foi possível falar com a Steam. Verifique sua conexão.')
+      throw new SteamError('network')
     }
 
     const text = await res.text()
@@ -87,23 +118,19 @@ export class SteamClient {
     if (res.ok && body) return body
 
     const apiError: string = body?.playerstats?.error ?? ''
-    if (/no stats/i.test(apiError)) throw new SteamError('no-stats', 'Este jogo não tem conquistas.')
-    if (/not public/i.test(apiError)) {
-      throw new SteamError('private', 'Os detalhes dos jogos do seu perfil não estão públicos.')
-    }
+    if (/no stats/i.test(apiError)) throw new SteamError('no-stats')
+    if (/not public/i.test(apiError)) throw new SteamError('private')
     if (res.status === 401 || (res.status === 403 && !body)) {
-      throw new SteamError('invalid-key', 'A Steam recusou a chave da Web API.')
+      throw new SteamError('invalid-key')
     }
-    if (res.status === 403) {
-      throw new SteamError('private', 'Os detalhes dos jogos do seu perfil não estão públicos.')
-    }
-    throw new SteamError('unknown', apiError || `A Steam respondeu com erro ${res.status}.`)
+    if (res.status === 403) throw new SteamError('private')
+    throw new SteamError('unknown', res.status, apiError)
   }
 
   async getPlayerSummary({ steamId, apiKey }: Credentials): Promise<RawPlayerSummary> {
     const body = await this.get('/ISteamUser/GetPlayerSummaries/v2/', { key: apiKey, steamids: steamId })
     const player = body.response?.players?.[0]
-    if (!player) throw new SteamError('not-found', 'Nenhum perfil da Steam encontrado com esse SteamID.')
+    if (!player) throw new SteamError('not-found')
     return player
   }
 
@@ -120,7 +147,7 @@ export class SteamClient {
 
   /** Não exige chave e traz a descrição das conquistas ocultas. */
   async getGameAchievements(appid: number): Promise<RawSchemaAchievement[]> {
-    const body = await this.get('/IPlayerService/GetGameAchievements/v1/', { appid, language: this.language })
+    const body = await this.get('/IPlayerService/GetGameAchievements/v1/', { appid, language: LANGUAGES[this.language].steam })
     return body.response?.achievements ?? []
   }
 
@@ -130,7 +157,7 @@ export class SteamClient {
     for (let i = 0; i < appids.length; i += STORE_BATCH) {
       const input = {
         ids: appids.slice(i, i + STORE_BATCH).map((appid) => ({ appid })),
-        context: { language: this.language, country_code: 'BR' },
+        context: { language: LANGUAGES[this.language].steam, country_code: LANGUAGES[this.language].country },
         data_request: { include_assets: true }
       }
       const body = await this.get('/IStoreBrowseService/GetItems/v1/', { input_json: JSON.stringify(input) })

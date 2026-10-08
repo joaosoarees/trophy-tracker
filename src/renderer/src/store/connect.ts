@@ -1,6 +1,6 @@
 import { useStore } from '.'
 
-/** Liga o store aos avisos do processo principal. Devolve a função que desliga e zera o store. */
+/** Liga o store aos avisos do processo principal. Devolve a função que desliga e zera o store (menos o idioma). */
 export function connectStore(): () => void {
   const { session, games, dashboard, userData } = useStore.getState()
 
@@ -18,6 +18,8 @@ export function connectStore(): () => void {
     offs.forEach((off) => off())
     window.removeEventListener('beforeunload', userData.flush)
     userData.flush()
+    const { language } = useStore.getState().session
     useStore.setState(useStore.getInitialState(), true)
+    useStore.getState().session.setLanguage(language)
   }
 }

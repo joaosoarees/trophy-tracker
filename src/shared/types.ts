@@ -1,3 +1,5 @@
+import type { Language } from './i18n'
+
 export interface Achievement {
   id: string
   name: string
@@ -52,6 +54,7 @@ export type SteamIdCheck =
 
 export interface AppState {
   configured: boolean
+  language: Language
   profile: Profile | null
   /** Motivo de o onboarding ter reaparecido (ex.: chave deixou de funcionar). */
   configError: string | null
@@ -91,6 +94,9 @@ export interface Api {
   getDashboard(mode?: DashboardMode): Promise<CheckResult<GameSummary[]>>
   getUserData(appid: number): Promise<GameUserData>
   setUserData(appid: number, achievementId: string, data: AchievementUserData): Promise<void>
+
+  /** Salva o idioma e descarta o cache traduzido; quem chama decide se recarrega a janela. */
+  setLanguage(language: Language): Promise<AppState>
 
   getAlwaysOnTop(): Promise<boolean>
   setAlwaysOnTop(value: boolean): Promise<boolean>

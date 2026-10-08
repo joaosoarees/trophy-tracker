@@ -7,18 +7,14 @@ import { useStore } from '@/store'
 import { AchievementCard } from '@/components/AchievementCard'
 import { Empty, ProgressBar, SearchBox, Segmented } from '@/components/bits'
 import { Button } from '@/components/ui/button'
+import { useLocale, useT } from '@/lib/i18n'
 import { matches } from '@/lib/text'
 import { cn } from '@/lib/utils'
 
 type Sort = 'common' | 'rare' | 'closest' | 'name'
 type Filter = 'pending' | 'unlocked'
 
-const SORTS: Record<Sort, string> = {
-  common: 'Mais comuns primeiro',
-  rare: 'Mais raras primeiro',
-  closest: 'Mais perto de concluir',
-  name: 'Nome'
-}
+const SORTS: Sort[] = ['common', 'rare', 'closest', 'name']
 
 const NONE_UNLOCKED: string[] = []
 const NO_USER_DATA: GameUserData = {}
@@ -29,6 +25,8 @@ interface Props {
 }
 
 export function GameScreen({ appid, running }: Props) {
+  const t = useT()
+  const locale = useLocale()
   const { view, loading, error, justUnlocked, userData, open, load, updateUserData, dismissUnlocked } = useStore(
     useShallow((state) => {
       const entry = state.games.entries[appid]
@@ -66,7 +64,7 @@ export function GameScreen({ appid, running }: Props) {
       common: (a, b) => (b.rarity ?? -1) - (a.rarity ?? -1),
       rare: (a, b) => (a.rarity ?? 101) - (b.rarity ?? 101),
       closest: (a, b) => ratio(b) - ratio(a) || (b.rarity ?? -1) - (a.rarity ?? -1),
-      name: (a, b) => a.name.localeCompare(b.name, 'pt-BR')
+      name: (a, b) => a.name.localeCompare(b.name, locale)
     }
     const order =
       filter === 'unlocked' ? (a: Achievement, b: Achievement) => (b.unlockedAt ?? 0) - (a.unlockedAt ?? 0) : by[sort]
@@ -74,7 +72,7 @@ export function GameScreen({ appid, running }: Props) {
     return view.achievements
       .filter((a) => a.unlocked === (filter === 'unlocked') && matches(query, a.name, a.description))
       .sort((a, b) => pinned(b) - pinned(a) || order(a, b))
-  }, [view, filter, sort, query, userData])
+  }, [view, filter, sort, query, userData, locale])
 
   if (!view) {
     return (
@@ -83,11 +81,11 @@ export function GameScreen({ appid, running }: Props) {
           <>
             <p className="text-destructive">{error}</p>
             <Button variant="secondary" onClick={() => void load(appid, true)}>
-              Tentar de novo
+              {t.common.retry}
             </Button>
           </>
         ) : (
-          <p>Carregando conquistas…</p>
+          <p>{t.game.loading}</p>
         )}
       </Empty>
     )
@@ -110,18 +108,18 @@ export function GameScreen({ appid, running }: Props) {
             {running && (
               <span className="text-success flex items-center gap-1.5 text-xs font-medium">
                 <span className="bg-success size-1.5 animate-pulse rounded-full" />
-                em execução
+                {t.game.running}
               </span>
             )}
-            <Button size="icon-sm" variant="ghost" title="Atualizar" disabled={loading} onClick={() => void load(appid, true)}>
+            <Button size="icon-sm" variant="ghost" title={t.common.refresh} disabled={loading} onClick={() => void load(appid, true)}>
               <RefreshCw className={cn(loading && 'animate-spin')} />
             </Button>
           </div>
           <ProgressBar value={percent} tone={complete ? 'success' : 'primary'} className="mt-2.5 h-2" />
           <p className="text-muted-foreground mt-1.5 flex items-center gap-1.5 text-xs">
             <Trophy className="size-3.5" />
-            {view.unlockedCount} de {view.total} conquistas · {percent}%
-            {pending > 0 ? ` · faltam ${pending}` : complete ? ' · todas obtidas' : ''}
+            {t.game.summary(view.unlockedCount, view.total, percent)}
+            {pending > 0 ? ` · ${t.game.left(pending)}` : complete ? ` · ${t.game.allUnlocked}` : ''}
           </p>
           {error && <p className="text-destructive mt-1 text-xs">{error}</p>}
         </div>
@@ -132,12 +130,12 @@ export function GameScreen({ appid, running }: Props) {
           onClick={() => dismissUnlocked(appid)}
           className="bg-success/15 text-success mx-4 mt-3 block w-[calc(100%-2rem)] rounded-md px-3 py-2 text-left"
         >
-          Conquista desbloqueada: {justUnlocked.join(', ')}
+          {t.game.justUnlocked(justUnlocked.join(', '))}
         </button>
       )}
 
       {view.total === 0 ? (
-        <Empty>Este jogo não tem conquistas.</Empty>
+        <Empty>{t.game.noAchievements}</Empty>
       ) : (
         <div className="p-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -145,8 +143,8 @@ export function GameScreen({ appid, running }: Props) {
               value={filter}
               onChange={setFilter}
               options={[
-                { value: 'pending', label: `Pendentes ${pending}` },
-                { value: 'unlocked', label: `Obtidas ${view.unlockedCount}` }
+                { value: 'pending', label: t.game.pending(pending) },
+                { value: 'unlocked', label: t.game.unlocked(view.unlockedCount) }
               ]}
             />
             <span className="flex-1" />
@@ -156,25 +154,25 @@ export function GameScreen({ appid, running }: Props) {
                 onChange={(e) => setSort(e.target.value as Sort)}
                 className="bg-muted text-foreground h-8 rounded-md border px-2 text-xs"
               >
-                {Object.entries(SORTS).map(([value, label]) => (
+                {SORTS.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {t.game.sort[value]}
                   </option>
                 ))}
               </select>
             )}
             <div className="flex basis-full">
-              <SearchBox value={query} onChange={setQuery} placeholder="Buscar conquista por nome ou descrição" />
+              <SearchBox value={query} onChange={setQuery} placeholder={t.game.search} />
             </div>
           </div>
 
           {list.length === 0 && (
             <Empty>
               {query.trim() !== ''
-                ? `Nada encontrado para “${query.trim()}”.`
+                ? t.game.nothingFound(query.trim())
                 : filter === 'pending'
-                  ? 'Nada pendente. 100%!'
-                  : 'Nenhuma conquista obtida ainda.'}
+                  ? t.game.nothingPending
+                  : t.game.nothingUnlocked}
             </Empty>
           )}
 

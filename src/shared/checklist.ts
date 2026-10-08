@@ -4,7 +4,7 @@ const MARKER = /^\s*(?:[-*•·–—]|\[[ xX]?\]|☐|☑|✓|✔|\d+\s*[.)\-:])
 
 /** Texto colado de um guia, um item por linha, vira itens de checklist. */
 export function parseChecklist(text: string, existing: ChecklistItem[] = []): ChecklistItem[] {
-  const seen = new Set(existing.map((i) => i.text.toLocaleLowerCase('pt-BR')))
+  const seen = new Set(existing.map((i) => i.text.toLowerCase()))
   const items: ChecklistItem[] = []
   for (const line of text.split(/\r?\n/)) {
     // Repete para casos como "- [ ] 1. Item".
@@ -14,7 +14,7 @@ export function parseChecklist(text: string, existing: ChecklistItem[] = []): Ch
       clean = clean.replace(MARKER, '')
     }
     clean = clean.trim()
-    const key = clean.toLocaleLowerCase('pt-BR')
+    const key = clean.toLowerCase()
     if (clean === '' || seen.has(key)) continue
     seen.add(key)
     items.push({ id: `${Date.now().toString(36)}-${existing.length + items.length}`, text: clean, done: false })

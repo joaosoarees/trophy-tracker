@@ -1,6 +1,7 @@
 import { Search, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Input } from '@/components/ui/input'
+import { useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 export function ProgressBar({ value, className, tone = 'primary' }: { value: number; className?: string; tone?: 'primary' | 'success' }) {
@@ -41,6 +42,7 @@ export function Segmented<T extends string>({ value, options, onChange }: Segmen
 }
 
 export function SearchBox({ value, onChange, placeholder }: { value: string; onChange(v: string): void; placeholder: string }) {
+  const t = useT()
   return (
     <div className="relative min-w-0 flex-1">
       <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
@@ -53,7 +55,7 @@ export function SearchBox({ value, onChange, placeholder }: { value: string; onC
       />
       {value !== '' && (
         <button
-          title="Limpar busca"
+          title={t.common.clearSearch}
           onClick={() => onChange('')}
           className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
         >

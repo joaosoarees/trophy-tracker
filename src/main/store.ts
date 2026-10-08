@@ -1,5 +1,6 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { DEFAULT_LANGUAGE, isLanguage, type Language } from '../shared/i18n'
 import type { AchievementUserData, GameUserData, GameView, Profile } from '../shared/types'
 import type { Credentials, RawOwnedGame, RawSchemaAchievement, StoreArt } from './steam/client'
 
@@ -24,6 +25,8 @@ export interface SummaryEntry {
 }
 
 interface CacheFile {
+  /** Idioma em que o conteúdo da Steam foi lido. */
+  language?: string
   library?: { fetchedAt: number; games: RawOwnedGame[] }
   games: Record<string, GameView>
   summaries: Record<string, SummaryEntry>
@@ -33,6 +36,7 @@ interface CacheFile {
 
 interface SettingsFile {
   alwaysOnTop: boolean
+  language?: string
 }
 
 type UserDataFile = Record<string, GameUserData>
@@ -52,6 +56,7 @@ export class Store {
     this.cache = this.read('cache.json', { games: {}, summaries: {}, art: {}, schemas: {} })
     this.userData = this.read('userdata.json', {})
     this.settings = this.read('settings.json', { alwaysOnTop: false })
+    if (this.cache.language !== this.getLanguage()) this.dropTranslatedCache()
   }
 
   private read<T>(name: string, fallback: T): T {
@@ -95,7 +100,7 @@ export class Store {
   clearCredentials(): void {
     this.config = {}
     this.write('config.json', this.config, 0o600)
-    this.cache = { games: {}, summaries: {}, art: this.cache.art, schemas: this.cache.schemas }
+    this.cache = { games: {}, summaries: {}, art: this.cache.art, schemas: this.cache.schemas, language: this.cache.language }
     this.saveCache()
   }
 
@@ -145,6 +150,27 @@ export class Store {
 
   setArt(entries: Map<number, StoreArt>): void {
     for (const [appid, art] of entries) this.cache.art[appid] = art
+    this.saveCache()
+  }
+
+  getLanguage(): Language {
+    return isLanguage(this.settings.language) ? this.settings.language : DEFAULT_LANGUAGE
+  }
+
+  /** Trocar de idioma descarta o que veio da Steam já traduzido (conquistas e capas). */
+  setLanguage(language: Language): void {
+    if (language === this.getLanguage()) return
+    this.settings.language = language
+    this.write('settings.json', this.settings)
+    this.dropTranslatedCache()
+  }
+
+  /** Conquistas e capas vêm da Steam já traduzidas; cache de outro idioma não serve. */
+  private dropTranslatedCache(): void {
+    this.cache.games = {}
+    this.cache.schemas = {}
+    this.cache.art = {}
+    this.cache.language = this.getLanguage()
     this.saveCache()
   }
 

@@ -50,7 +50,7 @@ export class Tracker {
 
   private credentials(): Credentials {
     const creds = this.store.getCredentials()
-    if (!creds) throw new SteamError('invalid-key', 'O app ainda não foi configurado.')
+    if (!creds) throw new SteamError('not-configured')
     return creds
   }
 
@@ -59,9 +59,7 @@ export class Tracker {
     if (cached && !force && this.now() - cached.fetchedAt < LIBRARY_TTL) return cached.games
     return this.once('library', async () => {
       const games = await this.client.getOwnedGames(this.credentials())
-      if (games === null) {
-        throw new SteamError('private', 'Os detalhes dos jogos do seu perfil não estão públicos.')
-      }
+      if (games === null) throw new SteamError('private')
       this.store.setLibrary(games, this.now())
       return games
     })

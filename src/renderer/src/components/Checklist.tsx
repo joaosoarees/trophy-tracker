@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { useLocale, useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -16,6 +17,8 @@ interface Props {
 }
 
 export function Checklist({ achievement, items, onChange }: Props) {
+  const t = useT()
+  const locale = useLocale()
   const [draft, setDraft] = useState('')
   const [pasting, setPasting] = useState(false)
   const [pasted, setPasted] = useState('')
@@ -30,8 +33,8 @@ export function Checklist({ achievement, items, onChange }: Props) {
   const addDraft = (): void => {
     const text = draft.trim()
     if (text === '') return
-    const key = text.toLocaleLowerCase('pt-BR')
-    if (items.some((i) => i.text.toLocaleLowerCase('pt-BR') === key)) return setDuplicate(true)
+    const key = text.toLocaleLowerCase(locale)
+    if (items.some((i) => i.text.toLocaleLowerCase(locale) === key)) return setDuplicate(true)
     onChange([...items, { id: `${Date.now().toString(36)}-${items.length}`, text, done: false }])
     setDraft('')
   }
@@ -66,7 +69,7 @@ export function Checklist({ achievement, items, onChange }: Props) {
                 />
               ) : (
                 <span
-                  title="Clique para renomear"
+                  title={t.checklist.rename}
                   onClick={() => setEditing(item.id)}
                   className={cn('min-w-0 flex-1 cursor-text break-words', item.done && 'text-muted-foreground line-through')}
                 >
@@ -74,7 +77,7 @@ export function Checklist({ achievement, items, onChange }: Props) {
                 </span>
               )}
               <button
-                title="Remover item"
+                title={t.checklist.remove}
                 onClick={() => onChange(items.filter((i) => i.id !== item.id))}
                 className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100"
               >
@@ -88,7 +91,7 @@ export function Checklist({ achievement, items, onChange }: Props) {
       <div className="flex gap-1.5">
         <Input
           value={draft}
-          placeholder="Novo item"
+          placeholder={t.checklist.newItem}
           className="h-7 flex-1 text-sm"
           aria-invalid={duplicate}
           onChange={(e) => {
@@ -104,7 +107,7 @@ export function Checklist({ achievement, items, onChange }: Props) {
           size="icon-sm"
           variant="secondary"
           className="size-7"
-          title="Adicionar item"
+          title={t.checklist.add}
           disabled={draft.trim() === ''}
           onClick={addDraft}
         >
@@ -112,11 +115,11 @@ export function Checklist({ achievement, items, onChange }: Props) {
         </Button>
         <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={() => setPasting(true)}>
           <ClipboardPaste />
-          Colar lista
+          {t.checklist.paste}
         </Button>
       </div>
 
-      {duplicate && <p className="text-warning text-xs">Esse item já está na lista.</p>}
+      {duplicate && <p className="text-warning text-xs">{t.checklist.duplicate}</p>}
 
       <Dialog
         open={pasting}
@@ -127,22 +130,22 @@ export function Checklist({ achievement, items, onChange }: Props) {
       >
         <DialogContent className="max-w-[min(26rem,calc(100vw-2rem))]">
           <DialogHeader>
-            <DialogTitle>Colar lista</DialogTitle>
+            <DialogTitle>{t.checklist.paste}</DialogTitle>
             <DialogDescription>
-              Cole os itens de um guia para “{achievement}”, um por linha. Marcadores e numeração são removidos.
+              {t.checklist.pasteDescription(achievement)}
             </DialogDescription>
           </DialogHeader>
           <Textarea
             autoFocus
             rows={9}
             value={pasted}
-            placeholder={'Item 1\nItem 2\nItem 3'}
+            placeholder={t.checklist.pastePlaceholder}
             className="max-h-[50vh] text-sm"
             onChange={(e) => setPasted(e.target.value)}
           />
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPasting(false)}>
-              Cancelar
+              {t.common.cancel}
             </Button>
             <Button
               disabled={preview === 0}
@@ -152,7 +155,7 @@ export function Checklist({ achievement, items, onChange }: Props) {
                 setPasted('')
               }}
             >
-              {preview === 0 ? 'Adicionar' : `Adicionar ${preview} ${preview === 1 ? 'item' : 'itens'}`}
+              {preview === 0 ? t.checklist.addButton : t.checklist.addCount(preview)}
             </Button>
           </DialogFooter>
         </DialogContent>

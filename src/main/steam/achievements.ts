@@ -62,14 +62,15 @@ export function newlyUnlocked(previous: GameView, next: GameView): Achievement[]
   return next.achievements.filter((a) => a.unlocked && !had.has(a.id))
 }
 
-export function guideUrl(site: GuideSite, appid: number, game: string, achievement: string): string {
+/** `howTo` é o complemento da busca no idioma do usuário (ex.: "how to get"). */
+export function guideUrl(site: GuideSite, appid: number, game: string, achievement: string, howTo: string): string {
   const q = encodeURIComponent
   switch (site) {
     case 'steam':
       return `https://steamcommunity.com/app/${appid}/guides/?searchText=${q(achievement)}`
     case 'youtube':
-      return `https://www.youtube.com/results?search_query=${q(`${game} ${achievement} como conseguir`)}`
+      return `https://www.youtube.com/results?search_query=${q(`${game} ${achievement} ${howTo}`)}`
     case 'google':
-      return `https://www.google.com/search?q=${q(`${game} "${achievement}" como conseguir`)}`
+      return `https://www.google.com/search?q=${q(`${game} "${achievement}" ${howTo}`)}`
   }
 }

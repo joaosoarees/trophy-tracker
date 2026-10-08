@@ -1,9 +1,10 @@
 import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron'
 import { join } from 'node:path'
+import { messagesFor, type Messages } from '../shared/i18n'
 import type { Api, AppState, CheckResult, GameView, GuideSite } from '../shared/types'
 import { checkApiKey, checkPrivacy, checkSteamId } from './onboarding'
 import { guideUrl, newlyUnlocked } from './steam/achievements'
-import { SteamClient, SteamError } from './steam/client'
+import { SteamClient, SteamError, steamErrorMessage } from './steam/client'
 import {
   getActiveSteamId,
   getRunningAppId,
@@ -36,9 +37,11 @@ let lastView: GameView | null = null
 
 const openUrl = (url: string): Promise<void> => (isWsl ? openInWindowsBrowser(url) : shell.openExternal(url))
 
+const m = (): Messages => messagesFor(store.getLanguage())
+
 function state(): AppState {
   const configured = store.getCredentials() !== null && configError === null
-  return { configured, profile: store.getProfile(), configError }
+  return { configured, language: store.getLanguage(), profile: store.getProfile(), configError }
 }
 
 async function attempt<T>(fn: () => Promise<T>): Promise<CheckResult<T>> {
@@ -46,11 +49,12 @@ async function attempt<T>(fn: () => Promise<T>): Promise<CheckResult<T>> {
     return { ok: true, value: await fn() }
   } catch (e) {
     if (e instanceof SteamError) {
-      if (e.kind === 'invalid-key') configError = e.message
-      return { ok: false, error: e.message }
+      const error = steamErrorMessage(m(), e)
+      if (e.kind === 'invalid-key') configError = error
+      return { ok: false, error }
     }
     console.error(e)
-    return { ok: false, error: 'Erro inesperado. Tente de novo.' }
+    return { ok: false, error: m().errors.unexpected }
   }
 }
 
@@ -83,8 +87,7 @@ async function checkUnlocks(): Promise<void> {
   if (lastView?.appid === appid) {
     for (const a of newlyUnlocked(lastView, view)) {
       const left = view.total - view.unlockedCount
-      const body = `${a.name} · ${left === 0 ? 'todas as conquistas obtidas!' : `faltam ${left}`}`
-      windowsToast(`Conquista desbloqueada — ${view.name}`, body).catch(() => {})
+      windowsToast(m().toast.title(view.name), m().toast.body(a.name, left)).catch(() => {})
     }
   }
   lastView = view
@@ -96,14 +99,14 @@ function registerIpc(): void {
     getState: async () => state(),
     detectSteamId: () => getActiveSteamId(),
     checkSteamId: async (steamId) => {
-      const result = await checkSteamId(steamId)
+      const result = await checkSteamId(m(), steamId)
       if (result.status === 'unconfirmed') console.warn(`SteamID ${result.steamId} não confirmado: ${result.reason}`)
       return result
     },
-    checkApiKey: (steamId, apiKey) => checkApiKey(client, steamId, apiKey),
-    checkPrivacy: (steamId, apiKey) => checkPrivacy(client, steamId, apiKey),
+    checkApiKey: (steamId, apiKey) => checkApiKey(m(), client, steamId, apiKey),
+    checkPrivacy: (steamId, apiKey) => checkPrivacy(m(), client, steamId, apiKey),
     saveConfig: async (steamId, apiKey) => {
-      const check = await checkApiKey(client, steamId, apiKey)
+      const check = await checkApiKey(m(), client, steamId, apiKey)
       if (check.ok) {
         store.setCredentials({ steamId, apiKey: apiKey.trim() }, check.value)
         configError = null
@@ -129,13 +132,20 @@ function registerIpc(): void {
       attempt(() => tracker.getDashboard(mode, (done, total) => win?.webContents.send('dashboard-progress', done, total))),
     getUserData: async (appid) => store.getUserData(appid),
     setUserData: async (appid, achievementId, data) => store.setUserData(appid, achievementId, data),
+    setLanguage: async (language) => {
+      store.setLanguage(language)
+      client.language = language
+      lastView = null
+      win?.setTitle(m().appTitle)
+      return state()
+    },
     getAlwaysOnTop: async () => store.getAlwaysOnTop(),
     setAlwaysOnTop: async (value) => {
       store.setAlwaysOnTop(value)
       win?.setAlwaysOnTop(value)
       return value
     },
-    openGuide: (site: GuideSite, appid, game, achievement) => openUrl(guideUrl(site, appid, game, achievement)),
+    openGuide: (site: GuideSite, appid, game, achievement) => openUrl(guideUrl(site, appid, game, achievement, m().guides.query)),
     openExternal: (target) => openUrl(EXTERNAL[target])
   }
   for (const [name, fn] of Object.entries(handlers)) {
@@ -151,7 +161,7 @@ function createWindow(): void {
     minHeight: 520,
     backgroundColor: '#171a21',
     autoHideMenuBar: true,
-    title: 'Conquistas da Steam',
+    title: m().appTitle,
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true }
   })
   win.setAlwaysOnTop(store.getAlwaysOnTop())
@@ -177,6 +187,7 @@ app.whenReady().then(() => {
     : null
 
   store = new Store(app.getPath('userData'), cipher)
+  client.language = store.getLanguage()
   tracker = new Tracker({ store, client, readStatMap })
 
   registerIpc()

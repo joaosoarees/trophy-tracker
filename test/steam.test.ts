@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest'
 import nioh from './fixtures/game-achievements-3681010.json'
 import onimusha from './fixtures/game-achievements-2638890.json'
 import { buildGameView, guideUrl, newlyUnlocked } from '../src/main/steam/achievements'
-import { SteamError, type RawSchemaAchievement } from '../src/main/steam/client'
+import { SteamClient, SteamError, steamErrorMessage, type RawSchemaAchievement } from '../src/main/steam/client'
+import { en } from '../src/shared/i18n/locales/en'
+import { ptBR } from '../src/shared/i18n/locales/pt-BR'
 import { achievementStatMap, parseBinaryVdf } from '../src/main/steam/vdf'
 import { accountIdToSteamId, parseRegValue, toLocalPath } from '../src/main/steam/windows'
-import { clientWith, FORBIDDEN_HTML, KEY, NO_STATS, NOT_PUBLIC, STEAM_ID } from './helpers'
+import { clientWith, fakeFetch, FORBIDDEN_HTML, KEY, NO_STATS, NOT_PUBLIC, STEAM_ID } from './helpers'
 
 const niohSchema = nioh.response.achievements as RawSchemaAchievement[]
 const creds = { steamId: STEAM_ID, apiKey: KEY }
@@ -94,12 +96,12 @@ describe('newlyUnlocked', () => {
 })
 
 describe('guideUrl', () => {
-  it('monta as buscas com o nome em português codificado', () => {
-    expect(guideUrl('steam', 3681010, 'Nioh 3', 'Você é Nioh')).toBe(
+  it('monta as buscas com o nome codificado e o complemento no idioma do usuário', () => {
+    expect(guideUrl('steam', 3681010, 'Nioh 3', 'Você é Nioh', 'como conseguir')).toBe(
       'https://steamcommunity.com/app/3681010/guides/?searchText=Voc%C3%AA%20%C3%A9%20Nioh'
     )
-    expect(guideUrl('youtube', 1, 'Nioh 3', 'A & B')).toContain('search_query=Nioh%203%20A%20%26%20B%20como%20conseguir')
-    expect(guideUrl('google', 1, 'Nioh 3', 'A')).toContain('q=Nioh%203%20%22A%22%20como%20conseguir')
+    expect(guideUrl('youtube', 1, 'Nioh 3', 'A & B', 'como conseguir')).toContain('search_query=Nioh%203%20A%20%26%20B%20como%20conseguir')
+    expect(guideUrl('google', 1, 'Nioh 3', 'A', 'how to get')).toContain('q=Nioh%203%20%22A%22%20how%20to%20get')
   })
 })
 
@@ -190,19 +192,30 @@ describe('SteamClient', () => {
     expect(await clientWith({ GetOwnedGames: { json: { response: { game_count: 0 } } } }).getOwnedGames(creds)).toEqual([])
   })
 
-  it('pede as conquistas em português e sem chave', async () => {
-    const client = clientWith({
+  it('pede as conquistas sem chave e no idioma do usuário', async () => {
+    const asked: (string | null)[] = []
+    const fetchImpl = fakeFetch({
       GetGameAchievements: (url) => {
-        expect(url.searchParams.get('language')).toBe('brazilian')
+        asked.push(url.searchParams.get('language'))
         expect(url.searchParams.has('key')).toBe(false)
         return { json: nioh }
       }
     })
+    const client = new SteamClient(fetchImpl)
     expect(await client.getGameAchievements(3681010)).toHaveLength(64)
+    client.language = 'pt-BR'
+    await client.getGameAchievements(3681010)
+    expect(asked).toEqual(['english', 'brazilian'])
   })
 
-  it('transforma falha de rede em erro legível', async () => {
-    const { SteamClient } = await import('../src/main/steam/client')
+  it('traduz cada tipo de erro para o idioma pedido', () => {
+    expect(steamErrorMessage(en, new SteamError('invalid-key'))).toBe('Steam rejected the Web API key.')
+    expect(steamErrorMessage(ptBR, new SteamError('invalid-key'))).toBe('A Steam recusou a chave da Web API.')
+    expect(steamErrorMessage(ptBR, new SteamError('unknown', 502))).toBe('A Steam respondeu com erro 502.')
+    expect(steamErrorMessage(en, new SteamError('unknown', 400, 'Bad appid'))).toBe('Bad appid')
+  })
+
+  it('reconhece falha de rede', async () => {
     const client = new SteamClient((async () => {
       throw new TypeError('fetch failed')
     }) as typeof fetch)

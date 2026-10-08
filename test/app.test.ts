@@ -1,4 +1,4 @@
-import { mkdtempSync, statSync } from 'node:fs'
+import { mkdtempSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -6,6 +6,8 @@ import nioh from './fixtures/game-achievements-3681010.json'
 import { checkApiKey, checkPrivacy, checkSteamId } from '../src/main/onboarding'
 import { SteamClient } from '../src/main/steam/client'
 import { Store } from '../src/main/store'
+import { en } from '../src/shared/i18n/locales/en'
+import { ptBR } from '../src/shared/i18n/locales/pt-BR'
 import { Tracker } from '../src/main/tracker'
 import { clientWith, fakeFetch, FORBIDDEN_HTML, KEY, NO_STATS, NOT_PUBLIC, STEAM_ID, type Route } from './helpers'
 
@@ -32,7 +34,7 @@ const player = (unlocked: number, total: number): Route => ({
 describe('onboarding: SteamID', () => {
   it('recusa formato errado sem ir à rede', async () => {
     const f = fakeFetch({})
-    expect((await checkSteamId('12345', f)).status).toBe('invalid')
+    expect((await checkSteamId(ptBR, '12345', f)).status).toBe('invalid')
     expect(f.calls).toHaveLength(0)
   })
 
@@ -42,7 +44,7 @@ describe('onboarding: SteamID', () => {
         text: '<profile><steamID64>76561198207154409</steamID64><steamID><![CDATA[João]]></steamID><avatarFull><![CDATA[https://a/b.jpg]]></avatarFull></profile>'
       }
     })
-    expect(await checkSteamId(` ${STEAM_ID} `, f)).toEqual({
+    expect(await checkSteamId(ptBR, ` ${STEAM_ID} `, f)).toEqual({
       status: 'found',
       profile: { steamId: STEAM_ID, name: 'João', avatar: 'https://a/b.jpg' }
     })
@@ -50,7 +52,7 @@ describe('onboarding: SteamID', () => {
 
   it('bloqueia só quando a Steam diz que o perfil não existe', async () => {
     const f = fakeFetch({ profiles: { text: '<response><error><![CDATA[The specified profile could not be found.]]></error></response>' } })
-    expect((await checkSteamId(STEAM_ID, f)).status).toBe('not-found')
+    expect((await checkSteamId(ptBR, STEAM_ID, f)).status).toBe('not-found')
   })
 
   it.each([
@@ -58,43 +60,49 @@ describe('onboarding: SteamID', () => {
     ['página que não é o perfil', { text: '<html><body>Steam Community :: Error</body></html>' }, 'a Steam devolveu uma resposta inesperada'],
     ['outro erro da Steam', { text: '<response><error><![CDATA[Please try again later.]]></error></response>' }, 'a Steam respondeu: Please try again later.']
   ])('deixa seguir quando não consegue confirmar: %s', async (_caso, route, reason) => {
-    expect(await checkSteamId(STEAM_ID, fakeFetch({ profiles: route }))).toEqual({ status: 'unconfirmed', steamId: STEAM_ID, reason })
+    expect(await checkSteamId(ptBR, STEAM_ID, fakeFetch({ profiles: route }))).toEqual({ status: 'unconfirmed', steamId: STEAM_ID, reason })
   })
 
   it('deixa seguir quando a rede falha', async () => {
     const offline = (async () => {
       throw new TypeError('fetch failed')
     }) as typeof fetch
-    expect(await checkSteamId(STEAM_ID, offline)).toMatchObject({ status: 'unconfirmed', reason: 'não foi possível falar com a Steam' })
+    expect(await checkSteamId(ptBR, STEAM_ID, offline)).toMatchObject({ status: 'unconfirmed', reason: 'não foi possível falar com a Steam' })
   })
 })
 
 describe('onboarding: chave', () => {
   it('recusa formato errado', async () => {
-    expect((await checkApiKey(clientWith({}), STEAM_ID, 'curta')).ok).toBe(false)
+    expect((await checkApiKey(ptBR, clientWith({}), STEAM_ID, 'curta')).ok).toBe(false)
   })
 
   it('recusa chave que a Steam não aceita', async () => {
-    const r = await checkApiKey(clientWith({ GetPlayerSummaries: FORBIDDEN_HTML }), STEAM_ID, KEY)
+    const r = await checkApiKey(ptBR, clientWith({ GetPlayerSummaries: FORBIDDEN_HTML }), STEAM_ID, KEY)
     expect(r).toEqual({ ok: false, error: 'A Steam recusou a chave da Web API.' })
+  })
+
+  it('responde no idioma pedido', async () => {
+    const r = await checkApiKey(en, clientWith({ GetPlayerSummaries: FORBIDDEN_HTML }), STEAM_ID, KEY)
+    expect(r).toEqual({ ok: false, error: 'Steam rejected the Web API key.' })
+    expect(await checkSteamId(en, '12345')).toEqual({ status: 'invalid', error: 'A SteamID has 17 digits and starts with 7656119.' })
   })
 
   it('aceita chave válida', async () => {
     const client = clientWith({
       GetPlayerSummaries: { json: { response: { players: [{ steamid: STEAM_ID, personaname: 'joao', avatarfull: 'x' }] } } }
     })
-    expect((await checkApiKey(client, STEAM_ID, KEY)).ok).toBe(true)
+    expect((await checkApiKey(ptBR, client, STEAM_ID, KEY)).ok).toBe(true)
   })
 })
 
 describe('onboarding: privacidade', () => {
   it('recusa quando a biblioteca não está visível', async () => {
-    expect((await checkPrivacy(clientWith({ GetOwnedGames: { json: { response: {} } } }), STEAM_ID, KEY)).ok).toBe(false)
+    expect((await checkPrivacy(ptBR, clientWith({ GetOwnedGames: { json: { response: {} } } }), STEAM_ID, KEY)).ok).toBe(false)
   })
 
   it('recusa quando as conquistas não estão visíveis', async () => {
     const client = clientWith({ GetOwnedGames: owned(game(1, 'A', 10)), GetPlayerAchievements: NOT_PUBLIC })
-    expect((await checkPrivacy(client, STEAM_ID, KEY)).ok).toBe(false)
+    expect((await checkPrivacy(ptBR, client, STEAM_ID, KEY)).ok).toBe(false)
   })
 
   it('pula jogos sem conquistas e conta os jogados', async () => {
@@ -103,7 +111,7 @@ describe('onboarding: privacidade', () => {
       'appid=1': NO_STATS,
       'appid=2': player(1, 2)
     })
-    expect(await checkPrivacy(client, STEAM_ID, KEY)).toEqual({ ok: true, value: { gamesWithPlaytime: 2 } })
+    expect(await checkPrivacy(ptBR, client, STEAM_ID, KEY)).toEqual({ ok: true, value: { gamesWithPlaytime: 2 } })
   })
 })
 
@@ -123,6 +131,29 @@ describe('Store', () => {
     new Store(dir, cipher).setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile)
     expect(new Store(dir).getCredentials()).toBeNull()
     expect(new Store(dir, cipher).getCredentials()?.apiKey).toBe(KEY)
+  })
+
+  it('começa em inglês, lembra o idioma e descarta o cache traduzido ao trocar', () => {
+    const dir = tempDir()
+    const store = new Store(dir)
+    expect(store.getLanguage()).toBe('en')
+    store.setSchema(1, [])
+    store.setSummaries({ 1: { total: 4, unlocked: 1, playtime: 10 } })
+    store.setLanguage('pt-BR')
+    const again = new Store(dir)
+    expect(again.getLanguage()).toBe('pt-BR')
+    expect(again.getSchema(1)).toBeNull()
+    expect(again.getSummary(1)).toEqual({ total: 4, unlocked: 1, playtime: 10 })
+  })
+
+  it('descarta cache gravado em outro idioma ao abrir (ex.: de uma versão anterior, só em português)', () => {
+    const dir = tempDir()
+    writeFileSync(join(dir, 'cache.json'), JSON.stringify({ games: {}, summaries: {}, art: {}, schemas: { 1: { fetchedAt: 1, items: [] } } }))
+    expect(new Store(dir).getSchema(1)).toBeNull()
+
+    const store = new Store(dir)
+    store.setSchema(2, [])
+    expect(new Store(dir).getSchema(2)).toEqual({ fetchedAt: expect.any(Number), items: [] })
   })
 
   it('persiste notas e fixadas, e remove entradas vazias', () => {

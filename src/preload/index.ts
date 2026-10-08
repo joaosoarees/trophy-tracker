@@ -27,6 +27,7 @@ const calls = [
   'getDashboard',
   'getUserData',
   'setUserData',
+  'setLanguage',
   'getAlwaysOnTop',
   'setAlwaysOnTop',
   'openGuide',
