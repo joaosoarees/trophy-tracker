@@ -258,6 +258,34 @@ describe('updates: with the app in use', () => {
 
     expect(ok).toBe(true);
     expect(updates().appInfo).toEqual(MANUAL);
+    expect(updates().checkState).toBe('upToDate');
+  });
+
+  it('says a check is running while it waits for the answer', async () => {
+    const { updates, api } = await inUse();
+    api.checkForUpdates.mockReturnValueOnce(new Promise(() => {}));
+
+    void updates().check();
+
+    expect(updates().checkState).toBe('checking');
+  });
+
+  it('brings the restart question back after it was put off', async () => {
+    const { updates, announce } = await inUse();
+    announce(READY);
+    updates().dismissReady();
+
+    updates().showReady();
+
+    expect(updates().isReadyDialogOpen).toBe(true);
+  });
+
+  it('has no restart question to show while nothing is downloaded', async () => {
+    const { updates } = await inUse();
+
+    updates().showReady();
+
+    expect(updates().isReadyDialogOpen).toBe(false);
   });
 
   it('reports a requested check that failed', async () => {
@@ -265,6 +293,7 @@ describe('updates: with the app in use', () => {
     api.checkForUpdates.mockRejectedValueOnce(new Error('offline'));
 
     expect(await updates().check()).toBe(false);
+    expect(updates().checkState).toBe('failed');
   });
 });
 

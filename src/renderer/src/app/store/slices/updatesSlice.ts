@@ -20,12 +20,16 @@ const CHECKED_KEY = 'updates.checkedOnStartup';
  */
 type Startup = 'checking' | 'updating' | 'done';
 
+/** Outcome of the last check the user asked for. */
+type CheckState = 'idle' | 'checking' | 'upToDate' | 'failed';
+
 type UpdatesStore = {
   /** Running version and what is known about a later one; `null` until asked. */
   appInfo: IAppInfo | null;
   startup: Startup;
   /** A version finished downloading while the app was in use. */
   isReadyDialogOpen: boolean;
+  checkState: CheckState;
 };
 
 type UpdatesActions = {
@@ -38,6 +42,8 @@ type UpdatesActions = {
   /** Closes the app to install the downloaded version. */
   restart: () => void;
   dismissReady: () => void;
+  /** Brings the restart question back after it was put off. */
+  showReady: () => void;
 };
 
 export type UpdatesSlice = UpdatesStore & UpdatesActions;
@@ -118,6 +124,7 @@ export const createUpdatesSlice: StoreSlice<UpdatesSlice> = (set, get) => {
     appInfo: null,
     startup: alreadyCheckedThisLaunch() ? 'done' : 'checking',
     isReadyDialogOpen: false,
+    checkState: 'idle',
 
     start: () => {
       const off = SystemService.onAppInfoChanged(get().updates.accept);
@@ -133,11 +140,23 @@ export const createUpdatesSlice: StoreSlice<UpdatesSlice> = (set, get) => {
     },
 
     check: async () => {
+      const setCheckState = (checkState: CheckState): void =>
+        set(
+          (prevState) => {
+            prevState.updates.checkState = checkState;
+          },
+          false,
+          `updates/check:${checkState}`,
+        );
+
+      setCheckState('checking');
       try {
         const { ok, info } = await SystemService.checkForUpdates();
         get().updates.accept(info);
+        setCheckState(ok ? 'upToDate' : 'failed');
         return ok;
       } catch {
+        setCheckState('failed');
         return false;
       }
     },
@@ -174,6 +193,16 @@ export const createUpdatesSlice: StoreSlice<UpdatesSlice> = (set, get) => {
       get().userData.flush();
       void SystemService.installUpdate();
     },
+
+    showReady: () =>
+      set(
+        (prevState) => {
+          prevState.updates.isReadyDialogOpen =
+            prevState.updates.appInfo?.updateStatus === 'ready';
+        },
+        false,
+        'updates/showReady',
+      ),
 
     dismissReady: () =>
       set(

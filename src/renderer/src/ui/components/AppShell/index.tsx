@@ -1,6 +1,8 @@
 import {
+  CircleArrowUp,
   LayoutGrid,
-  Pin,
+  LoaderCircle,
+  PictureInPicture2,
   Settings as SettingsIcon,
   Trophy,
 } from 'lucide-react';
@@ -19,8 +21,16 @@ import { useAppShellController } from './useAppShellController';
 /** The frame of the configured app: tab bar on top, one screen below. */
 export function AppShell() {
   const t = useT();
-  const { tab, game, alwaysOnTop, hasUpdate, goTo, handleToggleAlwaysOnTop } =
-    useAppShellController();
+  const {
+    tab,
+    game,
+    alwaysOnTop,
+    newVersion,
+    isCheckingForUpdates,
+    goTo,
+    handleToggleAlwaysOnTop,
+    handleUpdates,
+  } = useAppShellController();
 
   return (
     <div className="flex h-screen flex-col">
@@ -41,26 +51,47 @@ export function AppShell() {
         </TabButton>
         <span className="flex-1" />
         <IconButton
+          label={
+            newVersion !== null
+              ? t.nav.updateAvailable(newVersion)
+              : isCheckingForUpdates
+                ? t.settings.checkingForUpdates
+                : t.settings.checkForUpdates
+          }
+          disabled={isCheckingForUpdates}
+          className={cn(
+            'relative',
+            newVersion !== null && 'text-primary hover:text-primary',
+          )}
+          onClick={handleUpdates}
+        >
+          {isCheckingForUpdates ? (
+            <LoaderCircle className="animate-spin" />
+          ) : (
+            <CircleArrowUp />
+          )}
+          {newVersion !== null && (
+            <span className="bg-primary absolute top-1 right-1 size-2 rounded-full" />
+          )}
+        </IconButton>
+        <IconButton
           label={alwaysOnTop ? t.nav.unpinWindow : t.nav.pinWindow}
           aria-pressed={alwaysOnTop}
           className={cn(alwaysOnTop && 'text-primary hover:text-primary')}
           onClick={handleToggleAlwaysOnTop}
         >
-          <Pin className={cn(alwaysOnTop && 'fill-current')} />
+          {/* A window over another: the pin is kept for pinned achievements. */}
+          <PictureInPicture2 />
         </IconButton>
         <IconButton
-          label={hasUpdate ? t.nav.settingsWithUpdate : t.nav.settings}
+          label={t.nav.settings}
           aria-current={tab === 'settings' ? 'page' : undefined}
           className={cn(
-            'relative',
             tab === 'settings' && 'text-primary hover:text-primary',
           )}
           onClick={() => goTo('settings')}
         >
           <SettingsIcon />
-          {hasUpdate && (
-            <span className="bg-primary absolute top-1 right-1 size-2 rounded-full" />
-          )}
         </IconButton>
       </nav>
 
