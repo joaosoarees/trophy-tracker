@@ -67,7 +67,7 @@ src/main/              main process: the only part that talks to Steam and to th
     Tracker.ts             reads games and the dashboard: cache, deduplication, art
     SetupService.ts        setup state, language, and the checks that get the app set up
     GameWatcher.ts         follows the running game and announces unlocked achievements
-    onboardingChecks.ts    SteamID, key and privacy checks against Steam
+    onboardingChecks.ts    key + SteamID and privacy checks against Steam
   steam/                 client.ts (Web API), achievements.ts (buildGameView, guideUrl),
                          vdf.ts (Steam client cache reader), windows.ts (Windows interop)
   storage/               Store.ts (JSON persistence), createCipher.ts (key encryption)
@@ -144,11 +144,11 @@ Game/
 | Which stat feeds each counter                                 | local file `appcache/stats/UserGameStatsSchema_<appid>.bin` | —    |
 | Library and playtime                                          | `IPlayerService/GetOwnedGames`                              | yes  |
 | Game art                                                      | `IStoreBrowseService/GetItems` (batched)                    | no   |
-| Name and avatar in the onboarding                             | `steamcommunity.com/profiles/<id>/?xml=1`                   | no   |
+| Name and avatar in the onboarding                             | `ISteamUser/GetPlayerSummaries`                             | yes  |
 
 Things that have already cost time:
 
-- The community profile page rate-limits requests (HTTP 429). That is why the SteamID step only blocks when Steam says the profile does not exist; any other answer becomes "unconfirmed" and lets the user move on.
+- The public community profile page (`steamcommunity.com/profiles/<id>/?xml=1`) rate-limits requests (HTTP 429). The app used it to confirm a SteamID without a key and no longer does: the SteamID is confirmed together with the key, through the official API.
 - The Web API does not say which stat feeds a counter; only the local Steam client file does. Without the file, the achievement shows no counter (never invent a value).
 - Steam does not report which achievements belong to DLC (`groupid` is always 0) nor which items are missing in a "collect them all"; the user checklist exists for that.
 - New games have no art at a fixed path (`header.jpg` returns 404); the hashed path comes only from the store service.
@@ -167,28 +167,30 @@ Things that have already cost time:
 
 ## Forms (react-hook-form + zod)
 
-The onboarding (`ui/screens/Onboarding/`) is a single multi-step form:
+The onboarding (`ui/screens/Onboarding/`) is a single multi-step form with three steps: Language, Account, Done.
 
 ```
 Onboarding/
-  index.tsx                  FormProvider + Stepper with the five steps
+  index.tsx                  FormProvider + Stepper with the steps
   useOnboardingController.ts useForm, the watch subscription, the submit
   schema.ts                  onboardingSchema: one schema per step, and OnboardingFormData
   draft.ts                   what survives a reload (sessionStorage)
-  components/                Stepper/, StepHeader, FieldError, ControlledLanguageSelect
+  components/                Stepper/ (index, stepperState, useStepper), StepHeader, FieldError,
+                             ControlledLanguageSelect, HelpList
   steps/<Name>Step/          index.tsx + schema.ts (+ use<Name>StepController.ts when it has state)
 ```
 
-- The controller owns the form: `useForm` with `zodResolver(onboardingSchema)`. `DoneStep` has no schema: it is just the submit.
-- Each step reads the form with `useFormContext<OnboardingFormData>()` and only advances after `form.trigger('<name>Step', { shouldFocus: true })`.
-- `Stepper` holds the current step and exposes `previousStep`/`nextStep` through context (`useStepper`); `StepperFooter`, `StepperPreviousButton` and `StepperNextButton` build the footer.
-- The check against Steam runs when advancing: on failure, `form.setError('<field>', { message })` shows the error on the field itself.
+- The controller owns the form: `useForm` with `zodResolver(onboardingSchema)`. `DoneStep` has no schema: it is the summary and the submit.
+- Each step reads the form with `useFormContext<OnboardingFormData>()` and only advances after validating its own fields.
+- **Stepper.** `stepperState.ts` is a pure, tested reducer holding the current step and the furthest one reached. The step names at the top are buttons: any step already reached can be revisited in either direction, steps ahead stay locked. A step that changes something later steps depend on calls `lockFollowingSteps()` (through `useStepper`) so they must be reached again. Changing the language locks nothing.
+- **The account step checks the SteamID and the key together.** A Web API key does not say whose it is, so the SteamID is still an input: detected from the Steam client (or taken from the saved setup) and shown locked, with "Use another account" as the way out. One "Verify" calls `checkApiKey` (key + SteamID against the official API, which returns name and avatar) and then `checkPrivacy`. There is no lookup of the public community profile any more: it was rate-limited and unreliable.
+- **Verification is a form value.** `accountStep.verified` has no input: it is set when both checks pass and the schema requires it, so the form cannot be finished with a well-formed key that was never verified. Once verified, both fields are read-only; "Change" removes the value and locks the following steps.
+- Errors from Steam about the pair (rejected key, unknown SteamID, private profile) are shown in the step, not under one field, because they are not about one field. Format errors stay under their field.
 - Schemas hold the message **key** (`'steamIdFormat'`), not the text; `FieldError` translates it when rendering, so the error follows a language change. Every key used in a schema must exist under `validation` in the locales (there is a test for it).
 - A field that is not a plain `<input>` becomes a controlled component with `useController` (e.g. `ControlledLanguageSelect`).
-- Field side effects use the `form.watch` subscription (e.g. switching the screen language, invalidating the profile confirmation when the SteamID changes), always with `unsubscribe` on cleanup.
-- Privacy has no typed field: the form value is filled in when the check passes, and the schema requires that value to finish.
-- The draft (language, SteamID and step) goes to `sessionStorage` to survive a reload. **The Web API key never goes into the draft**; after a reload the form resumes at the key step at most.
-- Enter in a field does not submit the whole form: each step treats Enter as its own "advance".
+- Field side effects use the `form.watch` subscription (e.g. switching the screen language), always with `unsubscribe` on cleanup.
+- The draft (language, SteamID and step) goes to `sessionStorage` to survive a reload. **The Web API key never goes into the draft**; after a reload the form resumes at the account step at most.
+- Enter in a field does not submit the whole form: the step treats Enter as its own "advance".
 
 ## Optimistic UI
 

@@ -43,7 +43,6 @@ export function registerIpc({
   const handlers: IpcHandlers = {
     getState: () => setup.getState(),
     detectSteamId: () => getActiveSteamId(),
-    checkSteamId: (steamId) => setup.checkSteamId(steamId),
     checkApiKey: (steamId, apiKey) => setup.checkApiKey(steamId, apiKey),
     checkPrivacy: (steamId, apiKey) => setup.checkPrivacy(steamId, apiKey),
     saveConfig: async (steamId, apiKey) => {

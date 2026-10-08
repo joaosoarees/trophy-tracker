@@ -1,6 +1,6 @@
 import { type Language, type Messages, messagesFor } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
-import { type CheckResult, type SteamIdCheck } from '@shared/types/Check';
+import { type CheckResult } from '@shared/types/Check';
 import { type IProfile } from '@shared/types/Profile';
 
 import {
@@ -10,7 +10,7 @@ import {
 } from '../steam/client';
 import { type Store } from '../storage/Store';
 
-import { checkApiKey, checkPrivacy, checkSteamId } from './onboardingChecks';
+import { checkApiKey, checkPrivacy } from './onboardingChecks';
 
 /** Whether the app is set up, in which language, and the checks that get it there. */
 export class SetupService {
@@ -65,14 +65,6 @@ export class SetupService {
     }
     console.error(e);
     return this.messages.errors.unexpected;
-  }
-
-  async checkSteamId(steamId: string): Promise<SteamIdCheck> {
-    const result = await checkSteamId(this.messages, steamId);
-    if (result.status === 'unconfirmed') {
-      console.warn(`SteamID ${result.steamId} not confirmed: ${result.reason}`);
-    }
-    return result;
   }
 
   checkApiKey(steamId: string, apiKey: string): Promise<CheckResult<IProfile>> {

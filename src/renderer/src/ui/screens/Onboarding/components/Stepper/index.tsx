@@ -1,20 +1,31 @@
 import {
-  createContext,
-  useCallback,
-  useState,
   type ComponentPropsWithoutRef,
+  createContext,
   type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
 } from 'react';
 
 import { useT } from '@app/hooks/useT';
+import { Pressable } from '@ui/components/Pressable';
 import { Button } from '@ui/primitives/button';
 import { cn } from '@ui/utils/cn';
 
+import {
+  createStepperState,
+  type IStepperState,
+  type StepperAction,
+  stepperReducer,
+} from './stepperState';
 import { useStepper } from './useStepper';
 
 interface IStepperContextValue {
   previousStep: () => void;
   nextStep: () => void;
+  /** Call when the current step changes something the following steps depend on. */
+  lockFollowingSteps: () => void;
 }
 
 export const StepperContext = createContext({} as IStepperContextValue);
@@ -33,59 +44,73 @@ export function Stepper({
   initialStep = 0,
   onStepChange,
 }: IStepperProps) {
-  const [currentStep, setCurrentStep] = useState(
-    Math.min(Math.max(0, initialStep), steps.length - 1),
+  const t = useT();
+  const [state, dispatch] = useReducer(
+    (current: IStepperState, action: StepperAction) =>
+      stepperReducer(current, action, steps.length),
+    createStepperState(initialStep, steps.length),
   );
 
-  // Which way the last move went, so the new step slides in from that side.
-  const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
+  const { current, furthest, direction } = state;
 
-  const goTo = useCallback(
-    (step: number) => {
-      const next = Math.min(Math.max(0, step), steps.length - 1);
-      setDirection(next < currentStep ? 'backward' : 'forward');
-      setCurrentStep(next);
-      onStepChange?.(next);
-    },
-    [steps.length, onStepChange, currentStep],
+  useEffect(() => {
+    onStepChange?.(current);
+  }, [current, onStepChange]);
+
+  const previousStep = useCallback(() => dispatch({ type: 'previous' }), []);
+  const nextStep = useCallback(() => dispatch({ type: 'next' }), []);
+  const lockFollowingSteps = useCallback(
+    () => dispatch({ type: 'lockFollowing' }),
+    [],
   );
-  const previousStep = useCallback(
-    () => goTo(currentStep - 1),
-    [goTo, currentStep],
-  );
-  const nextStep = useCallback(
-    () => goTo(currentStep + 1),
-    [goTo, currentStep],
+  const context = useMemo(
+    () => ({ previousStep, nextStep, lockFollowingSteps }),
+    [previousStep, nextStep, lockFollowingSteps],
   );
 
   return (
-    <StepperContext.Provider value={{ previousStep, nextStep }}>
+    <StepperContext.Provider value={context}>
       <div>
         <ol className="mb-6 flex gap-1.5">
-          {steps.map((step, index) => (
-            <li
-              key={step.label}
-              aria-current={index === currentStep ? 'step' : undefined}
-              className={cn(
-                'text-muted-foreground flex-1 border-t-[3px] pt-1.5 text-xs transition-colors duration-200',
-                index === currentStep && 'border-primary text-foreground',
-                index < currentStep && 'border-success',
-              )}
-            >
-              {step.label}
-            </li>
-          ))}
+          {steps.map((step, index) => {
+            const isCurrent = index === current;
+            const isReached = index <= furthest;
+
+            return (
+              <li key={step.label} className="flex-1">
+                {/* Reached steps can be revisited; the ones ahead stay locked. */}
+                <Pressable
+                  aria-current={isCurrent ? 'step' : undefined}
+                  aria-label={
+                    isCurrent ? undefined : t.onboarding.goToStep(step.label)
+                  }
+                  disabled={!isReached}
+                  onClick={() => dispatch({ type: 'goTo', step: index })}
+                  className={cn(
+                    'text-muted-foreground w-full rounded-none border-t-[3px] pt-1.5 text-left text-xs duration-200',
+                    isReached && !isCurrent && 'hover:text-foreground',
+                    isCurrent && 'border-primary text-foreground',
+                    index < current && 'border-success',
+                    // Reached but ahead of the current one: the way back forward.
+                    index > current && isReached && 'border-success/50',
+                  )}
+                >
+                  {step.label}
+                </Pressable>
+              </li>
+            );
+          })}
         </ol>
 
         <div
-          key={currentStep}
+          key={current}
           className={
             direction === 'forward'
               ? 'animate-step-forward'
               : 'animate-step-backward'
           }
         >
-          {steps[currentStep].content}
+          {steps[current].content}
         </div>
       </div>
     </StepperContext.Provider>

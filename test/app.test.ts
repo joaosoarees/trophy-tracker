@@ -7,7 +7,6 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   checkApiKey,
   checkPrivacy,
-  checkSteamId,
 } from '../src/main/services/onboardingChecks';
 import { Tracker } from '../src/main/services/Tracker';
 import { SteamClient } from '../src/main/steam/client';
@@ -53,77 +52,30 @@ const player = (unlocked: number, total: number): IRoute => ({
   },
 });
 
-describe('onboarding: SteamID', () => {
-  it('rejects a bad format without hitting the network', async () => {
-    const f = fakeFetch({});
-    expect((await checkSteamId(ptBR, '12345', f)).status).toBe('invalid');
-    expect(f.calls).toHaveLength(0);
-  });
-
-  it('confirms the profile with name and avatar', async () => {
-    const f = fakeFetch({
-      [`profiles/${STEAM_ID}`]: {
-        text: '<profile><steamID64>76561198207154409</steamID64><steamID><![CDATA[João]]></steamID><avatarFull><![CDATA[https://a/b.jpg]]></avatarFull></profile>',
-      },
-    });
-    expect(await checkSteamId(ptBR, ` ${STEAM_ID} `, f)).toEqual({
-      status: 'found',
-      profile: { steamId: STEAM_ID, name: 'João', avatar: 'https://a/b.jpg' },
-    });
-  });
-
-  it('blocks only when Steam says the profile does not exist', async () => {
-    const f = fakeFetch({
-      profiles: {
-        text: '<response><error><![CDATA[The specified profile could not be found.]]></error></response>',
-      },
-    });
-    expect((await checkSteamId(ptBR, STEAM_ID, f)).status).toBe('not-found');
-  });
-
-  it.each([
-    [
-      'rate limit',
-      { status: 429, text: '<html>Too Many Requests</html>' },
-      'a Steam respondeu com erro 429',
-    ],
-    [
-      'a page that is not the profile',
-      { text: '<html><body>Steam Community :: Error</body></html>' },
-      'a Steam devolveu uma resposta inesperada',
-    ],
-    [
-      'another Steam error',
-      {
-        text: '<response><error><![CDATA[Please try again later.]]></error></response>',
-      },
-      'a Steam respondeu: Please try again later.',
-    ],
-  ])(
-    'lets the user move on when it cannot confirm: %s',
-    async (_caso, route, reason) => {
-      expect(
-        await checkSteamId(ptBR, STEAM_ID, fakeFetch({ profiles: route })),
-      ).toEqual({ status: 'unconfirmed', steamId: STEAM_ID, reason });
-    },
-  );
-
-  it('lets the user move on when the network fails', async () => {
-    const offline = (async () => {
-      throw new TypeError('fetch failed');
-    }) as typeof fetch;
-    expect(await checkSteamId(ptBR, STEAM_ID, offline)).toMatchObject({
-      status: 'unconfirmed',
-      reason: 'não foi possível falar com a Steam',
-    });
-  });
-});
-
 describe('onboarding: key', () => {
   it('rejects a bad format', async () => {
     expect(
       (await checkApiKey(ptBR, clientWith({}), STEAM_ID, 'short')).ok,
     ).toBe(false);
+  });
+
+  it('rejects a badly formed SteamID before asking Steam', async () => {
+    const f = fakeFetch({});
+    expect(await checkApiKey(en, new SteamClient(f), '12345', KEY)).toEqual({
+      ok: false,
+      error: 'A SteamID has 17 digits and starts with 7656119.',
+    });
+    expect(f.calls).toHaveLength(0);
+  });
+
+  it('reports a SteamID that has no profile', async () => {
+    const client = clientWith({
+      GetPlayerSummaries: { json: { response: { players: [] } } },
+    });
+    expect(await checkApiKey(en, client, STEAM_ID, KEY)).toEqual({
+      ok: false,
+      error: 'No Steam profile was found with that SteamID.',
+    });
   });
 
   it('rejects a key Steam does not accept', async () => {
@@ -147,10 +99,6 @@ describe('onboarding: key', () => {
       KEY,
     );
     expect(r).toEqual({ ok: false, error: 'Steam rejected the Web API key.' });
-    expect(await checkSteamId(en, '12345')).toEqual({
-      status: 'invalid',
-      error: 'A SteamID has 17 digits and starts with 7656119.',
-    });
   });
 
   it('accepts a valid key', async () => {

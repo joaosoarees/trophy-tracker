@@ -24,14 +24,10 @@ export function useOnboardingController(
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       languageStep: {
-        language: isLanguage(draft?.languageStep?.language)
-          ? draft.languageStep.language
-          : state.language,
+        language: isLanguage(draft?.language) ? draft.language : state.language,
       },
       accountStep: {
-        steamId: draft?.accountStep?.steamId || state.profile?.steamId || '',
-      },
-      apiKeyStep: {
+        steamId: draft?.steamId || state.profile?.steamId || '',
         apiKey: '',
       },
     },
@@ -39,7 +35,10 @@ export function useOnboardingController(
 
   useEffect(() => {
     const { unsubscribe } = form.watch((formData, { name }) => {
-      saveDraft(formData as OnboardingFormData);
+      saveDraft({
+        language: formData.languageStep?.language,
+        steamId: formData.accountStep?.steamId,
+      });
 
       // Picking the language switches the screen right away, with no reload.
       const language = formData.languageStep?.language;
@@ -57,7 +56,7 @@ export function useOnboardingController(
   const handleSubmit = form.handleSubmit(async (formData) => {
     const next = await OnboardingService.saveConfig(
       formData.accountStep.steamId,
-      formData.apiKeyStep.apiKey,
+      formData.accountStep.apiKey,
     );
 
     if (!next.configured) {

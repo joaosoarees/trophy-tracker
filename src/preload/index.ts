@@ -20,7 +20,6 @@ const listen = (channel: string) => (cb: (...args: never[]) => void) => {
 const calls = [
   'getState',
   'detectSteamId',
-  'checkSteamId',
   'checkApiKey',
   'checkPrivacy',
   'saveConfig',

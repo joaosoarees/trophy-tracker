@@ -1,31 +1,42 @@
 import { useEffect, useState } from 'react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
 
 import { OnboardingService } from '@app/services/OnboardingService';
-import { type IProfile } from '@shared/types/Profile';
 import { useStepper } from '@ui/screens/Onboarding/components/Stepper/useStepper';
 import { type OnboardingFormData } from '@ui/screens/Onboarding/schema';
 
-export function useAccountStepController() {
-  const { nextStep } = useStepper();
-  const form = useFormContext<OnboardingFormData>();
-  const [detected, setDetected] = useState(false);
-  const [profile, setProfile] = useState<IProfile | null>(null);
-  /** Why Steam did not confirm the profile; it does not block moving on. */
-  const [unconfirmed, setUnconfirmed] = useState<string | null>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
+/** Where the SteamID in the field came from, which decides how it is presented. */
+type SteamIdSource = 'detected' | 'saved' | 'typed';
 
-  // Fill in the account signed in to the Steam client, without overwriting what was already typed.
+export function useAccountStepController() {
+  const { nextStep, lockFollowingSteps } = useStepper();
+  const form = useFormContext<OnboardingFormData>();
+  const verified = useWatch({
+    control: form.control,
+    name: 'accountStep.verified',
+  });
+
+  // A SteamID that was already there (saved setup or draft) starts locked, like a detected one.
+  const [source, setSource] = useState<SteamIdSource>(() =>
+    form.getValues('accountStep.steamId') ? 'saved' : 'typed',
+  );
+  const [isEditingSteamId, setIsEditingSteamId] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  /** Steam refused the key or the SteamID. */
+  const [problem, setProblem] = useState<string | null>(null);
+  /** The key works but Steam does not let the achievements be read. */
+  const [privacyProblem, setPrivacyProblem] = useState<string | null>(null);
+
+  // Fill in the account signed in to the Steam client, without overwriting what is already there.
   useEffect(() => {
     let active = true;
 
     void OnboardingService.detectSteamId().then((steamId) => {
       if (!active || !steamId) return;
 
-      setDetected(true);
-      if (!form.getValues('accountStep.steamId')) {
-        form.setValue('accountStep.steamId', steamId);
-      }
+      const current = form.getValues('accountStep.steamId');
+      if (!current) form.setValue('accountStep.steamId', steamId);
+      if (!current || current === steamId) setSource('detected');
     });
 
     return () => {
@@ -33,51 +44,74 @@ export function useAccountStepController() {
     };
   }, [form]);
 
-  // The SteamID changed: the previous confirmation no longer holds.
-  useEffect(() => {
-    const { unsubscribe } = form.watch((_formData, { name }) => {
-      if (name === 'accountStep.steamId') {
-        setProfile(null);
-        setUnconfirmed(null);
-      }
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [form]);
-
+  /** The key alone does not say whose it is, so both are checked together. */
   async function handleVerify() {
-    const isValid = await form.trigger('accountStep', { shouldFocus: true });
+    const isValid = await form.trigger(
+      ['accountStep.steamId', 'accountStep.apiKey'],
+      { shouldFocus: true },
+    );
     if (!isValid) return;
 
     setIsVerifying(true);
-    setUnconfirmed(null);
-    const result = await OnboardingService.checkSteamId(
-      form.getValues('accountStep.steamId'),
-    );
-    setIsVerifying(false);
+    setProblem(null);
+    setPrivacyProblem(null);
+    const { steamId, apiKey } = form.getValues('accountStep');
 
-    if (result.status === 'found') {
-      setProfile(result.profile);
-    } else if (result.status === 'unconfirmed') {
-      setUnconfirmed(result.reason);
-    } else {
-      form.setError(
-        'accountStep.steamId',
-        { type: 'validate', message: result.error },
-        { shouldFocus: true },
-      );
+    const account = await OnboardingService.checkApiKey(steamId, apiKey);
+    if (!account.ok) {
+      setIsVerifying(false);
+      setProblem(account.error);
+      return;
     }
+
+    const privacy = await OnboardingService.checkPrivacy(steamId, apiKey);
+    setIsVerifying(false);
+    if (!privacy.ok) {
+      setPrivacyProblem(privacy.error);
+      return;
+    }
+
+    form.setValue(
+      'accountStep.verified',
+      {
+        name: account.value.name,
+        avatar: account.value.avatar,
+        gamesWithPlaytime: privacy.value.gamesWithPlaytime,
+      },
+      { shouldValidate: true },
+    );
   }
+
+  /** Unlocks the fields. What was verified no longer holds, and neither do the steps after this one. */
+  function handleChange() {
+    // The value was never typed into a field, so it is removed rather than reset.
+    form.unregister('accountStep.verified');
+    setProblem(null);
+    setPrivacyProblem(null);
+    lockFollowingSteps();
+  }
+
+  function handleEditSteamId() {
+    setIsEditingSteamId(true);
+    setSource('typed');
+    form.setFocus('accountStep.steamId');
+  }
+
+  const isVerified = verified !== undefined;
 
   return {
     form,
-    nextStep,
-    detected,
-    profile,
-    unconfirmed,
+    verified,
+    isVerified,
     isVerifying,
-    handleVerify,
+    problem,
+    privacyProblem,
+    steamIdSource: source,
+    // Locked while it is the detected or saved account, and once verified.
+    isSteamIdLocked: isVerified || (source !== 'typed' && !isEditingSteamId),
+    handleVerify: () => void handleVerify(),
+    handleChange,
+    handleEditSteamId,
+    handleNext: nextStep,
   };
 }

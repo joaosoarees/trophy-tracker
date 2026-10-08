@@ -19,17 +19,12 @@ export const en = {
     apiKeyFormat:
       'A Web API key has 32 characters (letters A to F and digits).',
     languageRequired: 'Choose a language.',
-    privacyRequired: 'Run the privacy check before finishing.',
+    verificationRequired: 'Verify the account before continuing.',
   },
 
   check: {
-    profileNotFound: 'Steam found no profile with that SteamID.',
     privacyBlocked:
       'Steam did not allow reading your games. Set “Game details” to Public in your privacy settings.',
-    reasonNetwork: 'could not reach Steam',
-    reasonStatus: (status: number) => `Steam responded with error ${status}`,
-    reasonSteamSaid: (text: string) => `Steam responded: ${text}`,
-    reasonUnexpected: 'Steam returned an unexpected response',
   },
 
   toast: {
@@ -172,11 +167,9 @@ export const en = {
     steps: {
       language: 'Language',
       account: 'Account',
-      apiKey: 'Key',
-      privacy: 'Privacy',
       done: 'Done',
     },
-    loading: 'Loading…',
+    goToStep: (step: string) => `Go to ${step}`,
     redoNotice: (reason: string) => `${reason} Set the app up again.`,
 
     language: {
@@ -184,11 +177,11 @@ export const en = {
       description: 'See what is left to unlock in the game you are playing.',
       intro:
         'For the game you are playing, this app shows which achievements are missing, what the hidden ones are, how far along the counted ones are, and shortcuts to guides.',
-      before: 'Before you start, three quick things:',
+      before: 'To set it up you will need:',
       items: [
-        'confirm which account is yours (SteamID);',
-        'create a free Steam Web API key;',
-        'check that your game details are public.',
+        'your SteamID, which the app usually finds on its own;',
+        'a free Steam Web API key;',
+        'your game details set to public on your Steam profile.',
       ],
       keyStaysLocal: 'The key is stored only on this computer.',
       label: 'Language',
@@ -197,53 +190,48 @@ export const en = {
 
     account: {
       title: 'Your account',
-      description: 'Which Steam account should the app follow?',
-      detected:
-        'I found the account signed in to the Steam client on this computer. Confirm it is yours.',
-      notDetected:
-        'I could not find an account signed in to the Steam client. Paste your 17-digit SteamID below.',
-      helpTitle: 'Where do I find my SteamID?',
-      help: [
-        'In the Steam client, click your name in the top right corner.',
-        'Choose “Account details”.',
-        'The 17-digit number under “Steam ID”, right below the account name, is your SteamID. It is not the friend code or the username.',
-      ],
-      openAccount: 'Open “Account details” in the browser',
-      label: 'SteamID',
-      found: 'Profile found',
-      unconfirmed: (reason: string) =>
-        `I could not confirm this profile right now (${reason}). You can try again or continue: the next step checks the SteamID together with the key.`,
+      description: 'The Steam account to follow and the key to read it.',
+      steamId: {
+        label: 'SteamID',
+        detected: 'Detected from the Steam client on this computer.',
+        saved: 'The account this app is set up with.',
+        notDetected:
+          'I could not find an account signed in to the Steam client. Paste your 17-digit SteamID.',
+        change: 'Use another account',
+        helpTitle: 'Where do I find my SteamID?',
+        help: [
+          'In the Steam client, click your name in the top right corner.',
+          'Choose “Account details”.',
+          'The 17-digit number under “Steam ID”, right below the account name, is your SteamID. It is not the friend code or the username.',
+        ],
+        openAccount: 'Open “Account details” in the browser',
+      },
+      key: {
+        label: 'Web API key',
+        placeholder: 'Paste the key here',
+        helpTitle: 'How do I get a key?',
+        help: [
+          'Open the Steam key page.',
+          'Sign in with your account. Under “Domain name”, type anything, for example localhost.',
+          'Accept the terms, click Register and copy the 32-character key.',
+        ],
+        openPage: 'Open the key page in the browser',
+      },
+      privacy: {
+        help: [
+          'Open the privacy settings.',
+          'Set “My profile” and “Game details” to Public.',
+          'Come back and test again (Steam may take a minute to apply it).',
+        ],
+        openSettings: 'Open the privacy settings in the browser',
+        testAgain: 'Test again',
+      },
       verify: 'Verify',
       verifying: 'Verifying…',
-      mine: 'This is my account',
-      continueAnyway: 'Continue anyway',
-    },
-
-    apiKey: {
-      title: 'Web API key',
-      description: 'Steam asks for a key to share your achievements.',
-      steps: [
-        'Open the Steam key page.',
-        'Sign in with your account. Under “Domain name”, type anything, for example localhost.',
-        'Accept the terms, click Register and copy the 32-character key.',
-      ],
-      label: 'Key',
-      placeholder: 'Paste the key here',
-      verify: 'Verify key',
-      verifying: 'Verifying…',
-    },
-
-    privacy: {
-      title: 'Profile privacy',
-      description: 'The app can only read achievements from a public profile.',
-      testing: 'Testing access to your achievements…',
-      ok: 'All good: Steam allowed reading your achievements.',
-      steps: [
-        'Open the privacy settings.',
-        'Set “My profile” and “Game details” to Public.',
-        'Come back and test again (Steam may take a minute to apply it).',
-      ],
-      testAgain: 'Test again',
+      verified: (games: number) =>
+        `Verified · ${games} ${games === 1 ? 'played game' : 'played games'}`,
+      locked: 'To use another account or key, click Change.',
+      change: 'Change',
     },
 
     done: {
@@ -251,9 +239,12 @@ export const en = {
       description: 'The setup is complete.',
       found: (n: number) =>
         `I found ${n} ${n === 1 ? 'played game' : 'played games'} on your account.`,
+      account: 'Account',
+      language: 'Language',
       howItWorks:
         'Open a game on Steam and the app switches to it on its own. With no game open it shows the last one you played; the Dashboard lists them all.',
-      saveFailed: 'Could not save the setup. Go back and check the key.',
+      saveFailed:
+        'Could not save the setup. Go back and verify the account again.',
       finish: 'Enter the app',
       saving: 'Saving…',
     },

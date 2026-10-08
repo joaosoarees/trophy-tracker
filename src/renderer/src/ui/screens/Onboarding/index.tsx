@@ -5,10 +5,8 @@ import { type IAppState } from '@shared/types/AppState';
 
 import { Stepper } from './components/Stepper';
 import { AccountStep } from './steps/AccountStep';
-import { ApiKeyStep } from './steps/ApiKeyStep';
 import { DoneStep } from './steps/DoneStep';
 import { LanguageStep } from './steps/LanguageStep';
-import { PrivacyStep } from './steps/PrivacyStep';
 import { useOnboardingController } from './useOnboardingController';
 
 interface IOnboardingProps {
@@ -42,14 +40,6 @@ export function Onboarding({ state, onDone, onCancel }: IOnboardingProps) {
               {
                 label: t.onboarding.steps.account,
                 content: <AccountStep />,
-              },
-              {
-                label: t.onboarding.steps.apiKey,
-                content: <ApiKeyStep />,
-              },
-              {
-                label: t.onboarding.steps.privacy,
-                content: <PrivacyStep />,
               },
               {
                 label: t.onboarding.steps.done,

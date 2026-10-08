@@ -1,5 +1,5 @@
 import { type IAppState } from '@shared/types/AppState';
-import { type CheckResult, type SteamIdCheck } from '@shared/types/Check';
+import { type CheckResult } from '@shared/types/Check';
 import { type IProfile } from '@shared/types/Profile';
 
 import { Service } from './Service';
@@ -10,10 +10,7 @@ export class OnboardingService extends Service {
     return this.api.detectSteamId();
   }
 
-  static checkSteamId(steamId: string): Promise<SteamIdCheck> {
-    return this.api.checkSteamId(steamId);
-  }
-
+  /** Checks the key and the SteamID together: the key alone does not say whose it is. */
   static checkApiKey(
     steamId: string,
     apiKey: string,

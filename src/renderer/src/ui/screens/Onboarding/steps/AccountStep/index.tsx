@@ -1,4 +1,4 @@
-import { ExternalLink, User } from 'lucide-react';
+import { CircleCheck, Lock, User } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { SystemService } from '@app/services/SystemService';
@@ -7,6 +7,7 @@ import { Button } from '@ui/primitives/button';
 import { Input } from '@ui/primitives/input';
 import { Label } from '@ui/primitives/label';
 import { FieldError } from '@ui/screens/Onboarding/components/FieldError';
+import { HelpList } from '@ui/screens/Onboarding/components/HelpList';
 import { StepHeader } from '@ui/screens/Onboarding/components/StepHeader';
 import {
   StepperFooter,
@@ -20,105 +21,166 @@ export function AccountStep() {
   const t = useT();
   const {
     form,
-    nextStep,
-    detected,
-    profile,
-    unconfirmed,
+    verified,
+    isVerified,
     isVerifying,
+    problem,
+    privacyProblem,
+    steamIdSource,
+    isSteamIdLocked,
     handleVerify,
+    handleChange,
+    handleEditSteamId,
+    handleNext,
   } = useAccountStepController();
+  const text = t.onboarding.account;
+
+  // Enter in a field checks the account instead of submitting the whole form.
+  function handleEnter(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    if (isVerified) handleNext();
+    else handleVerify();
+  }
 
   return (
     <div>
-      <StepHeader
-        title={t.onboarding.account.title}
-        description={t.onboarding.account.description}
-      />
+      <StepHeader title={text.title} description={text.description} />
 
-      <p>
-        {detected
-          ? t.onboarding.account.detected
-          : t.onboarding.account.notDetected}
-      </p>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="steamId">{text.steamId.label}</Label>
+          <div className="relative">
+            <Input
+              id="steamId"
+              inputMode="numeric"
+              placeholder="7656119…"
+              readOnly={isSteamIdLocked}
+              className={isSteamIdLocked ? 'bg-muted pr-9' : undefined}
+              {...form.register('accountStep.steamId')}
+              onKeyDown={handleEnter}
+            />
+            {isSteamIdLocked && (
+              <Lock className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 size-3.5 -translate-y-1/2" />
+            )}
+          </div>
+          <FieldError name="accountStep.steamId" />
 
-      <details
-        open={!detected}
-        className="bg-card my-3 rounded-lg border px-3 py-2"
-      >
-        <summary className="text-primary cursor-pointer">
-          {t.onboarding.account.helpTitle}
-        </summary>
-        <ol className="my-2 list-decimal space-y-1.5 pl-5">
-          {t.onboarding.account.help.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ol>
-        <Button
-          type="button"
-          size="xs"
-          variant="secondary"
-          onClick={() => void SystemService.openExternal('account')}
-        >
-          <ExternalLink />
-          {t.onboarding.account.openAccount}
-        </Button>
-      </details>
+          {isSteamIdLocked && !isVerified && (
+            <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-xs">
+              {steamIdSource === 'detected'
+                ? text.steamId.detected
+                : text.steamId.saved}
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto p-0 text-xs"
+                onClick={handleEditSteamId}
+              >
+                {text.steamId.change}
+              </Button>
+            </p>
+          )}
 
-      <div className="space-y-2">
-        <Label htmlFor="steamId">{t.onboarding.account.label}</Label>
-        <Input
-          id="steamId"
-          inputMode="numeric"
-          placeholder="7656119…"
-          {...form.register('accountStep.steamId')}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter') return;
-            event.preventDefault();
-            if (profile) nextStep();
-            else void handleVerify();
-          }}
-        />
-        <FieldError name="accountStep.steamId" />
+          {!isSteamIdLocked && (
+            <>
+              {steamIdSource === 'typed' && (
+                <p className="text-muted-foreground text-xs">
+                  {text.steamId.notDetected}
+                </p>
+              )}
+              <HelpList
+                title={text.steamId.helpTitle}
+                items={text.steamId.help}
+                action={text.steamId.openAccount}
+                onAction={() => void SystemService.openExternal('account')}
+              />
+            </>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="apiKey">{text.key.label}</Label>
+          <Input
+            id="apiKey"
+            type="password"
+            autoComplete="off"
+            placeholder={text.key.placeholder}
+            readOnly={isVerified}
+            className={isVerified ? 'bg-muted' : undefined}
+            {...form.register('accountStep.apiKey')}
+            onKeyDown={handleEnter}
+          />
+          <FieldError name="accountStep.apiKey" />
+
+          {!isVerified && (
+            <HelpList
+              title={text.key.helpTitle}
+              items={text.key.help}
+              action={text.key.openPage}
+              onAction={() => void SystemService.openExternal('apikey')}
+            />
+          )}
+        </div>
       </div>
 
-      {profile && (
-        <div className="bg-card my-3 flex items-center gap-3 rounded-lg border p-3">
-          <RemoteImage
-            src={profile.avatar}
-            fallback={<User className="size-5" />}
-            className="size-12 flex-none"
-          />
-          <div>
-            <strong className="block">{profile.name}</strong>
-            <small className="text-muted-foreground">
-              {t.onboarding.account.found}
-            </small>
-          </div>
-        </div>
-      )}
-
-      {unconfirmed && (
-        <p className="text-warning mt-3">
-          {t.onboarding.account.unconfirmed(unconfirmed)}
+      {problem && (
+        <p role="alert" className="text-destructive mt-4">
+          {problem}
         </p>
       )}
 
-      <StepperFooter>
-        <StepperPreviousButton />
-        {unconfirmed && (
-          <Button type="button" variant="secondary" onClick={nextStep}>
-            {t.onboarding.account.continueAnyway}
+      {privacyProblem && (
+        <div role="alert" className="mt-4 space-y-2">
+          <p className="text-destructive">{privacyProblem}</p>
+          <HelpList
+            open
+            items={text.privacy.help}
+            action={text.privacy.openSettings}
+            onAction={() => void SystemService.openExternal('privacy')}
+          />
+        </div>
+      )}
+
+      {verified && (
+        <div className="bg-card expand-in mt-4 flex items-center gap-3 rounded-lg border p-3">
+          <RemoteImage
+            src={verified.avatar}
+            fallback={<User className="size-5" />}
+            className="size-12 flex-none"
+          />
+          <div className="min-w-0 flex-1">
+            <strong className="block truncate">{verified.name}</strong>
+            <small className="text-success flex items-center gap-1">
+              <CircleCheck className="size-3.5" />
+              {text.verified(verified.gamesWithPlaytime)}
+            </small>
+            <small className="text-muted-foreground block">{text.locked}</small>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleChange}
+          >
+            {text.change}
           </Button>
-        )}
-        {profile ? (
-          <StepperNextButton>{t.onboarding.account.mine}</StepperNextButton>
+        </div>
+      )}
+
+      <FieldError name="accountStep.verified" />
+
+      <StepperFooter>
+        <StepperPreviousButton disabled={isVerifying} />
+        {isVerified ? (
+          <StepperNextButton />
         ) : (
           <StepperNextButton disabled={isVerifying} onClick={handleVerify}>
             {isVerifying
-              ? t.onboarding.account.verifying
-              : unconfirmed
-                ? t.common.retry
-                : t.onboarding.account.verify}
+              ? text.verifying
+              : privacyProblem
+                ? text.privacy.testAgain
+                : text.verify}
           </StepperNextButton>
         )}
       </StepperFooter>

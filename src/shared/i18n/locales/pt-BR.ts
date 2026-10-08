@@ -21,17 +21,12 @@ export const ptBR: Messages = {
     apiKeyFormat:
       'A chave da Web API tem 32 caracteres (letras de A a F e números).',
     languageRequired: 'Escolha um idioma.',
-    privacyRequired: 'Faça a verificação de privacidade antes de concluir.',
+    verificationRequired: 'Verifique a conta antes de continuar.',
   },
 
   check: {
-    profileNotFound: 'A Steam não encontrou nenhum perfil com esse SteamID.',
     privacyBlocked:
       'A Steam não deixou ler seus jogos. Deixe "Detalhes dos jogos" como Público nas configurações de privacidade.',
-    reasonNetwork: 'não foi possível falar com a Steam',
-    reasonStatus: (status) => `a Steam respondeu com erro ${status}`,
-    reasonSteamSaid: (text) => `a Steam respondeu: ${text}`,
-    reasonUnexpected: 'a Steam devolveu uma resposta inesperada',
   },
 
   toast: {
@@ -173,11 +168,9 @@ export const ptBR: Messages = {
     steps: {
       language: 'Idioma',
       account: 'Conta',
-      apiKey: 'Chave',
-      privacy: 'Privacidade',
       done: 'Pronto',
     },
-    loading: 'Carregando…',
+    goToStep: (step) => `Ir para ${step}`,
     redoNotice: (reason) => `${reason} Refaça a configuração.`,
 
     language: {
@@ -186,11 +179,11 @@ export const ptBR: Messages = {
         'Veja o que falta desbloquear no jogo que você está jogando.',
       intro:
         'Este app mostra, para o jogo que você está jogando, quais conquistas faltam, o que são as ocultas, quanto falta nas que têm contador e atalhos para guias.',
-      before: 'Antes de usar, três coisas rápidas:',
+      before: 'Para configurar você vai precisar de:',
       items: [
-        'confirmar qual é a sua conta (SteamID);',
-        'gerar uma chave da Web API da Steam, gratuita;',
-        'conferir se os detalhes dos seus jogos estão públicos.',
+        'o seu SteamID, que o app costuma encontrar sozinho;',
+        'uma chave da Web API da Steam, gratuita;',
+        'os detalhes dos seus jogos como públicos no seu perfil da Steam.',
       ],
       keyStaysLocal: 'A chave fica guardada só neste computador.',
       label: 'Idioma',
@@ -199,53 +192,48 @@ export const ptBR: Messages = {
 
     account: {
       title: 'Sua conta',
-      description: 'Qual conta da Steam o app deve acompanhar?',
-      detected:
-        'Encontrei a conta logada no cliente Steam deste computador. Confirme se é a sua.',
-      notDetected:
-        'Não encontrei uma conta logada no cliente Steam. Cole abaixo o seu SteamID de 17 dígitos.',
-      helpTitle: 'Onde encontro meu SteamID?',
-      help: [
-        'No cliente Steam, clique no seu nome no canto superior direito.',
-        'Escolha “Detalhes da conta”.',
-        'O número de 17 dígitos em “ID Steam”, logo abaixo do nome da conta, é o seu SteamID. Não é o código de amigo nem o nome de usuário.',
-      ],
-      openAccount: 'Abrir “Detalhes da conta” no navegador',
-      label: 'SteamID',
-      found: 'Perfil encontrado',
-      unconfirmed: (reason) =>
-        `Não consegui confirmar este perfil agora (${reason}). Você pode tentar de novo ou continuar: o próximo passo confere o SteamID junto com a chave.`,
+      description: 'A conta da Steam a acompanhar e a chave para lê-la.',
+      steamId: {
+        label: 'SteamID',
+        detected: 'Detectado no cliente Steam deste computador.',
+        saved: 'A conta com que este app está configurado.',
+        notDetected:
+          'Não encontrei uma conta logada no cliente Steam. Cole o seu SteamID de 17 dígitos.',
+        change: 'Usar outra conta',
+        helpTitle: 'Onde encontro meu SteamID?',
+        help: [
+          'No cliente Steam, clique no seu nome no canto superior direito.',
+          'Escolha “Detalhes da conta”.',
+          'O número de 17 dígitos em “ID Steam”, logo abaixo do nome da conta, é o seu SteamID. Não é o código de amigo nem o nome de usuário.',
+        ],
+        openAccount: 'Abrir “Detalhes da conta” no navegador',
+      },
+      key: {
+        label: 'Chave da Web API',
+        placeholder: 'Cole a chave aqui',
+        helpTitle: 'Como consigo uma chave?',
+        help: [
+          'Abra a página de chaves da Steam.',
+          'Entre com a sua conta. Em “Nome de domínio”, digite qualquer coisa, por exemplo localhost.',
+          'Aceite os termos, clique em Registrar e copie a chave de 32 caracteres.',
+        ],
+        openPage: 'Abrir a página de chaves no navegador',
+      },
+      privacy: {
+        help: [
+          'Abra as configurações de privacidade.',
+          'Deixe “Meu perfil” e “Detalhes dos jogos” como Público.',
+          'Volte aqui e teste de novo (a Steam pode levar um minuto para aplicar).',
+        ],
+        openSettings: 'Abrir as configurações de privacidade no navegador',
+        testAgain: 'Testar de novo',
+      },
       verify: 'Verificar',
       verifying: 'Verificando…',
-      mine: 'É a minha conta',
-      continueAnyway: 'Continuar mesmo assim',
-    },
-
-    apiKey: {
-      title: 'Chave da Web API',
-      description: 'A Steam pede uma chave para compartilhar suas conquistas.',
-      steps: [
-        'Abra a página de chaves da Steam.',
-        'Entre com a sua conta. Em “Nome de domínio”, digite qualquer coisa, por exemplo localhost.',
-        'Aceite os termos, clique em Registrar e copie a chave de 32 caracteres.',
-      ],
-      label: 'Chave',
-      placeholder: 'Cole a chave aqui',
-      verify: 'Verificar chave',
-      verifying: 'Verificando…',
-    },
-
-    privacy: {
-      title: 'Privacidade do perfil',
-      description: 'O app só consegue ler conquistas de um perfil público.',
-      testing: 'Testando o acesso às suas conquistas…',
-      ok: 'Tudo certo: a Steam liberou a leitura das suas conquistas.',
-      steps: [
-        'Abra as configurações de privacidade.',
-        'Deixe “Meu perfil” e “Detalhes dos jogos” como Público.',
-        'Volte aqui e teste de novo (a Steam pode levar um minuto para aplicar).',
-      ],
-      testAgain: 'Testar de novo',
+      verified: (games) =>
+        `Verificado · ${games} ${games === 1 ? 'jogo já jogado' : 'jogos já jogados'}`,
+      locked: 'Para usar outra conta ou chave, clique em Alterar.',
+      change: 'Alterar',
     },
 
     done: {
@@ -253,10 +241,12 @@ export const ptBR: Messages = {
       description: 'A configuração está completa.',
       found: (n) =>
         `Encontrei ${n} ${n === 1 ? 'jogo já jogado' : 'jogos já jogados'} na sua conta.`,
+      account: 'Conta',
+      language: 'Idioma',
       howItWorks:
         'Abra um jogo na Steam e o app troca para ele sozinho. Sem jogo aberto, ele mostra o último que você jogou; o Painel lista todos.',
       saveFailed:
-        'Não foi possível salvar a configuração. Volte e confira a chave.',
+        'Não foi possível salvar a configuração. Volte e verifique a conta de novo.',
       finish: 'Entrar no app',
       saving: 'Salvando…',
     },

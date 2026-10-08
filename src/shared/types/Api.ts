@@ -3,7 +3,7 @@ import { type IDashboardSort } from '../dashboardSort';
 import { type Language } from '../i18n';
 
 import { type IAppState } from './AppState';
-import { type CheckResult, type SteamIdCheck } from './Check';
+import { type CheckResult } from './Check';
 import {
   type CurrentGame,
   type DashboardMode,
@@ -18,7 +18,6 @@ import { type GameUserData, type IAchievementUserData } from './UserData';
 export interface IApi {
   getState: () => Promise<IAppState>;
   detectSteamId: () => Promise<string | null>;
-  checkSteamId: (steamId: string) => Promise<SteamIdCheck>;
   checkApiKey: (
     steamId: string,
     apiKey: string,
