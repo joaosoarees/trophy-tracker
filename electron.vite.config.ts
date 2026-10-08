@@ -7,9 +7,11 @@ import { defineConfig } from 'electron-vite';
 const shared = { '@shared': resolve('src/shared') };
 
 export default defineConfig({
-  // Dependencies are externalized by default (`build.externalizeDeps`).
-  main: { resolve: { alias: shared } },
-  preload: { resolve: { alias: shared } },
+  // electron-vite leaves `dependencies` out of the main and preload bundles by
+  // default, expecting node_modules to ship with the app. Here the package
+  // carries no node_modules (see electron-builder.yml), so they are bundled.
+  main: { resolve: { alias: shared }, build: { externalizeDeps: false } },
+  preload: { resolve: { alias: shared }, build: { externalizeDeps: false } },
   renderer: {
     resolve: {
       alias: {

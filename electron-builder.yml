@@ -6,12 +6,14 @@ directories:
   output: dist
   buildResources: build
 
-# Everything the app runs is already bundled into out/ by electron-vite, so no
-# node_modules go into the package (every dependency is a devDependency).
+# Everything the app runs is already bundled into out/ by electron-vite, so
+# node_modules stay out of the package; copying them would ship every library
+# twice.
 files:
   - out/**
   - build/icon.png
   - package.json
+  - '!node_modules'
 
 # Installers are not signed with a paid certificate yet: Windows shows the
 # SmartScreen warning and macOS asks the user to allow the app in System Settings.
