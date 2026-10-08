@@ -28,7 +28,8 @@ import { MainWindow } from './window';
 // One data folder name on every system, whatever the product is called on screen.
 // An explicit --user-data-dir (used to run against a throwaway copy) is respected.
 const appData = app.getPath('appData');
-if (!app.commandLine.hasSwitch('user-data-dir')) {
+const usesOwnDataFolder = !app.commandLine.hasSwitch('user-data-dir');
+if (usesOwnDataFolder) {
   app.setPath('userData', join(appData, 'trophy-tracker'));
 }
 
@@ -52,10 +53,14 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 // Composition root: builds each piece once and hands it what it depends on.
 void app.whenReady().then(() => {
-  migrateUserData(
-    join(appData, 'steam-trophy-tracker'),
-    app.getPath('userData'),
-  );
+  // Only into the app's own folder: a throwaway folder named on the command
+  // line must stay as it was given, not receive a copy of the user's data.
+  if (usesOwnDataFolder) {
+    migrateUserData(
+      join(appData, 'steam-trophy-tracker'),
+      app.getPath('userData'),
+    );
+  }
   const store = new Store(app.getPath('userData'), createCipher());
   const client = new SteamClient();
   const setup = new SetupService(store, client);
