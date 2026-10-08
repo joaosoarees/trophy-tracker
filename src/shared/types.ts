@@ -57,9 +57,17 @@ export interface AppState {
   configError: string | null
 }
 
+export interface ChecklistItem {
+  id: string
+  text: string
+  done: boolean
+}
+
 export interface AchievementUserData {
   note: string
   pinned: boolean
+  /** Itens que o usuário lista para saber quais faltam (ex.: colecionáveis). */
+  checklist?: ChecklistItem[]
 }
 
 export type GameUserData = Record<string, AchievementUserData>

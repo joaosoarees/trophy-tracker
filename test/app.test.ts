@@ -133,6 +133,19 @@ describe('Store', () => {
     store.setUserData(10, 'B', { note: ' ', pinned: false })
     expect(new Store(dir).getUserData(10)).toEqual({ A: { note: 'chefe do 3º mapa', pinned: true } })
   })
+
+  it('mantém a entrada enquanto houver checklist e lembra do sempre no topo', () => {
+    const dir = tempDir()
+    const store = new Store(dir)
+    const checklist = [{ id: '1', text: 'Kodama da ponte', done: true }]
+    store.setUserData(10, 'A', { note: '', pinned: false, checklist })
+    store.setAlwaysOnTop(true)
+    const again = new Store(dir)
+    expect(again.getUserData(10)).toEqual({ A: { note: '', pinned: false, checklist } })
+    expect(again.getAlwaysOnTop()).toBe(true)
+    again.setUserData(10, 'A', { note: '', pinned: false, checklist: [] })
+    expect(new Store(dir).getUserData(10)).toEqual({})
+  })
 })
 
 describe('Tracker', () => {

@@ -128,7 +128,8 @@ export class Store {
 
   setUserData(appid: number, achievementId: string, data: AchievementUserData): void {
     const game = (this.userData[appid] ??= {})
-    if (data.note.trim() === '' && !data.pinned) delete game[achievementId]
+    const empty = data.note.trim() === '' && !data.pinned && (data.checklist?.length ?? 0) === 0
+    if (empty) delete game[achievementId]
     else game[achievementId] = data
     this.write('userdata.json', this.userData)
   }

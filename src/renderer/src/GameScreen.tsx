@@ -64,7 +64,10 @@ export function GameScreen({ appid, running, onAuthProblem }: Props) {
 
   const list = useMemo(() => {
     if (!view) return []
-    const items = view.achievements.filter((a) => a.unlocked === (filter === 'unlocked'))
+    const ratio = (a: Achievement): number => {
+      const p = shownProgress(a, userData[a.id])
+      return p ? p.current / p.target : -1
+    }
     const by: Record<Sort, (a: Achievement, b: Achievement) => number> = {
       common: (a, b) => (b.rarity ?? -1) - (a.rarity ?? -1),
       rare: (a, b) => (a.rarity ?? 101) - (b.rarity ?? 101),
