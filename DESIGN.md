@@ -145,7 +145,7 @@ Trophy Tracker is a support panel, not a destination. It sits beside a game on a
 
 The palette is borrowed from the place the user already lives. The navy field, the light blue accent and the lime green of a finished achievement are Steam's own, so the panel reads as part of the same desk rather than a second product asking to be learned. The identity is in the restraint and the response: surfaces are flat and told apart by tone, and every control answers a touch at once.
 
-Motion is short and small. A screen rises 6 pixels as it appears, a list fades in, a section grows to its height. Nothing loops for attention, with one exception: the dot that says a game is running.
+Motion is short and small. A screen rises 6 pixels as it appears, a list fades in, a section grows to its height and shrinks back when it closes. Nothing loops for attention, with one exception: the dot that says a game is running.
 
 **Key Characteristics:**
 
@@ -319,7 +319,7 @@ The unit the whole app is built around. A 48px icon at the left; to its right th
 
 ### Game header
 
-The game's art fills the header at 35 percent opacity with a slight blur, under a gradient that fades to the field color, so the title stays readable over any image. The title and a "running" indicator in Unlocked Green with a pulsing dot sit on top. Below them the overall progress bar shares a row with what is left ("80 left"), in title weight and the text color: it is the figure the header is glanced at for, and the only one that stands out. The full count sits under it in caption text.
+The game's art fills a band at the top of the header (144px, behind the title and the progress bar) at 35 percent opacity with a slight blur, under a gradient that fades to the field color, so the title stays readable over any image. The band has a fixed height: details that open below it sit on the plain field, and the art is never rescaled as the header grows. The title and a "running" indicator in Unlocked Green with a pulsing dot sit on top. Below them the overall progress bar shares a row with what is left ("80 left"), in title weight and the text color: it is the figure the header is glanced at for, and the only one that stands out. The full count sits under it in caption text.
 
 ### Completion state (signature)
 
@@ -356,4 +356,5 @@ The inverse of the page: Glance White with Night Navy text, softly rounded, with
 - **Don't** use a native select or the native `title` tooltip: the first opens a system popup that cannot be themed, the second is slow and never shows on keyboard focus.
 - **Don't** introduce a second typeface, or a display size above 20px anywhere but the completion figure.
 - **Don't** make a control that only appears on hover unreachable by keyboard; it must also appear on focus.
-- **Don't** animate an exit, loop an animation for attention, or move anything more than 20 pixels.
+- **Don't** let something that animated open vanish when it closes: a section that grows shrinks back.
+- **Don't** loop an animation for attention, or move anything more than 20 pixels.

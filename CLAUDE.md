@@ -143,7 +143,7 @@ src/renderer/src/      the interface, in two layers
     screens/             one folder per screen: Game, Dashboard, Settings, Onboarding, Update
     components/          shared between screens: AppShell, Pressable, IconButton, Hint, OptionSelect,
                          RemoteImage, ProgressBar, Segmented, SearchBox, Empty, ErrorBoundary, CrashScreen,
-                         UpdateReadyDialog, DetailList (DetailGroup and DetailRow), Switch
+                         UpdateReadyDialog, DetailList (DetailGroup and DetailRow), Switch, Collapsible
     primitives/          shadcn/ui components (generated; do not hand-edit without a reason)
     styles/index.css     Tailwind and the theme tokens
     utils/               cn, text (accent-free search), format (dates and numbers)
@@ -329,11 +329,13 @@ Tests passing is not the end of a change that touches the interface. Every new o
    - accessibility with axe;
    - that the window itself has no scrollbar and nothing overflows sideways;
    - that every kind of clickable element on screen changes visibly on hover and on keyboard focus (both states are forced and the computed styles compared);
-   - that no clickable element is wider than what contains it, which is how a hover wash spills out of its row.
-2. **Add the new thing to the script** when the audit cannot reach it as it is: a new screen, a section that has to be opened, a state behind a click. A feature the audit never opens has not been audited.
-3. **Look at the captures** it saves to `.audit-ui/`, every one that the change could have touched. The checks pass on whatever is on screen, so a capture of the wrong screen is the only sign that the script went astray; it has happened more than once.
-4. **Check by eye what no script measures**, on those captures: lines and separators (one between two things, never two in a row and none at the end of a group), alignment of text with the page margin, spacing between groups, text that wraps or is cut in Spanish and French, and anything said twice on the same screen.
-5. **Open by hand what the script does not**: dialogs, the update screen, a finished game, toasts, and the pressed state. Say in the report which of these were not opened.
+   - that no clickable element is wider than what contains it, which is how a hover wash spills out of its row;
+   - the game details as a flow: they animate open and closed (the height is sampled on every frame), leave the page once closed, and every row that names an achievement leads to it with the hidden-only filter on.
+2. **Add the new thing to the script** when the audit cannot reach it as it is: a new screen, a section that has to be opened, a state behind a click. A feature the audit never opens has not been audited. Two kinds of thing always get a flow check of their own: **a control that opens something is audited in both directions**, and **a shortcut that leads to an item is audited with every filter that could hide the item turned on**.
+3. **Prove a new check can fail**: undo the fix it is meant to guard, run the audit, see it fail, restore. A check that was only ever seen passing may be checking nothing.
+4. **Look at the captures** it saves to `.audit-ui/`, every one that the change could have touched. The checks pass on whatever is on screen, so a capture of the wrong screen is the only sign that the script went astray; it has happened more than once.
+5. **Check by eye what no script measures**, on those captures: lines and separators (one between two things, never two in a row and none at the end of a group), alignment of text with the page margin, spacing between groups, text that wraps or is cut in Spanish and French, and anything said twice on the same screen.
+6. **Open by hand what the script does not**: dialogs, the update screen, a finished game, toasts, and the pressed state. Say in the report which of these were not opened.
 
 The app screens are audited on a throwaway copy of this computer's data folder (they need Steam data); the script never reads or prints the key in it.
 
@@ -356,9 +358,9 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 - `animate-screen-in` (fade + 6 px rise, 180 ms) on a main tab when it is shown.
 - `animate-list-in` (fade, 160 ms) on a list keyed by its filter, so switching Pending/Unlocked or In progress/Complete fades the new list in.
 - `animate-step-forward` / `animate-step-backward` (20 px slide, 200 ms) on onboarding steps; `Stepper` tracks the direction.
-- `expand-in` on a section that opens inside a card (checklist, note): it grows to its height instead of popping in.
+- `collapsible` on a section that opens in place (the game details, a card's checklist and note): it grows to its height when it opens and shrinks back when it closes. Use it through `ui/components/Collapsible`, which keeps the section mounted only while the closing transition runs and then takes it out of the page. That is what lets an exit be animated without a library and without keeping 80 closed checklists alive.
 - An animation that moves an element makes it overflow its parent while it runs. The parent must clip it (`overflow-hidden` on `<main>` in `AppShell`), or the window gets a scrollbar for the length of the transition.
-- Only entries are animated. Animating exits would need the element to outlive its state, which is what an animation library is for; add one only if that becomes a real need.
+- **What opens in place closes the same way.** A section that animates open and then vanishes when closed reads as broken; `Collapsible` covers that case. Screens, lists and steps still animate only their entry: animating their exit would need the old one to outlive its state, which is what an animation library is for; add one only if that becomes a real need.
 - An element shown only on hover must also show on keyboard focus (`focus-visible:opacity-100`).
 - After changing a screen, audit it in the running app, element by element and in every state (lists open, dialogs open, sections expanded): pointer cursor, accessible name, reachable by keyboard, and a visible change on hover, on press and on keyboard focus. Forcing the `:hover`, `:active` and `:focus-visible` states through the DevTools protocol and comparing computed styles does this reliably; park the mouse pointer first, or a really hovered element hides a missing hover style. Then run axe.
 

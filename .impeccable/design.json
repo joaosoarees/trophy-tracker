@@ -286,9 +286,9 @@
         "purpose": "Onboarding steps, following the direction of travel."
       },
       {
-        "name": "expand-in",
-        "value": "height and opacity, 180ms ease-out",
-        "purpose": "A section that opens inside a card."
+        "name": "collapsible",
+        "value": "height and opacity, 180ms ease-out, both ways",
+        "purpose": "A section that opens in place and closes the same way."
       },
       {
         "name": "press",
@@ -434,7 +434,8 @@
       "Don't use a native select or the native `title` tooltip: the first opens a system popup that cannot be themed, the second is slow and never shows on keyboard focus.",
       "Don't introduce a second typeface, or a display size above 20px anywhere but the completion figure.",
       "Don't make a control that only appears on hover unreachable by keyboard; it must also appear on focus.",
-      "Don't animate an exit, loop an animation for attention, or move anything more than 20 pixels."
+      "Don't let something that animated open vanish when it closes: a section that grows shrinks back.",
+      "Don't loop an animation for attention, or move anything more than 20 pixels."
     ]
   }
 }
