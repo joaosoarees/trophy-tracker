@@ -26,11 +26,12 @@ describe('i18n', () => {
     expect(messagesFor('en').nav.dashboard).toBe('Dashboard');
     expect(messagesFor('pt-BR').nav.dashboard).toBe('Painel');
     expect(messagesFor('es').nav.dashboard).toBe('Panel');
+    expect(messagesFor('fr').nav.dashboard).toBe('Tableau de bord');
   });
 
   it('recognises only registered languages', () => {
     expect(isLanguage('pt-BR')).toBe(true);
-    expect(isLanguage('fr')).toBe(false);
+    expect(isLanguage('de')).toBe(false);
     expect(isLanguage(undefined)).toBe(false);
     expect(isLanguage('toString')).toBe(false);
   });
@@ -56,5 +57,6 @@ describe('i18n', () => {
     expect(LANGUAGES.en.steam).toBe('english');
     expect(LANGUAGES['pt-BR'].steam).toBe('brazilian');
     expect(LANGUAGES.es.steam).toBe('spanish');
+    expect(LANGUAGES.fr.steam).toBe('french');
   });
 });

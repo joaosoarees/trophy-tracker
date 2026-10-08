@@ -32,7 +32,7 @@ describe('onboarding schemas', () => {
         );
 
     expect(
-      languageStepSchema.safeParse({ language: 'fr' }).error?.issues[0].message,
+      languageStepSchema.safeParse({ language: 'xx' }).error?.issues[0].message,
     ).toBe('languageRequired');
     expect(issues({ steamId: '12345', apiKey: 'short' })).toEqual([
       'steamId: steamIdFormat',
