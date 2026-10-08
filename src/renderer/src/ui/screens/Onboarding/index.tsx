@@ -5,6 +5,8 @@ import { z } from 'zod';
 
 import { useT } from '@app/hooks/useT';
 import { safeSessionStorageGetItem } from '@app/lib/safeSessionStorageGetItem';
+import { OnboardingService } from '@app/services/OnboardingService';
+import { SettingsService } from '@app/services/SettingsService';
 import { useStore } from '@app/store';
 import { isLanguage } from '@shared/i18n';
 import type { IAppState } from '@shared/types';
@@ -78,7 +80,7 @@ export function Onboarding({ state, onDone, onCancel }: IOnboardingProps) {
         isLanguage(languageStep?.language)
       ) {
         setLanguage(languageStep.language);
-        void window.api.setLanguage(languageStep.language);
+        void SettingsService.setLanguage(languageStep.language);
       }
     });
 
@@ -92,7 +94,7 @@ export function Onboarding({ state, onDone, onCancel }: IOnboardingProps) {
   }, []);
 
   const handleSubmit = form.handleSubmit(async (formData) => {
-    const next = await window.api.saveConfig(
+    const next = await OnboardingService.saveConfig(
       formData.accountStep.steamId,
       formData.apiKeyStep.apiKey,
     );

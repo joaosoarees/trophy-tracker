@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 
 import { useT } from '@app/hooks/useT';
+import { OnboardingService } from '@app/services/OnboardingService';
+import { SystemService } from '@app/services/SystemService';
 import { Button } from '@ui/primitives/button';
 import type { OnboardingFormData } from '@ui/screens/Onboarding';
 import { StepHeader } from '@ui/screens/Onboarding/components/StepHeader';
@@ -27,7 +29,7 @@ export function PrivacyStep() {
     setIsTesting(true);
     setProblem(null);
     const { accountStep, apiKeyStep } = form.getValues();
-    const result = await window.api.checkPrivacy(
+    const result = await OnboardingService.checkPrivacy(
       accountStep.steamId.trim(),
       apiKeyStep.apiKey,
     );
@@ -82,7 +84,7 @@ export function PrivacyStep() {
                       type="button"
                       size="xs"
                       variant="secondary"
-                      onClick={() => void window.api.openExternal('privacy')}
+                      onClick={() => void SystemService.openExternal('privacy')}
                     >
                       <ExternalLink />
                       {t.common.openInBrowser}

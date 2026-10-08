@@ -1,3 +1,4 @@
+import { DashboardService } from '@app/services/DashboardService';
 import type { StoreSlice } from '@app/store/Store';
 import type { DashboardMode, IGameSummary } from '@shared/types';
 
@@ -33,7 +34,7 @@ export const createDashboardSlice: StoreSlice<DashboardSlice> = (set, get) => ({
       'dashboard/load',
     );
 
-    const result = await window.api.getDashboard(mode);
+    const result = await DashboardService.getDashboard(mode);
     set(
       (prevState) => {
         prevState.dashboard.loading = false;

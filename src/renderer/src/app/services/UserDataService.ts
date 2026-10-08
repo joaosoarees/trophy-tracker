@@ -1,0 +1,18 @@
+import { type GameUserData, type IAchievementUserData } from '@shared/types';
+
+import { Service } from './Service';
+
+/** Notes, pins and checklists the user keeps per achievement. */
+export class UserDataService extends Service {
+  static getUserData(appid: number): Promise<GameUserData> {
+    return this.api.getUserData(appid);
+  }
+
+  static setUserData(
+    appid: number,
+    achievementId: string,
+    data: IAchievementUserData,
+  ): Promise<void> {
+    return this.api.setUserData(appid, achievementId, data);
+  }
+}

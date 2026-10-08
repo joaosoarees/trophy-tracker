@@ -120,6 +120,23 @@ export default defineConfig(
   },
 
   {
+    // The interface reaches the main process only through app/services.
+    files: renderer,
+    ignores: ['src/renderer/src/app/services/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "MemberExpression[object.name='window'][property.name='api']",
+          message:
+            'Use a service from @app/services instead of calling window.api directly.',
+        },
+      ],
+    },
+  },
+
+  {
     // Tests poke at untyped JSON and use fakes that are async only by signature.
     files: ['test/**/*.ts'],
     rules: {

@@ -1,4 +1,5 @@
 import { createSaver } from '@app/lib/saver';
+import { UserDataService } from '@app/services/UserDataService';
 import type { StoreSlice } from '@app/store/Store';
 import type { IAchievementUserData, GameUserData } from '@shared/types';
 
@@ -26,7 +27,7 @@ const saver = createSaver<{
   data: IAchievementUserData;
 }>(
   (_key, { appid, achievementId, data }) =>
-    void window.api.setUserData(appid, achievementId, data),
+    void UserDataService.setUserData(appid, achievementId, data),
 );
 
 export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => ({
@@ -34,7 +35,7 @@ export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => ({
 
   load: async (appid) => {
     if (get().userData.byGame[appid]) return;
-    const data = await window.api.getUserData(appid);
+    const data = await UserDataService.getUserData(appid);
     set(
       (prevState) => {
         prevState.userData.byGame[appid] ??= data;

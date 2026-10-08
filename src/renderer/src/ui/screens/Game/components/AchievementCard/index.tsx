@@ -11,6 +11,7 @@ import { memo, useState, type ReactNode } from 'react';
 
 import { useLocale } from '@app/hooks/useLocale';
 import { useT } from '@app/hooks/useT';
+import { SystemService } from '@app/services/SystemService';
 import { shownProgress } from '@shared/checklist';
 import type {
   IAchievement,
@@ -146,7 +147,7 @@ export const AchievementCard = memo(function AchievementCard({
                     : t.guides.searchOn(SITE_NAMES[site])
                 }
                 onClick={() =>
-                  void window.api.openGuide(site, appid, game, a.name)
+                  void SystemService.openGuide(site, appid, game, a.name)
                 }
               >
                 {icon}

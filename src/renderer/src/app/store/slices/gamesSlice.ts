@@ -1,3 +1,4 @@
+import { GamesService } from '@app/services/GamesService';
 import type { StoreSlice } from '@app/store/Store';
 import type { IGameView } from '@shared/types';
 import { mergeView } from '@shared/view';
@@ -50,7 +51,7 @@ export const createGamesSlice: StoreSlice<GamesSlice> = (set, get) => ({
       'games/load',
     );
 
-    const result = await window.api.getGame(appid, force);
+    const result = await GamesService.getGame(appid, force);
     if (result.ok) return get().games.accept(result.value);
 
     set(

@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import { useT } from '@app/hooks/useT';
+import { OnboardingService } from '@app/services/OnboardingService';
+import { SystemService } from '@app/services/SystemService';
 import { Button } from '@ui/primitives/button';
 import { Input } from '@ui/primitives/input';
 import { Label } from '@ui/primitives/label';
@@ -28,7 +30,7 @@ export function ApiKeyStep() {
 
     setIsVerifying(true);
     const { accountStep, apiKeyStep } = form.getValues();
-    const result = await window.api.checkApiKey(
+    const result = await OnboardingService.checkApiKey(
       accountStep.steamId.trim(),
       apiKeyStep.apiKey,
     );
@@ -64,7 +66,7 @@ export function ApiKeyStep() {
             type="button"
             size="xs"
             variant="secondary"
-            onClick={() => void window.api.openExternal('apikey')}
+            onClick={() => void SystemService.openExternal('apikey')}
           >
             <ExternalLink />
             {t.common.openInBrowser}

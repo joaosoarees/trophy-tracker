@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import { useT } from '@app/hooks/useT';
+import { OnboardingService } from '@app/services/OnboardingService';
+import { SystemService } from '@app/services/SystemService';
 import type { IProfile } from '@shared/types';
 import { Button } from '@ui/primitives/button';
 import { Input } from '@ui/primitives/input';
@@ -31,7 +33,7 @@ export function AccountStep() {
   useEffect(() => {
     let active = true;
 
-    void window.api.detectSteamId().then((steamId) => {
+    void OnboardingService.detectSteamId().then((steamId) => {
       if (!active || !steamId) return;
 
       setDetected(true);
@@ -65,7 +67,7 @@ export function AccountStep() {
 
     setIsVerifying(true);
     setUnconfirmed(null);
-    const result = await window.api.checkSteamId(
+    const result = await OnboardingService.checkSteamId(
       form.getValues('accountStep.steamId'),
     );
     setIsVerifying(false);
@@ -112,7 +114,7 @@ export function AccountStep() {
           type="button"
           size="xs"
           variant="secondary"
-          onClick={() => void window.api.openExternal('account')}
+          onClick={() => void SystemService.openExternal('account')}
         >
           <ExternalLink />
           {t.onboarding.account.openAccount}

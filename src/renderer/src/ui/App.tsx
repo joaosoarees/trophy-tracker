@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { useSessionState } from '@app/hooks/useSessionState';
 import { useT } from '@app/hooks/useT';
+import { SettingsService } from '@app/services/SettingsService';
 import { connectStore, useStore } from '@app/store';
 import { isLanguage, LANGUAGE_CODES, LANGUAGES } from '@shared/i18n';
 import type { IAppState } from '@shared/types';
@@ -84,13 +85,13 @@ export function App() {
     [setLanguage],
   );
   const refreshState = useCallback(
-    () => window.api.getState().then(applyState),
+    () => SettingsService.getState().then(applyState),
     [applyState],
   );
 
   useEffect(() => {
     void refreshState();
-    void window.api.getAlwaysOnTop().then(setOnTop);
+    void SettingsService.getAlwaysOnTop().then(setOnTop);
   }, [refreshState]);
 
   useEffect(() => {
@@ -144,7 +145,7 @@ export function App() {
   // Achievement names and art come from Steam already translated; reloading guarantees nothing old stays on screen.
   const changeLanguage = async (value: string): Promise<void> => {
     if (!isLanguage(value) || value === language) return;
-    await window.api.setLanguage(value);
+    await SettingsService.setLanguage(value);
     window.location.reload();
   };
 
@@ -171,7 +172,9 @@ export function App() {
           variant="ghost"
           title={onTop ? t.nav.unpinWindow : t.nav.pinWindow}
           className={cn(onTop && 'text-primary hover:text-primary')}
-          onClick={() => void window.api.setAlwaysOnTop(!onTop).then(setOnTop)}
+          onClick={() =>
+            void SettingsService.setAlwaysOnTop(!onTop).then(setOnTop)
+          }
         >
           <Pin className={cn(onTop && 'fill-current')} />
         </Button>
@@ -290,7 +293,7 @@ export function App() {
                   variant="destructive"
                   onClick={() => {
                     setConfirmingReset(false);
-                    void window.api.resetConfig().then(applyState);
+                    void SettingsService.resetConfig().then(applyState);
                   }}
                 >
                   {t.settings.eraseConfirm}

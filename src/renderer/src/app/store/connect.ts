@@ -1,3 +1,6 @@
+import { DashboardService } from '@app/services/DashboardService';
+import { GamesService } from '@app/services/GamesService';
+
 import { useStore } from '.';
 
 /** Wires the store to the main process events. Returns the function that unwires it and resets the store (except the language). */
@@ -8,9 +11,9 @@ export function connectStore(): () => void {
   void dashboard.load();
 
   const offs = [
-    window.api.onGameChanged(session.setCurrent),
-    window.api.onGameUpdated(games.accept),
-    window.api.onDashboardProgress(dashboard.setProgress),
+    GamesService.onCurrentChanged(session.setCurrent),
+    GamesService.onGameUpdated(games.accept),
+    DashboardService.onProgress(dashboard.setProgress),
   ];
   window.addEventListener('beforeunload', userData.flush);
 
