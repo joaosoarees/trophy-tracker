@@ -150,6 +150,29 @@ export class Tracker {
     );
   }
 
+  /**
+   * Optimistic read: answers at once with the last known view, however old,
+   * and when it is stale refreshes it behind the scenes. `onFresh` gets the
+   * new view only if something changed. With nothing cached it is a normal read.
+   */
+  async getGameStaleFirst(
+    appid: number,
+    {
+      onFresh,
+      onError,
+    }: { onFresh: (view: IGameView) => void; onError: (e: unknown) => void },
+  ): Promise<IGameView> {
+    const cached = this.store.getGame(appid);
+    if (!cached) return this.getGame(appid);
+
+    if (this.now() - cached.fetchedAt >= GAME_TTL) {
+      void this.getGame(appid).then((fresh) => {
+        if (fresh !== cached) onFresh(fresh);
+      }, onError);
+    }
+    return cached;
+  }
+
   private async readGame(
     appid: number,
     fresh: boolean,

@@ -59,7 +59,17 @@ export function registerIpc({
     getCurrentAppId: () => watcher.refreshCurrent(),
     getGame: (appid, force) =>
       setup.attempt(async () => {
-        const view = await tracker.getGame(appid, force);
+        const view = force
+          ? await tracker.getGame(appid, true)
+          : await tracker.getGameStaleFirst(appid, {
+              // The refresh that ran behind the scenes found something new.
+              onFresh: (fresh) => {
+                watcher.remember(fresh);
+                window.send(IpcEvent.gameUpdated, fresh);
+              },
+              // Lets the setup notice a key that stopped working.
+              onError: (e) => void setup.noticeFailure(e),
+            });
         watcher.remember(view);
         return view;
       }),

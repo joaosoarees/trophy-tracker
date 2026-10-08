@@ -47,14 +47,22 @@ export class SetupService {
     try {
       return { ok: true, value: await run() };
     } catch (e) {
-      if (e instanceof SteamError) {
-        const error = steamErrorMessage(this.messages, e);
-        if (e.kind === 'invalid-key') this.configError = error;
-        return { ok: false, error };
-      }
-      console.error(e);
-      return { ok: false, error: this.messages.errors.unexpected };
+      return { ok: false, error: this.noticeFailure(e) };
     }
+  }
+
+  /**
+   * Takes note of a failed read (a rejected key sends the user back to the
+   * onboarding) and returns the message to show for it.
+   */
+  noticeFailure(e: unknown): string {
+    if (e instanceof SteamError) {
+      const error = steamErrorMessage(this.messages, e);
+      if (e.kind === 'invalid-key') this.configError = error;
+      return error;
+    }
+    console.error(e);
+    return this.messages.errors.unexpected;
   }
 
   async checkSteamId(steamId: string): Promise<SteamIdCheck> {

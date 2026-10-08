@@ -2,7 +2,7 @@ import { mkdtempSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   checkApiKey,
@@ -434,6 +434,87 @@ describe('Tracker', () => {
     expect(count('GetOwnedGames')).toBe(1);
     await Promise.all([tracker.getDashboard(), tracker.getDashboard()]);
     expect(count('GetPlayerAchievements')).toBe(1 + 1);
+  });
+
+  it('answers with the last known game at once and refreshes it behind the scenes', async () => {
+    let unlocked = 1;
+    const { tracker, fetchImpl, advance } = setup({
+      GetOwnedGames: owned(game(3681010, 'Nioh 3', 500)),
+      GetGameAchievements: { json: nioh },
+      GetPlayerAchievements: () => ({
+        json: {
+          playerstats: {
+            achievements: nioh.response.achievements
+              .slice(0, unlocked)
+              .map((a) => ({
+                apiname: a.internal_name,
+                achieved: 1,
+                unlocktime: 9,
+              })),
+          },
+        },
+      }),
+    });
+    const reads = () =>
+      fetchImpl.calls.filter((u) => u.includes('GetPlayerAchievements')).length;
+    const onFresh = vi.fn();
+    const onError = vi.fn();
+
+    // Nothing cached yet: a normal read.
+    const first = await tracker.getGameStaleFirst(3681010, {
+      onFresh,
+      onError,
+    });
+    expect(reads()).toBe(1);
+
+    // Cached and recent: no read at all.
+    expect(await tracker.getGameStaleFirst(3681010, { onFresh, onError })).toBe(
+      first,
+    );
+    expect(reads()).toBe(1);
+
+    // Stale and unchanged: answers with the cache, refreshes, announces nothing.
+    advance(5 * 60_000);
+    expect(await tracker.getGameStaleFirst(3681010, { onFresh, onError })).toBe(
+      first,
+    );
+    await vi.waitFor(() => expect(reads()).toBe(2));
+    // Joins the refresh still in flight, so the next step starts from a settled cache.
+    await tracker.getGame(3681010);
+    expect(onFresh).not.toHaveBeenCalled();
+
+    // Stale and changed: still answers with the cache, then hands over the new view.
+    unlocked = 3;
+    advance(5 * 60_000);
+    const stale = await tracker.getGameStaleFirst(3681010, {
+      onFresh,
+      onError,
+    });
+    expect(stale.unlockedCount).toBe(1);
+    await vi.waitFor(() => expect(onFresh).toHaveBeenCalledTimes(1));
+    expect(onFresh.mock.calls[0][0]).toMatchObject({ unlockedCount: 3 });
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed background refresh without failing the answer', async () => {
+    let broken = false;
+    const { tracker, advance } = setup({
+      GetOwnedGames: owned(game(7, 'Game', 5)),
+      GetGameAchievements: { json: { response: { achievements: [] } } },
+      GetPlayerAchievements: () => (broken ? FORBIDDEN_HTML : player(0, 0)),
+    });
+    const onFresh = vi.fn();
+    const onError = vi.fn();
+    const first = await tracker.getGameStaleFirst(7, { onFresh, onError });
+
+    broken = true;
+    advance(5 * 60_000);
+    expect(await tracker.getGameStaleFirst(7, { onFresh, onError })).toBe(
+      first,
+    );
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+    expect(onError.mock.calls[0][0]).toMatchObject({ kind: 'invalid-key' });
+    expect(onFresh).not.toHaveBeenCalled();
   });
 
   it('picks the last played game when no game is open', async () => {
