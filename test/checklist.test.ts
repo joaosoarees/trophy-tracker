@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseChecklist, shownProgress } from '../src/shared/checklist';
+import {
+  createChecklistItem,
+  parseChecklist,
+  shownProgress,
+} from '../src/shared/checklist';
 import type { IAchievement } from '../src/shared/types';
 
 const achievement = (progress: IAchievement['progress']): IAchievement => ({
@@ -89,5 +93,21 @@ describe('shownProgress', () => {
         checklist: [],
       }),
     ).toBeNull();
+  });
+});
+
+describe('createChecklistItem', () => {
+  const existing = [{ id: 'x', text: 'Bridge Kodama', done: true }];
+
+  it('keeps hand-typed text exactly as written, bullets and all', () => {
+    expect(createChecklistItem('  1. First boss ', existing)).toMatchObject({
+      text: '1. First boss',
+      done: false,
+    });
+  });
+
+  it('refuses blank text and items already on the list', () => {
+    expect(createChecklistItem('   ', existing)).toBe('blank');
+    expect(createChecklistItem('bridge kodama', existing)).toBe('duplicate');
   });
 });

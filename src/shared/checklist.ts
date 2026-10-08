@@ -53,3 +53,26 @@ export function shownProgress(
     source: 'checklist',
   };
 }
+
+/**
+ * A hand-typed item goes in exactly as written (no bullet clean-up).
+ * Returns `'blank'` or `'duplicate'` when there is nothing to add.
+ */
+export function createChecklistItem(
+  text: string,
+  existing: IChecklistItem[],
+): IChecklistItem | 'blank' | 'duplicate' {
+  const clean = text.trim();
+  if (clean === '') return 'blank';
+
+  const key = clean.toLowerCase();
+  if (existing.some((item) => item.text.toLowerCase() === key)) {
+    return 'duplicate';
+  }
+
+  return {
+    id: `${Date.now().toString(36)}-${existing.length}`,
+    text: clean,
+    done: false,
+  };
+}

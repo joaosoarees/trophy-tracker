@@ -6,10 +6,10 @@ import {
 } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
-import { Empty } from '@ui/components/bits';
+import { Empty } from '@ui/components/Empty';
 import { Button } from '@ui/primitives/button';
 import { Dashboard } from '@ui/screens/Dashboard';
-import { GameScreen } from '@ui/screens/Game';
+import { Game } from '@ui/screens/Game';
 import { Settings } from '@ui/screens/Settings';
 import { cn } from '@ui/utils/cn';
 
@@ -69,11 +69,7 @@ export function AppShell() {
         {game.appid === null ? (
           <Empty>{t.game.none}</Empty>
         ) : (
-          <GameScreen
-            key={game.appid}
-            appid={game.appid}
-            running={game.running}
-          />
+          <Game key={game.appid} appid={game.appid} running={game.running} />
         )}
       </div>
 

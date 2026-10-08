@@ -4,7 +4,9 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { useT } from '@app/hooks/useT';
 import { useStore } from '@app/store';
-import { Empty, ProgressBar, SearchBox } from '@ui/components/bits';
+import { Empty } from '@ui/components/Empty';
+import { ProgressBar } from '@ui/components/ProgressBar';
+import { SearchBox } from '@ui/components/SearchBox';
 import { Button } from '@ui/primitives/button';
 import { cn } from '@ui/utils/cn';
 import { matches } from '@ui/utils/text';
