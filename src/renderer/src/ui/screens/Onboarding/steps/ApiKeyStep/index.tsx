@@ -1,14 +1,10 @@
 import { ExternalLink } from 'lucide-react';
-import { useState } from 'react';
-import { useFormContext } from 'react-hook-form';
 
 import { useT } from '@app/hooks/useT';
-import { OnboardingService } from '@app/services/OnboardingService';
 import { SystemService } from '@app/services/SystemService';
 import { Button } from '@ui/primitives/button';
 import { Input } from '@ui/primitives/input';
 import { Label } from '@ui/primitives/label';
-import type { OnboardingFormData } from '@ui/screens/Onboarding';
 import { FieldError } from '@ui/screens/Onboarding/components/FieldError';
 import { StepHeader } from '@ui/screens/Onboarding/components/StepHeader';
 import {
@@ -16,40 +12,12 @@ import {
   StepperNextButton,
   StepperPreviousButton,
 } from '@ui/screens/Onboarding/components/Stepper';
-import { useStepper } from '@ui/screens/Onboarding/components/Stepper/useStepper';
+
+import { useApiKeyStepController } from './useApiKeyStepController';
 
 export function ApiKeyStep() {
   const t = useT();
-  const { nextStep } = useStepper();
-  const form = useFormContext<OnboardingFormData>();
-  const [isVerifying, setIsVerifying] = useState(false);
-
-  async function handleNextStep() {
-    const isValid = await form.trigger('apiKeyStep', { shouldFocus: true });
-    if (!isValid) return;
-
-    setIsVerifying(true);
-    const { accountStep, apiKeyStep } = form.getValues();
-    const result = await OnboardingService.checkApiKey(
-      accountStep.steamId.trim(),
-      apiKeyStep.apiKey,
-    );
-    setIsVerifying(false);
-
-    if (!result.ok) {
-      form.setError(
-        'apiKeyStep.apiKey',
-        { type: 'validate', message: result.error },
-        { shouldFocus: true },
-      );
-      return;
-    }
-
-    // New key: privacy has to be checked again with it.
-    form.resetField('privacyStep.gamesWithPlaytime');
-    nextStep();
-  }
-
+  const { form, isVerifying, handleNextStep } = useApiKeyStepController();
   const [openPage, ...otherSteps] = t.onboarding.apiKey.steps;
 
   return (

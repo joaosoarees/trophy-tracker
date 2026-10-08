@@ -3,7 +3,6 @@ import { useFormContext } from 'react-hook-form';
 import { useT } from '@app/hooks/useT';
 import { Button } from '@ui/primitives/button';
 import { Label } from '@ui/primitives/label';
-import type { OnboardingFormData } from '@ui/screens/Onboarding';
 import { ControlledLanguageSelect } from '@ui/screens/Onboarding/components/ControlledLanguageSelect';
 import { FieldError } from '@ui/screens/Onboarding/components/FieldError';
 import { StepHeader } from '@ui/screens/Onboarding/components/StepHeader';
@@ -12,6 +11,7 @@ import {
   StepperNextButton,
 } from '@ui/screens/Onboarding/components/Stepper';
 import { useStepper } from '@ui/screens/Onboarding/components/Stepper/useStepper';
+import type { OnboardingFormData } from '@ui/screens/Onboarding/schema';
 
 interface ILanguageStepProps {
   /** Why the onboarding showed up again (e.g. the key stopped working). */
