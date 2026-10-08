@@ -26,9 +26,38 @@ export interface ISteamLocal {
   readStatMap: (appid: number) => Promise<Map<string, string>>;
 }
 
+/** What reading the local Steam client needs from the system. */
+export interface ISteamLocalDeps {
+  platform: NodeJS.Platform;
+  /** Whether the Windows registry can be reached (Windows itself, or WSL). */
+  hasWindows: boolean;
+  home: string;
+  exists: (path: string) => boolean;
+  readFile: (path: string) => Promise<Buffer>;
+  registry: {
+    getRunningAppId: () => Promise<number | null>;
+    getActiveSteamId: () => Promise<string | null>;
+    getSteamPath: () => Promise<string | null>;
+  };
+}
+
+const system = (): ISteamLocalDeps => ({
+  platform: process.platform,
+  hasWindows,
+  home: homedir(),
+  exists: existsSync,
+  readFile: (path) => readFile(path),
+  registry: {
+    getRunningAppId: () => registryRunningAppId(),
+    getActiveSteamId: () => registryActiveSteamId(),
+    getSteamPath: () => registrySteamPath(),
+  },
+});
+
 async function readStatMapFrom(
   steamDir: string | null,
   appid: number,
+  deps: ISteamLocalDeps,
 ): Promise<Map<string, string>> {
   if (!steamDir) return new Map();
   try {
@@ -38,20 +67,20 @@ async function readStatMapFrom(
       'stats',
       `UserGameStatsSchema_${appid}.bin`,
     );
-    return achievementStatMap(parseBinaryVdf(await readFile(file)));
+    return achievementStatMap(parseBinaryVdf(await deps.readFile(file)));
   } catch {
     return new Map();
   }
 }
 
 /** Windows, natively or reached from WSL: the registry has everything. */
-function createRegistrySteam(): ISteamLocal {
+function createRegistrySteam(deps: ISteamLocalDeps): ISteamLocal {
   return {
     tracksRunningGame: true,
-    getRunningAppId: registryRunningAppId,
-    getActiveSteamId: registryActiveSteamId,
+    getRunningAppId: deps.registry.getRunningAppId,
+    getActiveSteamId: deps.registry.getActiveSteamId,
     readStatMap: async (appid) =>
-      readStatMapFrom(await registrySteamPath(), appid),
+      readStatMapFrom(await deps.registry.getSteamPath(), appid, deps),
   };
 }
 
@@ -59,10 +88,11 @@ function createRegistrySteam(): ISteamLocal {
  * macOS and Linux: there is no registry, so the account comes from the
  * client's files and the running game from the Web API (see `runningGame.ts`).
  */
-function createFileSteam(platform: NodeJS.Platform): ISteamLocal {
+function createFileSteam(deps: ISteamLocalDeps): ISteamLocal {
   const steamDir =
-    steamDirCandidates(platform, homedir()).find((dir) => existsSync(dir)) ??
-    null;
+    steamDirCandidates(deps.platform, deps.home).find((dir) =>
+      deps.exists(dir),
+    ) ?? null;
 
   return {
     tracksRunningGame: false,
@@ -70,19 +100,20 @@ function createFileSteam(platform: NodeJS.Platform): ISteamLocal {
     getActiveSteamId: async () => {
       if (!steamDir) return null;
       try {
-        return mostRecentSteamId(
-          await readFile(join(steamDir, 'config', 'loginusers.vdf'), 'utf8'),
-        );
+        const file = join(steamDir, 'config', 'loginusers.vdf');
+        return mostRecentSteamId((await deps.readFile(file)).toString('utf8'));
       } catch {
         return null;
       }
     },
-    readStatMap: (appid) => readStatMapFrom(steamDir, appid),
+    readStatMap: (appid) => readStatMapFrom(steamDir, appid, deps),
   };
 }
 
+/** Every dependency defaults to the real system; tests pass their own. */
 export function createSteamLocal(
-  platform: NodeJS.Platform = process.platform,
+  overrides: Partial<ISteamLocalDeps> = {},
 ): ISteamLocal {
-  return hasWindows ? createRegistrySteam() : createFileSteam(platform);
+  const deps = { ...system(), ...overrides };
+  return deps.hasWindows ? createRegistrySteam(deps) : createFileSteam(deps);
 }
