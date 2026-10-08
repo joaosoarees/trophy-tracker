@@ -1,8 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { LayoutGrid, Pin, Settings, Trophy } from 'lucide-react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import type { AppState } from '../../shared/types'
 import { Dashboard } from './Dashboard'
 import { GameScreen } from './GameScreen'
 import { Onboarding } from './Onboarding'
+import { connectStore, useStore } from '@/store'
+import { Empty } from '@/components/bits'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 
 type Tab = 'game' | 'dashboard' | 'settings'
 
@@ -24,7 +31,9 @@ export function App() {
   const [state, setState] = useState<AppState | null>(null)
   const [reconfiguring, setReconfiguring] = useState(false)
   const [tab, setTab] = useState<Tab>('game')
-  const [current, setCurrent] = useState<Current>(null)
+  const { current, failures } = useStore(
+    useShallow((state) => ({ current: state.session.current, failures: state.session.failures }))
+  )
   /** Jogo escolhido no painel; vale até um jogo ser aberto na Steam. */
   const [picked, setPicked] = useState<number | null>(null)
   const [onTop, setOnTop] = useState(false)
@@ -38,16 +47,21 @@ export function App() {
   }, [refreshState])
 
   useEffect(() => {
-    if (!state?.configured) return
-    void window.api.getCurrentAppId().then(setCurrent)
-    return window.api.onGameChanged((next) => {
-      setCurrent(next)
-      if (next?.running) {
-        setPicked(null)
-        setTab('game')
-      }
-    })
+    if (state?.configured) return connectStore()
   }, [state?.configured])
+
+  // Uma leitura falhou: confere se foi a chave que deixou de valer.
+  useEffect(() => {
+    if (failures > 0) void refreshState()
+  }, [failures, refreshState])
+
+  // Abrir um jogo na Steam traz o app para ele.
+  const runningAppId = current?.running ? current.appid : null
+  useEffect(() => {
+    if (runningAppId === null) return
+    setPicked(null)
+    setTab('game')
+  }, [runningAppId])
 
   if (!state) return null
 
@@ -99,15 +113,16 @@ export function App() {
         </Button>
       </nav>
 
-      {tab === 'game' &&
-        (appid === null ? (
-          <p className="empty">Nenhum jogo aberto e nenhum jogo jogado ainda. Escolha um no Painel.</p>
+      {/* As duas telas ficam montadas; trocar de aba só esconde, sem recarregar nem perder a rolagem. */}
+      <div className={cn('flex min-h-0 flex-1 flex-col', tab !== 'game' && 'hidden')}>
+        {appid === null ? (
+          <Empty>Nenhum jogo aberto e nenhum jogo jogado ainda. Escolha um no Painel.</Empty>
         ) : (
           <GameScreen key={appid} appid={appid} running={running} />
         )}
       </div>
 
-      {tab === 'dashboard' && (
+      <div className={cn('flex min-h-0 flex-1 flex-col', tab !== 'dashboard' && 'hidden')}>
         <Dashboard
           onPick={(id) => {
             setPicked(id)

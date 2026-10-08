@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Achievement, GameUserData, GameView, GuideSite } from '../../shared/types'
+import { RefreshCw, Trophy } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { shownProgress } from '../../shared/checklist'
+import type { Achievement, AchievementUserData, GameUserData } from '../../shared/types'
+import { useStore } from '@/store'
+import { AchievementCard } from '@/components/AchievementCard'
+import { Empty, ProgressBar, SearchBox, Segmented } from '@/components/bits'
+import { Button } from '@/components/ui/button'
+import { matches } from '@/lib/text'
+import { cn } from '@/lib/utils'
 
 type Sort = 'common' | 'rare' | 'closest' | 'name'
 type Filter = 'pending' | 'unlocked'
@@ -11,54 +20,40 @@ const SORTS: Record<Sort, string> = {
   name: 'Nome'
 }
 
-const GUIDES: [GuideSite, string][] = [
-  ['steam', 'Guias da Steam'],
-  ['youtube', 'YouTube'],
-  ['google', 'Google']
-]
-
-const ratio = (a: Achievement): number => (a.progress ? a.progress.current / a.progress.target : -1)
-const date = (epoch: number): string =>
-  new Date(epoch * 1000).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+const NONE_UNLOCKED: string[] = []
+const NO_USER_DATA: GameUserData = {}
 
 interface Props {
   appid: number
   running: boolean
 }
 
-export function GameScreen({ appid, running, onAuthProblem }: Props) {
-  const [view, setView] = useState<GameView | null>(null)
-  const [userData, setUserData] = useState<GameUserData>({})
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+export function GameScreen({ appid, running }: Props) {
+  const { view, loading, error, justUnlocked, userData, open, load, updateUserData, dismissUnlocked } = useStore(
+    useShallow((state) => {
+      const entry = state.games.entries[appid]
+      return {
+        view: entry?.view ?? null,
+        loading: entry?.loading ?? true,
+        error: entry?.error ?? null,
+        justUnlocked: entry?.justUnlocked ?? NONE_UNLOCKED,
+        userData: state.userData.byGame[appid] ?? NO_USER_DATA,
+        open: state.games.open,
+        load: state.games.load,
+        updateUserData: state.userData.update,
+        dismissUnlocked: state.games.dismissUnlocked
+      }
+    })
+  )
   const [filter, setFilter] = useState<Filter>('pending')
   const [sort, setSort] = useState<Sort>('common')
   const [query, setQuery] = useState('')
 
-  const accept = useCallback((next: GameView) => {
-    const before = previous.current
-    if (before) {
-      const had = new Set(before.achievements.filter((a) => a.unlocked).map((a) => a.id))
-      const fresh = next.achievements.filter((a) => a.unlocked && !had.has(a.id)).map((a) => a.name)
-      if (fresh.length > 0) setJustUnlocked(fresh)
-    }
-    previous.current = next
-    setView(next)
-    setError(null)
-  }, [])
+  useEffect(() => open(appid), [open, appid])
 
-  const load = useCallback(
-    async (force: boolean) => {
-      setLoading(true)
-      const result = await window.api.getGame(appid, force)
-      setLoading(false)
-      if (result.ok) accept(result.value)
-      else {
-        setError(result.error)
-        onAuthProblem()
-      }
-    },
-    [appid, accept, onAuthProblem]
+  const update = useCallback(
+    (id: string, patch: Partial<AchievementUserData>) => updateUserData(appid, id, patch),
+    [updateUserData, appid]
   )
 
   const list = useMemo(() => {
@@ -82,13 +77,19 @@ export function GameScreen({ appid, running, onAuthProblem }: Props) {
   }, [view, filter, sort, query, userData])
 
   if (!view) {
-    return error ? (
-      <div className="empty">
-        <p className="error">{error}</p>
-        <button onClick={() => void load(true)}>Tentar de novo</button>
-      </div>
-    ) : (
-      <p className="empty">Carregando conquistas…</p>
+    return (
+      <Empty>
+        {error ? (
+          <>
+            <p className="text-destructive">{error}</p>
+            <Button variant="secondary" onClick={() => void load(appid, true)}>
+              Tentar de novo
+            </Button>
+          </>
+        ) : (
+          <p>Carregando conquistas…</p>
+        )}
+      </Empty>
     )
   }
 
@@ -97,19 +98,40 @@ export function GameScreen({ appid, running, onAuthProblem }: Props) {
   const complete = view.total > 0 && pending === 0
 
   return (
-    <section className="game">
-      <header>
-        <div className="title">
-          <h1>{view.name}</h1>
-          {running && <span className="badge live">em execução</span>}
-          <button className="icon" title="Atualizar" disabled={loading} onClick={() => void load(true)}>
-            {loading ? '…' : '↻'}
-          </button>
+    <section className="flex-1 overflow-y-auto">
+      <header className="relative overflow-hidden border-b">
+        {view.header && (
+          <img src={view.header} alt="" className="absolute inset-0 size-full object-cover opacity-35 blur-[2px]" />
+        )}
+        <div className="from-background via-background/80 absolute inset-0 bg-gradient-to-t to-transparent" />
+        <div className="relative px-4 pt-10 pb-3.5">
+          <div className="flex items-center gap-2">
+            <h1 className="min-w-0 flex-1 truncate text-xl font-semibold drop-shadow">{view.name}</h1>
+            {running && (
+              <span className="text-success flex items-center gap-1.5 text-xs font-medium">
+                <span className="bg-success size-1.5 animate-pulse rounded-full" />
+                em execução
+              </span>
+            )}
+            <Button size="icon-sm" variant="ghost" title="Atualizar" disabled={loading} onClick={() => void load(appid, true)}>
+              <RefreshCw className={cn(loading && 'animate-spin')} />
+            </Button>
+          </div>
+          <ProgressBar value={percent} tone={complete ? 'success' : 'primary'} className="mt-2.5 h-2" />
+          <p className="text-muted-foreground mt-1.5 flex items-center gap-1.5 text-xs">
+            <Trophy className="size-3.5" />
+            {view.unlockedCount} de {view.total} conquistas · {percent}%
+            {pending > 0 ? ` · faltam ${pending}` : complete ? ' · todas obtidas' : ''}
+          </p>
+          {error && <p className="text-destructive mt-1 text-xs">{error}</p>}
         </div>
       </header>
 
       {justUnlocked.length > 0 && (
-        <div className="toast" onClick={() => setJustUnlocked([])}>
+        <button
+          onClick={() => dismissUnlocked(appid)}
+          className="bg-success/15 text-success mx-4 mt-3 block w-[calc(100%-2rem)] rounded-md px-3 py-2 text-left"
+        >
           Conquista desbloqueada: {justUnlocked.join(', ')}
         </button>
       )}

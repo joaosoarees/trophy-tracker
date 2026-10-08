@@ -1,31 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { GameSummary } from '../../shared/types'
+import { RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { useStore } from '@/store'
+import { Empty, ProgressBar, SearchBox } from '@/components/bits'
+import { Button } from '@/components/ui/button'
+import { matches } from '@/lib/text'
+import { cn } from '@/lib/utils'
 
 interface Props {
   onPick(appid: number): void
 }
 
-export function Dashboard({ onPick, onAuthProblem }: Props) {
-  const [games, setGames] = useState<GameSummary[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [progress, setProgress] = useState<[number, number] | null>(null)
-
-  const load = useCallback(
-    async (force: boolean) => {
-      setLoading(true)
-      setProgress(null)
-      const result = await window.api.getDashboard(force)
-      setLoading(false)
-      if (result.ok) {
-        setGames(result.value)
-        setError(null)
-      } else {
-        setError(result.error)
-        onAuthProblem()
-      }
-    },
-    [onAuthProblem]
+export function Dashboard({ onPick }: Props) {
+  const { games, loading, error, progress, load } = useStore(
+    useShallow((state) => ({
+      games: state.dashboard.games,
+      loading: state.dashboard.loading,
+      error: state.dashboard.error,
+      progress: state.dashboard.progress,
+      load: state.dashboard.load
+    }))
   )
   const [query, setQuery] = useState('')
 
@@ -33,13 +27,13 @@ export function Dashboard({ onPick, onAuthProblem }: Props) {
   const shown = games?.filter((g) => matches(query, g.name)) ?? []
 
   return (
-    <section className="dashboard">
-      <header>
-        <div className="title">
-          <h1>Painel</h1>
-          <button className="icon" title="Atualizar tudo" disabled={loading} onClick={() => void load(true)}>
-            {loading ? '…' : '↻'}
-          </button>
+    <section className="flex-1 overflow-y-auto p-4">
+      <header className="mb-3">
+        <div className="flex items-center gap-2">
+          <h1 className="flex-1 text-xl font-semibold">Painel</h1>
+          <Button size="icon-sm" variant="ghost" title="Atualizar tudo" disabled={loading} onClick={() => void load('all')}>
+            <RefreshCw className={cn(loading && 'animate-spin')} />
+          </Button>
         </div>
         <p className="text-muted-foreground text-xs">
           {loading
