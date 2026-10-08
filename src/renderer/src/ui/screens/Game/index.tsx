@@ -56,7 +56,11 @@ export function Game({ appid, running }: IGameProps) {
   }
 
   return (
-    <section className="flex-1 overflow-y-auto">
+    // `relative`: the scrolling box must contain what is positioned inside it.
+    // Visually hidden text is absolutely positioned; without this it sits in
+    // the document instead, far below the window, and the window itself
+    // gets a second scrollbar.
+    <section className="relative flex-1 overflow-y-auto">
       <GameHeader
         view={view}
         running={running}

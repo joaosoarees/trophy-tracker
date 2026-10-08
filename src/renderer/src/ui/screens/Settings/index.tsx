@@ -29,7 +29,7 @@ export function Settings() {
   } = useSettingsController();
 
   return (
-    <section className="flex flex-1 flex-col items-start gap-3 overflow-y-auto p-4">
+    <section className="relative flex flex-1 flex-col items-start gap-3 overflow-y-auto p-4">
       <h1 className="text-xl font-semibold">{t.settings.title}</h1>
 
       {appInfo?.newVersion && (

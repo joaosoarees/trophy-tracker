@@ -35,7 +35,7 @@ export function Dashboard() {
   } = useDashboardController();
 
   return (
-    <section className="flex-1 overflow-y-auto p-4">
+    <section className="relative flex-1 overflow-y-auto p-4">
       <header className="mb-3">
         <div className="flex items-center gap-2">
           <h1 className="flex-1 text-xl font-semibold">{t.dashboard.title}</h1>
