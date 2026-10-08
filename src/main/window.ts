@@ -17,9 +17,10 @@ export class MainWindow {
 
   open({ title, alwaysOnTop }: IMainWindowOptions): void {
     const win = new BrowserWindow({
-      width: 520,
+      // Wide enough for the toolbars in the longest language (see CLAUDE.md).
+      width: 600,
       height: 860,
-      minWidth: 420,
+      minWidth: 480,
       minHeight: 520,
       backgroundColor: '#171a21',
       // Linux takes the window icon from here; Windows and macOS from the package.

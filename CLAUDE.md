@@ -2,7 +2,7 @@
 
 Desktop app (Electron + React + TypeScript) that shows, for the game open on Steam, which achievements are missing, what the hidden ones are, progress counters, user checklists and shortcuts to guides. It runs natively on Windows, macOS and Linux, and is developed on WSL.
 
-**Language rules:** everything in the repository is written in English: code, comments, test names, docs and commit messages. The interface ships in three languages, **English (default), Brazilian Portuguese and Spanish**; text in another language belongs only in its file under `src/shared/i18n/locales/` (`pt-BR.ts`, `es.ts`) and in test data that checks that locale. The user talks to you in Portuguese; answer in Portuguese.
+**Language rules:** everything in the repository is written in English: code, comments, test names, docs and commit messages. The interface ships in four languages, **English (default), Brazilian Portuguese, Spanish and French**; text in another language belongs only in its file under `src/shared/i18n/locales/` (`pt-BR.ts`, `es.ts`, `fr.ts`) and in test data that checks that locale. The user talks to you in Portuguese; answer in Portuguese.
 
 ## Commands
 
@@ -66,7 +66,7 @@ The same code runs on Windows, macOS, Linux and, for development, WSL. What diff
 - **New versions reach the user in two ways**, decided by `system/autoUpdate.ts`:
   - **Windows and the Linux AppImage update themselves** (`electron-updater`): the new version downloads in the background and Settings offers "Restart to update". Nothing restarts or installs on its own (`autoInstallOnAppQuit` is off).
   - **macOS and a .deb install only get a notice** with a button to the download page: macOS accepts updates only from apps signed with an Apple certificate, and a .deb needs the administrator password. `services/UpdateChecker.ts` asks GitHub for the latest release at most every six hours.
-  - `services/AppUpdates.ts` joins the two and falls back to the notice whenever the automatic path fails. In both cases the gear icon gets a dot. A failure to check (offline, no release) means "nothing new".
+  - `services/AppUpdates.ts` joins the two and falls back to the notice whenever the automatic path fails. "Check for updates" in Settings (`checkNow`) ignores the six-hour wait and gives the automatic path another chance. In both cases the gear icon gets a dot. A failure to check (offline, no release) means "nothing new".
 - **What protects the update:** the installers are not signed, so the only guarantee is the hash in `latest*.yml`, published in the same release. Whoever can publish a release controls what users install; that is why the `v*` tags are protected on GitHub (only the owner creates, moves or deletes them) and `main` refuses force-pushes.
 - To release: bump `version` in `package.json`, commit, push, then tag `vX.Y.Z` and push the tag. An app can only update itself to a version newer than the one that introduced the updater (0.2.0).
 
@@ -295,7 +295,7 @@ Conventions:
 
 - Tailwind v4 (config in `src/renderer/src/ui/styles/index.css`, no `tailwind.config`) + shadcn/ui components + Lucide icons. New shadcn component: `pnpm dlx shadcn@latest add <name>` (it lands in `ui/primitives`); the command tends to install a wrong `cn` package and import from it: remove it with `pnpm remove cn` and point the import to `@ui/utils/cn`.
 - Dark theme only, with the Steam palette in the tokens in `ui/styles/index.css` (`--primary` light blue, `--success` green, `--warning` amber).
-- The window is narrow (about 520 px, for a second monitor): check that toolbars and buttons fit that width.
+- The window is narrow (600 px wide, for a second monitor, and never under 480): check that toolbars and buttons fit that width **in every language**. Spanish and French labels are the longest; the Game toolbar is the tightest row. A row that cannot fit wraps, with the sort select taking the whole second row.
 - Lightness is the priority: no library with runtime styling.
 
 ## Accessibility

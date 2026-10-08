@@ -43,8 +43,9 @@ export function DashboardToolbar({
         ]}
       />
       <OptionSelect
-        // Pushed to the right, also when a narrow window wraps it to its own row.
-        className="ml-auto"
+        // Takes the room that is left; when a narrow window wraps it to its own
+        // row, that is the whole row.
+        className="min-w-40 flex-1"
         label={t.common.sortBy}
         value={sort}
         onChange={onSortChange}
