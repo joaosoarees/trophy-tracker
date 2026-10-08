@@ -10,16 +10,24 @@ interface IDetailGroupProps {
   className?: string;
 }
 
-/** A titled group of rows, told apart from the next by hairlines, not by a card. */
+/**
+ * A titled group of rows. Hairlines sit only between its rows: the title
+ * opens the group and the space after it closes it, so no line is drawn
+ * above the first row or below the last.
+ *
+ * The group is 8px wider than its text on each side, and every row is inset
+ * by the same 8px. That makes a row's hover wash exactly as wide as the
+ * hairlines around it, with the text still on the page's margin.
+ */
 export function DetailGroup({ title, children, className }: IDetailGroupProps) {
   const id = useId();
 
   return (
-    <section aria-labelledby={id} className={cn('w-full', className)}>
-      <h2 id={id} className="pb-1 font-semibold">
+    <section aria-labelledby={id} className={cn('-mx-2', className)}>
+      <h2 id={id} className="px-2 pb-1 font-semibold">
         {title}
       </h2>
-      <ul className="divide-y border-y">{children}</ul>
+      <ul className="divide-y">{children}</ul>
     </section>
   );
 }
@@ -62,12 +70,12 @@ export function DetailRow({
       {onClick ? (
         <Pressable
           onClick={onClick}
-          className="hover:bg-accent/40 active:bg-accent/70 -mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-md px-2 py-2.5 text-left active:scale-[0.99]"
+          className="hover:bg-accent/40 active:bg-accent/70 flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-left active:scale-[0.99]"
         >
           {content}
         </Pressable>
       ) : (
-        <div className="flex items-center gap-3 py-2.5">{content}</div>
+        <div className="flex items-center gap-3 px-2 py-2.5">{content}</div>
       )}
     </li>
   );
