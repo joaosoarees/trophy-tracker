@@ -2,6 +2,8 @@ import { X } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { type IChecklistItem } from '@shared/types/UserData';
+import { Hint } from '@ui/components/Hint';
+import { Pressable } from '@ui/components/Pressable';
 import { Checkbox } from '@ui/primitives/checkbox';
 import { Input } from '@ui/primitives/input';
 import { cn } from '@ui/utils/cn';
@@ -46,26 +48,29 @@ export function ChecklistRow({
           }}
         />
       ) : (
-        <button
-          type="button"
-          title={t.checklist.rename}
-          onClick={onStartEditing}
-          className={cn(
-            'min-w-0 flex-1 cursor-text text-left break-words select-text',
-            item.done && 'text-muted-foreground line-through',
-          )}
-        >
-          {item.text}
-        </button>
+        <Hint label={t.checklist.rename} side="top">
+          <Pressable
+            onClick={onStartEditing}
+            className={cn(
+              'min-w-0 flex-1 cursor-text text-left break-words select-text',
+              item.done && 'text-muted-foreground line-through',
+            )}
+          >
+            {item.text}
+          </Pressable>
+        </Hint>
       )}
 
-      <button
-        title={t.checklist.remove}
-        onClick={onRemove}
-        className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100"
-      >
-        <X className="size-3.5" />
-      </button>
+      <Hint label={t.checklist.remove}>
+        <Pressable
+          aria-label={t.checklist.remove}
+          onClick={onRemove}
+          // Also shown on keyboard focus: hover alone would hide it from the keyboard.
+          className="text-muted-foreground hover:bg-accent hover:text-destructive p-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+        >
+          <X className="size-3.5" />
+        </Pressable>
+      </Hint>
     </li>
   );
 }

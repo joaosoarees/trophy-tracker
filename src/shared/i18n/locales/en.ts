@@ -49,6 +49,7 @@ export const en = {
     game: 'Game',
     dashboard: 'Dashboard',
     settings: 'Settings',
+    label: 'Main',
     pinWindow: 'Keep the window always on top',
     unpinWindow: 'Stop keeping the window on top',
   },
@@ -61,6 +62,7 @@ export const en = {
     next: 'Next',
     clearSearch: 'Clear search',
     openInBrowser: 'Open in browser',
+    sortBy: 'Sort by',
   },
 
   game: {

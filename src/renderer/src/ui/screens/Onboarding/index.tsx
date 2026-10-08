@@ -23,7 +23,7 @@ export function Onboarding({ state, onDone, onCancel }: IOnboardingProps) {
     useOnboardingController(state, onDone);
 
   return (
-    <div className="mx-auto max-w-lg p-5">
+    <main className="mx-auto max-w-lg p-5">
       <FormProvider {...form}>
         <form onSubmit={handleSubmit} noValidate>
           <Stepper
@@ -59,6 +59,6 @@ export function Onboarding({ state, onDone, onCancel }: IOnboardingProps) {
           />
         </form>
       </FormProvider>
-    </div>
+    </main>
   );
 }

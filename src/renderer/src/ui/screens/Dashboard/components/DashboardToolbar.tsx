@@ -4,6 +4,7 @@ import {
   type DashboardFilter,
   type DashboardSort,
 } from '@shared/dashboardSort';
+import { NativeSelect } from '@ui/components/NativeSelect';
 import { SearchBox } from '@ui/components/SearchBox';
 import { Segmented } from '@ui/components/Segmented';
 
@@ -42,17 +43,15 @@ export function DashboardToolbar({
         ]}
       />
       <span className="flex-1" />
-      <select
+      <NativeSelect
+        label={t.common.sortBy}
         value={sort}
-        onChange={(event) => onSortChange(event.target.value as DashboardSort)}
-        className="bg-muted text-foreground h-8 rounded-md border px-2 text-xs"
-      >
-        {DASHBOARD_SORTS_BY_FILTER[filter].map((value) => (
-          <option key={value} value={value}>
-            {t.dashboard.sort[value]}
-          </option>
-        ))}
-      </select>
+        onChange={onSortChange}
+        options={DASHBOARD_SORTS_BY_FILTER[filter].map((value) => ({
+          value,
+          label: t.dashboard.sort[value],
+        }))}
+      />
       <div className="flex basis-full">
         <SearchBox
           value={query}

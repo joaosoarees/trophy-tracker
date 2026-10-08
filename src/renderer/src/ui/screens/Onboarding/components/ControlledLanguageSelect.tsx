@@ -7,6 +7,7 @@ import {
 } from 'react-hook-form';
 
 import { LANGUAGE_CODES, LANGUAGES } from '@shared/i18n';
+import { Pressable } from '@ui/components/Pressable';
 import { cn } from '@ui/utils/cn';
 
 interface IControlledLanguageSelectProps<T extends FieldValues> {
@@ -25,9 +26,8 @@ export function ControlledLanguageSelect<T extends FieldValues>({
       {LANGUAGE_CODES.map((code) => {
         const selected = field.value === code;
         return (
-          <button
+          <Pressable
             key={code}
-            type="button"
             role="radio"
             aria-checked={selected}
             name={field.name}
@@ -35,15 +35,15 @@ export function ControlledLanguageSelect<T extends FieldValues>({
             onBlur={field.onBlur}
             onClick={() => field.onChange(code)}
             className={cn(
-              'bg-card flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left transition-colors',
+              'bg-card flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left',
               selected
                 ? 'border-primary text-foreground'
-                : 'text-muted-foreground hover:text-foreground',
+                : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground',
             )}
           >
             {LANGUAGES[code].label}
             {selected && <Check className="text-primary size-4" />}
-          </button>
+          </Pressable>
         );
       })}
     </div>

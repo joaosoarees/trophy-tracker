@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -69,6 +70,30 @@
   input,
   textarea {
     @apply select-text;
+  }
+
+  /* Tailwind resets the cursor on buttons; anything that can be clicked says so. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='radio']:not(:disabled),
+  [role='checkbox']:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  summary,
+  label:has(select, input) {
+    cursor: pointer;
+  }
+
+  /* Honour "reduce motion": no pulsing, spinning or sliding. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   ::-webkit-scrollbar {

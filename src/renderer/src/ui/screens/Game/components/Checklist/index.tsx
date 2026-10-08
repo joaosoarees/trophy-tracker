@@ -2,6 +2,7 @@ import { ClipboardPaste, Plus } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { type IChecklistItem } from '@shared/types/UserData';
+import { IconButton } from '@ui/components/IconButton';
 import { Button } from '@ui/primitives/button';
 import { Input } from '@ui/primitives/input';
 
@@ -66,16 +67,15 @@ export function Checklist({ achievement, items, onChange }: IChecklistProps) {
             }
           }}
         />
-        <Button
-          size="icon-sm"
+        <IconButton
           variant="secondary"
           className="size-7"
-          title={t.checklist.add}
+          label={t.checklist.add}
           disabled={draft.trim() === ''}
           onClick={handleAddDraft}
         >
           <Plus />
-        </Button>
+        </IconButton>
         <Button
           size="sm"
           variant="secondary"

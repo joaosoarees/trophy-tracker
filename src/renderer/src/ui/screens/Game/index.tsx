@@ -1,5 +1,6 @@
 import { useT } from '@app/hooks/useT';
 import { Empty } from '@ui/components/Empty';
+import { Pressable } from '@ui/components/Pressable';
 import { Button } from '@ui/primitives/button';
 
 import { AchievementCard } from './components/AchievementCard';
@@ -68,12 +69,13 @@ export function Game({ appid, running }: IGameProps) {
       />
 
       {justUnlocked.length > 0 && (
-        <button
+        <Pressable
+          role="status"
           onClick={handleDismissUnlocked}
-          className="bg-success/15 text-success mx-4 mt-3 block w-[calc(100%-2rem)] rounded-md px-3 py-2 text-left"
+          className="bg-success/15 text-success hover:bg-success/25 mx-4 mt-3 block w-[calc(100%-2rem)] rounded-md px-3 py-2 text-left"
         >
           {t.game.justUnlocked(justUnlocked.join(', '))}
-        </button>
+        </Pressable>
       )}
 
       {view.total === 0 ? (

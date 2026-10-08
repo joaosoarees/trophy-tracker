@@ -5,6 +5,8 @@ import { useLocale } from '@app/hooks/useLocale';
 import { useT } from '@app/hooks/useT';
 import { type IAchievement } from '@shared/types/Achievement';
 import { type IAchievementUserData } from '@shared/types/UserData';
+import { Hint } from '@ui/components/Hint';
+import { IconButton } from '@ui/components/IconButton';
 import { ProgressBar } from '@ui/components/ProgressBar';
 import { RemoteImage } from '@ui/components/RemoteImage';
 import { Badge } from '@ui/primitives/badge';
@@ -71,9 +73,9 @@ export const AchievementCard = memo(function AchievementCard(
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
-          <h3 className="min-w-0 flex-1 leading-snug font-semibold">
+          <h2 className="min-w-0 flex-1 leading-snug font-semibold">
             {achievement.name}
-          </h3>
+          </h2>
           {achievement.hidden && (
             <Badge
               variant="outline"
@@ -129,36 +131,37 @@ export const AchievementCard = memo(function AchievementCard(
           <div className="mt-2.5 flex flex-wrap items-center gap-1">
             <GuideLinks onOpen={handleOpenGuide} />
             <span className="flex-1" />
-            <Button
-              size="xs"
-              variant={isChecklistOpen ? 'default' : 'ghost'}
-              title={t.card.listTitle}
-              onClick={handleToggleChecklist}
-            >
-              <ListChecks />
-              {checklist.length > 0
-                ? `${checkedCount}/${checklist.length}`
-                : t.card.list}
-            </Button>
-            {!isNoteVisible && (
+            <Hint label={t.card.listTitle}>
               <Button
+                size="xs"
+                variant={isChecklistOpen ? 'default' : 'ghost'}
+                aria-expanded={isChecklistOpen}
+                onClick={handleToggleChecklist}
+              >
+                <ListChecks />
+                {checklist.length > 0
+                  ? `${checkedCount}/${checklist.length}`
+                  : t.card.list}
+              </Button>
+            </Hint>
+            {!isNoteVisible && (
+              <IconButton
                 size="icon-xs"
-                variant="ghost"
-                title={t.card.note}
+                label={t.card.note}
                 onClick={handleOpenNote}
               >
                 <StickyNote />
-              </Button>
+              </IconButton>
             )}
-            <Button
+            <IconButton
               size="icon-xs"
-              variant="ghost"
-              title={isPinned ? t.card.unpin : t.card.pin}
+              label={isPinned ? t.card.unpin : t.card.pin}
+              aria-pressed={isPinned}
               className={cn(isPinned && 'text-warning hover:text-warning')}
               onClick={handleTogglePin}
             >
               <Pin className={cn(isPinned && 'fill-current')} />
-            </Button>
+            </IconButton>
           </div>
         )}
 

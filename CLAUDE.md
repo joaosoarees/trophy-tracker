@@ -84,7 +84,8 @@ src/renderer/src/      the interface, in two layers
   ui/                  everything that is drawn
     App.tsx + useAppController.ts   decides between onboarding and the app
     screens/             one folder per screen: Game, Dashboard, Settings, Onboarding
-    components/          shared between screens: AppShell, RemoteImage, ProgressBar, Segmented, SearchBox, Empty
+    components/          shared between screens: AppShell, Pressable, IconButton, Hint, NativeSelect,
+                         RemoteImage, ProgressBar, Segmented, SearchBox, Empty
     primitives/          shadcn/ui components (generated; do not hand-edit without a reason)
     styles/index.css     Tailwind and the theme tokens
     utils/               cn, text (accent-free search), format (dates and numbers)
@@ -251,6 +252,20 @@ Conventions:
 - Dark theme only, with the Steam palette in the tokens in `ui/styles/index.css` (`--primary` light blue, `--success` green, `--warning` amber).
 - The window is narrow (about 520 px, for a second monitor): check that toolbars and buttons fit that width.
 - Lightness is the priority: no library with runtime styling.
+
+## Accessibility
+
+An automated audit (axe) of every screen reports zero violations; keep it that way.
+
+- **Nothing clickable is a raw element.** Use `Button` (primitive), `IconButton` (icon only), or `Pressable` (the base of hand-made clickables such as tabs and rows). They carry the keyboard focus ring and the disabled state; a raw `<button>` or `<select>` in `ui/` fails the lint. The pointer cursor comes from a global rule in `styles/index.css`.
+- **Every clickable has a visible hover**, normally a background tint (`hover:bg-accent/40`), not only a text colour change.
+- **Icon-only buttons** use `IconButton`, whose `label` is mandatory: it is both the accessible name and the tooltip. Explain other controls with `Hint`, never with the native `title` (it is slow and does not show on keyboard focus).
+- **State is announced, not just drawn:** `aria-pressed` on toggles (Segmented, pin, always on top, hidden only), `aria-current="page"` on the current tab, `aria-expanded` on what opens a section.
+- **Selects** go through `NativeSelect`, whose `label` is mandatory.
+- **Structure:** one `<main>` per window, `<nav>` with a label, and headings in order (`h1` for the screen, `h2` inside it).
+- **Motion** is turned off globally under `prefers-reduced-motion`; do not add animation that bypasses it.
+- An element shown only on hover must also show on keyboard focus (`focus-visible:opacity-100`).
+- After changing a screen, run the axe audit against the running app and tab through it with the keyboard.
 
 ## Local data
 

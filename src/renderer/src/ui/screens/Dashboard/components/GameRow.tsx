@@ -3,6 +3,7 @@ import { Gamepad2 } from 'lucide-react';
 import { useLocale } from '@app/hooks/useLocale';
 import { useT } from '@app/hooks/useT';
 import { type IGameSummary } from '@shared/types/Game';
+import { Pressable } from '@ui/components/Pressable';
 import { ProgressBar } from '@ui/components/ProgressBar';
 import { RemoteImage } from '@ui/components/RemoteImage';
 import { cn } from '@ui/utils/cn';
@@ -22,9 +23,9 @@ export function GameRow({ game, onPick }: IGameRowProps) {
 
   return (
     <li>
-      <button
+      <Pressable
         onClick={() => onPick(game.appid)}
-        className="bg-card hover:border-primary/60 flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-colors"
+        className="bg-card hover:border-primary/60 hover:bg-accent/40 flex w-full items-center gap-3 rounded-lg border p-2 text-left"
       >
         <RemoteImage
           src={art}
@@ -59,7 +60,7 @@ export function GameRow({ game, onPick }: IGameRowProps) {
                 : t.dashboard.completeLabel}
           </small>
         </div>
-      </button>
+      </Pressable>
     </li>
   );
 }

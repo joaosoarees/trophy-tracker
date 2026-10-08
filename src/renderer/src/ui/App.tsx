@@ -1,6 +1,7 @@
 import { Toaster } from 'sonner';
 
 import { AppShell } from './components/AppShell';
+import { TooltipProvider } from './primitives/tooltip';
 import { Onboarding } from './screens/Onboarding';
 import { useAppController } from './useAppController';
 
@@ -32,9 +33,9 @@ function Content() {
 
 export function App() {
   return (
-    <>
+    <TooltipProvider delayDuration={300}>
       <Content />
       <Toaster theme="dark" position="bottom-center" richColors />
-    </>
+    </TooltipProvider>
   );
 }

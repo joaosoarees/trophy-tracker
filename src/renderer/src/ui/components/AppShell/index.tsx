@@ -7,7 +7,7 @@ import {
 
 import { useT } from '@app/hooks/useT';
 import { Empty } from '@ui/components/Empty';
-import { Button } from '@ui/primitives/button';
+import { IconButton } from '@ui/components/IconButton';
 import { Dashboard } from '@ui/screens/Dashboard';
 import { Game } from '@ui/screens/Game';
 import { Settings } from '@ui/screens/Settings';
@@ -24,7 +24,10 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen flex-col">
-      <nav className="flex items-center gap-1 border-b px-2">
+      <nav
+        aria-label={t.nav.label}
+        className="flex items-center gap-1 border-b px-2"
+      >
         <TabButton active={tab === 'game'} onClick={() => goTo('game')}>
           <Trophy />
           {t.nav.game}
@@ -37,52 +40,52 @@ export function AppShell() {
           {t.nav.dashboard}
         </TabButton>
         <span className="flex-1" />
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          title={alwaysOnTop ? t.nav.unpinWindow : t.nav.pinWindow}
+        <IconButton
+          label={alwaysOnTop ? t.nav.unpinWindow : t.nav.pinWindow}
+          aria-pressed={alwaysOnTop}
           className={cn(alwaysOnTop && 'text-primary hover:text-primary')}
           onClick={handleToggleAlwaysOnTop}
         >
           <Pin className={cn(alwaysOnTop && 'fill-current')} />
-        </Button>
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          title={t.nav.settings}
+        </IconButton>
+        <IconButton
+          label={t.nav.settings}
+          aria-current={tab === 'settings' ? 'page' : undefined}
           className={cn(
             tab === 'settings' && 'text-primary hover:text-primary',
           )}
           onClick={() => goTo('settings')}
         >
           <SettingsIcon />
-        </Button>
+        </IconButton>
       </nav>
 
-      {/* Both screens stay mounted; switching tabs only hides one, with no reload and no lost scroll position. */}
-      <div
-        className={cn(
-          'flex min-h-0 flex-1 flex-col',
-          tab !== 'game' && 'hidden',
-        )}
-      >
-        {game.appid === null ? (
-          <Empty>{t.game.none}</Empty>
-        ) : (
-          <Game key={game.appid} appid={game.appid} running={game.running} />
-        )}
-      </div>
+      <main className="flex min-h-0 flex-1 flex-col">
+        {/* Both screens stay mounted; switching tabs only hides one, with no reload and no lost scroll position. */}
+        <div
+          className={cn(
+            'flex min-h-0 flex-1 flex-col',
+            tab !== 'game' && 'hidden',
+          )}
+        >
+          {game.appid === null ? (
+            <Empty>{t.game.none}</Empty>
+          ) : (
+            <Game key={game.appid} appid={game.appid} running={game.running} />
+          )}
+        </div>
 
-      <div
-        className={cn(
-          'flex min-h-0 flex-1 flex-col',
-          tab !== 'dashboard' && 'hidden',
-        )}
-      >
-        <Dashboard />
-      </div>
+        <div
+          className={cn(
+            'flex min-h-0 flex-1 flex-col',
+            tab !== 'dashboard' && 'hidden',
+          )}
+        >
+          <Dashboard />
+        </div>
 
-      {tab === 'settings' && <Settings />}
+        {tab === 'settings' && <Settings />}
+      </main>
     </div>
   );
 }

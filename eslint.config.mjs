@@ -137,6 +137,36 @@ export default defineConfig(
   },
 
   {
+    // Every clickable element carries the pointer cursor, the focus ring and
+    // the disabled state; those live in Button and Pressable.
+    files: ['src/renderer/src/ui/**/*.tsx'],
+    ignores: [
+      'src/renderer/src/ui/components/Pressable.tsx',
+      'src/renderer/src/ui/components/NativeSelect.tsx',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXOpeningElement[name.name='button']",
+          message:
+            'Use Button, IconButton or Pressable instead of a raw <button>.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='select']",
+          message: 'Use NativeSelect, which requires an accessible label.',
+        },
+        {
+          selector:
+            "MemberExpression[object.name='window'][property.name='api']",
+          message:
+            'Use a service from @app/services instead of calling window.api directly.',
+        },
+      ],
+    },
+  },
+
+  {
     // Tests poke at untyped JSON and use fakes that are async only by signature.
     files: ['test/**/*.ts'],
     rules: {

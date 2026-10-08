@@ -2,6 +2,8 @@ import { type ReactNode } from 'react';
 
 import { cn } from '@ui/utils/cn';
 
+import { Pressable } from './Pressable';
+
 interface ISegmentedProps<T extends string> {
   value: T;
   options: { value: T; label: ReactNode }[];
@@ -16,18 +18,19 @@ export function Segmented<T extends string>({
   return (
     <div className="bg-muted inline-flex rounded-md p-0.5">
       {options.map((option) => (
-        <button
+        <Pressable
           key={option.value}
+          aria-pressed={option.value === value}
           onClick={() => onChange(option.value)}
           className={cn(
-            'rounded-[5px] px-2.5 py-1 text-xs font-medium transition-colors',
+            'rounded-[5px] px-2.5 py-1 text-xs font-medium',
             option.value === value
               ? 'bg-accent text-accent-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground',
+              : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
           )}
         >
           {option.label}
-        </button>
+        </Pressable>
       ))}
     </div>
   );

@@ -2,9 +2,9 @@ import { RefreshCw, Trophy } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { type IGameView } from '@shared/types/Game';
+import { IconButton } from '@ui/components/IconButton';
 import { ProgressBar } from '@ui/components/ProgressBar';
 import { RemoteImage } from '@ui/components/RemoteImage';
-import { Button } from '@ui/primitives/button';
 import { cn } from '@ui/utils/cn';
 
 interface IGameHeaderProps {
@@ -52,15 +52,13 @@ export function GameHeader({
               {t.game.running}
             </span>
           )}
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            title={t.common.refresh}
+          <IconButton
+            label={t.common.refresh}
             disabled={isLoading}
             onClick={onRefresh}
           >
             <RefreshCw className={cn(isLoading && 'animate-spin')} />
-          </Button>
+          </IconButton>
         </div>
 
         <ProgressBar

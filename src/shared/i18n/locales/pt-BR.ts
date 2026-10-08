@@ -51,6 +51,7 @@ export const ptBR: Messages = {
     game: 'Jogo',
     dashboard: 'Painel',
     settings: 'Configuração',
+    label: 'Principal',
     pinWindow: 'Manter a janela sempre no topo',
     unpinWindow: 'Deixar de manter a janela no topo',
   },
@@ -63,6 +64,7 @@ export const ptBR: Messages = {
     next: 'Próximo',
     clearSearch: 'Limpar busca',
     openInBrowser: 'Abrir no navegador',
+    sortBy: 'Ordenar por',
   },
 
   game: {

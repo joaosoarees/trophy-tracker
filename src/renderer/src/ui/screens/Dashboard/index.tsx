@@ -2,6 +2,7 @@ import { RefreshCw } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { Empty } from '@ui/components/Empty';
+import { IconButton } from '@ui/components/IconButton';
 import { Button } from '@ui/primitives/button';
 import { Skeleton } from '@ui/primitives/skeleton';
 import { cn } from '@ui/utils/cn';
@@ -38,15 +39,13 @@ export function Dashboard() {
       <header className="mb-3">
         <div className="flex items-center gap-2">
           <h1 className="flex-1 text-xl font-semibold">{t.dashboard.title}</h1>
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            title={t.dashboard.refreshAll}
+          <IconButton
+            label={t.dashboard.refreshAll}
             disabled={isLoading}
             onClick={handleRefreshAll}
           >
             <RefreshCw className={cn(isLoading && 'animate-spin')} />
-          </Button>
+          </IconButton>
         </div>
         {isLoading && (
           <p className="text-muted-foreground text-xs">
