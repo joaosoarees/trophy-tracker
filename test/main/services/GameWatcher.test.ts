@@ -2,36 +2,24 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { GameWatcher, type IGameWatcherDeps } from '@main/services/GameWatcher';
 import { en } from '@shared/i18n/locales/en';
-import { type IAchievement } from '@shared/types/Achievement';
 import { type CheckResult } from '@shared/types/Check';
 import { type IGameView } from '@shared/types/Game';
+import { makeAchievement } from '@test/factories/makeAchievement';
+import { makeGameView } from '@test/factories/makeGameView';
 
-const achievement = (id: string, unlocked: boolean): IAchievement => ({
-  id,
-  name: `Achievement ${id}`,
-  description: '',
-  hidden: false,
-  icon: '',
-  iconGray: '',
-  rarity: null,
-  unlocked,
-  unlockedAt: unlocked ? 1 : null,
-  progress: null,
-});
-
-const view = (appid: number, unlockedIds: string[]): IGameView => {
-  const achievements = ['a', 'b', 'c'].map((id) =>
-    achievement(id, unlockedIds.includes(id)),
-  );
-  return {
+/** A game with three achievements, of which the given ones are unlocked. */
+const view = (appid: number, unlockedIds: string[]) =>
+  makeGameView({
     appid,
-    name: 'Game',
-    total: 3,
-    unlockedCount: unlockedIds.length,
-    achievements,
-    fetchedAt: 1,
-  };
-};
+    achievements: ['a', 'b', 'c'].map((id) =>
+      makeAchievement({
+        id,
+        name: `Achievement ${id}`,
+        unlocked: unlockedIds.includes(id),
+        unlockedAt: unlockedIds.includes(id) ? 1 : null,
+      }),
+    ),
+  });
 
 function setup(over: Partial<IGameWatcherDeps> = {}) {
   let running: number | null = null;

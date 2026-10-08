@@ -6,32 +6,20 @@ import {
   type IAutoUpdaterListener,
 } from '@main/services/AppUpdates';
 import { type IAppInfo } from '@shared/types/AppInfo';
+import { makeAppInfo } from '@test/factories/makeAppInfo';
 
 const HOUR = 60 * 60 * 1000;
-const MANUAL: IAppInfo = {
-  version: '1.0.0',
-  newVersion: '1.1.0',
-  updateStatus: 'manual',
-  downloadPercent: null,
-};
-const downloading = (percent: number): IAppInfo => ({
-  version: '1.0.0',
-  newVersion: '1.1.0',
-  updateStatus: 'downloading',
-  downloadPercent: percent,
-});
-const READY: IAppInfo = {
-  version: '1.0.0',
-  newVersion: '1.1.0',
-  updateStatus: 'ready',
-  downloadPercent: null,
-};
-const NOTHING: IAppInfo = {
-  version: '1.0.0',
-  newVersion: null,
-  updateStatus: 'downloading',
-  downloadPercent: null,
-};
+/** What GitHub answers where the app does not update itself. */
+const MANUAL = makeAppInfo({ newVersion: '1.1.0' });
+const downloading = (percent: number) =>
+  makeAppInfo({
+    newVersion: '1.1.0',
+    updateStatus: 'downloading',
+    downloadPercent: percent,
+  });
+const READY = makeAppInfo({ newVersion: '1.1.0', updateStatus: 'ready' });
+/** The automatic path with nothing found. */
+const NOTHING = makeAppInfo({ updateStatus: 'downloading' });
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 

@@ -1,17 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { type IAppInfo, type UpdateStatus } from '@shared/types/AppInfo';
+import { type UpdateStatus } from '@shared/types/AppInfo';
 import { isUpdatingItself, needsTheUser } from '@shared/updateFlow';
+import { makeAppInfo } from '@test/factories/makeAppInfo';
 
 const info = (
   updateStatus: UpdateStatus,
   newVersion: string | null = '1.1.0',
-): IAppInfo => ({
-  version: '1.0.0',
-  newVersion,
-  updateStatus,
-  downloadPercent: null,
-});
+) => makeAppInfo({ updateStatus, newVersion });
 
 describe('update flow', () => {
   it('holds the app only for a version it is installing by itself', () => {

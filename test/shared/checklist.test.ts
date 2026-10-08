@@ -5,20 +5,7 @@ import {
   parseChecklist,
   shownProgress,
 } from '@shared/checklist';
-import { type IAchievement } from '@shared/types/Achievement';
-
-const achievement = (progress: IAchievement['progress']): IAchievement => ({
-  id: 'A',
-  name: 'A',
-  description: '',
-  hidden: false,
-  icon: '',
-  iconGray: '',
-  rarity: null,
-  unlocked: false,
-  unlockedAt: null,
-  progress,
-});
+import { makeAchievement } from '@test/factories/makeAchievement';
 
 describe('parseChecklist', () => {
   it('turns each line into an item, dropping bullets, numbering and blank lines', () => {
@@ -62,7 +49,7 @@ describe('shownProgress', () => {
 
   it('uses the checklist as the counter when Steam has none', () => {
     expect(
-      shownProgress(achievement(null), { note: '', pinned: false, checklist }),
+      shownProgress(makeAchievement(), { note: '', pinned: false, checklist }),
     ).toEqual({
       current: 2,
       target: 3,
@@ -72,7 +59,7 @@ describe('shownProgress', () => {
 
   it('prefers the Steam counter', () => {
     expect(
-      shownProgress(achievement({ current: 5, target: 9 }), {
+      shownProgress(makeAchievement({ progress: { current: 5, target: 9 } }), {
         note: '',
         pinned: false,
         checklist,
@@ -85,9 +72,9 @@ describe('shownProgress', () => {
   });
 
   it('shows nothing without a counter or a checklist', () => {
-    expect(shownProgress(achievement(null), undefined)).toBeNull();
+    expect(shownProgress(makeAchievement(), undefined)).toBeNull();
     expect(
-      shownProgress(achievement(null), {
+      shownProgress(makeAchievement(), {
         note: 'x',
         pinned: true,
         checklist: [],

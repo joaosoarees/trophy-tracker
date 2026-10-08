@@ -1,31 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { type IAchievement } from '@shared/types/Achievement';
-import { type IGameView } from '@shared/types/Game';
 import { mergeView } from '@shared/view';
+import { makeAchievement } from '@test/factories/makeAchievement';
+import { makeGameView } from '@test/factories/makeGameView';
 
-const ach = (id: string, over: Partial<IAchievement> = {}): IAchievement => ({
-  id,
-  name: id,
-  description: '',
-  hidden: false,
-  icon: '',
-  iconGray: '',
-  rarity: 10,
-  unlocked: false,
-  unlockedAt: null,
-  progress: null,
-  ...over,
-});
-const view = (achievements: IAchievement[], fetchedAt = 1): IGameView => ({
-  appid: 1,
-  name: 'Game',
-  total: achievements.length,
-  unlockedCount: achievements.filter((a) => a.unlocked).length,
-  achievements,
-  fetchedAt,
-  header: 'h',
-});
+const ach = (id: string, over: Partial<IAchievement> = {}) =>
+  makeAchievement({ id, rarity: 10, ...over });
+const view = (achievements: IAchievement[], fetchedAt = 1) =>
+  makeGameView({ achievements, fetchedAt, header: 'h' });
 
 describe('mergeView', () => {
   it('returns the previous read when only the time changed', () => {

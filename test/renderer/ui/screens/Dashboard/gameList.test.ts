@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { type IGameSummary } from '@shared/types/Game';
+import { makeGameSummary } from '@test/factories/makeGameSummary';
 import { countGames, listGames } from '@ui/screens/Dashboard/gameList';
 
 const game = (
@@ -8,18 +9,14 @@ const game = (
   unlocked: number,
   total: number,
   over: Partial<IGameSummary> = {},
-): IGameSummary => ({
-  appid: name.length * 1000 + unlocked,
-  name,
-  icon: '',
-  capsule: '',
-  playtimeMinutes: 10,
-  lastPlayed: 0,
-  total,
-  unlocked,
-  completedAt: null,
-  ...over,
-});
+) =>
+  makeGameSummary({
+    appid: name.length * 1000 + unlocked,
+    name,
+    unlocked,
+    total,
+    ...over,
+  });
 
 const games = [
   game('Half', 5, 10, { lastPlayed: 300 }),

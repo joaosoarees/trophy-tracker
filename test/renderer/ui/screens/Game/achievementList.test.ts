@@ -1,37 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import { type IAchievement } from '@shared/types/Achievement';
-import { type IGameView } from '@shared/types/Game';
+import { makeAchievement } from '@test/factories/makeAchievement';
+import { makeGameView } from '@test/factories/makeGameView';
 import {
   countHidden,
   listAchievements,
 } from '@ui/screens/Game/achievementList';
 
-const achievement = (
-  id: string,
-  over: Partial<IAchievement> = {},
-): IAchievement => ({
-  id,
-  name: id,
-  description: '',
-  hidden: false,
-  icon: '',
-  iconGray: '',
-  rarity: 50,
-  unlocked: false,
-  unlockedAt: null,
-  progress: null,
-  ...over,
-});
+const achievement = (id: string, over: Partial<IAchievement> = {}) =>
+  makeAchievement({ id, rarity: 50, ...over });
 
-const view = (achievements: IAchievement[]): IGameView => ({
-  appid: 1,
-  name: 'Game',
-  total: achievements.length,
-  unlockedCount: achievements.filter((a) => a.unlocked).length,
-  achievements,
-  fetchedAt: 1,
-});
+const view = (achievements: IAchievement[]) => makeGameView({ achievements });
 
 const game = view([
   achievement('rare', { rarity: 2, name: 'Zeta' }),
