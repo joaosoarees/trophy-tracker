@@ -15,6 +15,7 @@ npm install
 npm run dev     # development, with reload
 npm run build && npm start
 npm test
+npm run lint && npm run typecheck
 ```
 
 On first run the app asks for a language, your SteamID and a Web API key (https://steamcommunity.com/dev/apikey), and checks your profile privacy. The configuration lives in `~/.config/steam-trophy-tracker/`.

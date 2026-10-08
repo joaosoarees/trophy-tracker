@@ -11,10 +11,25 @@ npm run dev         # app with reload (window through WSLg)
 npm run build       # builds into out/
 npm start           # runs the build
 npm test            # Vitest
-npm run typecheck   # tsc --noEmit
+npm run typecheck   # tsc on both projects (main process and interface)
+npm run lint        # ESLint (lint:fix to auto-fix)
+npm run format      # Prettier (format:check to only verify)
 ```
 
 Electron needs `libnss3 libnspr4 libasound2t64` installed on WSL.
+
+## Code standards
+
+Enforced by tooling; do not work around it.
+
+- **Formatting:** Prettier with `{ "singleQuote": true }`: single quotes, semicolons, 80 columns, trailing commas. `.editorconfig` covers indentation and line endings.
+- **Lint:** ESLint 9 flat config in `eslint.config.mjs`: typescript-eslint type-checked rules, React, React Hooks, jsx-a11y and import ordering. `src/renderer/src/components/ui` (generated shadcn/ui) is formatted but not linted. Exceptions for tests, config files and async JSX handlers are written down in the config with the reason.
+- **Interfaces start with `I`** (`IAchievement`, `IGameView`, `IStepperProps`); the rule is `@typescript-eslint/naming-convention`. Type aliases (`type X = ...`) have no prefix. The global `Window` augmentation is the only exception.
+- **Imports** are grouped (builtin, external, internal `@/`, parent, sibling, index), alphabetised, with a blank line between groups, and type imports are inline (`import { type X }`). `npm run lint:fix` sorts them.
+- **Function-typed members** use property syntax (`onClick: () => void`), not method syntax.
+- **No untyped JSON:** responses from Steam are typed where they are read (`Envelope<T>`, `PlayerStats<T>` in `steam/client.ts`).
+- **TypeScript projects:** `tsconfig.node.json` (main, preload, shared, tests; no DOM) and `tsconfig.web.json` (interface and shared; no Node types), both extending `tsconfig.base.json`. Using a browser API in the main process, or a Node API in the interface, is a compile error.
+- **Version pins with a reason:** TypeScript stays on 6.0 because typescript-eslint does not support 7 yet, and ESLint stays on 9 because the React and jsx-a11y plugins do not support 10 yet. Revisit both when the plugins catch up.
 
 ## Environment: WSL talking to Windows
 
@@ -30,7 +45,7 @@ It does not produce an `.exe`; becoming a native Windows app requires Node on Wi
 
 ```
 src/shared/     types and pure logic used by both sides
-  types.ts        model (Achievement, GameView, GameSummary...) and the IPC Api interface
+  types.ts        model (IAchievement, IGameView, IGameSummary...) and the IPC IApi interface
   checklist.ts    parseChecklist (pasted text → items) and shownProgress (which counter to show)
   view.ts         mergeView: merges reads, reusing what did not change
   validation.ts   SteamID and key formats, used by the form and by the main process
@@ -44,7 +59,7 @@ src/main/       main process: the only part that talks to Steam and to the disk
   store.ts              JSON persistence (not to be confused with the interface store)
   onboarding.ts         SteamID, key and privacy checks
   index.ts              window, IPC handlers, periodic checks
-src/preload/    exposes `window.api` (contextBridge), typed by `Api`
+src/preload/    exposes `window.api` (contextBridge), typed by `IApi`
 src/renderer/src/
   App.tsx, Onboarding.tsx, GameScreen.tsx, Dashboard.tsx
   components/     AchievementCard, Checklist, bits (ProgressBar, Segmented, SearchBox, Empty)
@@ -57,7 +72,7 @@ src/renderer/src/
 test/           Vitest, with real API responses in test/fixtures
 ```
 
-Boundary rule: the interface never calls `fetch` against Steam and never touches files; everything goes through `window.api`. To add a call: a method on `Api` (`shared/types.ts`), a handler in `main/index.ts`, and the name in the list in `preload/index.ts`.
+Boundary rule: the interface never calls `fetch` against Steam and never touches files; everything goes through `window.api`. To add a call: a method on `IApi` (`shared/types.ts`), a handler in `main/index.ts`, and the name in the list in `preload/index.ts`.
 
 ## Data sources
 
@@ -103,7 +118,6 @@ The onboarding is a single multi-step form:
 - Privacy has no typed field: the form value is filled in when the check passes, and the schema requires that value to finish.
 - The draft (language, SteamID and step) goes to `sessionStorage` to survive a reload. **The Web API key never goes into the draft**; after a reload the form resumes at the key step at most.
 - Enter in a field does not submit the whole form: each step treats Enter as its own "advance".
-- Interfaces in the form components use the `I` prefix (`IStepperProps`); keep that style there.
 
 ## Read policy (do not fire requests for nothing)
 
@@ -162,5 +176,6 @@ Conventions:
 ## Commits
 
 - Commit at the end of every requested change, without asking, one commit per change. Local commits only: pushing or sending anything outside depends on an explicit request.
-- Conventional Commits in English: `feat: achievement checklist`, `fix: ...`, `chore: ...`, `docs: ...`, `refactor: ...`, `perf: ...`, `test: ...`.
-- Before committing: `npm test` and `npm run typecheck`.
+- Conventional Commits in English: `feat: achievement checklist`, `fix: ...`, `chore: ...`, `docs: ...`, `refactor: ...`, `perf: ...`, `style: ...`, `test: ...`. commitlint checks it; header and body lines stay within 100 characters.
+- Husky hooks run on every commit: lint-staged (ESLint with auto-fix, then Prettier, on the staged files), then `npm run typecheck` and `npm test` for the whole project, then commitlint on the message. Never skip them with `--no-verify`; fix what they report.
+- Purely mechanical commits (mass formatting, import sorting) go into `.git-blame-ignore-revs`.
