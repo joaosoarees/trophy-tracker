@@ -1,6 +1,7 @@
 /** Reference language: the `Messages` type comes from this file, so every new key starts here. */
 export const en = {
-  appTitle: 'Steam Achievements',
+  appTitle: 'Trophy Tracker',
+  notAffiliated: 'Not affiliated with Valve or Steam.',
 
   errors: {
     invalidKey: 'Steam rejected the Web API key.',
@@ -173,7 +174,7 @@ export const en = {
     redoNotice: (reason: string) => `${reason} Set the app up again.`,
 
     language: {
-      title: 'Steam Achievements',
+      title: 'Trophy Tracker',
       description: 'See what is left to unlock in the game you are playing.',
       intro:
         'For the game you are playing, this app shows which achievements are missing, what the hidden ones are, how far along the counted ones are, and shortcuts to guides.',

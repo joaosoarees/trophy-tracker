@@ -1,7 +1,8 @@
 import type { Messages } from './en';
 
 export const ptBR: Messages = {
-  appTitle: 'Conquistas da Steam',
+  appTitle: 'Trophy Tracker',
+  notAffiliated: 'Sem afiliação com a Valve ou a Steam.',
 
   errors: {
     invalidKey: 'A Steam recusou a chave da Web API.',
@@ -173,7 +174,7 @@ export const ptBR: Messages = {
     redoNotice: (reason) => `${reason} Refaça a configuração.`,
 
     language: {
-      title: 'Conquistas da Steam',
+      title: 'Trophy Tracker',
       description:
         'Veja o que falta desbloquear no jogo que você está jogando.',
       intro:

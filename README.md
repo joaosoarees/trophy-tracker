@@ -1,4 +1,4 @@
-# Steam Achievements
+# Trophy Tracker
 
 Desktop app (Electron + React) that shows, for the game open on Steam, which achievements are missing, what the hidden ones are, progress counters, your own checklists and shortcuts to guides. Available in English and Brazilian Portuguese. It runs on WSL (window through WSLg) and talks to the Steam client on Windows.
 
@@ -21,4 +21,4 @@ pnpm test
 pnpm lint && pnpm typecheck
 ```
 
-On first run the app asks for a language, your SteamID and a Web API key (https://steamcommunity.com/dev/apikey), and checks your profile privacy. The configuration lives in `~/.config/steam-trophy-tracker/`.
+On first run the app asks for a language, your SteamID and a Web API key (https://steamcommunity.com/dev/apikey), and checks your profile privacy. The configuration lives in `~/.config/trophy-tracker/` (`%APPDATA%\trophy-tracker` on Windows, `~/Library/Application Support/trophy-tracker` on macOS).

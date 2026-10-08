@@ -1,4 +1,4 @@
-# Steam Achievements
+# Trophy Tracker
 
 Desktop app (Electron + React + TypeScript) that shows, for the game open on Steam, which achievements are missing, what the hidden ones are, progress counters, user checklists and shortcuts to guides. Personal use; may become a product.
 
@@ -284,7 +284,7 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 
 ## Local data
 
-`~/.config/steam-trophy-tracker/`: `config.json` (SteamID and key, permission 600; encrypted only if there is a keyring), `cache.json`, `userdata.json` (notes, pins, checklists), `settings.json` (language, always on top). Never copy the key out of that folder or print it.
+`~/.config/trophy-tracker/` (`%APPDATA%\trophy-tracker` on Windows, `~/Library/Application Support/trophy-tracker` on macOS): `config.json` (SteamID and key, permission 600; encrypted only if there is a keyring), `cache.json`, `userdata.json` (notes, pins, checklists), `settings.json` (language, always on top). Never copy the key out of that folder or print it.
 
 ## Tests
 

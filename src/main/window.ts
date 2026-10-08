@@ -22,6 +22,8 @@ export class MainWindow {
       minWidth: 420,
       minHeight: 520,
       backgroundColor: '#171a21',
+      // Linux takes the window icon from here; Windows and macOS from the package.
+      icon: join(__dirname, '../../build/icon.png'),
       autoHideMenuBar: true,
       title,
       webPreferences: {

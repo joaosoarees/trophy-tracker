@@ -45,6 +45,10 @@ export function Settings() {
         onOpenChange={setIsConfirmingErase}
         onConfirm={handleErase}
       />
+
+      <p className="text-muted-foreground mt-auto pt-6 text-xs">
+        {t.appTitle} · {t.notAffiliated}
+      </p>
     </section>
   );
 }

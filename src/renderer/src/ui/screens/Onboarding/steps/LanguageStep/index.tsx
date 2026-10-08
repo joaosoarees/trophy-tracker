@@ -65,6 +65,7 @@ export function LanguageStep({ notice, onCancel }: ILanguageStepProps) {
         <p className="text-muted-foreground">
           {t.onboarding.language.keyStaysLocal}
         </p>
+        <p className="text-muted-foreground text-xs">{t.notAffiliated}</p>
       </div>
 
       <StepperFooter>
