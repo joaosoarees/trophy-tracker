@@ -1,0 +1,80 @@
+export interface Achievement {
+  id: string
+  name: string
+  description: string
+  hidden: boolean
+  icon: string
+  iconGray: string
+  /** Percentual global de jogadores que têm a conquista. */
+  rarity: number | null
+  unlocked: boolean
+  /** Epoch em segundos. */
+  unlockedAt: number | null
+  progress: { current: number; target: number } | null
+}
+
+export interface GameView {
+  appid: number
+  name: string
+  total: number
+  unlockedCount: number
+  achievements: Achievement[]
+  fetchedAt: number
+}
+
+export interface GameSummary {
+  appid: number
+  name: string
+  icon: string
+  playtimeMinutes: number
+  lastPlayed: number
+  total: number
+  unlocked: number
+}
+
+export interface Profile {
+  steamId: string
+  name: string
+  avatar: string
+}
+
+export type CheckResult<T = undefined> = { ok: true; value: T } | { ok: false; error: string }
+
+export interface AppState {
+  configured: boolean
+  profile: Profile | null
+  /** Motivo de o onboarding ter reaparecido (ex.: chave deixou de funcionar). */
+  configError: string | null
+}
+
+export interface AchievementUserData {
+  note: string
+  pinned: boolean
+}
+
+export type GameUserData = Record<string, AchievementUserData>
+
+export type GuideSite = 'steam' | 'youtube' | 'google'
+
+export interface Api {
+  getState(): Promise<AppState>
+  detectSteamId(): Promise<string | null>
+  checkSteamId(steamId: string): Promise<CheckResult<Profile>>
+  checkApiKey(steamId: string, apiKey: string): Promise<CheckResult<Profile>>
+  checkPrivacy(steamId: string, apiKey: string): Promise<CheckResult<{ gamesWithPlaytime: number }>>
+  saveConfig(steamId: string, apiKey: string): Promise<AppState>
+  resetConfig(): Promise<AppState>
+
+  getCurrentAppId(): Promise<{ appid: number; running: boolean } | null>
+  getGame(appid: number, force?: boolean): Promise<CheckResult<GameView>>
+  getDashboard(force?: boolean): Promise<CheckResult<GameSummary[]>>
+  getUserData(appid: number): Promise<GameUserData>
+  setUserData(appid: number, achievementId: string, data: AchievementUserData): Promise<void>
+
+  openGuide(site: GuideSite, appid: number, game: string, achievement: string): Promise<void>
+  openExternal(target: 'apikey' | 'privacy' | 'steamid-help'): Promise<void>
+
+  onGameChanged(cb: (current: { appid: number; running: boolean } | null) => void): () => void
+  onGameUpdated(cb: (view: GameView) => void): () => void
+  onDashboardProgress(cb: (done: number, total: number) => void): () => void
+}
