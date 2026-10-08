@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GameWatcher, type IGameWatcherDeps } from '@main/services/GameWatcher';
-import { en } from '@shared/i18n/locales/en';
 import { type CheckResult } from '@shared/types/Check';
 import { type IGameView } from '@shared/types/Game';
 import { makeAchievement } from '@test/factories/makeAchievement';
@@ -29,8 +28,6 @@ function setup(over: Partial<IGameWatcherDeps> = {}) {
     lastPlayedAppId: vi.fn(() => Promise.resolve<number | null>(7)),
     pollGame: vi.fn(() => Promise.resolve(polled)),
     isConfigured: vi.fn(() => true),
-    messages: () => en,
-    notify: vi.fn(),
     onCurrentChanged: vi.fn(),
     onGameUpdated: vi.fn(),
     ...over,
@@ -86,7 +83,7 @@ describe('GameWatcher', () => {
     expect(deps.onCurrentChanged).toHaveBeenCalledTimes(2);
   });
 
-  it('notifies each achievement unlocked since the view the interface has', async () => {
+  it('hands the interface the new view when something was unlocked', async () => {
     const { watcher, deps, run, poll } = setup();
     run(42);
     await watcher.refreshCurrent();
@@ -96,10 +93,6 @@ describe('GameWatcher', () => {
     poll(next);
     await watcher.checkUnlocks();
 
-    expect(deps.notify).toHaveBeenCalledExactlyOnceWith(
-      'Achievement unlocked — Game',
-      'Achievement b · 1 left',
-    );
     expect(deps.onGameUpdated).toHaveBeenCalledExactlyOnceWith(next);
   });
 
@@ -113,7 +106,6 @@ describe('GameWatcher', () => {
 
     await watcher.checkUnlocks();
 
-    expect(deps.notify).not.toHaveBeenCalled();
     expect(deps.onGameUpdated).not.toHaveBeenCalled();
   });
 
@@ -140,7 +132,7 @@ describe('GameWatcher', () => {
 
   it('reads one last time when the game closes, before announcing the change', async () => {
     const events: unknown[] = [];
-    const { watcher, deps, run, poll } = setup({
+    const { watcher, run, poll } = setup({
       onGameUpdated: (updated) =>
         events.push(['updated', updated.unlockedCount]),
       onCurrentChanged: (current) => events.push(['changed', current]),
@@ -153,11 +145,6 @@ describe('GameWatcher', () => {
     run(null);
     await watcher.checkRunningGame();
 
-    expect(deps.notify).toHaveBeenCalledTimes(2);
-    expect(deps.notify).toHaveBeenLastCalledWith(
-      'Achievement unlocked — Game',
-      'Achievement c · all achievements unlocked!',
-    );
     expect(events).toEqual([
       ['updated', 3],
       ['changed', { appid: 7, running: false }],
@@ -172,19 +159,6 @@ describe('GameWatcher', () => {
     expect(await watcher.resolveCurrent()).toBeNull();
   });
 
-  it('announces nothing as unlocked after forgetting what the interface had seen', async () => {
-    const { watcher, deps, run, poll } = setup();
-    run(42);
-    await watcher.refreshCurrent();
-    watcher.remember(view(42, ['a']));
-
-    watcher.forget();
-    poll(view(42, ['a', 'b']));
-    await watcher.checkUnlocks();
-
-    expect(deps.notify).not.toHaveBeenCalled();
-  });
-
   it('announces the current game again after forgetting it too', async () => {
     const { watcher, deps, run } = setup();
     run(42);
@@ -194,19 +168,6 @@ describe('GameWatcher', () => {
     await watcher.checkRunningGame();
 
     expect(deps.onCurrentChanged).toHaveBeenCalledTimes(2);
-  });
-
-  it('ignores a view of a game that is not the current one', async () => {
-    const { watcher, deps, run, poll } = setup();
-    run(42);
-    await watcher.refreshCurrent();
-
-    watcher.remember(view(7, ['a']));
-    poll(view(42, ['a', 'b']));
-    await watcher.checkUnlocks();
-
-    // With nothing to compare against, the first poll announces no unlock.
-    expect(deps.notify).not.toHaveBeenCalled();
   });
 
   it('does not announce an update when the poll fails', async () => {

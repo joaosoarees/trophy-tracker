@@ -1,8 +1,5 @@
-import { type Messages } from '@shared/i18n';
 import { type CheckResult } from '@shared/types/Check';
 import { type CurrentGame, type IGameView } from '@shared/types/Game';
-
-import { newlyUnlocked } from '../steam/achievements';
 
 const RUNNING_CHECK_MS = 10_000;
 const UNLOCK_CHECK_MS = 60_000;
@@ -14,15 +11,15 @@ export interface IGameWatcherDeps {
   /** Light re-read of a game while it is being played. */
   pollGame: (appid: number) => Promise<CheckResult<IGameView>>;
   isConfigured: () => boolean;
-  messages: () => Messages;
-  notify: (title: string, body: string) => void;
   onCurrentChanged: (current: CurrentGame) => void;
   onGameUpdated: (view: IGameView) => void;
 }
 
 /**
  * Follows the game open on Steam: tells the interface when it changes and
- * announces achievements unlocked while it is being played.
+ * keeps its view fresh while it is being played. What was just unlocked is
+ * shown by the interface, which compares the views; Steam's own notification
+ * covers the system side.
  */
 export class GameWatcher {
   private current: CurrentGame = null;
@@ -92,17 +89,6 @@ export class GameWatcher {
     const view = result.value;
     // The same object comes back when nothing changed; then there is nothing to announce.
     if (view === this.lastView) return;
-
-    if (this.lastView?.appid === appid) {
-      const m = this.deps.messages();
-      const left = view.total - view.unlockedCount;
-      for (const achievement of newlyUnlocked(this.lastView, view)) {
-        this.deps.notify(
-          m.toast.title(view.name),
-          m.toast.body(achievement.name, left),
-        );
-      }
-    }
 
     this.lastView = view;
     this.deps.onGameUpdated(view);

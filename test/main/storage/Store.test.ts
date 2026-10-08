@@ -193,9 +193,8 @@ describe('Store', () => {
     expect(new Store(dir).getAlwaysOnTop()).toBe(true);
   });
 
-  it('notifies of unlocks and remembers the window unless told otherwise', () => {
+  it('remembers the window unless told otherwise', () => {
     expect(new Store(tempDir()).getPreferences()).toEqual({
-      notifyUnlocks: true,
       rememberWindow: true,
     });
   });
@@ -203,9 +202,9 @@ describe('Store', () => {
   it('remembers a preference the user changed', () => {
     const dir = tempDir();
 
-    new Store(dir).setPreference('notifyUnlocks', false);
+    new Store(dir).setPreference('rememberWindow', false);
 
-    expect(new Store(dir).getPreferences().notifyUnlocks).toBe(false);
+    expect(new Store(dir).getPreferences().rememberWindow).toBe(false);
   });
 
   it('remembers where the window was closed', () => {

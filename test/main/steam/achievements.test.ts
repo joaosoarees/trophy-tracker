@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  buildGameView,
-  guideUrl,
-  newlyUnlocked,
-} from '@main/steam/achievements';
+import { buildGameView, guideUrl } from '@main/steam/achievements';
 import { type IRawSchemaAchievement } from '@main/steam/client';
 import onimusha from '@test/fixtures/game-achievements-2638890.json';
 import nioh from '@test/fixtures/game-achievements-3681010.json';
@@ -88,26 +84,6 @@ describe('buildGameView', () => {
         .filter((a) => a.hidden)
         .every((a) => a.description !== ''),
     ).toBe(true);
-  });
-});
-
-describe('newlyUnlocked', () => {
-  it('lists only what changed to unlocked', () => {
-    const make = (ids: string[]) =>
-      buildGameView({
-        appid: 1,
-        name: 'x',
-        schema: niohSchema,
-        player: ids.map((apiname) => ({ apiname, achieved: 1, unlocktime: 5 })),
-        stats: {},
-        statMap: new Map(),
-      });
-    expect(
-      newlyUnlocked(make(['ACH_002']), make(['ACH_002', 'ACH_004'])).map(
-        (a) => a.id,
-      ),
-    ).toEqual(['ACH_004']);
-    expect(newlyUnlocked(make(['ACH_002']), make(['ACH_002']))).toEqual([]);
   });
 });
 

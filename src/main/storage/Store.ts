@@ -74,7 +74,6 @@ interface ISettingsFile {
   dashboardSort?: unknown;
   /** Version the app last closed itself to install. */
   updateAttempt?: string;
-  notifyUnlocks?: boolean;
   rememberWindow?: boolean;
   /** Size and position the window was closed with. */
   windowBounds?: unknown;
@@ -269,8 +268,6 @@ export class Store {
 
   getPreferences(): IPreferences {
     return {
-      notifyUnlocks:
-        this.settings.notifyUnlocks ?? DEFAULT_PREFERENCES.notifyUnlocks,
       rememberWindow:
         this.settings.rememberWindow ?? DEFAULT_PREFERENCES.rememberWindow,
     };

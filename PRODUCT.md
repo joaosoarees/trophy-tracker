@@ -36,7 +36,7 @@ Four things together, each confirmed as essential to what the product is:
 - Setup happens once: language, SteamID and the user's own Steam Web API key, with a check that the profile's game details are public.
 - With no game open, the app shows the last one played; a dashboard lists every played game by how close it is to completion.
 - Notes, pins and checklists are written by the user per achievement and kept across sessions.
-- A system notification announces an achievement unlocked while playing.
+- An achievement unlocked while playing shows in a notice at the top of the list, with how many are left. The system notification is left to Steam, which already raises one.
 
 ## Capabilities and Constraints
 

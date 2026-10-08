@@ -49,12 +49,12 @@ The same code runs on Windows, macOS, Linux and, for development, WSL. What diff
 | Running game                    | registry, `HKCU\Software\Valve\Steam\RunningAppID` | Web API: `gameid` in `GetPlayerSummaries`, asked every 30 s |
 | Signed-in account               | registry, `ActiveProcess\ActiveUser`               | `config/loginusers.vdf` in the Steam folder (`MostRecent`)  |
 | Steam folder (counter stat map) | registry, `SteamPath`                              | the known install paths, first one that exists              |
-| Notification                    | Electron (PowerShell toast on WSL)                 | Electron                                                    |
 | Opening links                   | Electron (`rundll32.exe` on WSL)                   | Electron                                                    |
 
 - `steam/local.ts` builds `ISteamLocal` (registry or files) once; services receive it and never ask which system they are on. `services/runningGame.ts` picks the registry when there is one and the Web API otherwise, reusing the last answer when a call fails so a network hiccup does not look like the game closing.
 - `steam/windows.ts` is the Windows side. On WSL it calls the same `.exe` files through interop (`reg.exe`, `rundll32.exe`, `powershell.exe`); WSL is recognised by the kernel name **and** `WSL_DISTRO_NAME`, so a container on a WSL host counts as plain Linux.
-- `system/notify.ts` and `system/browser.ts` hide the WSL detour (Electron notifications inside WSLg never show up, and links must open in the Windows browser).
+- `system/browser.ts` hides the WSL detour: links must open in the Windows browser.
+- **The app raises no system notification.** Steam already announces an unlocked achievement; the app says what was unlocked, and how many are left, in the notice at the top of the list. A notification of its own was removed as redundant (and it needed a PowerShell detour on WSL).
 - The Web API only reports the running game when the profile shows it; on macOS and Linux a profile that hides the game status simply never switches games on its own.
 - The data folder is `trophy-tracker` on every system (set in `main/index.ts`); `storage/migrateUserData.ts` moves the files of the old `steam-trophy-tracker` folder once.
 - A second launch focuses the open window (`requestSingleInstanceLock`).
@@ -115,7 +115,7 @@ src/main/              main process: the only part that talks to Steam and to th
   services/
     Tracker.ts             reads games and the dashboard: cache, deduplication, art
     SetupService.ts        setup state, language, and the checks that get the app set up
-    GameWatcher.ts         follows the running game and announces unlocked achievements
+    GameWatcher.ts         follows the running game and keeps its view fresh while it is played
     runningGame.ts         which game is running: registry, or the Web API where there is none
     UpdateChecker.ts       asks GitHub whether a newer version was released
     AppUpdates.ts          self-update where the system allows it, the notice elsewhere
@@ -126,7 +126,7 @@ src/main/              main process: the only part that talks to Steam and to th
                          (Steam folder on macOS and Linux), vdf.ts (binary cache reader)
   storage/               Store.ts (JSON persistence), secureCipher.ts and createCipher.ts (key encryption),
                          migrateUserData.ts (one-off move from the old data folder)
-  system/                browser.ts (links), notify.ts (notifications), errorLog.ts (local log),
+  system/                browser.ts (links), errorLog.ts (local log), dataFolder.ts, windowBounds.ts,
                          autoUpdate.ts (electron-updater, where the app can replace itself)
 
 src/preload/           exposes `window.api` (contextBridge), typed by `IApi`
@@ -217,7 +217,7 @@ Things that have already cost time:
 
 - One file per language in `src/shared/i18n/locales/`. `en.ts` is the reference: the `Messages` type comes from it, so a new key starts there and the compiler flags whatever is missing elsewhere. Messages are strings or functions (`left: (n) => ...`) for interpolation and plurals; there is no translation library.
 - New language: create the file and register it in `i18n/index.ts` with the name Steam uses (`steam`), the locale for dates and numbers (`locale`) and the store country.
-- The language changes **the whole app**: texts, error messages and the notification (the main process translates with `SetupService.messages`), achievement names and descriptions and game art (requested from Steam in that language), and the suffix of guide searches.
+- The language changes **the whole app**: texts and error messages (the main process translates with `SetupService.messages`), achievement names and descriptions and game art (requested from Steam in that language), and the suffix of guide searches.
 - No user-facing text is hard-coded: in the interface use `const t = useT()`; in the main process, take `Messages` as a parameter. `SteamError` carries only the kind of error; the text comes from `steamErrorMessage(m, e)`.
 - The language lives in `settings.json`. Changing it drops the translated cache (games, achievement lists, art); `cache.json` records which language it was read in and is dropped on startup if it does not match.
 - In Settings, changing the language saves and **reloads the window**. In the onboarding the change is immediate, with no reload, because there is no Steam data on screen yet.
@@ -300,7 +300,7 @@ Conventions:
 - Actions mutate the Immer draft directly (`prevState.games.entries[appid].loading = true`) and pass a name for the devtools: `set(fn, false, 'games/load')`.
 - Slices reach the main process through `@app/services`, never through `window.api`.
 - Controllers read state and actions together with `useStore(useShallow(state => ({ ... })))`. Default values inside the selector must be stable constants (e.g. `NONE_UNLOCKED`), otherwise the component re-renders every time.
-- **A preference the main process acts on** (the unlock notification, remembering the window) is an `IPreferences` field: add it to `shared/types/Preferences.ts` with its default, and `Store.getPreferences` / `setPreference` and `settings.setPreference` carry it with no further wiring. It gets a `Switch` row in Settings.
+- **A preference the main process acts on** (remembering the window) is an `IPreferences` field: add it to `shared/types/Preferences.ts` with its default, and `Store.getPreferences` / `setPreference` and `settings.setPreference` carry it with no further wiring. It gets a `Switch` row in Settings.
 - Do not use `persist`: what must survive closing the app is written by the main process (`main/storage/Store.ts`). The navigation slice keeps the tab and the picked game in `sessionStorage` only so they survive the window reload of a language change.
 - Where a piece of screen state lives depends on how long it should last:
   - only while the screen is mounted (search text, an open field) → `useState` in the controller;
@@ -364,7 +364,7 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 
 ## Local data
 
-`~/.config/trophy-tracker/` (`%APPDATA%\trophy-tracker` on Windows, `~/Library/Application Support/trophy-tracker` on macOS): `config.json` (SteamID and key, permission 600; encrypted only if there is a keyring), `cache.json`, `userdata.json` (notes, pins, checklists), `settings.json` (language, always on top, list orders, the unlock notification, the window's size and position). Never copy the key out of that folder or print it.
+`~/.config/trophy-tracker/` (`%APPDATA%\trophy-tracker` on Windows, `~/Library/Application Support/trophy-tracker` on macOS): `config.json` (SteamID and key, permission 600; encrypted only if there is a keyring), `cache.json`, `userdata.json` (notes, pins, checklists), `settings.json` (language, always on top, list orders, the window's size and position). Never copy the key out of that folder or print it.
 
 ## Tests
 

@@ -28,7 +28,6 @@ export function Settings() {
     handleErase,
     handleRedoSetup,
     handleToggleAlwaysOnTop,
-    handleNotifyUnlocksChange,
     handleRememberWindowChange,
     handleOpenDataFolder,
     handleCheckForUpdates,
@@ -109,13 +108,6 @@ export function Settings() {
             label={t.settings.rememberWindow}
             checked={preferences.rememberWindow}
             onChange={handleRememberWindowChange}
-          />
-        </DetailRow>
-        <DetailRow label={t.settings.notifyUnlocks}>
-          <Switch
-            label={t.settings.notifyUnlocks}
-            checked={preferences.notifyUnlocks}
-            onChange={handleNotifyUnlocksChange}
           />
         </DetailRow>
       </DetailGroup>

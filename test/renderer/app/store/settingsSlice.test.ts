@@ -23,8 +23,7 @@ describe('settings: loading', () => {
     const { settings } = await setup({
       getState: () => Promise.resolve(makeAppState()),
       getAlwaysOnTop: () => Promise.resolve(true),
-      getPreferences: () =>
-        Promise.resolve({ notifyUnlocks: false, rememberWindow: true }),
+      getPreferences: () => Promise.resolve({ rememberWindow: false }),
       getDataFolder: () =>
         Promise.resolve({ path: '/home/me/data', canOpen: true }),
     });
@@ -33,7 +32,7 @@ describe('settings: loading', () => {
 
     expect(settings().appState?.configured).toBe(true);
     expect(settings().alwaysOnTop).toBe(true);
-    expect(settings().preferences.notifyUnlocks).toBe(false);
+    expect(settings().preferences.rememberWindow).toBe(false);
     expect(settings().dataFolder?.path).toBe('/home/me/data');
   });
 
@@ -192,25 +191,22 @@ describe('settings: erasing the setup', () => {
 });
 
 describe('settings: preferences', () => {
-  it('notifies of unlocks and remembers the window until told otherwise', async () => {
+  it('remembers the window until told otherwise', async () => {
     const { settings } = await setup();
 
-    expect(settings().preferences).toEqual({
-      notifyUnlocks: true,
-      rememberWindow: true,
-    });
+    expect(settings().preferences).toEqual({ rememberWindow: true });
   });
 
   it('changes a preference at once and keeps what the main process saved', async () => {
     const setPreference = vi.fn(() =>
-      Promise.resolve({ notifyUnlocks: false, rememberWindow: true }),
+      Promise.resolve({ rememberWindow: false }),
     );
     const { settings } = await setup({ setPreference });
 
-    await settings().setPreference('notifyUnlocks', false);
+    await settings().setPreference('rememberWindow', false);
 
-    expect(settings().preferences.notifyUnlocks).toBe(false);
-    expect(setPreference).toHaveBeenCalledWith('notifyUnlocks', false);
+    expect(settings().preferences.rememberWindow).toBe(false);
+    expect(setPreference).toHaveBeenCalledWith('rememberWindow', false);
   });
 
   it('puts a preference back and tells the user when it cannot be saved', async () => {

@@ -80,17 +80,6 @@ export function buildGameView({
   };
 }
 
-/** Achievements that became unlocked between two reads of the same game. */
-export function newlyUnlocked(
-  previous: IGameView,
-  next: IGameView,
-): IAchievement[] {
-  const had = new Set(
-    previous.achievements.filter((a) => a.unlocked).map((a) => a.id),
-  );
-  return next.achievements.filter((a) => a.unlocked && !had.has(a.id));
-}
-
 /** `howTo` is the search suffix in the user's language (e.g. "how to get"). */
 export function guideUrl(
   site: GuideSite,

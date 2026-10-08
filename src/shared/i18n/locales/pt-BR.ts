@@ -37,12 +37,6 @@ export const ptBR: Messages = {
       'A Steam não deixou ler seus jogos. Deixe "Detalhes dos jogos" como Público nas configurações de privacidade.',
   },
 
-  toast: {
-    title: (game) => `Conquista desbloqueada — ${game}`,
-    body: (achievement, left) =>
-      `${achievement} · ${left === 0 ? 'todas as conquistas obtidas!' : `faltam ${left}`}`,
-  },
-
   guides: {
     query: 'como conseguir',
     steam: 'Guias',
@@ -213,7 +207,6 @@ export const ptBR: Messages = {
     alwaysOnTopHint:
       'Fica acima das outras janelas, como um jogo em modo janela.',
     rememberWindow: 'Lembrar o tamanho e a posição da janela',
-    notifyUnlocks: 'Avisar quando uma conquista for desbloqueada',
     privacy:
       'Tudo fica neste computador. O app só fala com a Steam e, para atualizações, com o GitHub.',
     dataFolder: 'Pasta de dados',

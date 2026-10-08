@@ -11,7 +11,6 @@ import {
   openInWindowsBrowser,
   parseRegValue,
   toLocalPath,
-  windowsToast,
 } from '@main/steam/windows';
 import { STEAM_ID } from '@test/helpers';
 
@@ -203,17 +202,5 @@ describe('reaching Windows from WSL', () => {
         ['url.dll,FileProtocolHandler', 'https://example.com/?a=1&b=2'],
       ],
     ]);
-  });
-
-  it('raises a notification with the title and the body, quotes and all', async () => {
-    const system = windows();
-
-    await windowsToast('Achievement unlocked', "It's Shaling Outside", system);
-
-    const [file, args] = system.commands[0];
-    const script = Buffer.from(args.at(-1) ?? '', 'base64').toString('utf16le');
-    expect(file).toBe('powershell.exe');
-    expect(script).toContain("CreateTextNode('Achievement unlocked')");
-    expect(script).toContain("CreateTextNode('It''s Shaling Outside')");
   });
 });

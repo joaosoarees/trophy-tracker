@@ -51,7 +51,6 @@ export default defineConfig({
         'src/main/ipc/**',
         'src/main/system/autoUpdate.ts',
         'src/main/system/browser.ts',
-        'src/main/system/notify.ts',
         'src/main/storage/createCipher.ts',
         'src/main/system/dataFolder.ts',
       ],

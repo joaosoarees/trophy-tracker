@@ -37,18 +37,6 @@ export const es: Messages = {
       'Steam no ha permitido leer tus juegos. Pon «Detalles de los juegos» en Público en tus ajustes de privacidad.',
   },
 
-  toast: {
-    title: (game) => `Logro desbloqueado — ${game}`,
-    body: (achievement, left) =>
-      `${achievement} · ${
-        left === 0
-          ? '¡todos los logros desbloqueados!'
-          : left === 1
-            ? 'falta 1'
-            : `faltan ${left}`
-      }`,
-  },
-
   guides: {
     query: 'cómo conseguir',
     steam: 'Guías',
@@ -220,7 +208,6 @@ export const es: Messages = {
     alwaysOnTopHint:
       'Queda por encima de otras ventanas, como un juego en modo ventana.',
     rememberWindow: 'Recordar el tamaño y la posición de la ventana',
-    notifyUnlocks: 'Avisar cuando se desbloquee un logro',
     privacy:
       'Todo se queda en este ordenador. La aplicación solo se comunica con Steam y, para las actualizaciones, con GitHub.',
     dataFolder: 'Carpeta de datos',

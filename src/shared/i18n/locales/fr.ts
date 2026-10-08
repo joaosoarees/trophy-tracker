@@ -37,18 +37,6 @@ export const fr: Messages = {
       'Steam n’a pas autorisé la lecture de vos jeux. Réglez « Détails des jeux » sur Public dans vos paramètres de confidentialité.',
   },
 
-  toast: {
-    title: (game) => `Succès déverrouillé — ${game}`,
-    body: (achievement, left) =>
-      `${achievement} · ${
-        left === 0
-          ? 'tous les succès sont déverrouillés !'
-          : left === 1
-            ? '1 restant'
-            : `${left} restants`
-      }`,
-  },
-
   guides: {
     query: 'comment obtenir',
     steam: 'Guides',
@@ -219,7 +207,6 @@ export const fr: Messages = {
     alwaysOnTopHint:
       'Reste au-dessus des autres fenêtres, comme un jeu en mode fenêtré.',
     rememberWindow: 'Mémoriser la taille et la position de la fenêtre',
-    notifyUnlocks: 'Prévenir quand un succès est déverrouillé',
     privacy:
       'Tout reste sur cet ordinateur. L’application ne communique qu’avec Steam et, pour les mises à jour, avec GitHub.',
     dataFolder: 'Dossier des données',

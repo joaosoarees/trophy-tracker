@@ -67,8 +67,6 @@ export function useSettingsController() {
     handleErase,
     handleRedoSetup: startReconfiguring,
     handleToggleAlwaysOnTop: () => void toggleAlwaysOnTop(),
-    handleNotifyUnlocksChange: (value: boolean) =>
-      void setPreference('notifyUnlocks', value),
     handleRememberWindowChange: (value: boolean) =>
       void setPreference('rememberWindow', value),
     handleOpenDataFolder: () => void openDataFolder(),

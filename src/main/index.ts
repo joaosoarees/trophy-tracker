@@ -23,7 +23,6 @@ import {
 } from './system/autoUpdate';
 import { createDataFolderAccess } from './system/dataFolder';
 import { logError } from './system/errorLog';
-import { notify } from './system/notify';
 import { restoreBounds } from './system/windowBounds';
 import { MainWindow, MINIMUM_SIZE } from './window';
 
@@ -94,11 +93,6 @@ void app.whenReady().then(() => {
     lastPlayedAppId: () => tracker.lastPlayedAppId(),
     pollGame: (appid) => setup.attempt(() => tracker.getGame(appid, 'poll')),
     isConfigured: () => setup.isConfigured,
-    messages: () => setup.messages,
-    // The user's choice is read each time, so it takes effect at once.
-    notify: (title, body) => {
-      if (store.getPreferences().notifyUnlocks) notify(title, body);
-    },
     onCurrentChanged: (current) => window.send(IpcEvent.gameChanged, current),
     onGameUpdated: (view) => window.send(IpcEvent.gameUpdated, view),
   });

@@ -35,12 +35,6 @@ export const en = {
       'Steam did not allow reading your games. Set “Game details” to Public in your privacy settings.',
   },
 
-  toast: {
-    title: (game: string) => `Achievement unlocked — ${game}`,
-    body: (achievement: string, left: number) =>
-      `${achievement} · ${left === 0 ? 'all achievements unlocked!' : `${left} left`}`,
-  },
-
   guides: {
     query: 'how to get',
     steam: 'Guides',
@@ -213,7 +207,6 @@ export const en = {
     alwaysOnTopHint:
       'Stays above other windows, such as a game in windowed mode.',
     rememberWindow: 'Remember the window size and position',
-    notifyUnlocks: 'Notify when an achievement is unlocked',
     privacy:
       'Everything stays on this computer. The app only talks to Steam and, for updates, to GitHub.',
     dataFolder: 'Data folder',
