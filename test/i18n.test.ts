@@ -25,6 +25,7 @@ describe('i18n', () => {
     expect(DEFAULT_LANGUAGE).toBe('en');
     expect(messagesFor('en').nav.dashboard).toBe('Dashboard');
     expect(messagesFor('pt-BR').nav.dashboard).toBe('Painel');
+    expect(messagesFor('es').nav.dashboard).toBe('Panel');
   });
 
   it('recognises only registered languages', () => {
@@ -54,5 +55,6 @@ describe('i18n', () => {
   it('each language reports the name Steam uses for it', () => {
     expect(LANGUAGES.en.steam).toBe('english');
     expect(LANGUAGES['pt-BR'].steam).toBe('brazilian');
+    expect(LANGUAGES.es.steam).toBe('spanish');
   });
 });

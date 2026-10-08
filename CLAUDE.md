@@ -2,7 +2,7 @@
 
 Desktop app (Electron + React + TypeScript) that shows, for the game open on Steam, which achievements are missing, what the hidden ones are, progress counters, user checklists and shortcuts to guides. It runs natively on Windows, macOS and Linux, and is developed on WSL.
 
-**Language rules:** everything in the repository is written in English: code, comments, test names, docs and commit messages. The interface ships in two languages, **English (default) and Brazilian Portuguese**; Portuguese text belongs only in `src/shared/i18n/locales/pt-BR.ts` and in test data that checks that locale. The user talks to you in Portuguese; answer in Portuguese.
+**Language rules:** everything in the repository is written in English: code, comments, test names, docs and commit messages. The interface ships in three languages, **English (default), Brazilian Portuguese and Spanish**; text in another language belongs only in its file under `src/shared/i18n/locales/` (`pt-BR.ts`, `es.ts`) and in test data that checks that locale. The user talks to you in Portuguese; answer in Portuguese.
 
 ## Commands
 

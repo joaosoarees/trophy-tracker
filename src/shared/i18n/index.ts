@@ -1,4 +1,5 @@
 import { en, type Messages } from './locales/en';
+import { es } from './locales/es';
 import { ptBR } from './locales/pt-BR';
 
 export type { Messages };
@@ -21,6 +22,13 @@ export const LANGUAGES = {
     steam: 'brazilian',
     locale: 'pt-BR',
     country: 'BR',
+  },
+  es: {
+    label: 'Español',
+    messages: es,
+    steam: 'spanish',
+    locale: 'es-ES',
+    country: 'ES',
   },
 } as const satisfies Record<
   string,

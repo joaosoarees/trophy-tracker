@@ -1,6 +1,6 @@
 # Trophy Tracker
 
-Desktop app (Electron + React) that shows, for the game open on Steam, which achievements are missing, what the hidden ones are, progress counters, your own checklists and shortcuts to guides. Available in English and Brazilian Portuguese, for Windows, macOS and Linux.
+Desktop app (Electron + React) that shows, for the game open on Steam, which achievements are missing, what the hidden ones are, progress counters, your own checklists and shortcuts to guides. Available in English, Brazilian Portuguese and Spanish, for Windows, macOS and Linux.
 
 Not affiliated with Valve or Steam.
 
