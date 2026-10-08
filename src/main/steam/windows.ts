@@ -1,12 +1,9 @@
 import { execFile } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
 import { release } from 'node:os';
-import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-import { achievementStatMap, parseBinaryVdf } from './vdf';
-
-// The Steam client runs on Windows; from WSL we reach it through the .exe files via interop.
+// The Windows side of the Steam client: its registry, the browser and the notification area.
+// Works natively on Windows and, from WSL, by calling the same .exe files through interop.
 
 export const isWsl =
   process.platform === 'linux' && /microsoft/i.test(release());
@@ -68,21 +65,10 @@ export function toLocalPath(windowsPath: string, wsl = isWsl): string {
     : windowsPath;
 }
 
-/** Reads from the Steam client cache which stat feeds each achievement's counter. */
-export async function readStatMap(appid: number): Promise<Map<string, string>> {
+/** Folder of the Steam client, as a path this process can read. */
+export async function getSteamPath(): Promise<string | null> {
   const steamPath = await regValue(STEAM_KEY, 'SteamPath');
-  if (typeof steamPath !== 'string') return new Map();
-  try {
-    const file = join(
-      toLocalPath(steamPath),
-      'appcache',
-      'stats',
-      `UserGameStatsSchema_${appid}.bin`,
-    );
-    return achievementStatMap(parseBinaryVdf(await readFile(file)));
-  } catch {
-    return new Map();
-  }
+  return typeof steamPath === 'string' ? toLocalPath(steamPath) : null;
 }
 
 export async function openInWindowsBrowser(url: string): Promise<void> {

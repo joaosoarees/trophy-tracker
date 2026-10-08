@@ -6,13 +6,15 @@ import { IpcEvent } from '@shared/ipcEvents';
 
 import { registerIpc } from './ipc/registerIpc';
 import { GameWatcher } from './services/GameWatcher';
+import { createRunningGameSource } from './services/runningGame';
 import { SetupService } from './services/SetupService';
 import { Tracker } from './services/Tracker';
 import { SteamClient } from './steam/client';
-import { getRunningAppId, readStatMap, windowsToast } from './steam/windows';
+import { createSteamLocal } from './steam/local';
 import { createCipher } from './storage/createCipher';
 import { migrateUserData } from './storage/migrateUserData';
 import { Store } from './storage/Store';
+import { notify } from './system/notify';
 import { MainWindow } from './window';
 
 // One data folder name on every system, whatever the product is called on screen.
@@ -31,21 +33,26 @@ void app.whenReady().then(() => {
   const store = new Store(app.getPath('userData'), createCipher());
   const client = new SteamClient();
   const setup = new SetupService(store, client);
-  const tracker = new Tracker({ store, client, readStatMap });
+  const local = createSteamLocal();
+  const tracker = new Tracker({
+    store,
+    client,
+    readStatMap: local.readStatMap,
+  });
   const window = new MainWindow();
 
   const watcher = new GameWatcher({
-    getRunningAppId,
+    getRunningAppId: createRunningGameSource({ local, client, store }),
     lastPlayedAppId: () => tracker.lastPlayedAppId(),
     pollGame: (appid) => setup.attempt(() => tracker.getGame(appid, 'poll')),
     isConfigured: () => setup.isConfigured,
     messages: () => setup.messages,
-    notify: (title, body) => void windowsToast(title, body).catch(() => {}),
+    notify,
     onCurrentChanged: (current) => window.send(IpcEvent.gameChanged, current),
     onGameUpdated: (view) => window.send(IpcEvent.gameUpdated, view),
   });
 
-  registerIpc({ setup, tracker, watcher, store, window });
+  registerIpc({ setup, tracker, watcher, store, window, local });
   window.open({
     title: setup.messages.appTitle,
     alwaysOnTop: store.getAlwaysOnTop(),

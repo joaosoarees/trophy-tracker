@@ -7,7 +7,7 @@ import { type GameWatcher } from '../services/GameWatcher';
 import { type SetupService } from '../services/SetupService';
 import { type Tracker } from '../services/Tracker';
 import { guideUrl } from '../steam/achievements';
-import { getActiveSteamId } from '../steam/windows';
+import { type ISteamLocal } from '../steam/local';
 import { type Store } from '../storage/Store';
 import { openExternalPage, openUrl } from '../system/browser';
 import { type MainWindow } from '../window';
@@ -30,6 +30,7 @@ interface IIpcDeps {
   watcher: GameWatcher;
   store: Store;
   window: MainWindow;
+  local: ISteamLocal;
 }
 
 /** Answers everything the interface can ask (`IApi`). Handlers only route: the work lives in the services. */
@@ -39,10 +40,11 @@ export function registerIpc({
   watcher,
   store,
   window,
+  local,
 }: IIpcDeps): void {
   const handlers: IpcHandlers = {
     getState: () => setup.getState(),
-    detectSteamId: () => getActiveSteamId(),
+    detectSteamId: () => local.getActiveSteamId(),
     checkApiKey: (steamId, apiKey) => setup.checkApiKey(steamId, apiKey),
     checkPrivacy: (steamId, apiKey) => setup.checkPrivacy(steamId, apiKey),
     saveConfig: async (steamId, apiKey) => {

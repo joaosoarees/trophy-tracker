@@ -75,6 +75,8 @@ export interface IRawOwnedGame {
 }
 
 export interface IRawPlayerSummary {
+  /** AppID of the game being played right now; absent when not in a game. */
+  gameid?: string;
   steamid: string;
   personaname: string;
   avatarfull: string;
