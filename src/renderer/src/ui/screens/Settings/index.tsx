@@ -19,6 +19,7 @@ export function Settings() {
     handleErase,
     handleRedoSetup,
     handleDownload,
+    handleInstallUpdate,
   } = useSettingsController();
 
   return (
@@ -28,7 +29,9 @@ export function Settings() {
       {appInfo?.newVersion && (
         <UpdateNotice
           version={appInfo.newVersion}
+          status={appInfo.updateStatus}
           onDownload={handleDownload}
+          onInstall={handleInstallUpdate}
         />
       )}
 

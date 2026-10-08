@@ -62,9 +62,13 @@ The same code runs on Windows, macOS, Linux and, for development, WSL. What diff
 - **Not signed with a paid certificate.** Windows shows the SmartScreen warning; macOS uses an ad-hoc signature (`identity: '-'`, without it an Apple Silicon Mac refuses to start the app) and the user has to allow the app in System Settings. Revisit if the app is published for real.
 - **`deb.depends` is written out** because the default list misses libraries a minimal system lacks (`libgbm1`); it was found by installing the package in a clean container, which `pnpm test:package` repeats (`scripts/package-test/`).
 - **Docker builds and tests, it does not run the app for the user:** `scripts/docker-dist.sh` builds the Linux and Windows installers in a container (the image brings Wine), and the package test installs the deb under a virtual display. macOS installers can only be built on macOS.
-- **GitHub Actions:** `ci.yml` checks formatting, lint, types, tests and the build on every push; `release.yml` runs on a `v*.*.*` tag (which must match `version` in `package.json`), builds the installers on the three systems and gathers them in a **draft** release. The release is published by hand.
-- **Update notice:** `services/UpdateChecker.ts` asks GitHub for the latest published release at most every six hours; `shared/version.ts` compares versions. The Settings screen shows the notice and the gear icon gets a dot. The app only opens the download page: it never downloads or installs anything. Any failure (offline, no release, private repository) means "nothing new".
-- To release: bump `version` in `package.json`, commit, tag `vX.Y.Z`, push the tag, then publish the draft on GitHub.
+- **GitHub Actions:** `ci.yml` checks formatting, lint, types, tests and the build on every push; `release.yml` runs on a `v*.*.*` tag (which must match `version` in `package.json`), builds the installers on the three systems and, when all three succeed, **publishes** the release with the installers and the update metadata (`latest*.yml`, block maps).
+- **New versions reach the user in two ways**, decided by `system/autoUpdate.ts`:
+  - **Windows and the Linux AppImage update themselves** (`electron-updater`): the new version downloads in the background and Settings offers "Restart to update". Nothing restarts or installs on its own (`autoInstallOnAppQuit` is off).
+  - **macOS and a .deb install only get a notice** with a button to the download page: macOS accepts updates only from apps signed with an Apple certificate, and a .deb needs the administrator password. `services/UpdateChecker.ts` asks GitHub for the latest release at most every six hours.
+  - `services/AppUpdates.ts` joins the two and falls back to the notice whenever the automatic path fails. In both cases the gear icon gets a dot. A failure to check (offline, no release) means "nothing new".
+- **What protects the update:** the installers are not signed, so the only guarantee is the hash in `latest*.yml`, published in the same release. Whoever can publish a release controls what users install; that is why the `v*` tags are protected on GitHub (only the owner creates, moves or deletes them) and `main` refuses force-pushes.
+- To release: bump `version` in `package.json`, commit, push, then tag `vX.Y.Z` and push the tag. An app can only update itself to a version newer than the one that introduced the updater (0.2.0).
 
 ## Production behaviour
 
@@ -99,6 +103,7 @@ src/main/              main process: the only part that talks to Steam and to th
     GameWatcher.ts         follows the running game and announces unlocked achievements
     runningGame.ts         which game is running: registry, or the Web API where there is none
     UpdateChecker.ts       asks GitHub whether a newer version was released
+    AppUpdates.ts          self-update where the system allows it, the notice elsewhere
     onboardingChecks.ts    key + SteamID and privacy checks against Steam
   steam/                 client.ts (Web API), achievements.ts (buildGameView, guideUrl),
                          local.ts (ISteamLocal: what the installed Steam client tells),
@@ -106,7 +111,8 @@ src/main/              main process: the only part that talks to Steam and to th
                          (Steam folder on macOS and Linux), vdf.ts (binary cache reader)
   storage/               Store.ts (JSON persistence), createCipher.ts (key encryption),
                          migrateUserData.ts (one-off move from the old data folder)
-  system/                browser.ts (links), notify.ts (notifications), errorLog.ts (local log)
+  system/                browser.ts (links), notify.ts (notifications), errorLog.ts (local log),
+                         autoUpdate.ts (electron-updater, where the app can replace itself)
 
 src/preload/           exposes `window.api` (contextBridge), typed by `IApi`
 
@@ -246,7 +252,7 @@ The screen never waits for something it can already show, and never keeps showin
 - **Dashboard:** loads on startup, on ↻ (`all`) and when a game closes (`changed`: only games whose playtime changed).
 - **Identical simultaneous requests** share one read (`Tracker.once`).
 - The periodic checks live in `GameWatcher` (running game every 10 s, unlocks every 60 s). Where the running game comes from the Web API, that check reaches Steam at most every 30 s.
-- **Update check:** one request to GitHub on startup and then at most every six hours.
+- **Update check:** one check on startup and then at most every six hours; a version already downloaded is not looked for again.
 - **Art and names** are cached on disk; a store failure never takes the screen down.
 
 When touching this, measure before and after: count HTTP and IPC calls on startup, while idle and when switching tabs.

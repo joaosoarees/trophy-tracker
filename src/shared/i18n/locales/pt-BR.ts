@@ -174,6 +174,11 @@ export const ptBR: Messages = {
     updateAvailable: (version) => `A versão ${version} está disponível`,
     updateHint: 'Baixe e instale por cima desta; seus dados são mantidos.',
     download: 'Baixar',
+    updateDownloading: (version) => `Baixando a versão ${version}…`,
+    updateReady: (version) => `A versão ${version} está pronta para instalar`,
+    updateReadyHint:
+      'O app reinicia para concluir a atualização; seus dados são mantidos.',
+    restart: 'Reiniciar para atualizar',
   },
 
   onboarding: {

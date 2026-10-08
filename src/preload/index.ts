@@ -37,6 +37,7 @@ const calls = [
   'openGuide',
   'openExternal',
   'getAppInfo',
+  'installUpdate',
   'logError',
 ] as const;
 
@@ -45,6 +46,7 @@ const api = {
   onGameChanged: listen(IpcEvent.gameChanged),
   onGameUpdated: listen(IpcEvent.gameUpdated),
   onDashboardProgress: listen(IpcEvent.dashboardProgress),
+  onAppInfoChanged: listen(IpcEvent.appInfoChanged),
 } as unknown as IApi;
 
 contextBridge.exposeInMainWorld('api', api);

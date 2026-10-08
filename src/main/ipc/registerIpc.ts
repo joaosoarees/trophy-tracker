@@ -3,10 +3,10 @@ import { ipcMain } from 'electron';
 import { IpcEvent } from '@shared/ipcEvents';
 import { type IApi } from '@shared/types/Api';
 
+import { type AppUpdates } from '../services/AppUpdates';
 import { type GameWatcher } from '../services/GameWatcher';
 import { type SetupService } from '../services/SetupService';
 import { type Tracker } from '../services/Tracker';
-import { type UpdateChecker } from '../services/UpdateChecker';
 import { guideUrl } from '../steam/achievements';
 import { type ISteamLocal } from '../steam/local';
 import { type Store } from '../storage/Store';
@@ -15,7 +15,7 @@ import { type MainWindow } from '../window';
 
 type Invokable = Omit<
   IApi,
-  'onGameChanged' | 'onGameUpdated' | 'onDashboardProgress'
+  'onGameChanged' | 'onGameUpdated' | 'onDashboardProgress' | 'onAppInfoChanged'
 >;
 
 /** A handler may answer right away; Electron wraps the value in a promise for the interface. */
@@ -32,7 +32,7 @@ interface IIpcDeps {
   store: Store;
   window: MainWindow;
   local: ISteamLocal;
-  updates: UpdateChecker;
+  updates: AppUpdates;
   logError: (source: string, detail: string) => void;
 }
 
@@ -112,6 +112,7 @@ export function registerIpc({
       ),
     openExternal: (page) => openExternalPage(page),
     getAppInfo: () => updates.getAppInfo(),
+    installUpdate: () => updates.install(),
     logError: (source, detail) => logError(`interface: ${source}`, detail),
   };
 

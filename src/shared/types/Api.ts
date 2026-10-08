@@ -58,11 +58,14 @@ export interface IApi {
   openExternal: (target: ExternalPage) => Promise<void>;
   /** The running version and, when a later one was released, which. */
   getAppInfo: () => Promise<IAppInfo>;
+  /** Restarts the app to install a version that finished downloading. */
+  installUpdate: () => Promise<void>;
   /** Records an interface error in the local log file. */
   logError: (source: string, detail: string) => Promise<void>;
 
   onGameChanged: (cb: (current: CurrentGame) => void) => () => void;
   onGameUpdated: (cb: (view: IGameView) => void) => () => void;
+  onAppInfoChanged: (cb: (info: IAppInfo) => void) => () => void;
   onDashboardProgress: (
     cb: (done: number, total: number) => void,
   ) => () => void;

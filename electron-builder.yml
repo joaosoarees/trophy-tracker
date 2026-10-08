@@ -48,11 +48,13 @@ linux:
     - deb
   artifactName: Trophy-Tracker-${version}-${arch}.${ext}
 
+# Where the installed app looks for new versions. electron-builder writes this
+# into the package and produces the latest*.yml files the updater reads; the
+# upload itself is done by the release workflow.
 publish:
   provider: github
   owner: joaosoarees
   repo: trophy-tracker
-  releaseType: draft
 
 deb:
   # electron-builder's default list plus what a minimal system lacks (found by

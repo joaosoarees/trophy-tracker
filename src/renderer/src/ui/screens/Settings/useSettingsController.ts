@@ -14,6 +14,7 @@ export function useSettingsController() {
     changeLanguage,
     eraseCredentials,
     startReconfiguring,
+    flushUserData,
   } = useStore(
     useShallow((state) => ({
       profile: state.settings.appState?.profile ?? null,
@@ -22,6 +23,7 @@ export function useSettingsController() {
       changeLanguage: state.settings.changeLanguage,
       eraseCredentials: state.settings.eraseCredentials,
       startReconfiguring: state.navigation.startReconfiguring,
+      flushUserData: state.userData.flush,
     })),
   );
 
@@ -34,6 +36,12 @@ export function useSettingsController() {
     void eraseCredentials();
   }
 
+  function handleInstallUpdate() {
+    // Notes still waiting to be written must not be lost to the restart.
+    flushUserData();
+    void SystemService.installUpdate();
+  }
+
   return {
     profile,
     language,
@@ -43,6 +51,7 @@ export function useSettingsController() {
     handleChangeLanguage,
     handleErase,
     handleRedoSetup: startReconfiguring,
+    handleInstallUpdate,
     handleDownload: () => void SystemService.openExternal('download'),
   };
 }

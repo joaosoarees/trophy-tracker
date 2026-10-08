@@ -35,6 +35,8 @@ type SettingsActions = {
   load: () => Promise<void>;
   /** Asks for the version in the background; a failure just leaves it unknown. */
   loadAppInfo: () => Promise<void>;
+  /** Takes what the main process announces while an update downloads. */
+  setAppInfo: (appInfo: IAppInfo) => void;
   /** Takes a fresh state from the main process and syncs the interface language with it. */
   apply: (appState: IAppState) => void;
   toggleAlwaysOnTop: () => Promise<void>;
@@ -81,18 +83,20 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
 
   loadAppInfo: async () => {
     try {
-      const appInfo = await SystemService.getAppInfo();
-      set(
-        (prevState) => {
-          prevState.settings.appInfo = appInfo;
-        },
-        false,
-        'settings/loadAppInfo',
-      );
+      get().settings.setAppInfo(await SystemService.getAppInfo());
     } catch {
       // Not knowing the version changes nothing else in the app.
     }
   },
+
+  setAppInfo: (appInfo) =>
+    set(
+      (prevState) => {
+        prevState.settings.appInfo = appInfo;
+      },
+      false,
+      'settings/setAppInfo',
+    ),
 
   apply: (appState) =>
     set(

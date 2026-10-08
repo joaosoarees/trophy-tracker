@@ -13,8 +13,9 @@ interface IUpdateCheckerDeps {
 
 /**
  * Asks GitHub for the latest published release, at most once every few hours.
- * It only tells the user; downloading and installing stay with them. Any
- * failure (offline, no release yet, rate limit) means "nothing new".
+ * It only tells the user; downloading and installing stay with them (see
+ * `AppUpdates` for the systems where the app updates itself). Any failure
+ * (offline, no release yet, rate limit) means "nothing new".
  */
 export class UpdateChecker {
   private readonly currentVersion: string;
@@ -44,7 +45,11 @@ export class UpdateChecker {
       this.running ??= this.check().finally(() => (this.running = null));
       await this.running;
     }
-    return { version: this.currentVersion, newVersion: this.newVersion };
+    return {
+      version: this.currentVersion,
+      newVersion: this.newVersion,
+      updateStatus: 'manual',
+    };
   }
 
   private async check(): Promise<void> {

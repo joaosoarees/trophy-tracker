@@ -20,7 +20,7 @@ The installers are not signed with a paid certificate yet, so the system warns o
 - **macOS:** after the first attempt to open the app, go to System Settings → Privacy & Security and choose "Open Anyway".
 - **Linux:** `sudo apt install ./Trophy-Tracker-<version>-amd64.deb`, or make the AppImage executable (`chmod +x`) and run it.
 
-On first run the app asks for a language, your SteamID and a Web API key (https://steamcommunity.com/dev/apikey), and checks your profile privacy. When a newer version is released, the Settings screen says so and links to the download.
+On first run the app asks for a language, your SteamID and a Web API key (https://steamcommunity.com/dev/apikey), and checks your profile privacy. When a newer version is released, the app on Windows and the Linux AppImage download it and offer to restart; on macOS and with the `.deb`, the Settings screen says so and links to the download.
 
 Your data stays on your computer, in `%APPDATA%\trophy-tracker` (Windows), `~/Library/Application Support/trophy-tracker` (macOS) or `~/.config/trophy-tracker` (Linux).
 
@@ -48,4 +48,4 @@ pnpm dist:docker   # Linux and Windows installers, built inside a container
 pnpm test:package  # installs the .deb in a clean container and checks that the app starts
 ```
 
-macOS installers can only be built on macOS. Pushing a `v<version>` tag makes GitHub Actions build the installers for the three systems and gather them in a draft release, which is then published by hand.
+macOS installers can only be built on macOS. Pushing a `v<version>` tag makes GitHub Actions build the installers for the three systems and publish them as a release.

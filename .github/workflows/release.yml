@@ -1,8 +1,8 @@
 name: Release
 
-# Pushing a tag such as v1.2.0 builds the installers for the three systems and
-# gathers them in a draft release. The release only reaches users (and the
-# in-app notice) once it is published by hand on GitHub.
+# Pushing a tag such as v1.2.0 builds the installers for the three systems
+# and, when all three succeed, publishes them as a release. Installed apps
+# find it from there: they update themselves or show the download notice.
 # Running it by hand builds the installers without creating a release.
 on:
   push:
@@ -53,11 +53,15 @@ jobs:
         with:
           name: installers-${{ runner.os }}
           if-no-files-found: error
+          # The latest*.yml files and the block maps are what the installed
+          # app reads to update itself.
           path: |
             dist/*.exe
             dist/*.dmg
             dist/*.AppImage
             dist/*.deb
+            dist/latest*.yml
+            dist/*.blockmap
 
   release:
     if: github.ref_type == 'tag'
@@ -70,12 +74,11 @@ jobs:
         with:
           path: installers
           merge-multiple: true
-      - name: Create the draft release
+      - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release create "$GITHUB_REF_NAME" installers/*
           --repo "$GITHUB_REPOSITORY"
-          --draft
           --title "Trophy Tracker ${GITHUB_REF_NAME#v}"
           --generate-notes

@@ -23,6 +23,14 @@ export class SystemService extends Service {
     return this.api.getAppInfo();
   }
 
+  static installUpdate(): Promise<void> {
+    return this.api.installUpdate();
+  }
+
+  static onAppInfoChanged(cb: (info: IAppInfo) => void): () => void {
+    return this.api.onAppInfoChanged(cb);
+  }
+
   static openExternal(target: ExternalPage): Promise<void> {
     return this.api.openExternal(target);
   }

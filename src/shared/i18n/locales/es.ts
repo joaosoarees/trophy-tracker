@@ -181,6 +181,12 @@ export const es: Messages = {
     updateAvailable: (version) => `La versión ${version} está disponible`,
     updateHint: 'Descárgala e instálala sobre esta; tus datos se conservan.',
     download: 'Descargar',
+    updateDownloading: (version) => `Descargando la versión ${version}…`,
+    updateReady: (version) =>
+      `La versión ${version} está lista para instalarse`,
+    updateReadyHint:
+      'La aplicación se reinicia para completar la actualización; tus datos se conservan.',
+    restart: 'Reiniciar para actualizar',
   },
 
   onboarding: {

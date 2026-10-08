@@ -5,6 +5,7 @@ import { app } from 'electron';
 import { IpcEvent } from '@shared/ipcEvents';
 
 import { registerIpc } from './ipc/registerIpc';
+import { AppUpdates } from './services/AppUpdates';
 import { GameWatcher } from './services/GameWatcher';
 import { RELEASES_REPOSITORY } from './services/releases';
 import { createRunningGameSource } from './services/runningGame';
@@ -16,6 +17,7 @@ import { createSteamLocal } from './steam/local';
 import { createCipher } from './storage/createCipher';
 import { migrateUserData } from './storage/migrateUserData';
 import { Store } from './storage/Store';
+import { createAutoUpdater } from './system/autoUpdate';
 import { logError } from './system/errorLog';
 import { notify } from './system/notify';
 import { MainWindow } from './window';
@@ -61,9 +63,15 @@ void app.whenReady().then(() => {
     readStatMap: local.readStatMap,
   });
   const window = new MainWindow();
-  const updates = new UpdateChecker({
+  const updates = new AppUpdates({
     currentVersion: app.getVersion(),
-    repository: RELEASES_REPOSITORY,
+    auto: createAutoUpdater(),
+    checker: new UpdateChecker({
+      currentVersion: app.getVersion(),
+      repository: RELEASES_REPOSITORY,
+    }),
+    onChange: (info) => window.send(IpcEvent.appInfoChanged, info),
+    logError: log,
   });
 
   const watcher = new GameWatcher({

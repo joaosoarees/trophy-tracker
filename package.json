@@ -2,7 +2,7 @@
   "name": "trophy-tracker",
   "productName": "Trophy Tracker",
   "desktopName": "trophy-tracker.desktop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Tracks your Steam achievements: what is missing, the hidden ones, counters, checklists and guides. Not affiliated with Valve.",
   "author": {
@@ -46,6 +46,7 @@
     "clsx": "^2.1.1",
     "electron": "^44.6.0",
     "electron-builder": "^26.15.3",
+    "electron-updater": "^6.8.9",
     "electron-vite": "^5.0.0",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",

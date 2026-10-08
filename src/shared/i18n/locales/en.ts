@@ -174,6 +174,11 @@ export const en = {
     updateAvailable: (version: string) => `Version ${version} is available`,
     updateHint: 'Download it and install over this one; your data is kept.',
     download: 'Download',
+    updateDownloading: (version: string) => `Downloading version ${version}…`,
+    updateReady: (version: string) => `Version ${version} is ready to install`,
+    updateReadyHint:
+      'The app restarts to finish the update; your data is kept.',
+    restart: 'Restart to update',
   },
 
   onboarding: {
