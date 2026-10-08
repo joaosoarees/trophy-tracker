@@ -154,6 +154,8 @@ async function audit(page, name) {
   }
 }
 
+const detailsToggle = `document.querySelector('header [aria-expanded]')?.click()`;
+
 const navButton = (index) =>
   `[...document.querySelectorAll('nav button')].at(${index}).click()`;
 
@@ -214,12 +216,23 @@ async function auditApp() {
       await page.evaluate(navButton(0));
       await sleep(900);
       await audit(page, `game-${language}`);
+      // The details open from the header; they close again for the next pass.
+      await page.evaluate(detailsToggle);
+      await sleep(500);
+      await audit(page, `game-details-${language}`);
+      await page.evaluate(detailsToggle);
       await page.evaluate(navButton(1));
       await sleep(1200);
       await audit(page, `dashboard-${language}`);
       await page.evaluate(navButton(-1));
       await sleep(800);
       await audit(page, `settings-${language}`);
+      // Settings is taller than the window: capture its end as well.
+      await page.evaluate(
+        `document.querySelector('main > div:last-child > section').scrollTo(0, 99999)`,
+      );
+      await sleep(300);
+      await audit(page, `settings-end-${language}`);
     }
   } finally {
     await page.close();
