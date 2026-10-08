@@ -5,23 +5,32 @@ import { BrowserWindow } from 'electron';
 import { type IpcEvent } from '@shared/ipcEvents';
 
 import { openUrl } from './system/browser';
+import { type IBounds } from './system/windowBounds';
 
 interface IMainWindowOptions {
   title: string;
   alwaysOnTop: boolean;
+  /** Size and position to open with; `null` for the defaults. */
+  bounds: IBounds | null;
+  /** Called with where the window was when it is closed. */
+  onClose: (bounds: IBounds) => void;
 }
+
+/** The narrowest and shortest the layout supports. */
+export const MINIMUM_SIZE = { width: 480, height: 520 };
 
 /** The app's single window. Safe to use before it opens and after it closes. */
 export class MainWindow {
   private win: BrowserWindow | null = null;
 
-  open({ title, alwaysOnTop }: IMainWindowOptions): void {
+  open({ title, alwaysOnTop, bounds, onClose }: IMainWindowOptions): void {
     const win = new BrowserWindow({
       // Wide enough for the toolbars in the longest language (see CLAUDE.md).
       width: 600,
       height: 860,
-      minWidth: 480,
-      minHeight: 520,
+      ...bounds,
+      minWidth: MINIMUM_SIZE.width,
+      minHeight: MINIMUM_SIZE.height,
       backgroundColor: '#171a21',
       // Linux takes the window icon from here; Windows and macOS from the package.
       icon: join(__dirname, '../../build/icon.png'),
@@ -35,6 +44,8 @@ export class MainWindow {
     this.win = win;
 
     win.setAlwaysOnTop(alwaysOnTop);
+    // The size it had before being maximised or minimised, if it was.
+    win.on('close', () => onClose(win.getNormalBounds()));
     win.on('closed', () => (this.win = null));
     win.webContents.setWindowOpenHandler(({ url }) => {
       void openUrl(url);

@@ -11,6 +11,7 @@ import { guideUrl } from '../steam/achievements';
 import { type ISteamLocal } from '../steam/local';
 import { type Store } from '../storage/Store';
 import { openExternalPage, openUrl } from '../system/browser';
+import { type IDataFolderAccess } from '../system/dataFolder';
 import { type MainWindow } from '../window';
 
 type Invokable = Omit<
@@ -33,6 +34,7 @@ interface IIpcDeps {
   window: MainWindow;
   local: ISteamLocal;
   updates: AppUpdates;
+  dataFolder: IDataFolderAccess;
   logError: (source: string, detail: string) => void;
 }
 
@@ -45,6 +47,7 @@ export function registerIpc({
   window,
   local,
   updates,
+  dataFolder,
   logError,
 }: IIpcDeps): void {
   const handlers: IpcHandlers = {
@@ -105,6 +108,12 @@ export function registerIpc({
       window.setAlwaysOnTop(value);
       return value;
     },
+
+    getPreferences: () => store.getPreferences(),
+    setPreference: (key, value) => store.setPreference(key, value),
+
+    getDataFolder: () => dataFolder.describe(),
+    openDataFolder: () => dataFolder.open(),
 
     openGuide: (site, appid, game, achievement) =>
       openUrl(

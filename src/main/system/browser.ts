@@ -10,6 +10,9 @@ const EXTERNAL_PAGES: Record<ExternalPage, string> = {
   privacy: 'https://steamcommunity.com/my/edit/settings',
   account: 'https://store.steampowered.com/account/',
   download: `https://github.com/${RELEASES_REPOSITORY}/releases/latest`,
+  source: `https://github.com/${RELEASES_REPOSITORY}`,
+  issues: `https://github.com/${RELEASES_REPOSITORY}/issues`,
+  license: `https://github.com/${RELEASES_REPOSITORY}/blob/main/LICENSE`,
   smartAppControl:
     'https://support.microsoft.com/windows/security/threat-malware-protection/smart-app-control-frequently-asked-questions',
 };

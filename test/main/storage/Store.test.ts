@@ -192,4 +192,38 @@ describe('Store', () => {
 
     expect(new Store(dir).getAlwaysOnTop()).toBe(true);
   });
+
+  it('notifies of unlocks and remembers the window unless told otherwise', () => {
+    expect(new Store(tempDir()).getPreferences()).toEqual({
+      notifyUnlocks: true,
+      rememberWindow: true,
+    });
+  });
+
+  it('remembers a preference the user changed', () => {
+    const dir = tempDir();
+
+    new Store(dir).setPreference('notifyUnlocks', false);
+
+    expect(new Store(dir).getPreferences().notifyUnlocks).toBe(false);
+  });
+
+  it('remembers where the window was closed', () => {
+    const dir = tempDir();
+    const bounds = { x: 2000, y: 100, width: 640, height: 900 };
+
+    new Store(dir).setWindowBounds(bounds);
+
+    expect(new Store(dir).getWindowBounds()).toEqual(bounds);
+  });
+
+  it('forgets where the window was when asked not to remember it', () => {
+    const dir = tempDir();
+    const store = new Store(dir);
+    store.setWindowBounds({ x: 2000, y: 100, width: 640, height: 900 });
+
+    store.setPreference('rememberWindow', false);
+
+    expect(new Store(dir).getWindowBounds()).toBeNull();
+  });
 });

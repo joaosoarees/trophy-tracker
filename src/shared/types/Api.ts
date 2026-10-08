@@ -12,6 +12,7 @@ import {
   type IGameView,
 } from './Game';
 import { type ExternalPage, type GuideSite } from './Guide';
+import { type IDataFolder, type IPreferences } from './Preferences';
 import { type IProfile } from './Profile';
 import { type GameUserData, type IAchievementUserData } from './UserData';
 
@@ -48,6 +49,16 @@ export interface IApi {
 
   getAlwaysOnTop: () => Promise<boolean>;
   setAlwaysOnTop: (value: boolean) => Promise<boolean>;
+
+  getPreferences: () => Promise<IPreferences>;
+  setPreference: <K extends keyof IPreferences>(
+    key: K,
+    value: IPreferences[K],
+  ) => Promise<IPreferences>;
+
+  getDataFolder: () => Promise<IDataFolder>;
+  /** Opens the data folder or, where that cannot be done, copies its path. */
+  openDataFolder: () => Promise<'opened' | 'copied'>;
 
   openGuide: (
     site: GuideSite,

@@ -14,6 +14,10 @@ import {
 import { type IDashboardSort, parseDashboardSort } from '@shared/dashboardSort';
 import { DEFAULT_LANGUAGE, isLanguage, type Language } from '@shared/i18n';
 import { type IGameView } from '@shared/types/Game';
+import {
+  DEFAULT_PREFERENCES,
+  type IPreferences,
+} from '@shared/types/Preferences';
 import { type IProfile } from '@shared/types/Profile';
 import {
   type GameUserData,
@@ -26,6 +30,7 @@ import type {
   IRawSchemaAchievement,
   IStoreArt,
 } from '../steam/client';
+import { type IBounds, parseBounds } from '../system/windowBounds';
 
 /** Optional cipher for the key (Electron's safeStorage, when there is a keyring). */
 export interface ICipher {
@@ -69,6 +74,10 @@ interface ISettingsFile {
   dashboardSort?: unknown;
   /** Version the app last closed itself to install. */
   updateAttempt?: string;
+  notifyUnlocks?: boolean;
+  rememberWindow?: boolean;
+  /** Size and position the window was closed with. */
+  windowBounds?: unknown;
 }
 
 type UserDataFile = Record<string, GameUserData>;
@@ -255,6 +264,35 @@ export class Store {
   setUpdateAttempt(version: string | null): void {
     if (version === null) delete this.settings.updateAttempt;
     else this.settings.updateAttempt = version;
+    this.write('settings.json', this.settings);
+  }
+
+  getPreferences(): IPreferences {
+    return {
+      notifyUnlocks:
+        this.settings.notifyUnlocks ?? DEFAULT_PREFERENCES.notifyUnlocks,
+      rememberWindow:
+        this.settings.rememberWindow ?? DEFAULT_PREFERENCES.rememberWindow,
+    };
+  }
+
+  setPreference<K extends keyof IPreferences>(
+    key: K,
+    value: IPreferences[K],
+  ): IPreferences {
+    this.settings[key] = value;
+    // Not remembering means the last size is forgotten too, not kept for later.
+    if (key === 'rememberWindow' && !value) delete this.settings.windowBounds;
+    this.write('settings.json', this.settings);
+    return this.getPreferences();
+  }
+
+  getWindowBounds(): IBounds | null {
+    return parseBounds(this.settings.windowBounds);
+  }
+
+  setWindowBounds(bounds: IBounds): void {
+    this.settings.windowBounds = bounds;
     this.write('settings.json', this.settings);
   }
 

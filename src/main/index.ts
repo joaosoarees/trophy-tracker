@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import { app } from 'electron';
+import { app, screen } from 'electron';
 
 import { IpcEvent } from '@shared/ipcEvents';
 
@@ -21,9 +21,11 @@ import {
   createAutoUpdater,
   isInstallBlockedBySystem,
 } from './system/autoUpdate';
+import { createDataFolderAccess } from './system/dataFolder';
 import { logError } from './system/errorLog';
 import { notify } from './system/notify';
-import { MainWindow } from './window';
+import { restoreBounds } from './system/windowBounds';
+import { MainWindow, MINIMUM_SIZE } from './window';
 
 // One data folder name on every system, whatever the product is called on screen.
 // An explicit --user-data-dir (used to run against a throwaway copy) is respected.
@@ -93,7 +95,10 @@ void app.whenReady().then(() => {
     pollGame: (appid) => setup.attempt(() => tracker.getGame(appid, 'poll')),
     isConfigured: () => setup.isConfigured,
     messages: () => setup.messages,
-    notify,
+    // The user's choice is read each time, so it takes effect at once.
+    notify: (title, body) => {
+      if (store.getPreferences().notifyUnlocks) notify(title, body);
+    },
     onCurrentChanged: (current) => window.send(IpcEvent.gameChanged, current),
     onGameUpdated: (view) => window.send(IpcEvent.gameUpdated, view),
   });
@@ -106,12 +111,23 @@ void app.whenReady().then(() => {
     window,
     local,
     updates,
+    dataFolder: createDataFolderAccess(app.getPath('userData')),
     logError: log,
   });
   app.on('second-instance', () => window.focus());
   window.open({
     title: setup.messages.appTitle,
     alwaysOnTop: store.getAlwaysOnTop(),
+    bounds: store.getPreferences().rememberWindow
+      ? restoreBounds(
+          store.getWindowBounds(),
+          screen.getAllDisplays().map((display) => display.workArea),
+          MINIMUM_SIZE,
+        )
+      : null,
+    onClose: (bounds) => {
+      if (store.getPreferences().rememberWindow) store.setWindowBounds(bounds);
+    },
   });
   watcher.start();
   // The app can stay open for days: ask every hour whether the six hours
