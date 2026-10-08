@@ -36,6 +36,7 @@ const calls = [
   'setAlwaysOnTop',
   'openGuide',
   'openExternal',
+  'getAppInfo',
   'logError',
 ] as const;
 

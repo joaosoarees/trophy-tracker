@@ -2,6 +2,7 @@ import { type IAchievementSort } from '../achievementSort';
 import { type IDashboardSort } from '../dashboardSort';
 import { type Language } from '../i18n';
 
+import { type IAppInfo } from './AppInfo';
 import { type IAppState } from './AppState';
 import { type CheckResult } from './Check';
 import {
@@ -55,6 +56,8 @@ export interface IApi {
     achievement: string,
   ) => Promise<void>;
   openExternal: (target: ExternalPage) => Promise<void>;
+  /** The running version and, when a later one was released, which. */
+  getAppInfo: () => Promise<IAppInfo>;
   /** Records an interface error in the local log file. */
   logError: (source: string, detail: string) => Promise<void>;
 

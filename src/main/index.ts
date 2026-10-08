@@ -6,9 +6,11 @@ import { IpcEvent } from '@shared/ipcEvents';
 
 import { registerIpc } from './ipc/registerIpc';
 import { GameWatcher } from './services/GameWatcher';
+import { RELEASES_REPOSITORY } from './services/releases';
 import { createRunningGameSource } from './services/runningGame';
 import { SetupService } from './services/SetupService';
 import { Tracker } from './services/Tracker';
+import { UpdateChecker } from './services/UpdateChecker';
 import { SteamClient } from './steam/client';
 import { createSteamLocal } from './steam/local';
 import { createCipher } from './storage/createCipher';
@@ -59,6 +61,10 @@ void app.whenReady().then(() => {
     readStatMap: local.readStatMap,
   });
   const window = new MainWindow();
+  const updates = new UpdateChecker({
+    currentVersion: app.getVersion(),
+    repository: RELEASES_REPOSITORY,
+  });
 
   const watcher = new GameWatcher({
     getRunningAppId: createRunningGameSource({ local, client, store }),
@@ -71,7 +77,16 @@ void app.whenReady().then(() => {
     onGameUpdated: (view) => window.send(IpcEvent.gameUpdated, view),
   });
 
-  registerIpc({ setup, tracker, watcher, store, window, local, logError: log });
+  registerIpc({
+    setup,
+    tracker,
+    watcher,
+    store,
+    window,
+    local,
+    updates,
+    logError: log,
+  });
   app.on('second-instance', () => window.focus());
   window.open({
     title: setup.messages.appTitle,

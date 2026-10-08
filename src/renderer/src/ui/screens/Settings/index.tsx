@@ -4,6 +4,7 @@ import { Button } from '@ui/primitives/button';
 import { EraseDialog } from './components/EraseDialog';
 import { LanguageField } from './components/LanguageField';
 import { ProfileCard } from './components/ProfileCard';
+import { UpdateNotice } from './components/UpdateNotice';
 import { useSettingsController } from './useSettingsController';
 
 export function Settings() {
@@ -11,16 +12,25 @@ export function Settings() {
   const {
     profile,
     language,
+    appInfo,
     isConfirmingErase,
     setIsConfirmingErase,
     handleChangeLanguage,
     handleErase,
     handleRedoSetup,
+    handleDownload,
   } = useSettingsController();
 
   return (
     <section className="flex flex-1 flex-col items-start gap-3 overflow-y-auto p-4">
       <h1 className="text-xl font-semibold">{t.settings.title}</h1>
+
+      {appInfo?.newVersion && (
+        <UpdateNotice
+          version={appInfo.newVersion}
+          onDownload={handleDownload}
+        />
+      )}
 
       {profile && <ProfileCard profile={profile} />}
 
@@ -47,7 +57,9 @@ export function Settings() {
       />
 
       <p className="text-muted-foreground mt-auto pt-6 text-xs">
-        {t.appTitle} · {t.notAffiliated}
+        {t.appTitle}
+        {appInfo && ` · ${t.settings.version(appInfo.version)}`} ·{' '}
+        {t.notAffiliated}
       </p>
     </section>
   );

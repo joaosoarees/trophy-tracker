@@ -1,0 +1,66 @@
+import { type IAppInfo } from '@shared/types/AppInfo';
+import { isNewerVersion } from '@shared/version';
+
+const RECHECK_AFTER_MS = 6 * 60 * 60 * 1000;
+
+interface IUpdateCheckerDeps {
+  currentVersion: string;
+  /** `owner/name` of the GitHub repository that publishes the releases. */
+  repository: string;
+  fetchImpl?: typeof fetch;
+  now?: () => number;
+}
+
+/**
+ * Asks GitHub for the latest published release, at most once every few hours.
+ * It only tells the user; downloading and installing stay with them. Any
+ * failure (offline, no release yet, rate limit) means "nothing new".
+ */
+export class UpdateChecker {
+  private readonly currentVersion: string;
+  private readonly url: string;
+  private readonly fetchImpl: typeof fetch;
+  private readonly now: () => number;
+  private newVersion: string | null = null;
+  private checkedAt: number | null = null;
+  private running: Promise<void> | null = null;
+
+  constructor({
+    currentVersion,
+    repository,
+    fetchImpl = fetch,
+    now = Date.now,
+  }: IUpdateCheckerDeps) {
+    this.currentVersion = currentVersion;
+    this.url = `https://api.github.com/repos/${repository}/releases/latest`;
+    this.fetchImpl = fetchImpl;
+    this.now = now;
+  }
+
+  async getAppInfo(): Promise<IAppInfo> {
+    const isStale =
+      this.checkedAt === null || this.now() - this.checkedAt > RECHECK_AFTER_MS;
+    if (isStale) {
+      this.running ??= this.check().finally(() => (this.running = null));
+      await this.running;
+    }
+    return { version: this.currentVersion, newVersion: this.newVersion };
+  }
+
+  private async check(): Promise<void> {
+    try {
+      const res = await this.fetchImpl(this.url, {
+        headers: { Accept: 'application/vnd.github+json' },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (res.ok) {
+        const release = (await res.json()) as { tag_name?: string };
+        const tag = release.tag_name?.replace(/^v/, '') ?? '';
+        this.newVersion = isNewerVersion(tag, this.currentVersion) ? tag : null;
+      }
+    } catch {
+      // Keeps whatever the last successful check found.
+    }
+    this.checkedAt = this.now();
+  }
+}

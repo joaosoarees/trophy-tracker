@@ -5,10 +5,11 @@ import { useStore } from '@app/store';
 
 export function useAppShellController() {
   const game = useActiveGame();
-  const { tab, alwaysOnTop, goTo, toggleAlwaysOnTop } = useStore(
+  const { tab, alwaysOnTop, hasUpdate, goTo, toggleAlwaysOnTop } = useStore(
     useShallow((state) => ({
       tab: state.navigation.tab,
       alwaysOnTop: state.settings.alwaysOnTop,
+      hasUpdate: Boolean(state.settings.appInfo?.newVersion),
       goTo: state.navigation.goTo,
       toggleAlwaysOnTop: state.settings.toggleAlwaysOnTop,
     })),
@@ -18,6 +19,7 @@ export function useAppShellController() {
     tab,
     game,
     alwaysOnTop,
+    hasUpdate,
     goTo,
     handleToggleAlwaysOnTop: () => void toggleAlwaysOnTop(),
   };

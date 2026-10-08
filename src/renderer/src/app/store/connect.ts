@@ -9,10 +9,11 @@ import { useStore } from '.';
  * language, settings and navigation are kept.
  */
 export function connectStore(): () => void {
-  const { session, games, dashboard, userData } = useStore.getState();
+  const { session, settings, games, dashboard, userData } = useStore.getState();
 
   void session.loadCurrent();
   void dashboard.load();
+  void settings.loadAppInfo();
 
   const offs = [
     GamesService.onCurrentChanged(session.setCurrent),

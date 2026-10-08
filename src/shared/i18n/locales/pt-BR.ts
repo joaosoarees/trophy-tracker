@@ -57,6 +57,7 @@ export const ptBR: Messages = {
     label: 'Principal',
     pinWindow: 'Manter a janela sempre no topo',
     unpinWindow: 'Deixar de manter a janela no topo',
+    settingsWithUpdate: 'Configuração · nova versão disponível',
   },
 
   common: {
@@ -169,6 +170,10 @@ export const ptBR: Messages = {
     eraseDescription:
       'O app volta para a configuração inicial. Suas notas, checklists e conquistas fixadas são mantidas.',
     eraseConfirm: 'Apagar',
+    version: (version) => `Versão ${version}`,
+    updateAvailable: (version) => `A versão ${version} está disponível`,
+    updateHint: 'Baixe e instale por cima desta; seus dados são mantidos.',
+    download: 'Baixar',
   },
 
   onboarding: {

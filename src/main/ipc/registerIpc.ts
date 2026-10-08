@@ -6,6 +6,7 @@ import { type IApi } from '@shared/types/Api';
 import { type GameWatcher } from '../services/GameWatcher';
 import { type SetupService } from '../services/SetupService';
 import { type Tracker } from '../services/Tracker';
+import { type UpdateChecker } from '../services/UpdateChecker';
 import { guideUrl } from '../steam/achievements';
 import { type ISteamLocal } from '../steam/local';
 import { type Store } from '../storage/Store';
@@ -31,6 +32,7 @@ interface IIpcDeps {
   store: Store;
   window: MainWindow;
   local: ISteamLocal;
+  updates: UpdateChecker;
   logError: (source: string, detail: string) => void;
 }
 
@@ -42,6 +44,7 @@ export function registerIpc({
   store,
   window,
   local,
+  updates,
   logError,
 }: IIpcDeps): void {
   const handlers: IpcHandlers = {
@@ -108,6 +111,7 @@ export function registerIpc({
         guideUrl(site, appid, game, achievement, setup.messages.guides.query),
       ),
     openExternal: (page) => openExternalPage(page),
+    getAppInfo: () => updates.getAppInfo(),
     logError: (source, detail) => logError(`interface: ${source}`, detail),
   };
 

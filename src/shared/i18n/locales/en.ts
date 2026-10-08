@@ -55,6 +55,7 @@ export const en = {
     label: 'Main',
     pinWindow: 'Keep the window always on top',
     unpinWindow: 'Stop keeping the window on top',
+    settingsWithUpdate: 'Settings · new version available',
   },
 
   common: {
@@ -169,6 +170,10 @@ export const en = {
     eraseDescription:
       'The app goes back to the initial setup. Your notes, checklists and pinned achievements are kept.',
     eraseConfirm: 'Erase',
+    version: (version: string) => `Version ${version}`,
+    updateAvailable: (version: string) => `Version ${version} is available`,
+    updateHint: 'Download it and install over this one; your data is kept.',
+    download: 'Download',
   },
 
   onboarding: {

@@ -19,7 +19,7 @@ import { useAppShellController } from './useAppShellController';
 /** The frame of the configured app: tab bar on top, one screen below. */
 export function AppShell() {
   const t = useT();
-  const { tab, game, alwaysOnTop, goTo, handleToggleAlwaysOnTop } =
+  const { tab, game, alwaysOnTop, hasUpdate, goTo, handleToggleAlwaysOnTop } =
     useAppShellController();
 
   return (
@@ -49,14 +49,18 @@ export function AppShell() {
           <Pin className={cn(alwaysOnTop && 'fill-current')} />
         </IconButton>
         <IconButton
-          label={t.nav.settings}
+          label={hasUpdate ? t.nav.settingsWithUpdate : t.nav.settings}
           aria-current={tab === 'settings' ? 'page' : undefined}
           className={cn(
+            'relative',
             tab === 'settings' && 'text-primary hover:text-primary',
           )}
           onClick={() => goTo('settings')}
         >
           <SettingsIcon />
+          {hasUpdate && (
+            <span className="bg-primary absolute top-1 right-1 size-2 rounded-full" />
+          )}
         </IconButton>
       </nav>
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import { SystemService } from '@app/services/SystemService';
 import { useStore } from '@app/store';
 import { isLanguage } from '@shared/i18n';
 
@@ -9,6 +10,7 @@ export function useSettingsController() {
   const {
     profile,
     language,
+    appInfo,
     changeLanguage,
     eraseCredentials,
     startReconfiguring,
@@ -16,6 +18,7 @@ export function useSettingsController() {
     useShallow((state) => ({
       profile: state.settings.appState?.profile ?? null,
       language: state.session.language,
+      appInfo: state.settings.appInfo,
       changeLanguage: state.settings.changeLanguage,
       eraseCredentials: state.settings.eraseCredentials,
       startReconfiguring: state.navigation.startReconfiguring,
@@ -34,10 +37,12 @@ export function useSettingsController() {
   return {
     profile,
     language,
+    appInfo,
     isConfirmingErase,
     setIsConfirmingErase,
     handleChangeLanguage,
     handleErase,
     handleRedoSetup: startReconfiguring,
+    handleDownload: () => void SystemService.openExternal('download'),
   };
 }
