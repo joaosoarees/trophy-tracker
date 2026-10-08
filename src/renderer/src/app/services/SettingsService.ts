@@ -1,4 +1,5 @@
 import { type IAchievementSort } from '@shared/achievementSort';
+import { type IDashboardSort } from '@shared/dashboardSort';
 import { type Language } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
 
@@ -21,6 +22,10 @@ export class SettingsService extends Service {
 
   static setAchievementSort(sort: IAchievementSort): Promise<void> {
     return this.api.setAchievementSort(sort);
+  }
+
+  static setDashboardSort(sort: IDashboardSort): Promise<void> {
+    return this.api.setDashboardSort(sort);
   }
 
   static getAlwaysOnTop(): Promise<boolean> {

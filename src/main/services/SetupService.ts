@@ -40,6 +40,7 @@ export class SetupService {
       profile: this.store.getProfile(),
       configError: this.configError,
       achievementSort: this.store.getAchievementSort(),
+      dashboardSort: this.store.getDashboardSort(),
     };
   }
 

@@ -8,6 +8,12 @@ import {
   DEFAULT_ACHIEVEMENT_SORT,
   type IAchievementSort,
 } from '@shared/achievementSort';
+import {
+  type DashboardFilter,
+  type DashboardSort,
+  DEFAULT_DASHBOARD_SORT,
+  type IDashboardSort,
+} from '@shared/dashboardSort';
 import { type Language, messagesFor } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
 
@@ -17,6 +23,8 @@ type SettingsStore = {
   alwaysOnTop: boolean;
   /** Order chosen for each list of a game; kept across games and restarts. */
   achievementSort: IAchievementSort;
+  /** Order chosen for each list of the dashboard; kept across restarts. */
+  dashboardSort: IDashboardSort;
 };
 
 type SettingsActions = {
@@ -24,6 +32,10 @@ type SettingsActions = {
   /** Takes a fresh state from the main process and syncs the interface language with it. */
   apply: (appState: IAppState) => void;
   toggleAlwaysOnTop: () => Promise<void>;
+  setDashboardSort: (
+    filter: DashboardFilter,
+    sort: DashboardSort,
+  ) => Promise<void>;
   setAchievementSort: (
     filter: AchievementFilter,
     sort: AchievementSort,
@@ -43,6 +55,7 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
   appState: null,
   alwaysOnTop: false,
   achievementSort: DEFAULT_ACHIEVEMENT_SORT,
+  dashboardSort: DEFAULT_DASHBOARD_SORT,
 
   load: async () => {
     const [appState, alwaysOnTop] = await Promise.all([
@@ -64,6 +77,7 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
       (prevState) => {
         prevState.settings.appState = appState;
         prevState.settings.achievementSort = appState.achievementSort;
+        prevState.settings.dashboardSort = appState.dashboardSort;
         prevState.session.language = appState.language;
       },
       false,
@@ -114,6 +128,28 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
       await SettingsService.setAchievementSort(next);
     } catch {
       apply(previous, 'settings/rollbackAchievementSort');
+      toast.error(messagesFor(get().session.language).errors.changeNotSaved);
+    }
+  },
+
+  // Optimistic update, as in `setAchievementSort`.
+  setDashboardSort: async (filter, sort) => {
+    const previous = get().settings.dashboardSort;
+    const next = { ...previous, [filter]: sort };
+    const apply = (value: IDashboardSort, action: string) =>
+      set(
+        (prevState) => {
+          prevState.settings.dashboardSort = value;
+        },
+        false,
+        action,
+      );
+
+    apply(next, 'settings/setDashboardSort');
+    try {
+      await SettingsService.setDashboardSort(next);
+    } catch {
+      apply(previous, 'settings/rollbackDashboardSort');
       toast.error(messagesFor(get().session.language).errors.changeNotSaved);
     }
   },

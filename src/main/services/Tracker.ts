@@ -219,6 +219,10 @@ export class Tracker {
         ...this.summaryPlaytime(appid),
         total: view.total,
         unlocked: view.unlockedCount,
+        lastUnlockAt: Math.max(
+          0,
+          ...view.achievements.map((a) => a.unlockedAt ?? 0),
+        ),
       },
     });
     return view;
@@ -253,8 +257,14 @@ export class Tracker {
     const pending: IRawOwnedGame[] = [];
     for (const game of played) {
       const cached = this.store.getSummary(game.appid);
-      if (cached && !force && cached.playtime === game.playtime_forever)
-        entries.set(game.appid, cached);
+      const isCurrent =
+        cached &&
+        cached.playtime === game.playtime_forever &&
+        // Entries of complete games written before the completion date existed are read once more.
+        !(
+          cached.unlocked === cached.total && cached.lastUnlockAt === undefined
+        );
+      if (cached && isCurrent && !force) entries.set(game.appid, cached);
       else pending.push(game);
     }
 
@@ -272,6 +282,7 @@ export class Tracker {
             total: list.length,
             unlocked: list.filter((a) => a.achieved === 1).length,
             playtime: game.playtime_forever,
+            lastUnlockAt: Math.max(0, ...list.map((a) => a.unlocktime)),
           };
         } catch (e) {
           if (
@@ -279,7 +290,12 @@ export class Tracker {
             (e.kind !== 'no-stats' && e.kind !== 'unknown')
           )
             throw e;
-          entry = { total: 0, unlocked: 0, playtime: game.playtime_forever };
+          entry = {
+            total: 0,
+            unlocked: 0,
+            playtime: game.playtime_forever,
+            lastUnlockAt: 0,
+          };
           // A one-off Steam failure must not become "no achievements" in the cache.
           if (e.kind === 'unknown') {
             entries.set(game.appid, entry);
@@ -321,6 +337,8 @@ export class Tracker {
           lastPlayed: g.rtime_last_played ?? 0,
           total: e.total,
           unlocked: e.unlocked,
+          completedAt:
+            e.unlocked === e.total && e.lastUnlockAt ? e.lastUnlockAt : null,
         };
       })
       .sort((a, b) => {

@@ -1,4 +1,5 @@
 import { type IAchievementSort } from '../achievementSort';
+import { type IDashboardSort } from '../dashboardSort';
 import { type Language } from '../i18n';
 
 import { type IAppState } from './AppState';
@@ -43,6 +44,7 @@ export interface IApi {
   setLanguage: (language: Language) => Promise<IAppState>;
 
   setAchievementSort: (sort: IAchievementSort) => Promise<void>;
+  setDashboardSort: (sort: IDashboardSort) => Promise<void>;
 
   getAlwaysOnTop: () => Promise<boolean>;
   setAlwaysOnTop: (value: boolean) => Promise<boolean>;

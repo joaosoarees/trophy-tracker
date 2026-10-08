@@ -91,6 +91,7 @@ export function registerIpc({
     },
 
     setAchievementSort: (sort) => store.setAchievementSort(sort),
+    setDashboardSort: (sort) => store.setDashboardSort(sort),
 
     getAlwaysOnTop: () => store.getAlwaysOnTop(),
     setAlwaysOnTop: (value) => {

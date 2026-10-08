@@ -1,10 +1,12 @@
 import { Gamepad2 } from 'lucide-react';
 
+import { useLocale } from '@app/hooks/useLocale';
 import { useT } from '@app/hooks/useT';
 import { type IGameSummary } from '@shared/types/Game';
 import { ProgressBar } from '@ui/components/ProgressBar';
 import { RemoteImage } from '@ui/components/RemoteImage';
 import { cn } from '@ui/utils/cn';
+import { formatDate } from '@ui/utils/format';
 
 interface IGameRowProps {
   game: IGameSummary;
@@ -13,6 +15,7 @@ interface IGameRowProps {
 
 export function GameRow({ game, onPick }: IGameRowProps) {
   const t = useT();
+  const locale = useLocale();
   const percent = Math.round((game.unlocked / game.total) * 100);
   const isComplete = game.unlocked === game.total;
   const art = game.capsule || game.icon;
@@ -42,16 +45,18 @@ export function GameRow({ game, onPick }: IGameRowProps) {
           />
         </div>
 
-        <div className="w-[72px] flex-none text-right">
+        <div className="w-[84px] flex-none text-right">
           <strong
             className={cn('block tabular-nums', isComplete && 'text-success')}
           >
             {percent}%
           </strong>
           <small className="text-muted-foreground text-[11px]">
-            {isComplete
-              ? t.dashboard.complete
-              : t.dashboard.left(game.total - game.unlocked)}
+            {!isComplete
+              ? t.dashboard.left(game.total - game.unlocked)
+              : game.completedAt
+                ? t.dashboard.completedOn(formatDate(game.completedAt, locale))
+                : t.dashboard.completeLabel}
           </small>
         </div>
       </button>

@@ -297,6 +297,21 @@ describe('Store', () => {
     });
   });
 
+  it('remembers the order chosen for each dashboard list', () => {
+    const dir = tempDir();
+    const store = new Store(dir);
+    expect(store.getDashboardSort()).toEqual({
+      ongoing: 'closest',
+      complete: 'completed',
+    });
+
+    store.setDashboardSort({ ongoing: 'played', complete: 'name' });
+    expect(new Store(dir).getDashboardSort()).toEqual({
+      ongoing: 'played',
+      complete: 'name',
+    });
+  });
+
   it('persists notes and pins, and removes empty entries', () => {
     const dir = tempDir();
     const store = new Store(dir);
@@ -647,6 +662,43 @@ describe('Tracker', () => {
     });
     expect(await tracker.getDashboard()).toHaveLength(1);
     expect((await tracker.getGame(1)).header).toBe('');
+  });
+
+  it('reports when a complete game was completed, and reads once more the entries saved without it', async () => {
+    const complete = {
+      json: {
+        playerstats: {
+          achievements: [
+            { apiname: 'A', achieved: 1, unlocktime: 500 },
+            { apiname: 'B', achieved: 1, unlocktime: 900 },
+          ],
+        },
+      },
+    };
+    const { tracker, store, fetchImpl, advance } = setup({
+      GetOwnedGames: owned(game(1, 'Done', 10), game(2, 'Ongoing', 10)),
+      'appid=1': complete,
+      'appid=2': player(1, 4),
+    });
+    const reads = () =>
+      fetchImpl.calls.filter((u) => u.includes('GetPlayerAchievements')).length;
+
+    const list = await tracker.getDashboard();
+    expect(list.find((g) => g.appid === 1)?.completedAt).toBe(900);
+    expect(list.find((g) => g.appid === 2)?.completedAt).toBeNull();
+    expect(reads()).toBe(2);
+
+    // An entry written before the completion date existed.
+    store.setSummaries({ 1: { total: 2, unlocked: 2, playtime: 10 } });
+    advance(11 * 60_000);
+    expect(
+      (await tracker.getDashboard()).find((g) => g.appid === 1)?.completedAt,
+    ).toBe(900);
+    expect(reads()).toBe(3);
+
+    advance(11 * 60_000);
+    await tracker.getDashboard();
+    expect(reads()).toBe(3);
   });
 
   it('propagates a private profile instead of showing an empty dashboard', async () => {

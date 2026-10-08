@@ -11,6 +11,7 @@ import {
   type IAchievementSort,
   parseAchievementSort,
 } from '@shared/achievementSort';
+import { type IDashboardSort, parseDashboardSort } from '@shared/dashboardSort';
 import { DEFAULT_LANGUAGE, isLanguage, type Language } from '@shared/i18n';
 import { type IGameView } from '@shared/types/Game';
 import { type IProfile } from '@shared/types/Profile';
@@ -44,6 +45,8 @@ export interface ISummaryEntry {
   unlocked: number;
   /** Playtime at the time of the read; if it has not changed, neither have the achievements. */
   playtime: number;
+  /** When the last achievement was unlocked (epoch in seconds, 0 if none). Missing in entries written before it existed. */
+  lastUnlockAt?: number;
 }
 
 interface ICacheFile {
@@ -63,6 +66,7 @@ interface ISettingsFile {
   alwaysOnTop: boolean;
   language?: string;
   achievementSort?: unknown;
+  dashboardSort?: unknown;
 }
 
 type UserDataFile = Record<string, GameUserData>;
@@ -229,6 +233,15 @@ export class Store {
 
   setAchievementSort(sort: IAchievementSort): void {
     this.settings.achievementSort = parseAchievementSort(sort);
+    this.write('settings.json', this.settings);
+  }
+
+  getDashboardSort(): IDashboardSort {
+    return parseDashboardSort(this.settings.dashboardSort);
+  }
+
+  setDashboardSort(sort: IDashboardSort): void {
+    this.settings.dashboardSort = parseDashboardSort(sort);
     this.write('settings.json', this.settings);
   }
 

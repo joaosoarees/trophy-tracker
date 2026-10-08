@@ -21,6 +21,8 @@ export interface IGameSummary {
   lastPlayed: number;
   total: number;
   unlocked: number;
+  /** When the last achievement was unlocked (epoch in seconds); `null` unless the game is complete. */
+  completedAt: number | null;
 }
 
 /** Game on screen by default: the one open on Steam or, with none open, the last one played. */

@@ -2,11 +2,11 @@ import { RefreshCw } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { Empty } from '@ui/components/Empty';
-import { SearchBox } from '@ui/components/SearchBox';
 import { Button } from '@ui/primitives/button';
 import { Skeleton } from '@ui/primitives/skeleton';
 import { cn } from '@ui/utils/cn';
 
+import { DashboardToolbar } from './components/DashboardToolbar';
 import { GameRow } from './components/GameRow';
 import { useDashboardController } from './useDashboardController';
 
@@ -15,16 +15,20 @@ const SKELETON_ROWS = Array.from({ length: 6 }, (_, index) => index);
 export function Dashboard() {
   const t = useT();
   const {
-    games,
+    hasLoaded,
     shownGames,
-    total,
-    inProgress,
-    complete,
+    counts,
     isLoading,
     error,
     progress,
+    filter,
+    sort,
     query,
+    otherFilter,
+    matchesInOtherList,
+    setFilter,
     setQuery,
+    handleSortChange,
     handleRefreshAll,
     handlePickGame,
   } = useDashboardController();
@@ -44,36 +48,43 @@ export function Dashboard() {
             <RefreshCw className={cn(isLoading && 'animate-spin')} />
           </Button>
         </div>
-        <p className="text-muted-foreground text-xs">
-          {isLoading
-            ? progress
+        {isLoading && (
+          <p className="text-muted-foreground text-xs">
+            {progress
               ? t.dashboard.reading(progress[0], progress[1])
-              : t.dashboard.loadingLibrary
-            : games && t.dashboard.summary(total, complete, inProgress)}
-        </p>
+              : t.dashboard.loadingLibrary}
+          </p>
+        )}
         {error && <p className="text-destructive mt-1">{error}</p>}
       </header>
 
-      {total > 0 && (
-        <div className="mb-3 flex">
-          <SearchBox
-            value={query}
-            onChange={setQuery}
-            placeholder={t.dashboard.search}
-          />
-        </div>
+      {hasLoaded && (
+        <DashboardToolbar
+          filter={filter}
+          sort={sort}
+          query={query}
+          ongoing={counts.ongoing}
+          complete={counts.complete}
+          onFilterChange={setFilter}
+          onSortChange={handleSortChange}
+          onQueryChange={setQuery}
+        />
       )}
 
-      {games && !isLoading && shownGames.length === 0 && (
+      {hasLoaded && !isLoading && shownGames.length === 0 && (
         <Empty>
           {query.trim() !== ''
             ? t.dashboard.nothingFound(query.trim())
-            : t.dashboard.empty}
+            : counts.ongoing + counts.complete === 0
+              ? t.dashboard.empty
+              : filter === 'ongoing'
+                ? t.dashboard.nothingOngoing
+                : t.dashboard.nothingComplete}
         </Empty>
       )}
 
       <ul className="flex flex-col gap-1.5">
-        {!games &&
+        {!hasLoaded &&
           isLoading &&
           SKELETON_ROWS.map((row) => (
             <li key={row}>
@@ -84,6 +95,16 @@ export function Dashboard() {
           <GameRow key={game.appid} game={game} onPick={handlePickGame} />
         ))}
       </ul>
+
+      {matchesInOtherList > 0 && (
+        <Button
+          variant="link"
+          className="mx-auto mt-3 flex"
+          onClick={() => setFilter(otherFilter)}
+        >
+          {t.dashboard.inOtherList[otherFilter](matchesInOtherList)}
+        </Button>
+      )}
     </section>
   );
 }

@@ -4,6 +4,7 @@ import {
   type AchievementFilter,
   isAchievementFilter,
 } from '@shared/achievementSort';
+import { type DashboardFilter, isDashboardFilter } from '@shared/dashboardSort';
 import { type Language } from '@shared/i18n';
 
 export type Tab = 'game' | 'dashboard' | 'settings';
@@ -12,6 +13,8 @@ type NavigationStore = {
   tab: Tab;
   /** Which list the game screen shows; the same for every game. */
   achievementFilter: AchievementFilter;
+  /** Which list the dashboard shows. */
+  dashboardFilter: DashboardFilter;
   /** Game picked in the dashboard; holds until a game is opened on Steam. */
   pickedAppId: number | null;
   /** Running game the app has already jumped to, so a reload does not jump again. */
@@ -23,6 +26,7 @@ type NavigationStore = {
 type NavigationActions = {
   goTo: (tab: Tab) => void;
   showAchievements: (filter: AchievementFilter) => void;
+  showGames: (filter: DashboardFilter) => void;
   pickGame: (appid: number) => void;
   /** Opening a game on Steam brings the app to it, once per opened game. */
   followRunningGame: (appid: number | null) => void;
@@ -36,6 +40,7 @@ export type NavigationSlice = NavigationStore & NavigationActions;
 const KEYS = {
   tab: 'view-tab',
   achievementFilter: 'view-achievement-filter',
+  dashboardFilter: 'view-dashboard-filter',
   pickedAppId: 'view-picked',
   seenRunningAppId: 'view-seen-running',
 } as const;
@@ -50,12 +55,18 @@ function savedFilter(): AchievementFilter {
   return isAchievementFilter(saved) ? saved : 'pending';
 }
 
+function savedDashboardFilter(): DashboardFilter {
+  const saved = safeSessionStorageGetItem<unknown>(KEYS.dashboardFilter);
+  return isDashboardFilter(saved) ? saved : 'ongoing';
+}
+
 export const createNavigationSlice: StoreSlice<NavigationSlice> = (
   set,
   get,
 ) => ({
   tab: safeSessionStorageGetItem<Tab>(KEYS.tab) ?? 'game',
   achievementFilter: savedFilter(),
+  dashboardFilter: savedDashboardFilter(),
   pickedAppId: safeSessionStorageGetItem<number>(KEYS.pickedAppId),
   seenRunningAppId: safeSessionStorageGetItem<number>(KEYS.seenRunningAppId),
   reconfiguringFrom: null,
@@ -79,6 +90,17 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
       },
       false,
       'navigation/showAchievements',
+    );
+  },
+
+  showGames: (filter) => {
+    remember('dashboardFilter', filter);
+    set(
+      (prevState) => {
+        prevState.navigation.dashboardFilter = filter;
+      },
+      false,
+      'navigation/showGames',
     );
   },
 

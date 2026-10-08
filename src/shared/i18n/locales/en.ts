@@ -123,12 +123,28 @@ export const en = {
     reading: (done: number, total: number) =>
       `Reading achievements: ${done} of ${total} games…`,
     loadingLibrary: 'Loading your library…',
-    summary: (games: number, complete: number, ongoing: number) =>
-      `${games} games with achievements · ${complete} complete · ${ongoing} in progress`,
+    ongoing: (n: number) => `In progress ${n}`,
+    complete: (n: number) => `Complete ${n}`,
+    sort: {
+      closest: 'Closest to 100%',
+      played: 'Recently played',
+      fewest: 'Fewest left',
+      name: 'Name',
+      completed: 'Recently completed',
+    },
+    nothingOngoing: 'No games in progress.',
+    nothingComplete: 'No complete games yet.',
+    inOtherList: {
+      ongoing: (n: number) =>
+        `${n} ${n === 1 ? 'result' : 'results'} in In progress`,
+      complete: (n: number) =>
+        `${n} ${n === 1 ? 'result' : 'results'} in Complete`,
+    },
+    completedOn: (date: string) => `completed ${date}`,
     search: 'Search games',
     nothingFound: (query: string) => `No game found for “${query}”.`,
     empty: 'No played games with achievements.',
-    complete: 'complete',
+    completeLabel: 'complete',
     left: (n: number) => `${n} left`,
   },
 

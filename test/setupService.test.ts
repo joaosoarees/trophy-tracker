@@ -32,6 +32,7 @@ describe('SetupService', () => {
       profile: null,
       configError: null,
       achievementSort: { pending: 'common', unlocked: 'recent' },
+      dashboardSort: { ongoing: 'closest', complete: 'completed' },
     });
   });
 

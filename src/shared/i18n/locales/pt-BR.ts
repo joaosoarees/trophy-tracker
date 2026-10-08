@@ -124,12 +124,28 @@ export const ptBR: Messages = {
     refreshAll: 'Atualizar tudo',
     reading: (done, total) => `Lendo conquistas: ${done} de ${total} jogos…`,
     loadingLibrary: 'Carregando sua biblioteca…',
-    summary: (games, complete, ongoing) =>
-      `${games} jogos com conquistas · ${complete} completos · ${ongoing} em andamento`,
+    ongoing: (n) => `Em andamento ${n}`,
+    complete: (n) => `Completos ${n}`,
+    sort: {
+      closest: 'Mais perto dos 100%',
+      played: 'Jogados recentemente',
+      fewest: 'Menos conquistas faltando',
+      name: 'Nome',
+      completed: 'Completados recentemente',
+    },
+    nothingOngoing: 'Nenhum jogo em andamento.',
+    nothingComplete: 'Nenhum jogo completo ainda.',
+    inOtherList: {
+      ongoing: (n) =>
+        `${n} ${n === 1 ? 'resultado' : 'resultados'} em Em andamento`,
+      complete: (n) =>
+        `${n} ${n === 1 ? 'resultado' : 'resultados'} em Completos`,
+    },
+    completedOn: (date) => `completado em ${date}`,
     search: 'Buscar jogo',
     nothingFound: (query) => `Nenhum jogo encontrado para “${query}”.`,
     empty: 'Nenhum jogo jogado com conquistas.',
-    complete: 'completo',
+    completeLabel: 'completo',
     left: (n) => `faltam ${n}`,
   },
 
