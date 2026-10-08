@@ -16,7 +16,7 @@ pnpm test:verbose    # lists every test by name, grouped by file
 pnpm typecheck   # tsc on both projects (main process and interface)
 pnpm lint        # ESLint (lint:fix to auto-fix)
 pnpm format      # Prettier (format:check to only verify)
-pnpm audit:ui    # builds, opens the app and audits every screen (axe, scrollbars, hover and focus, four languages)
+pnpm audit:ui    # builds the app, runs it against a fake Steam and audits every screen and flow
 
 pnpm dist:linux  # AppImage and .deb into dist/ (dist:win, dist:mac, dist for the current system)
 pnpm dist:docker # Linux and Windows installers built inside a container
@@ -325,19 +325,17 @@ An automated audit (axe) of every screen reports zero violations; keep it that w
 
 Tests passing is not the end of a change that touches the interface. Every new or changed screen, section or control is audited in the running app before it is reported as done, and the report says what was audited and what was not. This was written down after details shipped that no test could catch: a hover wash wider than its section, a second scrollbar, a line drawn twice, a screen captured that was not the one meant.
 
-1. **Run `pnpm audit:ui`** (`scripts/audit-ui.mjs`). It builds the app, opens it through the DevTools protocol and, for the onboarding and for Game, the open game details, Dashboard and Settings (top and end) in each of the four languages, checks:
-   - accessibility with axe;
-   - that the window itself has no scrollbar and nothing overflows sideways;
-   - that every kind of clickable element on screen changes visibly on hover and on keyboard focus (both states are forced and the computed styles compared);
-   - that no clickable element is wider than what contains it, which is how a hover wash spills out of its row;
-   - the game details as a flow: they animate open and closed (the height is sampled on every frame), leave the page once closed, and every row that names an achievement leads to it with the hidden-only filter on.
+1. **Run `pnpm audit:ui`** (`scripts/audit-ui.mjs`). It builds the app and runs it for real against a **fake Steam** (`scripts/fake-steam.mjs`), a local server that answers the Web API's calls from the real responses in `test/fixtures` and lets the audit change what "Steam" says. Nothing of this computer's account, key or data is read, and the result is the same on every run. The audit:
+   - **goes through the onboarding as a new user**, with Steam rejecting the key, being unreachable and hiding the profile before it accepts, up to the Done step;
+   - **checks every screen in each of the four languages** (Game, the open game details, Dashboard, Settings top and end): accessibility with axe; no scrollbar on the window itself and nothing overflowing sideways; a visible change on hover and on keyboard focus for every kind of clickable element (both states are forced and the computed styles compared); and no clickable element wider than what contains it, which is how a hover wash spills out of its row;
+   - **runs the flows no single capture shows**: the game details animating open and closed (the height is sampled on every frame) and leading to each achievement they name with the hidden-only filter on; an achievement being unlocked (it leaves the pending list, the notice names it, the header counts one less); the last one being unlocked (the completion state); and Steam going off the air, with the app open (what is on screen stays, with an error) and before it opens (the app comes up with what it had).
 2. **Add the new thing to the script** when the audit cannot reach it as it is: a new screen, a section that has to be opened, a state behind a click. A feature the audit never opens has not been audited. Two kinds of thing always get a flow check of their own: **a control that opens something is audited in both directions**, and **a shortcut that leads to an item is audited with every filter that could hide the item turned on**.
 3. **Prove a new check can fail**: undo the fix it is meant to guard, run the audit, see it fail, restore. A check that was only ever seen passing may be checking nothing.
 4. **Look at the captures** it saves to `.audit-ui/`, every one that the change could have touched. The checks pass on whatever is on screen, so a capture of the wrong screen is the only sign that the script went astray; it has happened more than once.
 5. **Check by eye what no script measures**, on those captures: lines and separators (one between two things, never two in a row and none at the end of a group), alignment of text with the page margin, spacing between groups, text that wraps or is cut in Spanish and French, and anything said twice on the same screen.
 6. **Open by hand what the script does not**: dialogs, the update screen, a finished game, toasts, and the pressed state. Say in the report which of these were not opened.
 
-The app screens are audited on a throwaway copy of this computer's data folder (they need Steam data); the script never reads or prints the key in it.
+**The fake Steam is reachable in development only.** `main/index.ts` reads `TROPHY_TRACKER_FAKE_STEAM` when the app is not packaged; an installed app ignores it, because the user's key is sent to whatever address that is. In that mode there is no local Steam client either: the account is typed in and the running game comes from the fake Web API. Two things the fake does not provide, and that the audit therefore does not cover: game art (the store answers with none) and counters fed by the local Steam file.
 
 ### Rules
 
