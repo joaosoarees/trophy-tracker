@@ -418,6 +418,7 @@
     "dos": [
       "Do keep every screen readable at 600 pixels and usable at 480, and check it in Spanish and French before calling it done.",
       "Do separate surfaces with tone and a one-pixel Hairline Slate border.",
+      "Do draw one line between two things and none at the end of a group; two lines in a row, or a line next to a border, is a mistake.",
       "Do give every clickable element three visible states besides rest: a wash on hover, a push on press (96 percent, or 99 percent for wide elements), and a focus ring.",
       "Do use Signal Blue only for what can be acted on or what is current.",
       "Do set every number that can change in tabular figures.",

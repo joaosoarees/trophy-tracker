@@ -303,7 +303,7 @@ A single bar across the top with a hairline under it. Tabs are text with a small
 
 ### Detail rows
 
-The shape facts and settings take wherever they are listed: a titled group of rows separated by hairlines, with what the row is on the left (and, when it helps, a caption under it) and its value or its control on the right. No card around the group. A row that leads somewhere is one clickable target with the usual wash. The game details and the whole Settings screen are built from it, so a number in one and a switch in the other sit on the same line.
+The shape facts and settings take wherever they are listed: a titled group of rows, with what the row is on the left (and, when it helps, a caption under it) and its value or its control on the right. No card around the group. Hairlines sit only between rows: none above the first or below the last, since the title opens the group and the space after it closes it. A row that leads somewhere is one clickable target with the usual wash, exactly as wide as the hairlines around it. The game details and the whole Settings screen are built from it, so a number in one and a switch in the other sit on the same line.
 
 ### Switch
 
@@ -339,6 +339,7 @@ The inverse of the page: Glance White with Night Navy text, softly rounded, with
 
 - **Do** keep every screen readable at 600 pixels and usable at 480, and check it in Spanish and French before calling it done.
 - **Do** separate surfaces with tone and a one-pixel Hairline Slate border.
+- **Do** draw one line between two things and none at the end of a group; two lines in a row, or a line next to a border, is a mistake.
 - **Do** give every clickable element three visible states besides rest: a wash on hover, a push on press (96 percent, or 99 percent for wide elements), and a focus ring.
 - **Do** use Signal Blue only for what can be acted on or what is current.
 - **Do** set every number that can change in tabular figures.
