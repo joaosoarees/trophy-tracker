@@ -16,7 +16,7 @@ const MANUAL: IAppInfo = {
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-function setup({ withAuto = true, checkFails = false } = {}) {
+function setup({ withAuto = true, checkFails = false, blocked = false } = {}) {
   const calls = { check: 0, install: 0, manual: 0, forced: 0 };
   const net = { online: true };
   const changes: IAppInfo[] = [];
@@ -47,6 +47,7 @@ function setup({ withAuto = true, checkFails = false } = {}) {
         return Promise.resolve(net.online);
       },
     },
+    isInstallBlocked: () => Promise.resolve(blocked),
     onChange: (info) => changes.push(info),
     logError: (_source, detail) => logged.push(detail),
     now: () => clock.now,
@@ -180,6 +181,18 @@ describe('AppUpdates', () => {
     emit().onReady('1.1.0');
     expect((await updates.checkNow()).info.updateStatus).toBe('ready');
     expect(calls.check).toBe(0);
+  });
+
+  it('only tells about a version the system would refuse to install', async () => {
+    const { updates, calls } = setup({ blocked: true });
+    const blockedInfo = { ...MANUAL, updateStatus: 'blocked' };
+
+    expect(await updates.getAppInfo()).toEqual(blockedInfo);
+    expect(await updates.checkNow()).toEqual({ ok: true, info: blockedInfo });
+    updates.install();
+    // Nothing was downloaded and nothing tries to install.
+    expect(calls.check).toBe(0);
+    expect(calls.install).toBe(0);
   });
 
   it('keeps a finished download when a late progress event arrives', () => {

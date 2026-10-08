@@ -179,6 +179,9 @@ export const en = {
     updateReadyHint:
       'The app restarts to finish the update; your data is kept.',
     restart: 'Restart to update',
+    updateBlockedHint:
+      'Windows Smart App Control is on and blocks installers that are not digitally signed, which this one is not yet. The version you have keeps working.',
+    learnMore: 'Learn more',
     checkForUpdates: 'Check for updates',
     checkingForUpdates: 'Checking…',
     upToDate: 'You already have the latest version.',

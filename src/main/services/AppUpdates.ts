@@ -29,6 +29,12 @@ interface IAppUpdatesDeps {
     /** Asks right now; answers whether the check could be made. */
     check: () => Promise<boolean>;
   };
+  /**
+   * Whether this system would refuse to run the installer of a new version
+   * (Windows with Smart App Control on, while the installers are unsigned).
+   * Asked once.
+   */
+  isInstallBlocked?: () => Promise<boolean>;
   onChange: (info: IAppInfo) => void;
   logError?: (source: string, detail: string) => void;
   now?: () => number;
@@ -46,6 +52,8 @@ export class AppUpdates {
   private readonly checker: IAppUpdatesDeps['checker'];
   private readonly onChange: (info: IAppInfo) => void;
   private readonly now: () => number;
+  private readonly isInstallBlocked: () => Promise<boolean>;
+  private blocked: Promise<boolean> | null = null;
   private newVersion: string | null = null;
   private status: 'idle' | 'downloading' | 'ready' | 'failed' = 'idle';
   private checkedAt: number | null = null;
@@ -54,6 +62,7 @@ export class AppUpdates {
     currentVersion,
     auto,
     checker,
+    isInstallBlocked = () => Promise.resolve(false),
     onChange,
     logError,
     now = Date.now,
@@ -63,6 +72,7 @@ export class AppUpdates {
     this.checker = checker;
     this.onChange = onChange;
     this.now = now;
+    this.isInstallBlocked = isInstallBlocked;
 
     auto?.start({
       onDownloading: (version) => this.set(version, 'downloading'),
@@ -75,6 +85,9 @@ export class AppUpdates {
   }
 
   async getAppInfo(): Promise<IAppInfo> {
+    if (await this.cannotInstall()) {
+      return this.asBlocked(await this.checker.getAppInfo());
+    }
     if (!this.auto || this.status === 'failed') {
       return this.checker.getAppInfo();
     }
@@ -95,6 +108,11 @@ export class AppUpdates {
    * automatic update another chance if it had failed before.
    */
   async checkNow(): Promise<IUpdateCheck> {
+    if (await this.cannotInstall()) {
+      const ok = await this.checker.check();
+      return { ok, info: this.asBlocked(await this.checker.getAppInfo()) };
+    }
+
     if (this.auto && this.status === 'ready') {
       return { ok: true, info: this.info() };
     }
@@ -120,6 +138,20 @@ export class AppUpdates {
   /** Only does something once a version has finished downloading. */
   install(): void {
     if (this.status === 'ready') this.auto?.install();
+  }
+
+  /**
+   * Downloading a version and closing the app to install it would lead
+   * nowhere, so the user is only told about it. Unknown counts as not blocked.
+   */
+  private cannotInstall(): Promise<boolean> {
+    if (!this.auto) return Promise.resolve(false);
+    this.blocked ??= this.isInstallBlocked().catch(() => false);
+    return this.blocked;
+  }
+
+  private asBlocked(info: IAppInfo): IAppInfo {
+    return { ...info, updateStatus: 'blocked' };
   }
 
   /** Read through a method so a change made by an event is seen after an `await`. */

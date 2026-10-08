@@ -17,7 +17,10 @@ import { createSteamLocal } from './steam/local';
 import { createCipher } from './storage/createCipher';
 import { migrateUserData } from './storage/migrateUserData';
 import { Store } from './storage/Store';
-import { createAutoUpdater } from './system/autoUpdate';
+import {
+  createAutoUpdater,
+  isInstallBlockedBySystem,
+} from './system/autoUpdate';
 import { logError } from './system/errorLog';
 import { notify } from './system/notify';
 import { MainWindow } from './window';
@@ -70,6 +73,7 @@ void app.whenReady().then(() => {
       currentVersion: app.getVersion(),
       repository: RELEASES_REPOSITORY,
     }),
+    isInstallBlocked: isInstallBlockedBySystem,
     onChange: (info) => window.send(IpcEvent.appInfoChanged, info),
     logError: log,
   });

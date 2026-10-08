@@ -67,6 +67,8 @@ export function useSettingsController() {
     updateCheck,
     handleCheckForUpdates: () => void handleCheckForUpdates(),
     handleInstallUpdate,
+    handleLearnAboutBlock: () =>
+      void SystemService.openExternal('smartAppControl'),
     handleDownload: () => void SystemService.openExternal('download'),
   };
 }

@@ -75,11 +75,39 @@ export async function getSteamPath(): Promise<string | null> {
   return typeof steamPath === 'string' ? toLocalPath(steamPath) : null;
 }
 
+const psQuote = (s: string): string => `'${s.replace(/'/g, "''")}'`;
+
+/**
+ * Whether Smart App Control is enforcing (not just evaluating). When it is,
+ * Windows refuses to run executables that are neither signed nor known to
+ * Microsoft's reputation service, and offers no per-app exception.
+ */
+export async function isSmartAppControlOn(): Promise<boolean> {
+  const state = await regValue(
+    'HKLM\\SYSTEM\\CurrentControlSet\\Control\\CI\\Policy',
+    'VerifiedAndReputablePolicyState',
+  );
+  return state === 1;
+}
+
+/** Whether a Windows executable carries a valid code signature. */
+export async function isSigned(file: string): Promise<boolean> {
+  try {
+    const status = await run('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      `(Get-AuthenticodeSignature -LiteralPath ${psQuote(file)}).Status`,
+    ]);
+    return status.trim() === 'Valid';
+  } catch {
+    return false;
+  }
+}
+
 export async function openInWindowsBrowser(url: string): Promise<void> {
   await run('rundll32.exe', ['url.dll,FileProtocolHandler', url]);
 }
-
-const psQuote = (s: string): string => `'${s.replace(/'/g, "''")}'`;
 
 /** Windows toast; Electron notifications inside WSLg never reach the notification area. */
 export async function windowsToast(title: string, body: string): Promise<void> {

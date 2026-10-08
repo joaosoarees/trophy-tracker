@@ -187,6 +187,9 @@ export const fr: Messages = {
     updateReadyHint:
       'L’application redémarre pour terminer la mise à jour ; vos données sont conservées.',
     restart: 'Redémarrer pour mettre à jour',
+    updateBlockedHint:
+      'Le Contrôle intelligent des applications de Windows est activé et bloque les programmes d’installation sans signature numérique, ce qui est encore le cas de celui-ci. La version installée continue de fonctionner.',
+    learnMore: 'En savoir plus',
     checkForUpdates: 'Rechercher des mises à jour',
     checkingForUpdates: 'Recherche…',
     upToDate: 'Vous avez déjà la dernière version.',

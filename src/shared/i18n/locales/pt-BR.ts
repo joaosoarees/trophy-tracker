@@ -179,6 +179,9 @@ export const ptBR: Messages = {
     updateReadyHint:
       'O app reinicia para concluir a atualização; seus dados são mantidos.',
     restart: 'Reiniciar para atualizar',
+    updateBlockedHint:
+      'O Controle Inteligente de Aplicativos do Windows está ativo e bloqueia instaladores sem assinatura digital, que este ainda não tem. A versão instalada continua funcionando.',
+    learnMore: 'Saiba mais',
     checkForUpdates: 'Buscar atualizações',
     checkingForUpdates: 'Buscando…',
     upToDate: 'Você já tem a versão mais recente.',

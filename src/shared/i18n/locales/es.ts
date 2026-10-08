@@ -187,6 +187,9 @@ export const es: Messages = {
     updateReadyHint:
       'La aplicación se reinicia para completar la actualización; tus datos se conservan.',
     restart: 'Reiniciar para actualizar',
+    updateBlockedHint:
+      'El Control inteligente de aplicaciones de Windows está activo y bloquea los instaladores sin firma digital, que este todavía no tiene. La versión instalada sigue funcionando.',
+    learnMore: 'Más información',
     checkForUpdates: 'Buscar actualizaciones',
     checkingForUpdates: 'Buscando…',
     upToDate: 'Ya tienes la última versión.',

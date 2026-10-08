@@ -23,6 +23,7 @@ export function Settings() {
     handleRedoSetup,
     handleDownload,
     handleInstallUpdate,
+    handleLearnAboutBlock,
     updateCheck,
     handleCheckForUpdates,
   } = useSettingsController();
@@ -37,6 +38,7 @@ export function Settings() {
           status={appInfo.updateStatus}
           onDownload={handleDownload}
           onInstall={handleInstallUpdate}
+          onLearnMore={handleLearnAboutBlock}
         />
       )}
 

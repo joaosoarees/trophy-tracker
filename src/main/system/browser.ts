@@ -10,6 +10,8 @@ const EXTERNAL_PAGES: Record<ExternalPage, string> = {
   privacy: 'https://steamcommunity.com/my/edit/settings',
   account: 'https://store.steampowered.com/account/',
   download: `https://github.com/${RELEASES_REPOSITORY}/releases/latest`,
+  smartAppControl:
+    'https://support.microsoft.com/windows/security/threat-malware-protection/smart-app-control-frequently-asked-questions',
 };
 
 /** Opens in the user's browser; from WSL that means the Windows one. */

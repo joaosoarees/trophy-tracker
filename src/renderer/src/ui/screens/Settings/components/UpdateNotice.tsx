@@ -1,4 +1,4 @@
-import { Download, RotateCw } from 'lucide-react';
+import { Download, ExternalLink, RotateCw } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { type UpdateStatus } from '@shared/types/AppInfo';
@@ -9,6 +9,7 @@ interface IUpdateNoticeProps {
   status: UpdateStatus;
   onDownload: () => void;
   onInstall: () => void;
+  onLearnMore: () => void;
 }
 
 export function UpdateNotice({
@@ -16,12 +17,14 @@ export function UpdateNotice({
   status,
   onDownload,
   onInstall,
+  onLearnMore,
 }: IUpdateNoticeProps) {
   const t = useT();
   const title = {
     manual: t.settings.updateAvailable(version),
     downloading: t.settings.updateDownloading(version),
     ready: t.settings.updateReady(version),
+    blocked: t.settings.updateAvailable(version),
   }[status];
 
   return (
@@ -36,6 +39,11 @@ export function UpdateNotice({
             {t.settings.updateHint}
           </small>
         )}
+        {status === 'blocked' && (
+          <small className="text-muted-foreground">
+            {t.settings.updateBlockedHint}
+          </small>
+        )}
         {status === 'ready' && (
           <small className="text-muted-foreground">
             {t.settings.updateReadyHint}
@@ -46,6 +54,12 @@ export function UpdateNotice({
         <Button size="sm" onClick={onDownload}>
           <Download />
           {t.settings.download}
+        </Button>
+      )}
+      {status === 'blocked' && (
+        <Button size="sm" variant="outline" onClick={onLearnMore}>
+          <ExternalLink />
+          {t.settings.learnMore}
         </Button>
       )}
       {status === 'ready' && (
