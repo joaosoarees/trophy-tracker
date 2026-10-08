@@ -4,8 +4,8 @@ import {
   AppUpdates,
   type IAutoUpdater,
   type IAutoUpdaterListener,
-} from '../src/main/services/AppUpdates';
-import { type IAppInfo } from '../src/shared/types/AppInfo';
+} from '@main/services/AppUpdates';
+import { type IAppInfo } from '@shared/types/AppInfo';
 
 const HOUR = 60 * 60 * 1000;
 const MANUAL: IAppInfo = {

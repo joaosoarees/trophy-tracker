@@ -6,7 +6,9 @@
     "paths": {
       "@app/*": ["./src/renderer/src/app/*"],
       "@ui/*": ["./src/renderer/src/ui/*"],
-      "@shared/*": ["./src/shared/*"]
+      "@shared/*": ["./src/shared/*"],
+      "@main/*": ["./src/main/*"],
+      "@test/*": ["./test/*"]
     }
   },
   "include": [

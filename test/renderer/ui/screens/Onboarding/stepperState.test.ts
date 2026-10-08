@@ -5,7 +5,7 @@ import {
   type IStepperState,
   type StepperAction,
   stepperReducer,
-} from '../src/renderer/src/ui/screens/Onboarding/components/Stepper/stepperState';
+} from '@ui/screens/Onboarding/components/Stepper/stepperState';
 
 const STEPS = 3;
 const run = (state: IStepperState, ...actions: StepperAction[]) =>

@@ -1,13 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  GameWatcher,
-  type IGameWatcherDeps,
-} from '../src/main/services/GameWatcher';
-import { en } from '../src/shared/i18n/locales/en';
-import { type IAchievement } from '../src/shared/types/Achievement';
-import { type CheckResult } from '../src/shared/types/Check';
-import { type IGameView } from '../src/shared/types/Game';
+import { GameWatcher, type IGameWatcherDeps } from '@main/services/GameWatcher';
+import { en } from '@shared/i18n/locales/en';
+import { type IAchievement } from '@shared/types/Achievement';
+import { type CheckResult } from '@shared/types/Check';
+import { type IGameView } from '@shared/types/Game';
 
 const achievement = (id: string, unlocked: boolean): IAchievement => ({
   id,

@@ -1,0 +1,112 @@
+import { describe, expect, it } from 'vitest';
+
+import { SteamClient, SteamError, steamErrorMessage } from '@main/steam/client';
+import { en } from '@shared/i18n/locales/en';
+import { ptBR } from '@shared/i18n/locales/pt-BR';
+import nioh from '@test/fixtures/game-achievements-3681010.json';
+import {
+  clientWith,
+  fakeFetch,
+  FORBIDDEN_HTML,
+  KEY,
+  NO_STATS,
+  NOT_PUBLIC,
+  STEAM_ID,
+} from '@test/helpers';
+
+const creds = { steamId: STEAM_ID, apiKey: KEY };
+
+describe('SteamClient', () => {
+  const kind = async (p: Promise<unknown>) => {
+    const e = await p.catch((err) => err);
+    expect(e).toBeInstanceOf(SteamError);
+    return (e as SteamError).kind;
+  };
+
+  it('recognises a rejected key', async () => {
+    expect(
+      await kind(
+        clientWith({ GetPlayerSummaries: FORBIDDEN_HTML }).getPlayerSummary(
+          creds,
+        ),
+      ),
+    ).toBe('invalid-key');
+  });
+
+  it('recognises a private profile and a game with no achievements', async () => {
+    expect(
+      await kind(
+        clientWith({ GetPlayerAchievements: NOT_PUBLIC }).getPlayerAchievements(
+          creds,
+          1,
+        ),
+      ),
+    ).toBe('private');
+    expect(
+      await kind(
+        clientWith({ GetPlayerAchievements: NO_STATS }).getPlayerAchievements(
+          creds,
+          1,
+        ),
+      ),
+    ).toBe('no-stats');
+  });
+
+  it('recognises a SteamID with no profile', async () => {
+    const client = clientWith({
+      GetPlayerSummaries: { json: { response: { players: [] } } },
+    });
+    expect(await kind(client.getPlayerSummary(creds))).toBe('not-found');
+  });
+
+  it('tells an empty library from an invisible one', async () => {
+    expect(
+      await clientWith({
+        GetOwnedGames: { json: { response: {} } },
+      }).getOwnedGames(creds),
+    ).toBeNull();
+    expect(
+      await clientWith({
+        GetOwnedGames: { json: { response: { game_count: 0 } } },
+      }).getOwnedGames(creds),
+    ).toEqual([]);
+  });
+
+  it('asks for the achievements with no key and in the user language', async () => {
+    const asked: (string | null)[] = [];
+    const fetchImpl = fakeFetch({
+      GetGameAchievements: (url) => {
+        asked.push(url.searchParams.get('language'));
+        expect(url.searchParams.has('key')).toBe(false);
+        return { json: nioh };
+      },
+    });
+    const client = new SteamClient(fetchImpl);
+    expect(await client.getGameAchievements(3681010)).toHaveLength(64);
+    client.language = 'pt-BR';
+    await client.getGameAchievements(3681010);
+    expect(asked).toEqual(['english', 'brazilian']);
+  });
+
+  it('translates each kind of error to the requested language', () => {
+    expect(steamErrorMessage(en, new SteamError('invalid-key'))).toBe(
+      'Steam rejected the Web API key.',
+    );
+    expect(steamErrorMessage(ptBR, new SteamError('invalid-key'))).toBe(
+      'A Steam recusou a chave da Web API.',
+    );
+    expect(steamErrorMessage(ptBR, new SteamError('unknown', 502))).toBe(
+      'A Steam respondeu com erro 502.',
+    );
+    expect(
+      steamErrorMessage(en, new SteamError('unknown', 400, 'Bad appid')),
+    ).toBe('Bad appid');
+  });
+
+  it('recognises a network failure', async () => {
+    const client = new SteamClient(async () => {
+      throw new TypeError('fetch failed');
+    });
+    expect(await kind(client.getGameAchievements(1))).toBe('network');
+  });
+});

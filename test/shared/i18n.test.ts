@@ -6,7 +6,7 @@ import {
   LANGUAGE_CODES,
   LANGUAGES,
   messagesFor,
-} from '../src/shared/i18n';
+} from '@shared/i18n';
 
 type Tree = { [key: string]: unknown };
 

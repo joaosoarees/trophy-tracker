@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { migrateUserData } from '../src/main/storage/migrateUserData';
+import { migrateUserData } from '@main/storage/migrateUserData';
 
 const dir = () => mkdtempSync(join(tmpdir(), 'tt-'));
 

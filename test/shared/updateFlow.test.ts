@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { type IAppInfo, type UpdateStatus } from '../src/shared/types/AppInfo';
-import { isUpdatingItself, needsTheUser } from '../src/shared/updateFlow';
+import { type IAppInfo, type UpdateStatus } from '@shared/types/AppInfo';
+import { isUpdatingItself, needsTheUser } from '@shared/updateFlow';
 
 const info = (
   updateStatus: UpdateStatus,

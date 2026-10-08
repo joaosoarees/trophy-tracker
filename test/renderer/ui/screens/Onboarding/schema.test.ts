@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { onboardingSchema } from '../src/renderer/src/ui/screens/Onboarding/schema';
-import { accountStepSchema } from '../src/renderer/src/ui/screens/Onboarding/steps/AccountStep/schema';
-import { languageStepSchema } from '../src/renderer/src/ui/screens/Onboarding/steps/LanguageStep/schema';
-import { en } from '../src/shared/i18n/locales/en';
-
-import { KEY, STEAM_ID } from './helpers';
+import { en } from '@shared/i18n/locales/en';
+import { KEY, STEAM_ID } from '@test/helpers';
+import { onboardingSchema } from '@ui/screens/Onboarding/schema';
+import { accountStepSchema } from '@ui/screens/Onboarding/steps/AccountStep/schema';
+import { languageStepSchema } from '@ui/screens/Onboarding/steps/LanguageStep/schema';
 
 const verified = { name: 'joao', avatar: '', gamesWithPlaytime: 3 };
 

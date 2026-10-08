@@ -4,8 +4,8 @@ import {
   createChecklistItem,
   parseChecklist,
   shownProgress,
-} from '../src/shared/checklist';
-import { type IAchievement } from '../src/shared/types/Achievement';
+} from '@shared/checklist';
+import { type IAchievement } from '@shared/types/Achievement';
 
 const achievement = (progress: IAchievement['progress']): IAchievement => ({
   id: 'A',

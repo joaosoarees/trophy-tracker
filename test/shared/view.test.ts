@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { type IAchievement } from '../src/shared/types/Achievement';
-import { type IGameView } from '../src/shared/types/Game';
-import { mergeView } from '../src/shared/view';
+import { type IAchievement } from '@shared/types/Achievement';
+import { type IGameView } from '@shared/types/Game';
+import { mergeView } from '@shared/view';
 
 const ach = (id: string, over: Partial<IAchievement> = {}): IAchievement => ({
   id,

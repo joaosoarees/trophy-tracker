@@ -4,11 +4,10 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { SetupService } from '../src/main/services/SetupService';
-import { SteamClient, SteamError } from '../src/main/steam/client';
-import { Store } from '../src/main/storage/Store';
-
-import { fakeFetch, FORBIDDEN_HTML, KEY, STEAM_ID } from './helpers';
+import { SetupService } from '@main/services/SetupService';
+import { SteamClient, SteamError } from '@main/steam/client';
+import { Store } from '@main/storage/Store';
+import { fakeFetch, FORBIDDEN_HTML, KEY, STEAM_ID } from '@test/helpers';
 
 const summary = {
   json: {

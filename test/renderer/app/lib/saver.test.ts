@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createSaver } from '../src/renderer/src/app/lib/saver';
+import { createSaver } from '@app/lib/saver';
 
 /** A `save` whose outcome each test decides, call by call. */
 function setup() {

@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  countGames,
-  listGames,
-} from '../src/renderer/src/ui/screens/Dashboard/gameList';
-import { type IGameSummary } from '../src/shared/types/Game';
+import { type IGameSummary } from '@shared/types/Game';
+import { countGames, listGames } from '@ui/screens/Dashboard/gameList';
 
 const game = (
   name: string,

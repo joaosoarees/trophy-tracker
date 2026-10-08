@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { type IAchievement } from '@shared/types/Achievement';
+import { type IGameView } from '@shared/types/Game';
 import {
   countHidden,
   listAchievements,
-} from '../src/renderer/src/ui/screens/Game/achievementList';
-import { type IAchievement } from '../src/shared/types/Achievement';
-import { type IGameView } from '../src/shared/types/Game';
+} from '@ui/screens/Game/achievementList';
 
 const achievement = (
   id: string,

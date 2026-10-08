@@ -54,7 +54,9 @@ export default defineConfig(
             'sibling',
             'index',
           ],
-          pathGroups: [{ pattern: '@{app,ui,shared}/**', group: 'internal' }],
+          pathGroups: [
+            { pattern: '@{app,ui,shared,main,test}/**', group: 'internal' },
+          ],
           alphabetize: { order: 'asc', caseInsensitive: true },
           'newlines-between': 'always',
         },

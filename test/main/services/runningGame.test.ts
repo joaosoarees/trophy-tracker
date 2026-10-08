@@ -4,84 +4,11 @@ import { join } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { createRunningGameSource } from '../src/main/services/runningGame';
-import { SteamClient } from '../src/main/steam/client';
-import { type ISteamLocal } from '../src/main/steam/local';
-import {
-  mostRecentSteamId,
-  steamDirCandidates,
-} from '../src/main/steam/steamFiles';
-import { parseTextVdf } from '../src/main/steam/textVdf';
-import { Store } from '../src/main/storage/Store';
-
-import { fakeFetch, KEY, STEAM_ID } from './helpers';
-
-const LOGIN_USERS = `"users"
-{
-	"76561190000000001"
-	{
-		"AccountName"		"old \\"quoted\\" account"
-		"PersonaName"		"Old"
-		"MostRecent"		"0"
-	}
-	"${STEAM_ID}"
-	{
-		"AccountName"		"current"
-		"MostRecent"		"1"
-		"Timestamp"		"1790000000"
-	}
-}
-`;
-
-describe('parseTextVdf', () => {
-  it('reads nested blocks, pairs and escaped quotes', () => {
-    const parsed = parseTextVdf(LOGIN_USERS) as Record<string, any>;
-    expect(Object.keys(parsed.users)).toEqual(['76561190000000001', STEAM_ID]);
-    expect(parsed.users['76561190000000001'].AccountName).toBe(
-      'old "quoted" account',
-    );
-    expect(parsed.users[STEAM_ID].Timestamp).toBe('1790000000');
-  });
-
-  it('survives an empty or truncated file', () => {
-    expect(parseTextVdf('')).toEqual({});
-    expect(parseTextVdf('"users" { "765" { "MostRecent" "1"')).toEqual({
-      users: { '765': { MostRecent: '1' } },
-    });
-  });
-});
-
-describe('mostRecentSteamId', () => {
-  it('picks the account marked as most recent', () => {
-    expect(mostRecentSteamId(LOGIN_USERS)).toBe(STEAM_ID);
-  });
-
-  it('falls back to the first account when none is marked', () => {
-    expect(mostRecentSteamId(LOGIN_USERS.replace('"MostRecent"		"1"', ''))).toBe(
-      '76561190000000001',
-    );
-  });
-
-  it('returns nothing for a file with no accounts', () => {
-    expect(mostRecentSteamId('"users" { }')).toBeNull();
-    expect(mostRecentSteamId('not a vdf at all')).toBeNull();
-  });
-});
-
-describe('steamDirCandidates', () => {
-  it('knows where the client lives on each system', () => {
-    expect(steamDirCandidates('darwin', '/Users/me')).toEqual([
-      '/Users/me/Library/Application Support/Steam',
-    ]);
-    const linux = steamDirCandidates('linux', '/home/me');
-    expect(linux[0]).toBe('/home/me/.local/share/Steam');
-    expect(linux).toContain('/home/me/.steam/steam');
-    expect(linux.some((dir) => dir.includes('com.valvesoftware.Steam'))).toBe(
-      true,
-    );
-    expect(steamDirCandidates('freebsd', '/home/me')).toEqual([]);
-  });
-});
+import { createRunningGameSource } from '@main/services/runningGame';
+import { SteamClient } from '@main/steam/client';
+import { type ISteamLocal } from '@main/steam/local';
+import { Store } from '@main/storage/Store';
+import { fakeFetch, KEY, STEAM_ID } from '@test/helpers';
 
 describe('createRunningGameSource', () => {
   const localWithoutTracking: ISteamLocal = {
