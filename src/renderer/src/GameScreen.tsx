@@ -24,7 +24,6 @@ const date = (epoch: number): string =>
 interface Props {
   appid: number
   running: boolean
-  onAuthProblem(): void
 }
 
 export function GameScreen({ appid, running, onAuthProblem }: Props) {
@@ -63,20 +62,6 @@ export function GameScreen({ appid, running, onAuthProblem }: Props) {
     [appid, accept, onAuthProblem]
   )
 
-  useEffect(() => {
-    void load(false)
-    void window.api.getUserData(appid).then(setUserData)
-    return window.api.onGameUpdated((next) => {
-      if (next.appid === appid) accept(next)
-    })
-  }, [appid, load, accept])
-
-  const update = (id: string, patch: Partial<GameUserData[string]>): void => {
-    const next = { ...(userData[id] ?? { note: '', pinned: false }), ...patch }
-    setUserData({ ...userData, [id]: next })
-    void window.api.setUserData(appid, id, next)
-  }
-
   const list = useMemo(() => {
     if (!view) return []
     const items = view.achievements.filter((a) => a.unlocked === (filter === 'unlocked'))
@@ -86,7 +71,8 @@ export function GameScreen({ appid, running, onAuthProblem }: Props) {
       closest: (a, b) => ratio(b) - ratio(a) || (b.rarity ?? -1) - (a.rarity ?? -1),
       name: (a, b) => a.name.localeCompare(b.name, 'pt-BR')
     }
-    const order = filter === 'unlocked' ? (a: Achievement, b: Achievement) => (b.unlockedAt ?? 0) - (a.unlockedAt ?? 0) : by[sort]
+    const order =
+      filter === 'unlocked' ? (a: Achievement, b: Achievement) => (b.unlockedAt ?? 0) - (a.unlockedAt ?? 0) : by[sort]
     const pinned = (a: Achievement): number => (userData[a.id]?.pinned ? 1 : 0)
     return items.sort((a, b) => pinned(b) - pinned(a) || order(a, b))
   }, [view, filter, sort, userData])
@@ -104,6 +90,7 @@ export function GameScreen({ appid, running, onAuthProblem }: Props) {
 
   const pending = view.total - view.unlockedCount
   const percent = view.total === 0 ? 0 : Math.round((view.unlockedCount / view.total) * 100)
+  const complete = view.total > 0 && pending === 0
 
   return (
     <section className="game">
@@ -115,37 +102,34 @@ export function GameScreen({ appid, running, onAuthProblem }: Props) {
             {loading ? '…' : '↻'}
           </button>
         </div>
-        <div className="bar big">
-          <div style={{ width: `${percent}%` }} />
-        </div>
-        <p className="muted">
-          {view.unlockedCount} de {view.total} conquistas · {percent}%
-          {pending > 0 ? ` · faltam ${pending}` : view.total > 0 ? ' · todas obtidas' : ''}
-        </p>
-        {error && <p className="error">{error}</p>}
       </header>
 
       {justUnlocked.length > 0 && (
         <div className="toast" onClick={() => setJustUnlocked([])}>
           Conquista desbloqueada: {justUnlocked.join(', ')}
-        </div>
+        </button>
       )}
 
       {view.total === 0 ? (
-        <p className="empty">Este jogo não tem conquistas.</p>
+        <Empty>Este jogo não tem conquistas.</Empty>
       ) : (
-        <>
-          <div className="toolbar">
-            <div className="segmented">
-              <button className={filter === 'pending' ? 'active' : ''} onClick={() => setFilter('pending')}>
-                Pendentes ({pending})
-              </button>
-              <button className={filter === 'unlocked' ? 'active' : ''} onClick={() => setFilter('unlocked')}>
-                Desbloqueadas ({view.unlockedCount})
-              </button>
-            </div>
+        <div className="p-4">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <Segmented<Filter>
+              value={filter}
+              onChange={setFilter}
+              options={[
+                { value: 'pending', label: `Pendentes ${pending}` },
+                { value: 'unlocked', label: `Obtidas ${view.unlockedCount}` }
+              ]}
+            />
+            <span className="flex-1" />
             {filter === 'pending' && (
-              <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as Sort)}
+                className="bg-muted text-foreground h-8 rounded-md border px-2 text-xs"
+              >
                 {Object.entries(SORTS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -159,92 +143,13 @@ export function GameScreen({ appid, running, onAuthProblem }: Props) {
             <p className="empty">{filter === 'pending' ? 'Nada pendente. 100%!' : 'Nenhuma conquista desbloqueada ainda.'}</p>
           )}
 
-          <ul className="achievements">
+          <ul className="flex flex-col gap-2">
             {list.map((a) => (
-              <Card
-                key={a.id}
-                a={a}
-                game={view.name}
-                appid={appid}
-                data={userData[a.id]}
-                onChange={(patch) => update(a.id, patch)}
-              />
+              <AchievementCard key={a.id} a={a} game={view.name} appid={appid} data={userData[a.id]} onChange={update} />
             ))}
           </ul>
-        </>
+        </div>
       )}
     </section>
-  )
-}
-
-interface CardProps {
-  a: Achievement
-  game: string
-  appid: number
-  data: GameUserData[string] | undefined
-  onChange(patch: Partial<GameUserData[string]>): void
-}
-
-function Card({ a, game, appid, data, onChange }: CardProps) {
-  const [noteOpen, setNoteOpen] = useState(false)
-  const pinned = data?.pinned === true
-  const note = data?.note ?? ''
-  const showNote = noteOpen || note !== ''
-
-  return (
-    <li className={`card${pinned ? ' pinned' : ''}${a.unlocked ? ' unlocked' : ''}`}>
-      <img src={a.unlocked ? a.icon : a.iconGray || a.icon} alt="" loading="lazy" />
-      <div className="body">
-        <div className="name">
-          <strong>{a.name}</strong>
-          {a.hidden && <span className="badge">oculta</span>}
-          {a.rarity !== null && (
-            <span className="rarity" title="Jogadores que têm esta conquista">
-              {a.rarity.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
-            </span>
-          )}
-        </div>
-        <p>{a.description || 'Sem descrição.'}</p>
-
-        {a.progress && !a.unlocked && (
-          <div className="progress">
-            <div className="bar">
-              <div style={{ width: `${(a.progress.current / a.progress.target) * 100}%` }} />
-            </div>
-            <span>
-              {a.progress.current.toLocaleString('pt-BR')} / {a.progress.target.toLocaleString('pt-BR')}
-            </span>
-          </div>
-        )}
-
-        {a.unlocked ? (
-          a.unlockedAt && <small className="muted">Obtida em {date(a.unlockedAt)}</small>
-        ) : (
-          <div className="links">
-            {GUIDES.map(([site, label]) => (
-              <button key={site} onClick={() => void window.api.openGuide(site, appid, game, a.name)}>
-                {label}
-              </button>
-            ))}
-            <span className="spacer" />
-            {!showNote && <button onClick={() => setNoteOpen(true)}>Nota</button>}
-            <button className={pinned ? 'active' : ''} title="Fixar no topo" onClick={() => onChange({ pinned: !pinned })}>
-              {pinned ? 'Fixada' : 'Fixar'}
-            </button>
-          </div>
-        )}
-
-        {showNote && (
-          <textarea
-            value={note}
-            rows={2}
-            autoFocus={noteOpen && note === ''}
-            placeholder="Sua anotação ou um link de guia"
-            onChange={(e) => onChange({ note: e.target.value })}
-            onBlur={() => setNoteOpen(false)}
-          />
-        )}
-      </div>
-    </li>
   )
 }

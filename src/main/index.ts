@@ -139,7 +139,7 @@ function createWindow(): void {
     height: 860,
     minWidth: 420,
     minHeight: 520,
-    backgroundColor: '#14171c',
+    backgroundColor: '#171a21',
     autoHideMenuBar: true,
     title: 'Conquistas da Steam',
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true }

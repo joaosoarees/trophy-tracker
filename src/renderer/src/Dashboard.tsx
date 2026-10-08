@@ -3,7 +3,6 @@ import type { GameSummary } from '../../shared/types'
 
 interface Props {
   onPick(appid: number): void
-  onAuthProblem(): void
 }
 
 export function Dashboard({ onPick, onAuthProblem }: Props) {
@@ -45,17 +44,14 @@ export function Dashboard({ onPick, onAuthProblem }: Props) {
             {loading ? '…' : '↻'}
           </button>
         </div>
-        {loading && (
-          <p className="muted">
-            {progress ? `Lendo conquistas: ${progress[0]} de ${progress[1]} jogos…` : 'Carregando sua biblioteca…'}
-          </p>
-        )}
-        {!loading && games && (
-          <p className="muted">
-            {games.length} jogos com conquistas · {games.length - incomplete} completos · {incomplete} em andamento
-          </p>
-        )}
-        {error && <p className="error">{error}</p>}
+        <p className="text-muted-foreground text-xs">
+          {loading
+            ? progress
+              ? `Lendo conquistas: ${progress[0]} de ${progress[1]} jogos…`
+              : 'Carregando sua biblioteca…'
+            : games && `${games.length} jogos com conquistas · ${games.length - incomplete} completos · ${incomplete} em andamento`}
+        </p>
+        {error && <p className="text-destructive mt-1">{error}</p>}
       </header>
 
       {games && games.length === 0 && !loading && <p className="empty">Nenhum jogo jogado com conquistas.</p>}
@@ -63,6 +59,7 @@ export function Dashboard({ onPick, onAuthProblem }: Props) {
       <ul className="games">
         {games?.map((g) => {
           const percent = Math.round((g.unlocked / g.total) * 100)
+          const complete = g.unlocked === g.total
           return (
             <li key={g.appid} className={g.unlocked === g.total ? 'complete' : ''} onClick={() => onPick(g.appid)}>
               {g.icon ? <img src={g.icon} alt="" loading="lazy" /> : <span className="noicon" />}
@@ -71,11 +68,13 @@ export function Dashboard({ onPick, onAuthProblem }: Props) {
                 <div className="bar">
                   <div style={{ width: `${percent}%` }} />
                 </div>
-              </div>
-              <div className="count">
-                <strong>{percent}%</strong>
-                <small>{g.unlocked === g.total ? 'completo' : `faltam ${g.total - g.unlocked}`}</small>
-              </div>
+                <div className="w-[72px] flex-none text-right">
+                  <strong className={cn('block tabular-nums', complete && 'text-success')}>{percent}%</strong>
+                  <small className="text-muted-foreground text-[11px]">
+                    {complete ? 'completo' : `faltam ${g.total - g.unlocked}`}
+                  </small>
+                </div>
+              </button>
             </li>
           )
         })}

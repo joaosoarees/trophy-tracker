@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
+import { ExternalLink } from 'lucide-react'
 import type { AppState, Profile } from '../../shared/types'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 interface Props {
   notice: string | null
@@ -78,16 +82,22 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
   }
 
   return (
-    <div className="onboarding">
-      <ol className="steps">
+    <div className="mx-auto max-w-lg p-5 [&_h1]:mb-2.5 [&_h1]:text-2xl [&_h1]:font-semibold [&_section_li]:my-2 [&_section_ol]:list-decimal [&_section_ol]:pl-5 [&_section_p]:my-2 [&_section_ul]:list-disc [&_section_ul]:pl-5">
+      <ol className="mb-6 flex gap-1.5">
         {STEPS.map((label, i) => (
-          <li key={label} className={i === step ? 'current' : i < step ? 'done' : ''}>
+          <li
+            key={label}
+            className={cn(
+              'flex-1 border-t-[3px] pt-1.5 text-xs',
+              i === step ? 'border-primary text-foreground' : i < step ? 'border-success text-muted-foreground' : 'text-muted-foreground'
+            )}
+          >
             {label}
           </li>
         ))}
       </ol>
 
-      {notice && step === 0 && <p className="error">{notice} Refaça a configuração.</p>}
+      {notice && step === 0 && <p className="text-destructive">{notice} Refaça a configuração.</p>}
 
       {step === 0 && (
         <section>
@@ -102,12 +112,12 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
             <li>gerar uma chave da Web API da Steam, gratuita;</li>
             <li>conferir se os detalhes dos seus jogos estão públicos.</li>
           </ul>
-          <p className="muted">A chave fica guardada só neste computador.</p>
-          <div className="actions">
-            {onCancel && <button onClick={onCancel}>Cancelar</button>}
-            <button className="primary" onClick={() => go(1)}>
+          <p className="text-muted-foreground">A chave fica guardada só neste computador.</p>
+          <div className="mt-6 flex justify-end gap-2">
+            {onCancel && <Button variant="ghost" onClick={onCancel}>Cancelar</Button>}
+            <Button onClick={() => go(1)}>
               Começar
-            </button>
+            </Button>
           </div>
         </section>
       )}
@@ -120,8 +130,8 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
           ) : (
             <p>Não encontrei uma conta logada no cliente Steam. Cole abaixo o seu SteamID de 17 dígitos.</p>
           )}
-          <details open={!detected}>
-            <summary>Onde encontro meu SteamID?</summary>
+          <details open={!detected} className="bg-card my-3 rounded-lg border px-3 py-2">
+            <summary className="text-primary cursor-pointer">Onde encontro meu SteamID?</summary>
             <ol>
               <li>No cliente Steam, clique no seu nome no canto superior direito.</li>
               <li>Escolha “Detalhes da conta”.</li>
@@ -130,13 +140,17 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
                 amigo nem o nome de usuário.
               </li>
             </ol>
-            <button onClick={() => void window.api.openExternal('account')}>Abrir “Detalhes da conta” no navegador</button>
+            <Button size="xs" variant="secondary" onClick={() => void window.api.openExternal('account')}>
+                <ExternalLink />
+                Abrir “Detalhes da conta” no navegador
+              </Button>
           </details>
-          <label>
+          <label className="text-muted-foreground mt-4 mb-1.5 block">
             SteamID
-            <input
+            <Input
               value={steamId}
               inputMode="numeric"
+              className="text-foreground mt-1"
               placeholder="7656119…"
               onChange={(e) => {
                 setSteamId(e.target.value)
@@ -146,32 +160,32 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
             />
           </label>
           {profile && (
-            <div className="profile">
-              {profile.avatar && <img src={profile.avatar} alt="" />}
+            <div className="bg-card my-3 flex items-center gap-3 rounded-lg border p-3">
+              {profile.avatar && <img src={profile.avatar} alt="" className="size-12 rounded-md" />}
               <div>
-                <strong>{profile.name}</strong>
-                <small>Perfil encontrado</small>
+                <strong className="block">{profile.name}</strong>
+                <small className="text-muted-foreground">Perfil encontrado</small>
               </div>
             </div>
           )}
-          {error && <p className="error">{error}</p>}
+          {error && <p className="text-destructive">{error}</p>}
           {unconfirmed && (
-            <p className="warning">
+            <p className="text-warning">
               Não consegui confirmar este perfil agora ({unconfirmed}). Você pode tentar de novo ou continuar: o próximo
               passo confere o SteamID junto com a chave.
             </p>
           )}
-          <div className="actions">
-            <button onClick={() => go(0)}>Voltar</button>
-            {unconfirmed && <button onClick={skipConfirmation}>Continuar mesmo assim</button>}
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => go(0)}>Voltar</Button>
+            {unconfirmed && <Button variant="secondary" onClick={skipConfirmation}>Continuar mesmo assim</Button>}
             {profile ? (
-              <button className="primary" onClick={() => go(2)}>
+              <Button onClick={() => go(2)}>
                 É a minha conta
-              </button>
+              </Button>
             ) : (
-              <button className="primary" disabled={busy || steamId.trim() === ''} onClick={confirmSteamId}>
+              <Button disabled={busy || steamId.trim() === ''} onClick={confirmSteamId}>
                 {busy ? 'Verificando…' : unconfirmed ? 'Tentar de novo' : 'Verificar'}
-              </button>
+              </Button>
             )}
           </div>
         </section>
@@ -183,28 +197,32 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
           <ol>
             <li>
               Abra a página de chaves da Steam.{' '}
-              <button onClick={() => void window.api.openExternal('apikey')}>Abrir no navegador</button>
+              <Button size="xs" variant="secondary" onClick={() => void window.api.openExternal('apikey')}>
+                <ExternalLink />
+                Abrir no navegador
+              </Button>
             </li>
             <li>
-              Entre com a sua conta. Em “Nome de domínio”, digite qualquer coisa, por exemplo <code>localhost</code>.
+              Entre com a sua conta. Em “Nome de domínio”, digite qualquer coisa, por exemplo <code className="bg-muted rounded px-1.5 py-0.5">localhost</code>.
             </li>
             <li>Aceite os termos, clique em Registrar e copie a chave de 32 caracteres.</li>
           </ol>
-          <label>
+          <label className="text-muted-foreground mt-4 mb-1.5 block">
             Chave
-            <input
+            <Input
               type="password"
+              className="text-foreground mt-1"
               value={apiKey}
               placeholder="Cole a chave aqui"
               onChange={(e) => setApiKey(e.target.value)}
             />
           </label>
-          {error && <p className="error">{error}</p>}
-          <div className="actions">
-            <button onClick={() => go(1)}>Voltar</button>
-            <button className="primary" disabled={busy || apiKey.trim() === ''} onClick={confirmKey}>
+          {error && <p className="text-destructive">{error}</p>}
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => go(1)}>Voltar</Button>
+            <Button disabled={busy || apiKey.trim() === ''} onClick={confirmKey}>
               {busy ? 'Verificando…' : 'Verificar chave'}
-            </button>
+            </Button>
           </div>
         </section>
       )}
@@ -213,14 +231,17 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
         <section>
           <h1>Privacidade do perfil</h1>
           {busy && <p>Testando o acesso às suas conquistas…</p>}
-          {!busy && games !== null && <p className="success">Tudo certo: a Steam liberou a leitura das suas conquistas.</p>}
+          {!busy && games !== null && <p className="text-success">Tudo certo: a Steam liberou a leitura das suas conquistas.</p>}
           {!busy && error && (
             <>
-              <p className="error">{error}</p>
+              <p className="text-destructive">{error}</p>
               <ol>
                 <li>
                   Abra as configurações de privacidade.{' '}
-                  <button onClick={() => void window.api.openExternal('privacy')}>Abrir no navegador</button>
+                  <Button size="xs" variant="secondary" onClick={() => void window.api.openExternal('privacy')}>
+                <ExternalLink />
+                Abrir no navegador
+              </Button>
                 </li>
                 <li>
                   Deixe “Meu perfil” e “Detalhes dos jogos” como <strong>Público</strong>.
@@ -229,16 +250,16 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
               </ol>
             </>
           )}
-          <div className="actions">
-            <button onClick={() => go(2)}>Voltar</button>
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => go(2)}>Voltar</Button>
             {games !== null && !error ? (
-              <button className="primary" onClick={() => go(4)}>
+              <Button onClick={() => go(4)}>
                 Continuar
-              </button>
+              </Button>
             ) : (
-              <button className="primary" disabled={busy} onClick={() => void testPrivacy()}>
+              <Button disabled={busy} onClick={() => void testPrivacy()}>
                 Testar de novo
-              </button>
+              </Button>
             )}
           </div>
         </section>
@@ -254,12 +275,12 @@ export function Onboarding({ notice, onDone, onCancel }: Props) {
             Abra um jogo na Steam e o app troca para ele sozinho. Sem jogo aberto, ele mostra o último que você jogou; o
             Painel lista todos.
           </p>
-          {error && <p className="error">{error}</p>}
-          <div className="actions">
-            <button onClick={() => go(3)}>Voltar</button>
-            <button className="primary" disabled={busy} onClick={() => void finish()}>
+          {error && <p className="text-destructive">{error}</p>}
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => go(3)}>Voltar</Button>
+            <Button disabled={busy} onClick={() => void finish()}>
               {busy ? 'Salvando…' : 'Entrar no app'}
-            </button>
+            </Button>
           </div>
         </section>
       )}
