@@ -1,0 +1,7 @@
+# Mechanical commits that `git blame` should skip.
+# Enabled locally with: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: format the whole codebase with Prettier
+57e7867f798f84de028a167aa905ca0a22a1932b
+# style: sort imports and apply ESLint auto-fixes
+b875984c7a15d24d212e25ef408fdde233966af8
