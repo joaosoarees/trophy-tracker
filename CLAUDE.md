@@ -123,7 +123,7 @@ src/main/              main process: the only part that talks to Steam and to th
                          local.ts (ISteamLocal: what the installed Steam client tells),
                          windows.ts (registry and WSL interop), steamFiles.ts and textVdf.ts
                          (Steam folder on macOS and Linux), vdf.ts (binary cache reader)
-  storage/               Store.ts (JSON persistence), createCipher.ts (key encryption),
+  storage/               Store.ts (JSON persistence), secureCipher.ts and createCipher.ts (key encryption),
                          migrateUserData.ts (one-off move from the old data folder)
   system/                browser.ts (links), notify.ts (notifications), errorLog.ts (local log),
                          autoUpdate.ts (electron-updater, where the app can replace itself)
@@ -347,15 +347,18 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 
 ## Tests
 
-- **What is tested:** main-process and `shared/` logic, and the pure logic of the screens (`achievementList`, `gameList`, step schemas, `stepperState`, `saver`). Views and controllers are validated by running the app. A behaviour change in a main-process service, `steam/client`, `storage/Store` or `shared/` comes with a test.
+- **What is tested:** main-process and `shared/` logic, the pure logic of the screens (`achievementList`, `gameList`, step schemas, `stepperState`, `saver`) and the store slices that hold logic (`updatesSlice`, `settingsSlice`, `userDataSlice`). Views and controllers are validated by running the app. A behaviour change in a main-process service, `steam/client`, `storage/Store` or `shared/` comes with a test.
 - **One test file per unit, mirroring `src/`:** `src/main/services/Tracker.ts` is tested by `test/main/services/Tracker.test.ts`; interface logic goes under `test/renderer/` following the path after `src/renderer/src/`. A new unit gets its own file; do not append to a neighbour's.
 - **Tests import through aliases:** `@main/*`, `@shared/*`, `@app/*`, `@ui/*` for the code and `@test/*` for helpers, factories and fixtures. `@main` and `@test` exist for tests only; the main process itself keeps using relative imports.
 - **One behaviour per test**, written as arrange, act, assert, with a blank line between the three when there is more than a line of each. A test that needs a second scenario is two tests. The name is a plain sentence about the behaviour (`'reports a later release'`), with no "should".
 - **`it.each` for the same check over several inputs**, with the case in the name (`'sorts the pending list by $sort'`).
 - **Factories in `test/factories/`** (`makeAchievement`, `makeGameView`, `makeGameSummary`, `makeAppInfo`): each returns a valid object and takes only what the test is about. Do not rebuild these objects by hand in a test file; a file may wrap a factory when all its tests share a default (`rarity: 50`).
 - **Fakes, not mocks:** services receive fakes through the constructor (`fakeFetch` in `test/helpers.ts`, a fake updater, an injected clock) and tests assert on results, not on which method was called. No mocking library. `vi.fn` is fine for a callback whose calls are the result.
+- **Code that calls the system takes it as a dependency, defaulting to the real thing:** the functions of `steam/windows.ts` take the command runner as their last argument, `createSteamLocal` takes the disk and the registry, and `storage/secureCipher.ts` takes Electron's storage (`createCipher.ts` is the one-line wrapper that passes it). New code that runs a command, reads the disk or uses an Electron API follows the same shape, so it can be tested on any machine.
+- **Store slices are tested against a fake main process:** `test/renderer/app/store/makeStore.ts` builds a fresh store with a fake `window.api` and `sessionStorage`; a call the test did not provide throws. These tests have their own TypeScript project (`tsconfig.webtest.json`), because the store uses browser types. `sonner` is the one module that is mocked, to see what was announced to the user.
 - **Fixtures are real responses** (`test/fixtures`: Nioh 3 and Onimusha: Way of the Sword).
 - **Coverage:** `pnpm test:coverage` measures what is listed above (the Electron-only wiring and the texts are excluded in `vitest.config.ts`, with the reason). CI fails under the thresholds set there; they sit a little below the current numbers and only go up. The commit hook runs the tests without measuring; the push hook runs `pnpm test:coverage`, so a drop in coverage is stopped before it leaves the machine.
+- **100% is not the goal.** Coverage shows where there is no test at all; it does not show whether a test checks anything. What to test follows risk: code that decides something for the user (what is saved, when the app restarts, what is announced) comes first. A branch that can only be reached by breaking the machine is left alone rather than covered with an artificial test. Known and accepted: the rare numeric types of `steam/vdf.ts`, until a game uses them.
 - **Console output** of passing tests is hidden (`--silent=passed-only`); a failing test shows everything it printed. `test:watch` hides nothing, since that is where `console.log` is used to debug.
 - **Module cache:** a run made by hand reuses transformed modules (`fsModuleCache`, stored in `node_modules/.vitest-cache`). The hooks and the CI set `CI`, which turns the cache off, so nothing is committed or pushed on the strength of a stale cache. If a manual run behaves oddly, delete that folder.
 

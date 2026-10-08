@@ -55,10 +55,10 @@ export default defineConfig({
         'src/main/storage/createCipher.ts',
       ],
       reporter: ['text-summary', 'text'],
-      // A little under what is covered today (89 / 82 / 85 / 90), so coverage
+      // A little under what is covered today (95 / 89 / 95 / 96), so coverage
       // cannot drop unnoticed. Raise them as coverage grows; never lower them
-      // to make a change pass.
-      thresholds: { statements: 87, branches: 80, functions: 83, lines: 88 },
+      // to make a change pass. The aim is not 100%: see Tests in CLAUDE.md.
+      thresholds: { statements: 93, branches: 87, functions: 93, lines: 94 },
     },
   },
 });
