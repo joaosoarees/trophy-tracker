@@ -44,6 +44,14 @@ export interface RawPlayerSummary {
   avatarfull: string
 }
 
+export interface StoreArt {
+  header: string
+  capsule: string
+}
+
+const ASSETS = 'https://shared.fastly.steamstatic.com/store_item_assets/'
+const STORE_BATCH = 50
+
 export interface Credentials {
   steamId: string
   apiKey: string
@@ -114,6 +122,26 @@ export class SteamClient {
   async getGameAchievements(appid: number): Promise<RawSchemaAchievement[]> {
     const body = await this.get('/IPlayerService/GetGameAchievements/v1/', { appid, language: this.language })
     return body.response?.achievements ?? []
+  }
+
+  /** Capas dos jogos, em lote e sem chave. Jogos novos usam caminhos com hash, que só a loja informa. */
+  async getStoreArt(appids: number[]): Promise<Map<number, StoreArt>> {
+    const art = new Map<number, StoreArt>()
+    for (let i = 0; i < appids.length; i += STORE_BATCH) {
+      const input = {
+        ids: appids.slice(i, i + STORE_BATCH).map((appid) => ({ appid })),
+        context: { language: this.language, country_code: 'BR' },
+        data_request: { include_assets: true }
+      }
+      const body = await this.get('/IStoreBrowseService/GetItems/v1/', { input_json: JSON.stringify(input) })
+      for (const item of body.response?.store_items ?? []) {
+        const format: string | undefined = item.assets?.asset_url_format
+        const url = (file: string | undefined): string =>
+          format && file ? ASSETS + format.replace('${FILENAME}', file) : ''
+        art.set(item.appid, { header: url(item.assets?.header), capsule: url(item.assets?.small_capsule) })
+      }
+    }
+    return art
   }
 
   async getPlayerAchievements({ steamId, apiKey }: Credentials, appid: number): Promise<RawPlayerAchievement[]> {

@@ -61,12 +61,24 @@ export function Dashboard({ onPick, onAuthProblem }: Props) {
           const percent = Math.round((g.unlocked / g.total) * 100)
           const complete = g.unlocked === g.total
           return (
-            <li key={g.appid} className={g.unlocked === g.total ? 'complete' : ''} onClick={() => onPick(g.appid)}>
-              {g.icon ? <img src={g.icon} alt="" loading="lazy" /> : <span className="noicon" />}
-              <div className="body">
-                <strong>{g.name}</strong>
-                <div className="bar">
-                  <div style={{ width: `${percent}%` }} />
+            <li key={g.appid}>
+              <button
+                onClick={() => onPick(g.appid)}
+                className="bg-card hover:border-primary/60 flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-colors"
+              >
+                {g.capsule || g.icon ? (
+                  <img
+                    src={g.capsule || g.icon}
+                    alt=""
+                    loading="lazy"
+                    className={cn('bg-muted h-[42px] flex-none rounded object-cover', g.capsule ? 'w-28' : 'w-[42px]')}
+                  />
+                ) : (
+                  <span className="bg-muted h-[42px] w-28 flex-none rounded" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <strong className="block truncate font-medium">{g.name}</strong>
+                  <ProgressBar value={percent} tone={complete ? 'success' : 'primary'} className="mt-1.5" />
                 </div>
                 <div className="w-[72px] flex-none text-right">
                   <strong className={cn('block tabular-nums', complete && 'text-success')}>{percent}%</strong>

@@ -20,12 +20,16 @@ export interface GameView {
   unlockedCount: number
   achievements: Achievement[]
   fetchedAt: number
+  /** Capa larga do jogo; vazia quando a loja não informa. */
+  header?: string
 }
 
 export interface GameSummary {
   appid: number
   name: string
   icon: string
+  /** Miniatura de capa; vazia quando a loja não informa. */
+  capsule: string
   playtimeMinutes: number
   lastPlayed: number
   total: number

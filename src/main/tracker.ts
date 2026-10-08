@@ -1,6 +1,13 @@
 import type { GameSummary, GameView } from '../shared/types'
 import { buildGameView } from './steam/achievements'
-import { SteamClient, SteamError, type Credentials, type RawOwnedGame } from './steam/client'
+import {
+  SteamClient,
+  SteamError,
+  type Credentials,
+  type RawOwnedGame,
+  type RawSchemaAchievement,
+  type StoreArt
+} from './steam/client'
 import type { Store, SummaryEntry } from './store'
 
 const LIBRARY_TTL = 10 * 60_000
@@ -51,6 +58,27 @@ export class Tracker {
     return played.reduce((a, b) => ((b.rtime_last_played ?? 0) > (a.rtime_last_played ?? 0) ? b : a)).appid
   }
 
+  /** Capas são enfeite: vêm do cache e qualquer falha da loja só as deixa de fora. */
+  private async art(appids: number[]): Promise<Map<number, StoreArt>> {
+    const missing = appids.filter((id) => this.store.getArt(id) === null)
+    if (missing.length > 0) {
+      try {
+        const fetched = await this.client.getStoreArt(missing)
+        // Guarda também os que a loja não devolveu, para não perguntar de novo.
+        for (const id of missing) if (!fetched.has(id)) fetched.set(id, { header: '', capsule: '' })
+        this.store.setArt(fetched)
+      } catch {
+        // segue sem capa
+      }
+    }
+    const result = new Map<number, StoreArt>()
+    for (const id of appids) {
+      const art = this.store.getArt(id)
+      if (art) result.set(id, art)
+    }
+    return result
+  }
+
   private async gameName(appid: number): Promise<string> {
     const find = (games: RawOwnedGame[]): string | undefined => games.find((g) => g.appid === appid)?.name
     return find(await this.library()) ?? find(await this.library(true)) ?? `App ${appid}`
@@ -61,7 +89,7 @@ export class Tracker {
     if (cached && !force && this.now() - cached.fetchedAt < GAME_TTL) return cached
 
     const creds = this.credentials()
-    const [name, schema, player] = await Promise.all([
+    const [name, schema, player, art] = await Promise.all([
       this.gameName(appid),
       this.client.getGameAchievements(appid),
       this.client.getPlayerAchievements(creds, appid)
@@ -133,8 +161,11 @@ export class Tracker {
       this.store.setSummaries(fresh)
     }
 
+    const withAchievements = played.filter((g) => (entries.get(g.appid)?.total ?? 0) > 0)
+    const art = await this.art(withAchievements.map((g) => g.appid))
+
     const ratio = (s: GameSummary): number => s.unlocked / s.total
-    return played
+    return withAchievements
       .map((g): GameSummary => {
         const e = entries.get(g.appid)!
         return {
@@ -143,6 +174,7 @@ export class Tracker {
           icon: g.img_icon_url
             ? `https://media.steampowered.com/steamcommunity/public/images/apps/${g.appid}/${g.img_icon_url}.jpg`
             : '',
+          capsule: art.get(g.appid)?.capsule ?? '',
           playtimeMinutes: g.playtime_forever,
           lastPlayed: g.rtime_last_played ?? 0,
           total: e.total,
