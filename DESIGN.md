@@ -299,7 +299,15 @@ A compact field (32px, 12px text) in Recessed Slate with a chevron. Its list is 
 
 ### Navigation
 
-A single bar across the top with a hairline under it. Tabs are text with a small icon, in Quiet Steel; the current one is Glance White with a 2px Signal Blue underline. Utility actions sit at the right as icon buttons. Switching tabs fades the new screen in with a 6px rise over 180ms.
+A single bar across the top with a hairline under it. Tabs are text with a small icon, in Quiet Steel; the current one is Glance White with a 2px Signal Blue underline. Utility actions sit at the right as icon buttons: updates (an arrow in a circle, which spins as a loader while checking and carries a Signal Blue dot once a version exists), always on top (a window over another) and Settings (a gear). The pin glyph is not used here: it belongs to pinned achievements. Switching tabs fades the new screen in with a 6px rise over 180ms.
+
+### Detail rows
+
+The shape facts and settings take wherever they are listed: a titled group of rows separated by hairlines, with what the row is on the left (and, when it helps, a caption under it) and its value or its control on the right. No card around the group. A row that leads somewhere is one clickable target with the usual wash. The game details and the whole Settings screen are built from it, so a number in one and a switch in the other sit on the same line.
+
+### Switch
+
+An on/off setting that takes effect at once: a fully round 36 by 20px track, Field Edge when off and Signal Blue when on, with a thumb that slides across. Its row carries the label; the switch carries the same words for assistive technology.
 
 ### Progress bar
 

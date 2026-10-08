@@ -143,7 +143,7 @@ src/renderer/src/      the interface, in two layers
     screens/             one folder per screen: Game, Dashboard, Settings, Onboarding, Update
     components/          shared between screens: AppShell, Pressable, IconButton, Hint, OptionSelect,
                          RemoteImage, ProgressBar, Segmented, SearchBox, Empty, ErrorBoundary, CrashScreen,
-                         UpdateReadyDialog
+                         UpdateReadyDialog, DetailList (DetailGroup and DetailRow), Switch
     primitives/          shadcn/ui components (generated; do not hand-edit without a reason)
     styles/index.css     Tailwind and the theme tokens
     utils/               cn, text (accent-free search), format (dates and numbers)
@@ -284,7 +284,8 @@ store/
   connect.ts            wires the store to the main process events once the app is set up
   slices/
     sessionSlice.ts       language, current game and failure counter
-    settingsSlice.ts      app state from the main process, always on top, list order, language change, erase
+    settingsSlice.ts      app state from the main process, always on top, preferences, data folder,
+                          list order, language change, erase
     navigationSlice.ts    current tab, Pending/Unlocked list, game picked in the dashboard, redoing the setup
     gamesSlice.ts         game views already read, by appid
     userDataSlice.ts      notes, pins and checklists
@@ -299,6 +300,7 @@ Conventions:
 - Actions mutate the Immer draft directly (`prevState.games.entries[appid].loading = true`) and pass a name for the devtools: `set(fn, false, 'games/load')`.
 - Slices reach the main process through `@app/services`, never through `window.api`.
 - Controllers read state and actions together with `useStore(useShallow(state => ({ ... })))`. Default values inside the selector must be stable constants (e.g. `NONE_UNLOCKED`), otherwise the component re-renders every time.
+- **A preference the main process acts on** (the unlock notification, remembering the window) is an `IPreferences` field: add it to `shared/types/Preferences.ts` with its default, and `Store.getPreferences` / `setPreference` and `settings.setPreference` carry it with no further wiring. It gets a `Switch` row in Settings.
 - Do not use `persist`: what must survive closing the app is written by the main process (`main/storage/Store.ts`). The navigation slice keeps the tab and the picked game in `sessionStorage` only so they survive the window reload of a language change.
 - Where a piece of screen state lives depends on how long it should last:
   - only while the screen is mounted (search text, an open field) → `useState` in the controller;
@@ -344,7 +346,7 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 
 ## Local data
 
-`~/.config/trophy-tracker/` (`%APPDATA%\trophy-tracker` on Windows, `~/Library/Application Support/trophy-tracker` on macOS): `config.json` (SteamID and key, permission 600; encrypted only if there is a keyring), `cache.json`, `userdata.json` (notes, pins, checklists), `settings.json` (language, always on top). Never copy the key out of that folder or print it.
+`~/.config/trophy-tracker/` (`%APPDATA%\trophy-tracker` on Windows, `~/Library/Application Support/trophy-tracker` on macOS): `config.json` (SteamID and key, permission 600; encrypted only if there is a keyring), `cache.json`, `userdata.json` (notes, pins, checklists), `settings.json` (language, always on top, list orders, the unlock notification, the window's size and position). Never copy the key out of that folder or print it.
 
 ## Tests
 
