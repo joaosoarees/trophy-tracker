@@ -13,8 +13,8 @@ files:
   - build/icon.png
   - package.json
 
-# Installers are not code-signed yet: Windows shows the SmartScreen warning and
-# macOS asks the user to allow the app in System Settings.
+# Installers are not signed with a paid certificate yet: Windows shows the
+# SmartScreen warning and macOS asks the user to allow the app in System Settings.
 win:
   target:
     - nsis
@@ -26,7 +26,11 @@ nsis:
 
 mac:
   category: public.app-category.utilities
-  identity: null
+  # Ad-hoc signature: no certificate involved, but without any signature at
+  # all an Apple Silicon Mac refuses to start the app. The hardened runtime
+  # only makes sense with a real certificate and breaks an ad-hoc signed app.
+  identity: '-'
+  hardenedRuntime: false
   target:
     - target: dmg
       arch: [x64, arm64]
