@@ -1,4 +1,4 @@
-import { type IAppInfo } from '@shared/types/AppInfo';
+import { type IAppInfo, type IUpdateCheck } from '@shared/types/AppInfo';
 
 const RECHECK_AFTER_MS = 6 * 60 * 60 * 1000;
 
@@ -24,7 +24,11 @@ interface IAppUpdatesDeps {
   /** `null` where the app cannot update itself (macOS, a .deb install, development). */
   auto: IAutoUpdater | null;
   /** Finds out about a newer version without downloading anything. */
-  checker: { getAppInfo: () => Promise<IAppInfo> };
+  checker: {
+    getAppInfo: () => Promise<IAppInfo>;
+    /** Asks right now; answers whether the check could be made. */
+    check: () => Promise<boolean>;
+  };
   onChange: (info: IAppInfo) => void;
   logError?: (source: string, detail: string) => void;
   now?: () => number;
@@ -86,9 +90,41 @@ export class AppUpdates {
     return this.info();
   }
 
+  /**
+   * The check the user asks for: it ignores the six-hour wait and gives the
+   * automatic update another chance if it had failed before.
+   */
+  async checkNow(): Promise<IUpdateCheck> {
+    if (this.auto && this.status === 'ready') {
+      return { ok: true, info: this.info() };
+    }
+
+    if (this.auto) {
+      if (this.status === 'failed') this.status = 'idle';
+      this.checkedAt = this.now();
+      try {
+        await this.auto.check();
+      } catch {
+        this.fail();
+      }
+      // A failure may also have arrived as an event while the check ran.
+      if (this.currentStatus() !== 'failed') {
+        return { ok: true, info: this.info() };
+      }
+    }
+
+    const ok = await this.checker.check();
+    return { ok, info: await this.checker.getAppInfo() };
+  }
+
   /** Only does something once a version has finished downloading. */
   install(): void {
     if (this.status === 'ready') this.auto?.install();
+  }
+
+  /** Read through a method so a change made by an event is seen after an `await`. */
+  private currentStatus(): AppUpdates['status'] {
+    return this.status;
   }
 
   private info(): IAppInfo {

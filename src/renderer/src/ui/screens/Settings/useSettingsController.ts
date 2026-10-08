@@ -5,8 +5,12 @@ import { SystemService } from '@app/services/SystemService';
 import { useStore } from '@app/store';
 import { isLanguage } from '@shared/i18n';
 
+/** Outcome of the last check the user asked for, shown beside the button. */
+type UpdateCheck = 'idle' | 'checking' | 'upToDate' | 'failed';
+
 export function useSettingsController() {
   const [isConfirmingErase, setIsConfirmingErase] = useState(false);
+  const [updateCheck, setUpdateCheck] = useState<UpdateCheck>('idle');
   const {
     profile,
     language,
@@ -15,6 +19,7 @@ export function useSettingsController() {
     eraseCredentials,
     startReconfiguring,
     flushUserData,
+    checkForUpdates,
   } = useStore(
     useShallow((state) => ({
       profile: state.settings.appState?.profile ?? null,
@@ -24,6 +29,7 @@ export function useSettingsController() {
       eraseCredentials: state.settings.eraseCredentials,
       startReconfiguring: state.navigation.startReconfiguring,
       flushUserData: state.userData.flush,
+      checkForUpdates: state.settings.checkForUpdates,
     })),
   );
 
@@ -34,6 +40,13 @@ export function useSettingsController() {
   function handleErase() {
     setIsConfirmingErase(false);
     void eraseCredentials();
+  }
+
+  async function handleCheckForUpdates() {
+    setUpdateCheck('checking');
+    const ok = await checkForUpdates();
+    // A version that was found speaks for itself in the notice above.
+    setUpdateCheck(ok ? 'upToDate' : 'failed');
   }
 
   function handleInstallUpdate() {
@@ -51,6 +64,8 @@ export function useSettingsController() {
     handleChangeLanguage,
     handleErase,
     handleRedoSetup: startReconfiguring,
+    updateCheck,
+    handleCheckForUpdates: () => void handleCheckForUpdates(),
     handleInstallUpdate,
     handleDownload: () => void SystemService.openExternal('download'),
   };

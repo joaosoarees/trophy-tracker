@@ -35,6 +35,8 @@ type SettingsActions = {
   load: () => Promise<void>;
   /** Asks for the version in the background; a failure just leaves it unknown. */
   loadAppInfo: () => Promise<void>;
+  /** Looks for a newer version now; answers whether the check could be made. */
+  checkForUpdates: () => Promise<boolean>;
   /** Takes what the main process announces while an update downloads. */
   setAppInfo: (appInfo: IAppInfo) => void;
   /** Takes a fresh state from the main process and syncs the interface language with it. */
@@ -86,6 +88,16 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
       get().settings.setAppInfo(await SystemService.getAppInfo());
     } catch {
       // Not knowing the version changes nothing else in the app.
+    }
+  },
+
+  checkForUpdates: async () => {
+    try {
+      const { ok, info } = await SystemService.checkForUpdates();
+      get().settings.setAppInfo(info);
+      return ok;
+    } catch {
+      return false;
     }
   },
 

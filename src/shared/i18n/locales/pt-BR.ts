@@ -179,6 +179,10 @@ export const ptBR: Messages = {
     updateReadyHint:
       'O app reinicia para concluir a atualização; seus dados são mantidos.',
     restart: 'Reiniciar para atualizar',
+    checkForUpdates: 'Buscar atualizações',
+    checkingForUpdates: 'Buscando…',
+    upToDate: 'Você já tem a versão mais recente.',
+    updateCheckFailed: 'Não foi possível verificar. Confira sua conexão.',
   },
 
   onboarding: {

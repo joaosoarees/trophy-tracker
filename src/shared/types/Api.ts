@@ -2,7 +2,7 @@ import { type IAchievementSort } from '../achievementSort';
 import { type IDashboardSort } from '../dashboardSort';
 import { type Language } from '../i18n';
 
-import { type IAppInfo } from './AppInfo';
+import { type IAppInfo, type IUpdateCheck } from './AppInfo';
 import { type IAppState } from './AppState';
 import { type CheckResult } from './Check';
 import {
@@ -58,6 +58,8 @@ export interface IApi {
   openExternal: (target: ExternalPage) => Promise<void>;
   /** The running version and, when a later one was released, which. */
   getAppInfo: () => Promise<IAppInfo>;
+  /** Looks for a newer version right now, whenever the last check was. */
+  checkForUpdates: () => Promise<IUpdateCheck>;
   /** Restarts the app to install a version that finished downloading. */
   installUpdate: () => Promise<void>;
   /** Records an interface error in the local log file. */

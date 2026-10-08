@@ -1,4 +1,4 @@
-import { type IAppInfo } from '@shared/types/AppInfo';
+import { type IAppInfo, type IUpdateCheck } from '@shared/types/AppInfo';
 import { type GuideSite, type ExternalPage } from '@shared/types/Guide';
 
 import { Service } from './Service';
@@ -21,6 +21,10 @@ export class SystemService extends Service {
 
   static getAppInfo(): Promise<IAppInfo> {
     return this.api.getAppInfo();
+  }
+
+  static checkForUpdates(): Promise<IUpdateCheck> {
+    return this.api.checkForUpdates();
   }
 
   static installUpdate(): Promise<void> {

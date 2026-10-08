@@ -24,7 +24,7 @@ export class UpdateChecker {
   private readonly now: () => number;
   private newVersion: string | null = null;
   private checkedAt: number | null = null;
-  private running: Promise<void> | null = null;
+  private running: Promise<boolean> | null = null;
 
   constructor({
     currentVersion,
@@ -41,10 +41,7 @@ export class UpdateChecker {
   async getAppInfo(): Promise<IAppInfo> {
     const isStale =
       this.checkedAt === null || this.now() - this.checkedAt > RECHECK_AFTER_MS;
-    if (isStale) {
-      this.running ??= this.check().finally(() => (this.running = null));
-      await this.running;
-    }
+    if (isStale) await this.check();
     return {
       version: this.currentVersion,
       newVersion: this.newVersion,
@@ -52,7 +49,17 @@ export class UpdateChecker {
     };
   }
 
-  private async check(): Promise<void> {
+  /**
+   * Asks GitHub now, whenever the last check was. Answers whether the check
+   * could be made; simultaneous calls share one request.
+   */
+  check(): Promise<boolean> {
+    this.running ??= this.ask().finally(() => (this.running = null));
+    return this.running;
+  }
+
+  private async ask(): Promise<boolean> {
+    let ok = false;
     try {
       const res = await this.fetchImpl(this.url, {
         headers: { Accept: 'application/vnd.github+json' },
@@ -62,10 +69,12 @@ export class UpdateChecker {
         const release = (await res.json()) as { tag_name?: string };
         const tag = release.tag_name?.replace(/^v/, '') ?? '';
         this.newVersion = isNewerVersion(tag, this.currentVersion) ? tag : null;
+        ok = true;
       }
     } catch {
       // Keeps whatever the last successful check found.
     }
     this.checkedAt = this.now();
+    return ok;
   }
 }

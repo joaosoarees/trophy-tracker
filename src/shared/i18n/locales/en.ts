@@ -179,6 +179,10 @@ export const en = {
     updateReadyHint:
       'The app restarts to finish the update; your data is kept.',
     restart: 'Restart to update',
+    checkForUpdates: 'Check for updates',
+    checkingForUpdates: 'Checking…',
+    upToDate: 'You already have the latest version.',
+    updateCheckFailed: 'Could not check. Check your connection.',
   },
 
   onboarding: {

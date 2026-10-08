@@ -1,5 +1,8 @@
+import { RefreshCw } from 'lucide-react';
+
 import { useT } from '@app/hooks/useT';
 import { Button } from '@ui/primitives/button';
+import { cn } from '@ui/utils/cn';
 
 import { EraseDialog } from './components/EraseDialog';
 import { LanguageField } from './components/LanguageField';
@@ -20,6 +23,8 @@ export function Settings() {
     handleRedoSetup,
     handleDownload,
     handleInstallUpdate,
+    updateCheck,
+    handleCheckForUpdates,
   } = useSettingsController();
 
   return (
@@ -59,11 +64,35 @@ export function Settings() {
         onConfirm={handleErase}
       />
 
-      <p className="text-muted-foreground mt-auto pt-6 text-xs">
-        {t.appTitle}
-        {appInfo && ` · ${t.settings.version(appInfo.version)}`} ·{' '}
-        {t.notAffiliated}
-      </p>
+      <footer className="mt-auto flex w-full flex-col gap-2 pt-6">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={updateCheck === 'checking'}
+            onClick={handleCheckForUpdates}
+          >
+            <RefreshCw
+              className={cn(updateCheck === 'checking' && 'animate-spin')}
+            />
+            {updateCheck === 'checking'
+              ? t.settings.checkingForUpdates
+              : t.settings.checkForUpdates}
+          </Button>
+          {/* Announced when it changes; a version that was found shows in the notice instead. */}
+          <span role="status" className="text-muted-foreground text-xs">
+            {updateCheck === 'failed' && t.settings.updateCheckFailed}
+            {updateCheck === 'upToDate' &&
+              !appInfo?.newVersion &&
+              t.settings.upToDate}
+          </span>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          {t.appTitle}
+          {appInfo && ` · ${t.settings.version(appInfo.version)}`} ·{' '}
+          {t.notAffiliated}
+        </p>
+      </footer>
     </section>
   );
 }

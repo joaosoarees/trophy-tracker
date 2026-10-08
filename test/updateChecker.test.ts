@@ -77,6 +77,20 @@ describe('UpdateChecker', () => {
     expect(fetchImpl.calls).toHaveLength(2);
   });
 
+  it('checks on request, saying whether the check could be made', async () => {
+    let route: IRoute = { json: { tag_name: 'v1.2.0' } };
+    const { checker, fetchImpl } = setup(() => route);
+    await checker.getAppInfo();
+
+    route = { json: { tag_name: 'v1.3.0' } };
+    expect(await checker.check()).toBe(true);
+    expect((await checker.getAppInfo()).newVersion).toBe('1.3.0');
+    expect(fetchImpl.calls).toHaveLength(2);
+
+    route = { status: 500, text: 'oops' };
+    expect(await checker.check()).toBe(false);
+  });
+
   it('keeps the last answer when a later check fails', async () => {
     let route: IRoute = { json: { tag_name: 'v1.3.0' } };
     const { checker, clock } = setup(() => route);

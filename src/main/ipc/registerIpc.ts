@@ -112,6 +112,7 @@ export function registerIpc({
       ),
     openExternal: (page) => openExternalPage(page),
     getAppInfo: () => updates.getAppInfo(),
+    checkForUpdates: () => updates.checkNow(),
     installUpdate: () => updates.install(),
     logError: (source, detail) => logError(`interface: ${source}`, detail),
   };

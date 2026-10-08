@@ -5,6 +5,13 @@
  */
 export type UpdateStatus = 'manual' | 'downloading' | 'ready';
 
+/** Answer to a check the user asked for. */
+export interface IUpdateCheck {
+  /** `false` when the check could not be made (offline, for instance). */
+  ok: boolean;
+  info: IAppInfo;
+}
+
 export interface IAppInfo {
   /** Version of the app that is running. */
   version: string;

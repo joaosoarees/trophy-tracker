@@ -187,6 +187,10 @@ export const es: Messages = {
     updateReadyHint:
       'La aplicación se reinicia para completar la actualización; tus datos se conservan.',
     restart: 'Reiniciar para actualizar',
+    checkForUpdates: 'Buscar actualizaciones',
+    checkingForUpdates: 'Buscando…',
+    upToDate: 'Ya tienes la última versión.',
+    updateCheckFailed: 'No se ha podido comprobar. Revisa tu conexión.',
   },
 
   onboarding: {

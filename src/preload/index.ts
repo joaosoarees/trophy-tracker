@@ -37,6 +37,7 @@ const calls = [
   'openGuide',
   'openExternal',
   'getAppInfo',
+  'checkForUpdates',
   'installUpdate',
   'logError',
 ] as const;
