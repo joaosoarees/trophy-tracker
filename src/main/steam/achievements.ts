@@ -4,10 +4,12 @@ import { type GuideSite } from '@shared/types/Guide';
 
 import type { IRawPlayerAchievement, IRawSchemaAchievement } from './client';
 
+// The older `steamcommunity/public/images` hosts return 404 for the icons of
+// newer (DLC) achievements; this one serves all of them.
+const ICONS = 'https://shared.fastly.steamstatic.com/community_assets/images';
+
 const iconUrl = (appid: number, file: string): string =>
-  file
-    ? `https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/${appid}/${file}`
-    : '';
+  file ? `${ICONS}/apps/${appid}/${file}` : '';
 
 export interface IGameSources {
   appid: number;

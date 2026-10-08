@@ -91,7 +91,9 @@ describe('buildGameView', () => {
 
   it('includes global rarity and icons', () => {
     expect(byId('ACH_000').rarity).toBe(12.7);
-    expect(byId('ACH_000').icon).toMatch(/\/apps\/3681010\/.+\.jpg$/);
+    expect(byId('ACH_000').icon).toBe(
+      'https://shared.fastly.steamstatic.com/community_assets/images/apps/3681010/dfd45c98975986d2e2f57ee175729c3f2a38ff2d.jpg',
+    );
   });
 
   it('treats as pending what Steam did not list for the player', () => {
