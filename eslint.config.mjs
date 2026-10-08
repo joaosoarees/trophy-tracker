@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import prettier from 'eslint-config-prettier';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 import importX from 'eslint-plugin-import-x';
@@ -10,14 +11,17 @@ import tseslint from 'typescript-eslint';
 
 const renderer = ['src/renderer/**/*.{ts,tsx}'];
 
-export default tseslint.config(
-  {
-    // shadcn/ui components are generated; they are formatted but not linted.
-    ignores: ['out', 'dist', 'node_modules', 'src/renderer/src/components/ui'],
-  },
+export default defineConfig(
+  // shadcn/ui components are generated; they are formatted but not linted.
+  globalIgnores([
+    'out',
+    'dist',
+    'node_modules',
+    'src/renderer/src/components/ui',
+  ]),
 
   js.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
+  tseslint.configs.recommendedTypeChecked,
   importX.flatConfigs.recommended,
   importX.flatConfigs.typescript,
 
@@ -38,6 +42,7 @@ export default tseslint.config(
     },
     rules: {
       'no-empty': ['error', { allowEmptyCatch: true }],
+      '@typescript-eslint/no-deprecated': 'error',
       'import-x/order': [
         'error',
         {
