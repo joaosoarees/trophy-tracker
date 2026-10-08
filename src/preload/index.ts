@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import { type IApi } from '../shared/types/Api';
+import { IpcEvent } from '@shared/ipcEvents';
+import { type IApi } from '@shared/types/Api';
 
 const invoke =
   (channel: string) =>
@@ -38,9 +39,9 @@ const calls = [
 
 const api = {
   ...Object.fromEntries(calls.map((c) => [c, invoke(c)])),
-  onGameChanged: listen('game-changed'),
-  onGameUpdated: listen('game-updated'),
-  onDashboardProgress: listen('dashboard-progress'),
+  onGameChanged: listen(IpcEvent.gameChanged),
+  onGameUpdated: listen(IpcEvent.gameUpdated),
+  onDashboardProgress: listen(IpcEvent.dashboardProgress),
 } as unknown as IApi;
 
 contextBridge.exposeInMainWorld('api', api);

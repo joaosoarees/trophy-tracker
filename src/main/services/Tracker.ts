@@ -2,10 +2,10 @@ import {
   type DashboardMode,
   type IGameSummary,
   type IGameView,
-} from '../shared/types/Game';
-import { mergeView } from '../shared/view';
+} from '@shared/types/Game';
+import { mergeView } from '@shared/view';
 
-import { buildGameView } from './steam/achievements';
+import { buildGameView } from '../steam/achievements';
 import {
   type SteamClient,
   SteamError,
@@ -13,8 +13,8 @@ import {
   type IRawOwnedGame,
   type IRawSchemaAchievement,
   type IStoreArt,
-} from './steam/client';
-import type { Store, ISummaryEntry } from './store';
+} from '../steam/client';
+import type { Store, ISummaryEntry } from '../storage/Store';
 
 const LIBRARY_TTL = 10 * 60_000;
 const GAME_TTL = 60_000;

@@ -7,20 +7,20 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 
-import { DEFAULT_LANGUAGE, isLanguage, type Language } from '../shared/i18n';
-import { type IGameView } from '../shared/types/Game';
-import { type IProfile } from '../shared/types/Profile';
+import { DEFAULT_LANGUAGE, isLanguage, type Language } from '@shared/i18n';
+import { type IGameView } from '@shared/types/Game';
+import { type IProfile } from '@shared/types/Profile';
 import {
   type GameUserData,
   type IAchievementUserData,
-} from '../shared/types/UserData';
+} from '@shared/types/UserData';
 
 import type {
   ICredentials,
   IRawOwnedGame,
   IRawSchemaAchievement,
   IStoreArt,
-} from './steam/client';
+} from '../steam/client';
 
 /** Optional cipher for the key (Electron's safeStorage, when there is a keyring). */
 export interface ICipher {

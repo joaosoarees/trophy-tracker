@@ -1,6 +1,6 @@
-import { type IAchievement } from '../../shared/types/Achievement';
-import { type IGameView } from '../../shared/types/Game';
-import { type GuideSite } from '../../shared/types/Guide';
+import { type IAchievement } from '@shared/types/Achievement';
+import { type IGameView } from '@shared/types/Game';
+import { type GuideSite } from '@shared/types/Guide';
 
 import type { IRawPlayerAchievement, IRawSchemaAchievement } from './client';
 

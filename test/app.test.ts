@@ -8,10 +8,10 @@ import {
   checkApiKey,
   checkPrivacy,
   checkSteamId,
-} from '../src/main/onboarding';
+} from '../src/main/services/onboardingChecks';
+import { Tracker } from '../src/main/services/Tracker';
 import { SteamClient } from '../src/main/steam/client';
-import { Store } from '../src/main/store';
-import { Tracker } from '../src/main/tracker';
+import { Store } from '../src/main/storage/Store';
 import { en } from '../src/shared/i18n/locales/en';
 import { ptBR } from '../src/shared/i18n/locales/pt-BR';
 

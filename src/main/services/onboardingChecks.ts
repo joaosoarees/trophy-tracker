@@ -1,14 +1,14 @@
-import type { Messages } from '../shared/i18n';
-import { type CheckResult, type SteamIdCheck } from '../shared/types/Check';
-import { type IProfile } from '../shared/types/Profile';
-import { API_KEY_PATTERN, STEAM_ID_PATTERN } from '../shared/validation';
+import type { Messages } from '@shared/i18n';
+import { type CheckResult, type SteamIdCheck } from '@shared/types/Check';
+import { type IProfile } from '@shared/types/Profile';
+import { API_KEY_PATTERN, STEAM_ID_PATTERN } from '@shared/validation';
 
 import {
   type SteamClient,
   SteamError,
   steamErrorMessage,
   type Fetch,
-} from './steam/client';
+} from '../steam/client';
 
 const fail = (error: string): { ok: false; error: string } => ({
   ok: false,

@@ -3,7 +3,7 @@ import {
   LANGUAGES,
   type Language,
   type Messages,
-} from '../../shared/i18n';
+} from '@shared/i18n';
 
 const API = 'https://api.steampowered.com';
 
