@@ -10,7 +10,7 @@ Desktop app (Electron + React + TypeScript) that shows, for the game open on Ste
 pnpm dev         # app with reload (window through WSLg)
 pnpm build       # builds into out/
 pnpm start           # runs the build
-pnpm test            # Vitest
+pnpm test            # Vitest (test:coverage also measures coverage, as CI does)
 pnpm typecheck   # tsc on both projects (main process and interface)
 pnpm lint        # ESLint (lint:fix to auto-fix)
 pnpm format      # Prettier (format:check to only verify)
@@ -145,7 +145,7 @@ src/renderer/src/      the interface, in two layers
     styles/index.css     Tailwind and the theme tokens
     utils/               cn, text (accent-free search), format (dates and numbers)
 
-test/                  Vitest, with real API responses in test/fixtures
+test/                  Vitest: one file per unit mirroring src/, factories/, fixtures/ (real API responses)
 ```
 
 ### Path aliases
@@ -153,7 +153,7 @@ test/                  Vitest, with real API responses in test/fixtures
 - `@app/*` → `src/renderer/src/app/*` and `@ui/*` → `src/renderer/src/ui/*` (interface only)
 - `@shared/*` → `src/shared/*` (interface, main process and preload)
 
-Import through the alias, except for files inside the importing file's own folder (`./useGameController`, `./components/GameHeader`). Tests use relative paths.
+Import through the alias, except for files inside the importing file's own folder (`./useGameController`, `./components/GameHeader`). Tests use aliases too, with `@main/*` and `@test/*` added for them (see Tests).
 
 ### Layers and who may call whom
 
@@ -345,9 +345,15 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 
 ## Tests
 
-- Main process and `shared/` logic is tested, as is the pure logic of the screens (`achievementList`, step schemas, `saver`); views and controllers are validated by running the app.
-- `test/helpers.ts` has the route-based `fakeFetch`; fixtures are real responses (Nioh 3 and Onimusha: Way of the Sword).
-- A behaviour change in a main-process service, `steam/client`, `storage/Store` or `shared/` comes with a test. Services are tested with fakes passed to the constructor (see `test/gameWatcher.test.ts`).
+- **What is tested:** main-process and `shared/` logic, and the pure logic of the screens (`achievementList`, `gameList`, step schemas, `stepperState`, `saver`). Views and controllers are validated by running the app. A behaviour change in a main-process service, `steam/client`, `storage/Store` or `shared/` comes with a test.
+- **One test file per unit, mirroring `src/`:** `src/main/services/Tracker.ts` is tested by `test/main/services/Tracker.test.ts`; interface logic goes under `test/renderer/` following the path after `src/renderer/src/`. A new unit gets its own file; do not append to a neighbour's.
+- **Tests import through aliases:** `@main/*`, `@shared/*`, `@app/*`, `@ui/*` for the code and `@test/*` for helpers, factories and fixtures. `@main` and `@test` exist for tests only; the main process itself keeps using relative imports.
+- **One behaviour per test**, written as arrange, act, assert, with a blank line between the three when there is more than a line of each. A test that needs a second scenario is two tests. The name is a plain sentence about the behaviour (`'reports a later release'`), with no "should".
+- **`it.each` for the same check over several inputs**, with the case in the name (`'sorts the pending list by $sort'`).
+- **Factories in `test/factories/`** (`makeAchievement`, `makeGameView`, `makeGameSummary`, `makeAppInfo`): each returns a valid object and takes only what the test is about. Do not rebuild these objects by hand in a test file; a file may wrap a factory when all its tests share a default (`rarity: 50`).
+- **Fakes, not mocks:** services receive fakes through the constructor (`fakeFetch` in `test/helpers.ts`, a fake updater, an injected clock) and tests assert on results, not on which method was called. No mocking library. `vi.fn` is fine for a callback whose calls are the result.
+- **Fixtures are real responses** (`test/fixtures`: Nioh 3 and Onimusha: Way of the Sword).
+- **Coverage:** `pnpm test:coverage` measures what is listed above (the Electron-only wiring and the texts are excluded in `vitest.config.ts`, with the reason). CI fails under the thresholds set there; they sit a little below the current numbers and only go up. The commit hook runs the plain `pnpm test`.
 
 ## Commits
 

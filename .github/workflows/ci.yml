@@ -23,5 +23,7 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test
+      # Runs the tests and fails if coverage falls under the thresholds in
+      # vitest.config.ts.
+      - run: pnpm test:coverage
       - run: pnpm build
