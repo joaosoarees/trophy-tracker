@@ -16,11 +16,20 @@ import {
 } from '@shared/dashboardSort';
 import { type Language, messagesFor } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
+import {
+  DEFAULT_PREFERENCES,
+  type IDataFolder,
+  type IPreferences,
+} from '@shared/types/Preferences';
 
 type SettingsStore = {
   /** What the main process knows about the setup; `null` until the first read. */
   appState: IAppState | null;
   alwaysOnTop: boolean;
+  /** Choices the main process acts on: the unlock notification, the window. */
+  preferences: IPreferences;
+  /** Where the app keeps its files; `null` until read. */
+  dataFolder: IDataFolder | null;
   /** Order chosen for each list of a game; kept across games and restarts. */
   achievementSort: IAchievementSort;
   /** Order chosen for each list of the dashboard; kept across restarts. */
@@ -32,6 +41,12 @@ type SettingsActions = {
   /** Takes a fresh state from the main process and syncs the interface language with it. */
   apply: (appState: IAppState) => void;
   toggleAlwaysOnTop: () => Promise<void>;
+  setPreference: <K extends keyof IPreferences>(
+    key: K,
+    value: IPreferences[K],
+  ) => Promise<void>;
+  /** Opens the data folder, or copies its path where it cannot be opened. */
+  openDataFolder: () => Promise<void>;
   setDashboardSort: (
     filter: DashboardFilter,
     sort: DashboardSort,
@@ -54,18 +69,24 @@ export type SettingsSlice = SettingsStore & SettingsActions;
 export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
   appState: null,
   alwaysOnTop: false,
+  preferences: DEFAULT_PREFERENCES,
+  dataFolder: null,
   achievementSort: DEFAULT_ACHIEVEMENT_SORT,
   dashboardSort: DEFAULT_DASHBOARD_SORT,
 
   load: async () => {
-    const [appState, alwaysOnTop] = await Promise.all([
+    const [appState, alwaysOnTop, preferences, dataFolder] = await Promise.all([
       SettingsService.getState(),
       SettingsService.getAlwaysOnTop(),
+      SettingsService.getPreferences(),
+      SettingsService.getDataFolder(),
     ]);
     get().settings.apply(appState);
     set(
       (prevState) => {
         prevState.settings.alwaysOnTop = alwaysOnTop;
+        prevState.settings.preferences = preferences;
+        prevState.settings.dataFolder = dataFolder;
       },
       false,
       'settings/load',
@@ -106,6 +127,40 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
     } catch {
       setAlwaysOnTop(previous, 'settings/rollbackAlwaysOnTop');
       toast.error(messagesFor(get().session.language).errors.changeNotSaved);
+    }
+  },
+
+  // Optimistic update, as in `toggleAlwaysOnTop`.
+  setPreference: async (key, value) => {
+    const previous = get().settings.preferences;
+    const apply = (preferences: IPreferences, action: string) =>
+      set(
+        (prevState) => {
+          prevState.settings.preferences = preferences;
+        },
+        false,
+        action,
+      );
+
+    apply({ ...previous, [key]: value }, 'settings/setPreference');
+    try {
+      apply(
+        await SettingsService.setPreference(key, value),
+        'settings/preferenceSaved',
+      );
+    } catch {
+      apply(previous, 'settings/rollbackPreference');
+      toast.error(messagesFor(get().session.language).errors.changeNotSaved);
+    }
+  },
+
+  openDataFolder: async () => {
+    const m = messagesFor(get().session.language);
+    try {
+      const done = await SettingsService.openDataFolder();
+      if (done === 'copied') toast(m.settings.pathCopied);
+    } catch {
+      toast.error(m.errors.unexpected);
     }
   },
 

@@ -2,6 +2,7 @@ import { type IAchievementSort } from '@shared/achievementSort';
 import { type IDashboardSort } from '@shared/dashboardSort';
 import { type Language } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
+import { type IDataFolder, type IPreferences } from '@shared/types/Preferences';
 
 import { Service } from './Service';
 
@@ -34,5 +35,25 @@ export class SettingsService extends Service {
 
   static setAlwaysOnTop(value: boolean): Promise<boolean> {
     return this.api.setAlwaysOnTop(value);
+  }
+
+  static getPreferences(): Promise<IPreferences> {
+    return this.api.getPreferences();
+  }
+
+  static setPreference<K extends keyof IPreferences>(
+    key: K,
+    value: IPreferences[K],
+  ): Promise<IPreferences> {
+    return this.api.setPreference(key, value);
+  }
+
+  static getDataFolder(): Promise<IDataFolder> {
+    return this.api.getDataFolder();
+  }
+
+  /** Opens the data folder or, where that cannot be done, copies its path. */
+  static openDataFolder(): Promise<'opened' | 'copied'> {
+    return this.api.openDataFolder();
   }
 }

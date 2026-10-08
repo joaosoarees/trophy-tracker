@@ -4,26 +4,29 @@ import { useT } from '@app/hooks/useT';
 import { type IProfile } from '@shared/types/Profile';
 import { RemoteImage } from '@ui/components/RemoteImage';
 
-interface IProfileCardProps {
+interface IProfileRowProps {
   profile: IProfile;
 }
 
-export function ProfileCard({ profile }: IProfileCardProps) {
+/** Whose account the app follows: the first row of the Account group. */
+export function ProfileRow({ profile }: IProfileRowProps) {
   const t = useT();
 
   return (
-    <div className="bg-card flex w-full items-center gap-3 rounded-lg border p-3">
+    <li className="flex items-center gap-3 py-2.5">
       <RemoteImage
         src={profile.avatar}
         fallback={<User className="size-5" />}
-        className="size-12 flex-none"
+        className="size-10 flex-none"
       />
-      <div>
-        <strong className="block">{profile.name || t.settings.account}</strong>
-        <small className="text-muted-foreground">
+      <div className="min-w-0">
+        <strong className="block truncate font-semibold">
+          {profile.name || t.settings.account}
+        </strong>
+        <small className="text-muted-foreground text-xs tabular-nums">
           {t.settings.steamId(profile.steamId)}
         </small>
       </div>
-    </div>
+    </li>
   );
 }

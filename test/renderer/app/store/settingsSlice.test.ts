@@ -23,12 +23,18 @@ describe('settings: loading', () => {
     const { settings } = await setup({
       getState: () => Promise.resolve(makeAppState()),
       getAlwaysOnTop: () => Promise.resolve(true),
+      getPreferences: () =>
+        Promise.resolve({ notifyUnlocks: false, rememberWindow: true }),
+      getDataFolder: () =>
+        Promise.resolve({ path: '/home/me/data', canOpen: true }),
     });
 
     await settings().load();
 
     expect(settings().appState?.configured).toBe(true);
     expect(settings().alwaysOnTop).toBe(true);
+    expect(settings().preferences.notifyUnlocks).toBe(false);
+    expect(settings().dataFolder?.path).toBe('/home/me/data');
   });
 
   it('makes the interface follow the saved language and list orders', async () => {
@@ -182,5 +188,61 @@ describe('settings: erasing the setup', () => {
       configured: false,
       profile: null,
     });
+  });
+});
+
+describe('settings: preferences', () => {
+  it('notifies of unlocks and remembers the window until told otherwise', async () => {
+    const { settings } = await setup();
+
+    expect(settings().preferences).toEqual({
+      notifyUnlocks: true,
+      rememberWindow: true,
+    });
+  });
+
+  it('changes a preference at once and keeps what the main process saved', async () => {
+    const setPreference = vi.fn(() =>
+      Promise.resolve({ notifyUnlocks: false, rememberWindow: true }),
+    );
+    const { settings } = await setup({ setPreference });
+
+    await settings().setPreference('notifyUnlocks', false);
+
+    expect(settings().preferences.notifyUnlocks).toBe(false);
+    expect(setPreference).toHaveBeenCalledWith('notifyUnlocks', false);
+  });
+
+  it('puts a preference back and tells the user when it cannot be saved', async () => {
+    const { settings, toast } = await setup({
+      setPreference: () => Promise.reject(new Error('disk full')),
+    });
+
+    await settings().setPreference('rememberWindow', false);
+
+    expect(settings().preferences.rememberWindow).toBe(true);
+    expect(toast.error).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('settings: the data folder', () => {
+  it('says nothing when the folder was opened', async () => {
+    const { settings, toast } = await setup({
+      openDataFolder: () => Promise.resolve('opened'),
+    });
+
+    await settings().openDataFolder();
+
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it('says the path was copied where the folder cannot be opened', async () => {
+    const { settings, toast } = await setup({
+      openDataFolder: () => Promise.resolve('copied'),
+    });
+
+    await settings().openDataFolder();
+
+    expect(toast).toHaveBeenCalledWith('Path copied.');
   });
 });
