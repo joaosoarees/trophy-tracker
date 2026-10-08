@@ -1,0 +1,438 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-08T20:40:37Z",
+  "title": "Design System: Trophy Tracker",
+  "extensions": {
+    "colorMeta": {
+      "signal-blue": {
+        "role": "primary",
+        "displayName": "Signal Blue",
+        "canonical": "oklch(77.2% 0.114 236)",
+        "tonalRamp": [
+          "oklch(15% 0.114 236)",
+          "oklch(26% 0.114 236)",
+          "oklch(38% 0.114 236)",
+          "oklch(50% 0.114 236)",
+          "oklch(62% 0.114 236)",
+          "oklch(74% 0.114 236)",
+          "oklch(85% 0.114 236)",
+          "oklch(95% 0.114 236)"
+        ]
+      },
+      "ink-navy": {
+        "role": "primary",
+        "displayName": "Ink Navy",
+        "canonical": "oklch(19.9% 0.028 247)",
+        "tonalRamp": [
+          "oklch(15% 0.028 247)",
+          "oklch(26% 0.028 247)",
+          "oklch(38% 0.028 247)",
+          "oklch(50% 0.028 247)",
+          "oklch(62% 0.028 247)",
+          "oklch(74% 0.028 247)",
+          "oklch(85% 0.028 247)",
+          "oklch(95% 0.028 247)"
+        ]
+      },
+      "unlocked-green": {
+        "role": "secondary",
+        "displayName": "Unlocked Green",
+        "canonical": "oklch(79.7% 0.196 124)",
+        "tonalRamp": [
+          "oklch(15% 0.196 124)",
+          "oklch(26% 0.196 124)",
+          "oklch(38% 0.196 124)",
+          "oklch(50% 0.196 124)",
+          "oklch(62% 0.196 124)",
+          "oklch(74% 0.196 124)",
+          "oklch(85% 0.196 124)",
+          "oklch(95% 0.196 124)"
+        ]
+      },
+      "pin-amber": {
+        "role": "tertiary",
+        "displayName": "Pin Amber",
+        "canonical": "oklch(80.6% 0.136 85)",
+        "tonalRamp": [
+          "oklch(15% 0.136 85)",
+          "oklch(26% 0.136 85)",
+          "oklch(38% 0.136 85)",
+          "oklch(50% 0.136 85)",
+          "oklch(62% 0.136 85)",
+          "oklch(74% 0.136 85)",
+          "oklch(85% 0.136 85)",
+          "oklch(95% 0.136 85)"
+        ]
+      },
+      "erase-red": {
+        "role": "tertiary",
+        "displayName": "Erase Red",
+        "canonical": "oklch(63.7% 0.183 27)",
+        "tonalRamp": [
+          "oklch(15% 0.183 27)",
+          "oklch(26% 0.183 27)",
+          "oklch(38% 0.183 27)",
+          "oklch(50% 0.183 27)",
+          "oklch(62% 0.183 27)",
+          "oklch(74% 0.183 27)",
+          "oklch(85% 0.183 27)",
+          "oklch(95% 0.183 27)"
+        ]
+      },
+      "night-navy": {
+        "role": "neutral",
+        "displayName": "Night Navy",
+        "canonical": "oklch(21.8% 0.015 267)",
+        "tonalRamp": [
+          "oklch(15% 0.015 267)",
+          "oklch(26% 0.015 267)",
+          "oklch(38% 0.015 267)",
+          "oklch(50% 0.015 267)",
+          "oklch(62% 0.015 267)",
+          "oklch(74% 0.015 267)",
+          "oklch(85% 0.015 267)",
+          "oklch(95% 0.015 267)"
+        ]
+      },
+      "panel-navy": {
+        "role": "neutral",
+        "displayName": "Panel Navy",
+        "canonical": "oklch(26.2% 0.024 256)",
+        "tonalRamp": [
+          "oklch(15% 0.024 256)",
+          "oklch(26% 0.024 256)",
+          "oklch(38% 0.024 256)",
+          "oklch(50% 0.024 256)",
+          "oklch(62% 0.024 256)",
+          "oklch(74% 0.024 256)",
+          "oklch(85% 0.024 256)",
+          "oklch(95% 0.024 256)"
+        ]
+      },
+      "recessed-slate": {
+        "role": "neutral",
+        "displayName": "Recessed Slate",
+        "canonical": "oklch(28.6% 0.025 256)",
+        "tonalRamp": [
+          "oklch(15% 0.025 256)",
+          "oklch(26% 0.025 256)",
+          "oklch(38% 0.025 256)",
+          "oklch(50% 0.025 256)",
+          "oklch(62% 0.025 256)",
+          "oklch(74% 0.025 256)",
+          "oklch(85% 0.025 256)",
+          "oklch(95% 0.025 256)"
+        ]
+      },
+      "control-slate": {
+        "role": "neutral",
+        "displayName": "Control Slate",
+        "canonical": "oklch(32.6% 0.031 256)",
+        "tonalRamp": [
+          "oklch(15% 0.031 256)",
+          "oklch(26% 0.031 256)",
+          "oklch(38% 0.031 256)",
+          "oklch(50% 0.031 256)",
+          "oklch(62% 0.031 256)",
+          "oklch(74% 0.031 256)",
+          "oklch(85% 0.031 256)",
+          "oklch(95% 0.031 256)"
+        ]
+      },
+      "hover-steel": {
+        "role": "neutral",
+        "displayName": "Hover Steel",
+        "canonical": "oklch(34.4% 0.041 254)",
+        "tonalRamp": [
+          "oklch(15% 0.041 254)",
+          "oklch(26% 0.041 254)",
+          "oklch(38% 0.041 254)",
+          "oklch(50% 0.041 254)",
+          "oklch(62% 0.041 254)",
+          "oklch(74% 0.041 254)",
+          "oklch(85% 0.041 254)",
+          "oklch(95% 0.041 254)"
+        ]
+      },
+      "hairline-slate": {
+        "role": "neutral",
+        "displayName": "Hairline Slate",
+        "canonical": "oklch(32.6% 0.030 258)",
+        "tonalRamp": [
+          "oklch(15% 0.030 258)",
+          "oklch(26% 0.030 258)",
+          "oklch(38% 0.030 258)",
+          "oklch(50% 0.030 258)",
+          "oklch(62% 0.030 258)",
+          "oklch(74% 0.030 258)",
+          "oklch(85% 0.030 258)",
+          "oklch(95% 0.030 258)"
+        ]
+      },
+      "field-edge": {
+        "role": "neutral",
+        "displayName": "Field Edge",
+        "canonical": "oklch(37.2% 0.037 258)",
+        "tonalRamp": [
+          "oklch(15% 0.037 258)",
+          "oklch(26% 0.037 258)",
+          "oklch(38% 0.037 258)",
+          "oklch(50% 0.037 258)",
+          "oklch(62% 0.037 258)",
+          "oklch(74% 0.037 258)",
+          "oklch(85% 0.037 258)",
+          "oklch(95% 0.037 258)"
+        ]
+      },
+      "glance-white": {
+        "role": "neutral",
+        "displayName": "Glance White",
+        "canonical": "oklch(91.4% 0.008 254)",
+        "tonalRamp": [
+          "oklch(15% 0.008 254)",
+          "oklch(26% 0.008 254)",
+          "oklch(38% 0.008 254)",
+          "oklch(50% 0.008 254)",
+          "oklch(62% 0.008 254)",
+          "oklch(74% 0.008 254)",
+          "oklch(85% 0.008 254)",
+          "oklch(95% 0.008 254)"
+        ]
+      },
+      "lit-white": {
+        "role": "neutral",
+        "displayName": "Lit White",
+        "canonical": "oklch(96.4% 0.016 239)",
+        "tonalRamp": [
+          "oklch(15% 0.016 239)",
+          "oklch(26% 0.016 239)",
+          "oklch(38% 0.016 239)",
+          "oklch(50% 0.016 239)",
+          "oklch(62% 0.016 239)",
+          "oklch(74% 0.016 239)",
+          "oklch(85% 0.016 239)",
+          "oklch(95% 0.016 239)"
+        ]
+      },
+      "quiet-steel": {
+        "role": "neutral",
+        "displayName": "Quiet Steel",
+        "canonical": "oklch(67.5% 0.028 254)",
+        "tonalRamp": [
+          "oklch(15% 0.028 254)",
+          "oklch(26% 0.028 254)",
+          "oklch(38% 0.028 254)",
+          "oklch(50% 0.028 254)",
+          "oklch(62% 0.028 254)",
+          "oklch(74% 0.028 254)",
+          "oklch(85% 0.028 254)",
+          "oklch(95% 0.028 254)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "The one title of a screen."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "An achievement's name inside its card."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Descriptions and everything read as a sentence."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Segmented options, small buttons and status words."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Counts, dates, rarity and hints."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "A dialog, over a 50% black scrim."
+      },
+      {
+        "name": "popover",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "purpose": "The list that opens under a select."
+      },
+      {
+        "name": "edge",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Seats a text field or an outlined button in the surface."
+      }
+    ],
+    "motion": [
+      {
+        "name": "screen-in",
+        "value": "rise-in 180ms ease-out (fade + 6px rise)",
+        "purpose": "A main tab when it is shown."
+      },
+      {
+        "name": "list-in",
+        "value": "fade-in 160ms ease-out",
+        "purpose": "A list when its filter changes."
+      },
+      {
+        "name": "step-forward / step-backward",
+        "value": "20px slide + fade, 200ms ease-out",
+        "purpose": "Onboarding steps, following the direction of travel."
+      },
+      {
+        "name": "expand-in",
+        "value": "height and opacity, 180ms ease-out",
+        "purpose": "A section that opens inside a card."
+      },
+      {
+        "name": "press",
+        "value": "scale 0.96 (0.99 for wide elements)",
+        "purpose": "The push every clickable element gives while pressed."
+      }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action that moves the user forward in a view.",
+      "html": "<button class=\"ds-btn-primary\">Verify</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: 1px solid transparent; border-radius: 6px; font: 500 14px/1 system-ui, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background-color 150ms, color 150ms, scale 150ms; background: var(--primary); color: var(--primary-foreground); } .ds-btn-primary:hover { background: color-mix(in oklab, var(--primary) 90%, transparent); } .ds-btn-primary:active { scale: 0.96; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "An alternative action that is not destructive.",
+      "html": "<button class=\"ds-btn-secondary\">Redo setup</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: 1px solid transparent; border-radius: 6px; font: 500 14px/1 system-ui, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background-color 150ms, color 150ms, scale 150ms; background: var(--secondary); color: var(--secondary-foreground); } .ds-btn-secondary:hover { background: color-mix(in oklab, var(--secondary) 80%, transparent); } .ds-btn-secondary:active { scale: 0.96; } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Erasing something: outlined, red text, hovering on a red wash.",
+      "html": "<button class=\"ds-btn-destructive\">Erase key and SteamID</button>",
+      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: 1px solid transparent; border-radius: 6px; font: 500 14px/1 system-ui, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background-color 150ms, color 150ms, scale 150ms; background: transparent; color: var(--destructive); border-color: color-mix(in oklab, var(--destructive) 50%, transparent); } .ds-btn-destructive:hover { background: color-mix(in oklab, var(--destructive) 15%, transparent); } .ds-btn-destructive:active { scale: 0.96; } .ds-btn-destructive:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }"
+    },
+    {
+      "name": "Icon Button",
+      "kind": "button",
+      "refersTo": "icon-button",
+      "description": "A 32px ghost button with one icon; a toggle that is on takes the color of what it means.",
+      "html": "<button class=\"ds-icon-btn\" aria-label=\"Pin to top\" aria-pressed=\"false\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 17v5\"/><path d=\"M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z\"/></svg></button>",
+      "css": ".ds-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: var(--foreground); cursor: pointer; transition: background-color 150ms, color 150ms, scale 150ms; } .ds-icon-btn:hover { background: color-mix(in oklab, var(--accent) 50%, transparent); color: var(--accent-foreground); } .ds-icon-btn:active { scale: 0.96; } .ds-icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }"
+    },
+    {
+      "name": "Segmented Toggle",
+      "kind": "chip",
+      "refersTo": "segmented",
+      "description": "Switches between the two lists of a screen; each option carries its count.",
+      "html": "<div class=\"ds-segmented\"><button class=\"ds-segmented-option\" aria-pressed=\"true\">Pending 80</button><button class=\"ds-segmented-option\" aria-pressed=\"false\">Unlocked 57</button></div>",
+      "css": ".ds-segmented { display: inline-flex; padding: 2px; border-radius: 6px; background: var(--muted); } .ds-segmented-option { padding: 4px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--muted-foreground); font: 500 12px/1.33 system-ui, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background-color 150ms, color 150ms; } .ds-segmented-option:hover { background: color-mix(in oklab, var(--accent) 50%, transparent); color: var(--foreground); } .ds-segmented-option[aria-pressed='true'] { background: var(--accent); color: var(--accent-foreground); box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1); } .ds-segmented-option:active { scale: 0.96; } .ds-segmented-option:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A text field with a magnifier; the border and a soft ring turn blue on focus.",
+      "html": "<label class=\"ds-search\"><span class=\"ds-search-icon\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m21 21-4.34-4.34\"/><circle cx=\"11\" cy=\"11\" r=\"8\"/></svg></span><input class=\"ds-search-input\" placeholder=\"Search achievements by name or description\"></label>",
+      "css": ".ds-search { position: relative; display: block; width: 320px; } .ds-search-icon { position: absolute; top: 50%; left: 10px; translate: 0 -50%; display: flex; color: var(--muted-foreground); pointer-events: none; } .ds-search-input { width: 100%; height: 32px; padding: 4px 12px 4px 32px; border: 1px solid var(--input); border-radius: 6px; background: color-mix(in oklab, var(--input) 30%, transparent); color: var(--foreground); font: 400 14px/1.43 system-ui, 'Segoe UI', Roboto, sans-serif; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); transition: border-color 150ms, box-shadow 150ms; } .ds-search-input::placeholder { color: var(--muted-foreground); } .ds-search-input:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }"
+    },
+    {
+      "name": "Navigation Tabs",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "The bar at the top of the window; the current tab has a blue underline.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Main\"><button class=\"ds-tab\" aria-current=\"page\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 9H4.5a2.5 2.5 0 0 1 0-5H6\"/><path d=\"M18 9h1.5a2.5 2.5 0 0 0 0-5H18\"/><path d=\"M4 22h16\"/><path d=\"M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22\"/><path d=\"M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22\"/><path d=\"M18 2H6v7a6 6 0 0 0 12 0V2Z\"/></svg>Game</button><button class=\"ds-tab\">Dashboard</button></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 4px; padding: 0 8px; border-bottom: 1px solid var(--border); width: 320px; } .ds-tab { display: flex; align-items: center; gap: 6px; margin-bottom: -1px; padding: 8px 10px; border: 0; border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0; background: transparent; color: var(--muted-foreground); font: 500 14px/1.43 system-ui, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background-color 150ms, color 150ms; } .ds-tab:hover { background: color-mix(in oklab, var(--accent) 50%, transparent); color: var(--foreground); } .ds-tab[aria-current='page'] { border-bottom-color: var(--primary); color: var(--foreground); } .ds-tab:active { scale: 0.98; } .ds-tab:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }"
+    },
+    {
+      "name": "Progress Bar",
+      "kind": "custom",
+      "refersTo": "progress-track",
+      "description": "A round track filled in blue, or green for something finished; the number sits beside it.",
+      "html": "<div class=\"ds-progress-row\"><div class=\"ds-progress\"><div class=\"ds-progress-fill\" style=\"width: 62%\"></div></div><span class=\"ds-progress-count\">57 / 92</span></div>",
+      "css": ".ds-progress-row { display: flex; align-items: center; gap: 10px; width: 320px; } .ds-progress { flex: 1; height: 6px; overflow: hidden; border-radius: 9999px; background: var(--secondary); } .ds-progress-fill { height: 100%; border-radius: 9999px; background: var(--primary); transition: width 300ms; } .ds-progress-count { color: var(--muted-foreground); font: 400 12px/1.33 system-ui, 'Segoe UI', Roboto, sans-serif; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Achievement Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The unit the app is built around: icon, name, rarity, description, counter and the row of tools.",
+      "html": "<article class=\"ds-card\"><div class=\"ds-card-icon\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 9H4.5a2.5 2.5 0 0 1 0-5H6\"/><path d=\"M18 9h1.5a2.5 2.5 0 0 0 0-5H18\"/><path d=\"M4 22h16\"/><path d=\"M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22\"/><path d=\"M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22\"/><path d=\"M18 2H6v7a6 6 0 0 0 12 0V2Z\"/></svg></div><div class=\"ds-card-body\"><div class=\"ds-card-head\"><h2 class=\"ds-card-title\">It’s Shaling Outside</h2><span class=\"ds-card-rarity\">0,6%</span></div><p class=\"ds-card-desc\">Survive the dreaded rain of boulders.</p><div class=\"ds-card-progress\"><div class=\"ds-card-track\"><div class=\"ds-card-fill\" style=\"width: 40%\"></div></div><span class=\"ds-card-count\">4 / 10</span></div><div class=\"ds-card-tools\"><button class=\"ds-card-tool\">Guides</button><button class=\"ds-card-tool\">YouTube</button><button class=\"ds-card-tool\">Google</button></div></div></article>",
+      "css": ".ds-card { display: flex; gap: 12px; width: 420px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--card-foreground); font: 400 14px/1.43 system-ui, 'Segoe UI', Roboto, sans-serif; } .ds-card-icon { display: flex; flex: none; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 6px; background: var(--muted); color: var(--muted-foreground); } .ds-card-body { flex: 1; min-width: 0; } .ds-card-head { display: flex; align-items: flex-start; gap: 8px; } .ds-card-title { flex: 1; margin: 0; font-size: 14px; font-weight: 600; line-height: 1.375; } .ds-card-rarity, .ds-card-count { color: var(--muted-foreground); font-size: 12px; font-variant-numeric: tabular-nums; } .ds-card-desc { margin: 2px 0 0; color: color-mix(in oklab, var(--foreground) 75%, transparent); } .ds-card-progress { display: flex; align-items: center; gap: 10px; margin-top: 8px; } .ds-card-track { flex: 1; height: 6px; overflow: hidden; border-radius: 9999px; background: var(--secondary); } .ds-card-fill { height: 100%; border-radius: 9999px; background: var(--primary); } .ds-card-tools { display: flex; gap: 4px; margin-top: 10px; } .ds-card-tool { height: 24px; padding: 0 8px; border: 0; border-radius: 6px; background: var(--secondary); color: var(--secondary-foreground); font: 500 12px/1 system-ui, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background-color 150ms, scale 150ms; } .ds-card-tool:hover { background: color-mix(in oklab, var(--secondary) 80%, transparent); } .ds-card-tool:active { scale: 0.96; } .ds-card-tool:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Second Monitor",
+    "overview": "**Creative North Star: \"The Second Monitor\"**\n\nTrophy Tracker is a support panel, not a destination. It sits beside a game on a second screen, in a window 600 pixels wide, and is read in glances by someone whose attention is elsewhere. Everything in the system follows from that: a dark field that does not glow next to a game, dense rows that put a whole list in view, one accent that marks what can be acted on, and controls small enough to stay out of the way.\n\nThe palette is borrowed from the place the user already lives. The navy field, the light blue accent and the lime green of a finished achievement are Steam's own, so the panel reads as part of the same desk rather than a second product asking to be learned. The identity is in the restraint and the response: surfaces are flat and told apart by tone, and every control answers a touch at once.\n\nMotion is short and small. A screen rises 6 pixels as it appears, a list fades in, a section grows to its height. Nothing loops for attention, with one exception: the dot that says a game is running.",
+    "keyCharacteristics": [
+      "Dark only, on a navy field that sits quietly beside a game.",
+      "Dense and narrow: built for 600 pixels of width, never under 480.",
+      "Flat surfaces separated by tone and a hairline border; shadow only on what floats.",
+      "One accent, used for what can be acted on and what is in focus.",
+      "Compact controls that respond to every touch: a tint on hover, a small push on press, a visible ring on keyboard focus.",
+      "Numbers are tabular, so counters and percentages do not shift as they change."
+    ],
+    "rules": [
+      {
+        "name": "The One Signal Rule",
+        "body": "Signal Blue is the only color that means \"you can act here\" or \"you are here\". If it appears on something that is neither, it is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Meaning Rule",
+        "body": "Green is done, amber is the user's own mark, red is loss. None of them is ever used for decoration or to add variety to a list.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tint Rule",
+        "body": "Hover is a translucent wash of Hover Steel (40 to 50 percent) over whatever is underneath, not a new opaque color. Red text never sits on that wash, because it fails contrast; a destructive control hovers on a 15 percent wash of Erase Red instead.",
+        "section": "colors"
+      },
+      {
+        "name": "The Same Size Rule",
+        "body": "A title and its description share one size. Weight and opacity do the work, which keeps a card short enough for a list to stay in view.",
+        "section": "typography"
+      },
+      {
+        "name": "The Steady Numbers Rule",
+        "body": "Every number that can change (percentages, counters, counts, progress) is set in tabular figures.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Page Rule",
+        "body": "If it scrolls with the page, it has no shadow. Tone and a hairline separate it from what is around it.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep every screen readable at 600 pixels and usable at 480, and check it in Spanish and French before calling it done.",
+      "Do separate surfaces with tone and a one-pixel Hairline Slate border.",
+      "Do give every clickable element three visible states besides rest: a wash on hover, a push on press (96 percent, or 99 percent for wide elements), and a focus ring.",
+      "Do use Signal Blue only for what can be acted on or what is current.",
+      "Do set every number that can change in tabular figures.",
+      "Do show remote images in a fixed-size box with a skeleton while loading and an icon on failure.",
+      "Do animate only entrances, in 200ms or less, and let the reduced-motion preference turn them off."
+    ],
+    "donts": [
+      "Don't add a light theme or a pure white or pure black surface.",
+      "Don't put a shadow on anything that scrolls with the page.",
+      "Don't use green, amber or red for decoration or to tell list items apart.",
+      "Don't place red text on the usual hover wash; use the red wash.",
+      "Don't use a native select or the native `title` tooltip: the first opens a system popup that cannot be themed, the second is slow and never shows on keyboard focus.",
+      "Don't introduce a second typeface or a display size above 20px.",
+      "Don't make a control that only appears on hover unreachable by keyboard; it must also appear on focus.",
+      "Don't animate an exit, loop an animation for attention, or move anything more than 20 pixels."
+    ]
+  }
+}
