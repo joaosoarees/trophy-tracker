@@ -6,16 +6,19 @@ Desktop app (Electron + React) that shows, for the game open on Steam, which ach
 
 ```bash
 sudo apt install libnss3 libnspr4 libasound2t64   # libraries Electron needs
-npm install
+corepack enable   # once; provides the pnpm version pinned in package.json
+pnpm install
 ```
+
+The project only installs with pnpm; `npm install` and `yarn` are refused.
 
 ## Usage
 
 ```bash
-npm run dev     # development, with reload
-npm run build && npm start
-npm test
-npm run lint && npm run typecheck
+pnpm dev     # development, with reload
+pnpm build && pnpm start
+pnpm test
+pnpm lint && pnpm typecheck
 ```
 
 On first run the app asks for a language, your SteamID and a Web API key (https://steamcommunity.com/dev/apikey), and checks your profile privacy. The configuration lives in `~/.config/steam-trophy-tracker/`.

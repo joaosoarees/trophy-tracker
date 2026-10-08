@@ -7,16 +7,18 @@ Desktop app (Electron + React + TypeScript) that shows, for the game open on Ste
 ## Commands
 
 ```bash
-npm run dev         # app with reload (window through WSLg)
-npm run build       # builds into out/
-npm start           # runs the build
-npm test            # Vitest
-npm run typecheck   # tsc on both projects (main process and interface)
-npm run lint        # ESLint (lint:fix to auto-fix)
-npm run format      # Prettier (format:check to only verify)
+pnpm dev         # app with reload (window through WSLg)
+pnpm build       # builds into out/
+pnpm start           # runs the build
+pnpm test            # Vitest
+pnpm typecheck   # tsc on both projects (main process and interface)
+pnpm lint        # ESLint (lint:fix to auto-fix)
+pnpm format      # Prettier (format:check to only verify)
 ```
 
 Electron needs `libnss3 libnspr4 libasound2t64` installed on WSL.
+
+**Package manager: pnpm only.** The exact version is pinned in `packageManager` and provided by Corepack (`corepack enable`, once). `devEngines.packageManager` makes npm refuse to install, and the `preinstall` script (`only-allow pnpm`) refuses any other manager. Never run `npm install` or commit a `package-lock.json`. Use `pnpm add` / `pnpm add -D` / `pnpm remove`, and `pnpm dlx` instead of `npx`. pnpm blocks dependency install scripts unless they are allowed in `pnpm-workspace.yaml` (`allowBuilds`); only `esbuild` is allowed. Electron needs no entry because it downloads its binary on first run. pnpm's `node_modules` is strict: a package must be listed in `package.json` to be imported.
 
 ## Code standards
 
@@ -25,7 +27,7 @@ Enforced by tooling; do not work around it.
 - **Formatting:** Prettier with `{ "singleQuote": true }`: single quotes, semicolons, 80 columns, trailing commas. `.editorconfig` covers indentation and line endings.
 - **Lint:** ESLint 9 flat config in `eslint.config.mjs`: typescript-eslint type-checked rules, React, React Hooks, jsx-a11y and import ordering. `src/renderer/src/components/ui` (generated shadcn/ui) is formatted but not linted. Exceptions for tests, config files and async JSX handlers are written down in the config with the reason.
 - **Interfaces start with `I`** (`IAchievement`, `IGameView`, `IStepperProps`); the rule is `@typescript-eslint/naming-convention`. Type aliases (`type X = ...`) have no prefix. The global `Window` augmentation is the only exception.
-- **Imports** are grouped (builtin, external, internal `@/`, parent, sibling, index), alphabetised, with a blank line between groups, and type imports are inline (`import { type X }`). `npm run lint:fix` sorts them.
+- **Imports** are grouped (builtin, external, internal `@/`, parent, sibling, index), alphabetised, with a blank line between groups, and type imports are inline (`import { type X }`). `pnpm lint:fix` sorts them.
 - **Function-typed members** use property syntax (`onClick: () => void`), not method syntax.
 - **No untyped JSON:** responses from Steam are typed where they are read (`Envelope<T>`, `PlayerStats<T>` in `steam/client.ts`).
 - **TypeScript projects:** `tsconfig.node.json` (main, preload, shared, tests; no DOM) and `tsconfig.web.json` (interface and shared; no Node types), both extending `tsconfig.base.json`. Using a browser API in the main process, or a Node API in the interface, is a compile error.
@@ -158,7 +160,7 @@ Conventions:
 
 ## Interface
 
-- Tailwind v4 (config in `src/renderer/src/styles.css`, no `tailwind.config`) + shadcn/ui components + Lucide icons. New shadcn component: `npx shadcn@latest add <name>`; the command tends to install a wrong `cn` package and import from it: remove it with `npm uninstall cn` and point the import to `@/lib/utils`.
+- Tailwind v4 (config in `src/renderer/src/styles.css`, no `tailwind.config`) + shadcn/ui components + Lucide icons. New shadcn component: `pnpm dlx shadcn@latest add <name>`; the command tends to install a wrong `cn` package and import from it: remove it with `pnpm remove cn` and point the import to `@/lib/utils`.
 - Dark theme only, with the Steam palette in the tokens in `styles.css` (`--primary` light blue, `--success` green, `--warning` amber).
 - The window is narrow (about 520 px, for a second monitor): check that toolbars and buttons fit that width.
 - Lightness is the priority: no library with runtime styling.
@@ -177,5 +179,5 @@ Conventions:
 
 - Commit at the end of every requested change, without asking, one commit per change. Local commits only: pushing or sending anything outside depends on an explicit request.
 - Conventional Commits in English: `feat: achievement checklist`, `fix: ...`, `chore: ...`, `docs: ...`, `refactor: ...`, `perf: ...`, `style: ...`, `test: ...`. commitlint checks it; header and body lines stay within 100 characters.
-- Husky hooks run on every commit: lint-staged (ESLint with auto-fix, then Prettier, on the staged files), then `npm run typecheck` and `npm test` for the whole project, then commitlint on the message. Never skip them with `--no-verify`; fix what they report.
+- Husky hooks run on every commit: lint-staged (ESLint with auto-fix, then Prettier, on the staged files), then `pnpm typecheck` and `pnpm test` for the whole project, then commitlint on the message. Never skip them with `--no-verify`; fix what they report.
 - Purely mechanical commits (mass formatting, import sorting) go into `.git-blame-ignore-revs`.

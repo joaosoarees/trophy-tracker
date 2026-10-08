@@ -5,6 +5,7 @@
   "description": "Acompanhamento de conquistas da Steam",
   "main": "./out/main/index.js",
   "scripts": {
+    "preinstall": "npx only-allow pnpm",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
@@ -59,9 +60,12 @@
     "vite": "^7.3.7",
     "vitest": "^5.0.3"
   },
-  "allowScripts": {
-    "electron@44.6.0": true,
-    "esbuild@0.25.12": true,
-    "esbuild@0.28.2": true
-  }
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^12.10.1",
+      "onFail": "error"
+    }
+  },
+  "packageManager": "pnpm@12.10.1+sha512.ba40a37eb1a370d60fea8c4cf1d364c13bcccef518e98ad2bcee954f539d38da37458e58261a3fa55e06523450ea0ffff9f497b135be41f2c15c1642bacace6c"
 }
