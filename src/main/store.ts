@@ -8,12 +8,12 @@ import {
 import { join } from 'node:path';
 
 import { DEFAULT_LANGUAGE, isLanguage, type Language } from '../shared/i18n';
-import type {
-  IAchievementUserData,
-  GameUserData,
-  IGameView,
-  IProfile,
-} from '../shared/types';
+import { type IGameView } from '../shared/types/Game';
+import { type IProfile } from '../shared/types/Profile';
+import {
+  type GameUserData,
+  type IAchievementUserData,
+} from '../shared/types/UserData';
 
 import type {
   ICredentials,

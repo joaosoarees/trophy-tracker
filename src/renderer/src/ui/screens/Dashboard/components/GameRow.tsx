@@ -1,5 +1,5 @@
 import { useT } from '@app/hooks/useT';
-import { type IGameSummary } from '@shared/types';
+import { type IGameSummary } from '@shared/types/Game';
 import { ProgressBar } from '@ui/components/ProgressBar';
 import { cn } from '@ui/utils/cn';
 

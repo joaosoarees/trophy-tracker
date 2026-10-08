@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { listAchievements } from '../src/renderer/src/ui/screens/Game/achievementList';
-import { type IAchievement, type IGameView } from '../src/shared/types';
+import { type IAchievement } from '../src/shared/types/Achievement';
+import { type IGameView } from '../src/shared/types/Game';
 
 const achievement = (
   id: string,

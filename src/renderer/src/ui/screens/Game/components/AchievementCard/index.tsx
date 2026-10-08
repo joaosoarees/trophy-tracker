@@ -3,7 +3,8 @@ import { memo } from 'react';
 
 import { useLocale } from '@app/hooks/useLocale';
 import { useT } from '@app/hooks/useT';
-import { type IAchievement, type IAchievementUserData } from '@shared/types';
+import { type IAchievement } from '@shared/types/Achievement';
+import { type IAchievementUserData } from '@shared/types/UserData';
 import { ProgressBar } from '@ui/components/ProgressBar';
 import { Badge } from '@ui/primitives/badge';
 import { Button } from '@ui/primitives/button';

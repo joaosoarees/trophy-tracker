@@ -1,7 +1,7 @@
 import { FormProvider } from 'react-hook-form';
 
 import { useT } from '@app/hooks/useT';
-import { type IAppState } from '@shared/types';
+import { type IAppState } from '@shared/types/AppState';
 
 import { Stepper } from './components/Stepper';
 import { AccountStep } from './steps/AccountStep';

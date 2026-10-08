@@ -1,9 +1,6 @@
-import {
-  type CheckResult,
-  type IAppState,
-  type IProfile,
-  type SteamIdCheck,
-} from '@shared/types';
+import { type IAppState } from '@shared/types/AppState';
+import { type CheckResult, type SteamIdCheck } from '@shared/types/Check';
+import { type IProfile } from '@shared/types/Profile';
 
 import { Service } from './Service';
 

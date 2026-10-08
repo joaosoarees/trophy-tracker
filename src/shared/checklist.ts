@@ -1,8 +1,8 @@
-import type {
-  IAchievement,
-  IAchievementUserData,
-  IChecklistItem,
-} from './types';
+import { type IAchievement } from './types/Achievement';
+import {
+  type IAchievementUserData,
+  type IChecklistItem,
+} from './types/UserData';
 
 const MARKER = /^\s*(?:[-*•·–—]|\[[ xX]?\]|☐|☑|✓|✔|\d+\s*[.)\-:])\s*/;
 

@@ -1,4 +1,4 @@
-import { type IApi } from '@shared/types';
+import { type IApi } from '@shared/types/Api';
 
 /**
  * Base of every service. Services are the only code allowed to reach the

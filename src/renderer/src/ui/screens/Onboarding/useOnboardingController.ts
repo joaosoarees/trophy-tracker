@@ -6,7 +6,7 @@ import { OnboardingService } from '@app/services/OnboardingService';
 import { SettingsService } from '@app/services/SettingsService';
 import { useStore } from '@app/store';
 import { isLanguage } from '@shared/i18n';
-import { type IAppState } from '@shared/types';
+import { type IAppState } from '@shared/types/AppState';
 
 import { clearDraft, loadDraft, loadStep, saveDraft, saveStep } from './draft';
 import { type OnboardingFormData, onboardingSchema } from './schema';

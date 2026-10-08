@@ -2,7 +2,7 @@ import { BookOpen, CirclePlay, Search } from 'lucide-react';
 import { type ReactNode } from 'react';
 
 import { useT } from '@app/hooks/useT';
-import { type GuideSite } from '@shared/types';
+import { type GuideSite } from '@shared/types/Guide';
 import { Button } from '@ui/primitives/button';
 
 const GUIDES: { site: GuideSite; icon: ReactNode }[] = [

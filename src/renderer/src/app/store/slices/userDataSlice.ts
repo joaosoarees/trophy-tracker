@@ -1,7 +1,10 @@
 import { createSaver } from '@app/lib/saver';
 import { UserDataService } from '@app/services/UserDataService';
 import type { StoreSlice } from '@app/store/Store';
-import type { IAchievementUserData, GameUserData } from '@shared/types';
+import {
+  type GameUserData,
+  type IAchievementUserData,
+} from '@shared/types/UserData';
 
 type UserDataStore = {
   /** Notes, pins and checklists, per game and per achievement. */

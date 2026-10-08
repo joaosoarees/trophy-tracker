@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { useT } from '@app/hooks/useT';
 import { parseChecklist } from '@shared/checklist';
-import { type IChecklistItem } from '@shared/types';
+import { type IChecklistItem } from '@shared/types/UserData';
 import { Button } from '@ui/primitives/button';
 import {
   Dialog,

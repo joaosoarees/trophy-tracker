@@ -1,6 +1,6 @@
 import { GamesService } from '@app/services/GamesService';
 import type { StoreSlice } from '@app/store/Store';
-import type { IGameView } from '@shared/types';
+import { type IGameView } from '@shared/types/Game';
 import { mergeView } from '@shared/view';
 
 export type GameEntry = {

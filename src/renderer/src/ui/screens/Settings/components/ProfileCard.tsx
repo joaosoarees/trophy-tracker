@@ -1,5 +1,5 @@
 import { useT } from '@app/hooks/useT';
-import { type IProfile } from '@shared/types';
+import { type IProfile } from '@shared/types/Profile';
 
 interface IProfileCardProps {
   profile: IProfile;

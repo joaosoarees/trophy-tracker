@@ -3,7 +3,10 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { useLocale } from '@app/hooks/useLocale';
 import { useStore } from '@app/store';
-import { type GameUserData, type IAchievementUserData } from '@shared/types';
+import {
+  type GameUserData,
+  type IAchievementUserData,
+} from '@shared/types/UserData';
 
 import { type Filter, listAchievements, type Sort } from './achievementList';
 

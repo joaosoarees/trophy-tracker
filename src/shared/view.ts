@@ -1,4 +1,5 @@
-import type { IAchievement, IGameView } from './types';
+import { type IAchievement } from './types/Achievement';
+import { type IGameView } from './types/Game';
 
 const sameAchievement = (a: IAchievement, b: IAchievement): boolean =>
   a.unlocked === b.unlocked &&

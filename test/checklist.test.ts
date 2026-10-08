@@ -5,7 +5,7 @@ import {
   parseChecklist,
   shownProgress,
 } from '../src/shared/checklist';
-import type { IAchievement } from '../src/shared/types';
+import { type IAchievement } from '../src/shared/types/Achievement';
 
 const achievement = (progress: IAchievement['progress']): IAchievement => ({
   id: 'A',

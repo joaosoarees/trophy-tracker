@@ -1,9 +1,7 @@
 import { shownProgress } from '@shared/checklist';
-import {
-  type GameUserData,
-  type IAchievement,
-  type IGameView,
-} from '@shared/types';
+import { type IAchievement } from '@shared/types/Achievement';
+import { type IGameView } from '@shared/types/Game';
+import { type GameUserData } from '@shared/types/UserData';
 import { matches } from '@ui/utils/text';
 
 export type Sort = 'common' | 'rare' | 'closest' | 'name';

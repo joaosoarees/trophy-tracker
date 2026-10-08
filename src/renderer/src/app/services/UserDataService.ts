@@ -1,4 +1,7 @@
-import { type GameUserData, type IAchievementUserData } from '@shared/types';
+import {
+  type GameUserData,
+  type IAchievementUserData,
+} from '@shared/types/UserData';
 
 import { Service } from './Service';
 

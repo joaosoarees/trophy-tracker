@@ -1,5 +1,5 @@
 import { type Language } from '@shared/i18n';
-import { type IAppState } from '@shared/types';
+import { type IAppState } from '@shared/types/AppState';
 
 import { Service } from './Service';
 

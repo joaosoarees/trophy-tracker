@@ -1,5 +1,6 @@
 import type { Messages } from '../shared/i18n';
-import type { CheckResult, IProfile, SteamIdCheck } from '../shared/types';
+import { type CheckResult, type SteamIdCheck } from '../shared/types/Check';
+import { type IProfile } from '../shared/types/Profile';
 import { API_KEY_PATTERN, STEAM_ID_PATTERN } from '../shared/validation';
 
 import {

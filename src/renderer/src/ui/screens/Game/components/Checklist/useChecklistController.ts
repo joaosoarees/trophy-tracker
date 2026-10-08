@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { createChecklistItem, parseChecklist } from '@shared/checklist';
-import { type IChecklistItem } from '@shared/types';
+import { type IChecklistItem } from '@shared/types/UserData';
 
 export function useChecklistController(
   items: IChecklistItem[],

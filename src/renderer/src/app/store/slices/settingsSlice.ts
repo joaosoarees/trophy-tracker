@@ -1,7 +1,7 @@
 import { SettingsService } from '@app/services/SettingsService';
 import type { StoreSlice } from '@app/store/Store';
 import { type Language } from '@shared/i18n';
-import { type IAppState } from '@shared/types';
+import { type IAppState } from '@shared/types/AppState';
 
 type SettingsStore = {
   /** What the main process knows about the setup; `null` until the first read. */

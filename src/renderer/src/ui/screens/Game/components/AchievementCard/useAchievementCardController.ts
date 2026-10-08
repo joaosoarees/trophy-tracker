@@ -2,12 +2,12 @@ import { useState } from 'react';
 
 import { SystemService } from '@app/services/SystemService';
 import { shownProgress } from '@shared/checklist';
+import { type IAchievement } from '@shared/types/Achievement';
+import { type GuideSite } from '@shared/types/Guide';
 import {
-  type GuideSite,
-  type IAchievement,
   type IAchievementUserData,
   type IChecklistItem,
-} from '@shared/types';
+} from '@shared/types/UserData';
 
 interface IParams {
   achievement: IAchievement;

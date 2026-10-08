@@ -1,4 +1,4 @@
-import { type GuideSite } from '@shared/types';
+import { type GuideSite, type ExternalPage } from '@shared/types/Guide';
 
 import { Service } from './Service';
 
@@ -13,12 +13,7 @@ export class SystemService extends Service {
     return this.api.openGuide(site, appid, game, achievement);
   }
 
-  static openExternal(target: SystemService.ExternalPage): Promise<void> {
+  static openExternal(target: ExternalPage): Promise<void> {
     return this.api.openExternal(target);
   }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace SystemService {
-  export type ExternalPage = 'apikey' | 'privacy' | 'account';
 }

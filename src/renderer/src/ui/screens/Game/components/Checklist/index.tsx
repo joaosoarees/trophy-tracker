@@ -1,7 +1,7 @@
 import { ClipboardPaste, Plus } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
-import { type IChecklistItem } from '@shared/types';
+import { type IChecklistItem } from '@shared/types/UserData';
 import { Button } from '@ui/primitives/button';
 import { Input } from '@ui/primitives/input';
 

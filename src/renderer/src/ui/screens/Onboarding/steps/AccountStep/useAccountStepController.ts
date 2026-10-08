@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import { OnboardingService } from '@app/services/OnboardingService';
-import { type IProfile } from '@shared/types';
+import { type IProfile } from '@shared/types/Profile';
 import { useStepper } from '@ui/screens/Onboarding/components/Stepper/useStepper';
 import { type OnboardingFormData } from '@ui/screens/Onboarding/schema';
 

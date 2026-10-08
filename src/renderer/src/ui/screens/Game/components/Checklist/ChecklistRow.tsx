@@ -1,7 +1,7 @@
 import { X } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
-import { type IChecklistItem } from '@shared/types';
+import { type IChecklistItem } from '@shared/types/UserData';
 import { Checkbox } from '@ui/primitives/checkbox';
 import { Input } from '@ui/primitives/input';
 import { cn } from '@ui/utils/cn';

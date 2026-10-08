@@ -1,10 +1,11 @@
-import { type CheckResult, type IGameView } from '@shared/types';
+import { type CheckResult } from '@shared/types/Check';
+import { type IGameView, type CurrentGame } from '@shared/types/Game';
 
 import { Service } from './Service';
 
 export class GamesService extends Service {
   /** Game open on Steam or, with no game open, the last one played. */
-  static getCurrent(): Promise<GamesService.Current> {
+  static getCurrent(): Promise<CurrentGame> {
     return this.api.getCurrentAppId();
   }
 
@@ -17,7 +18,7 @@ export class GamesService extends Service {
 
   /** Returns the function that stops listening. */
   static onCurrentChanged(
-    listener: (current: GamesService.Current) => void,
+    listener: (current: CurrentGame) => void,
   ): () => void {
     return this.api.onGameChanged(listener);
   }
@@ -26,9 +27,4 @@ export class GamesService extends Service {
   static onGameUpdated(listener: (view: IGameView) => void): () => void {
     return this.api.onGameUpdated(listener);
   }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace GamesService {
-  export type Current = { appid: number; running: boolean } | null;
 }

@@ -3,13 +3,11 @@ import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron';
 
 import { messagesFor, type Messages } from '../shared/i18n';
-import type {
-  IApi,
-  IAppState,
-  CheckResult,
-  IGameView,
-  GuideSite,
-} from '../shared/types';
+import { type IApi } from '../shared/types/Api';
+import { type IAppState } from '../shared/types/AppState';
+import { type CheckResult } from '../shared/types/Check';
+import { type IGameView } from '../shared/types/Game';
+import { type GuideSite } from '../shared/types/Guide';
 
 import { checkApiKey, checkPrivacy, checkSteamId } from './onboarding';
 import { guideUrl, newlyUnlocked } from './steam/achievements';

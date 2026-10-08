@@ -1,8 +1,5 @@
-import {
-  type CheckResult,
-  type DashboardMode,
-  type IGameSummary,
-} from '@shared/types';
+import { type CheckResult } from '@shared/types/Check';
+import { type DashboardMode, type IGameSummary } from '@shared/types/Game';
 
 import { Service } from './Service';
 

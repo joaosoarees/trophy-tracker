@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { IApi } from '../shared/types';
+import { type IApi } from '../shared/types/Api';
 
 const invoke =
   (channel: string) =>

@@ -1,4 +1,8 @@
-import type { DashboardMode, IGameSummary, IGameView } from '../shared/types';
+import {
+  type DashboardMode,
+  type IGameSummary,
+  type IGameView,
+} from '../shared/types/Game';
 import { mergeView } from '../shared/view';
 
 import { buildGameView } from './steam/achievements';

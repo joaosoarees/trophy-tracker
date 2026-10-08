@@ -1,7 +1,7 @@
 import { RefreshCw, Trophy } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
-import { type IGameView } from '@shared/types';
+import { type IGameView } from '@shared/types/Game';
 import { ProgressBar } from '@ui/components/ProgressBar';
 import { Button } from '@ui/primitives/button';
 import { cn } from '@ui/utils/cn';

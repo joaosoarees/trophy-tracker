@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { useT } from '@app/hooks/useT';
 import { connectStore, useStore } from '@app/store';
-import { type IAppState } from '@shared/types';
+import { type IAppState } from '@shared/types/AppState';
 
 export function useAppController() {
   const t = useT();

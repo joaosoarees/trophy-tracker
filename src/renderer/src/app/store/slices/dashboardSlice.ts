@@ -1,6 +1,6 @@
 import { DashboardService } from '@app/services/DashboardService';
 import type { StoreSlice } from '@app/store/Store';
-import type { DashboardMode, IGameSummary } from '@shared/types';
+import { type DashboardMode, type IGameSummary } from '@shared/types/Game';
 
 type DashboardStore = {
   games: IGameSummary[] | null;
