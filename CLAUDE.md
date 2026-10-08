@@ -77,7 +77,8 @@ The same code runs on Windows, macOS, Linux and, for development, WSL. What diff
 - **Errors are logged locally, never sent anywhere:** `system/errorLog.ts` writes to `logs/errors.log` in the data folder (rotated at 512 KB). The main process logs uncaught exceptions and rejections; the interface reports its own through `SystemService.logError` (`app/lib/reportUnhandledErrors.ts` and `ui/components/ErrorBoundary`).
 - **A render error does not leave a blank window:** `ErrorBoundary` wraps the app and shows `CrashScreen` with a reload button.
 - **Code only needed sometimes is loaded lazily:** the onboarding is loaded with `app/lib/namedLazyLoad.ts` inside `Suspense`.
-- The interface bundle is minified (`electron.vite.config.ts`).
+- The interface bundle is minified (`electron.vite.config.ts`). Its main file is about 510 kB, roughly half of it `react-dom`; the size warning is set to 800 kB because the file is read from disk, not downloaded. If the warning shows again, find out what grew before raising the limit.
+- **Every language is bundled** (about 5 kB each in the main file). Loading only the language in use would make reading messages asynchronous everywhere; revisit at around ten languages.
 
 ## Architecture
 

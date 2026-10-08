@@ -22,6 +22,11 @@ export default defineConfig({
     build: {
       // electron-vite leaves the interface unminified by default; minifying cuts it to about a third.
       minify: true,
+      // The default limit (500 kB) is meant for sites, where the file is
+      // downloaded on every visit. Here it is read from the installed
+      // package, and about half of it is react-dom. The warning still shows
+      // if the file grows for real.
+      chunkSizeWarningLimit: 800,
       rollupOptions: {
         // Dependencies ship optimisation hints (`@__PURE__`) in places Rollup
         // cannot use. It drops them safely; there is nothing for us to fix.
