@@ -228,33 +228,6 @@ Conventions:
 - Edits to notes and checklists update the screen right away and are written half a second later (`app/lib/saver.ts`), with a flush when the window closes.
 - `connectStore` drops what was read from Steam when the app leaves the configured state; language, settings and navigation are kept.
 
-## Interface state (Zustand)
-
-A single store in `src/renderer/src/store/`, split into namespaced slices:
-
-```
-store/
-  Store.ts            the Store type (one field per slice) and the StoreSlice<T> type
-  index.ts            create() with the devtools (dev only) and immer middlewares
-  connect.ts          wires the store to the main process events
-  slices/
-    sessionSlice.ts   language, current game and failure counter
-    gamesSlice.ts     game views already read, by appid
-    userDataSlice.ts  notes, pins and checklists
-    dashboardSlice.ts dashboard
-```
-
-Conventions:
-
-- Each slice declares `XStore` (data), `XActions` (actions) and `XSlice = XStore & XActions`, and exports `createXSlice: StoreSlice<XSlice>`.
-- State is namespaced: `state.games.entries`, `state.dashboard.load`. A slice can read and change another one through the whole-store `get()`/`set()`.
-- Actions mutate the Immer draft directly (`prevState.games.entries[appid].loading = true`) and pass a name for the devtools: `set(fn, false, 'games/load')`.
-- Components read state and actions together with `useStore(useShallow(state => ({ ... })))`. Default values inside the selector must be stable constants (e.g. `NONE_UNLOCKED`), otherwise the component re-renders every time.
-- Do not use `persist`: what must survive closing the app is written by the main process (`main/store.ts`).
-- Screen-only state (filter, search, open field) stays in `useState` in the component.
-- The Game and Dashboard tabs stay mounted; switching tabs only hides the other one.
-- Edits to notes and checklists update the screen right away and are written half a second later (`lib/saver.ts`), with a flush when the window closes.
-
 ## Interface
 
 - Tailwind v4 (config in `src/renderer/src/ui/styles/index.css`, no `tailwind.config`) + shadcn/ui components + Lucide icons. New shadcn component: `pnpm dlx shadcn@latest add <name>` (it lands in `ui/primitives`); the command tends to install a wrong `cn` package and import from it: remove it with `pnpm remove cn` and point the import to `@ui/utils/cn`.
