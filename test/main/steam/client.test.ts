@@ -33,23 +33,17 @@ describe('SteamClient', () => {
     ).toBe('invalid-key');
   });
 
-  it('recognises a private profile and a game with no achievements', async () => {
-    expect(
-      await kind(
-        clientWith({ GetPlayerAchievements: NOT_PUBLIC }).getPlayerAchievements(
-          creds,
-          1,
-        ),
-      ),
-    ).toBe('private');
-    expect(
-      await kind(
-        clientWith({ GetPlayerAchievements: NO_STATS }).getPlayerAchievements(
-          creds,
-          1,
-        ),
-      ),
-    ).toBe('no-stats');
+  it.each([
+    { what: 'a private profile', route: NOT_PUBLIC, expected: 'private' },
+    {
+      what: 'a game with no achievements',
+      route: NO_STATS,
+      expected: 'no-stats',
+    },
+  ])('recognises $what', async ({ route, expected }) => {
+    const client = clientWith({ GetPlayerAchievements: route });
+
+    expect(await kind(client.getPlayerAchievements(creds, 1))).toBe(expected);
   });
 
   it('recognises a SteamID with no profile', async () => {

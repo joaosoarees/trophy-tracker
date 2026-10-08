@@ -38,22 +38,12 @@ describe('listGames', () => {
     expect(names(listGames(games, base))).toEqual(['Almost', 'Half', 'Barely']);
   });
 
-  it('sorts games in progress by last played, fewest left and name', () => {
-    expect(names(listGames(games, { ...base, sort: 'played' }))).toEqual([
-      'Barely',
-      'Half',
-      'Almost',
-    ]);
-    expect(names(listGames(games, { ...base, sort: 'fewest' }))).toEqual([
-      'Almost',
-      'Half',
-      'Barely',
-    ]);
-    expect(names(listGames(games, { ...base, sort: 'name' }))).toEqual([
-      'Almost',
-      'Barely',
-      'Half',
-    ]);
+  it.each([
+    { sort: 'played', order: ['Barely', 'Half', 'Almost'] },
+    { sort: 'fewest', order: ['Almost', 'Half', 'Barely'] },
+    { sort: 'name', order: ['Almost', 'Barely', 'Half'] },
+  ] as const)('sorts games in progress by $sort', ({ sort, order }) => {
+    expect(names(listGames(games, { ...base, sort }))).toEqual(order);
   });
 
   it('shows complete games, most recently completed first by default', () => {

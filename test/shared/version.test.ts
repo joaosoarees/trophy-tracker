@@ -3,16 +3,22 @@ import { describe, expect, it } from 'vitest';
 import { isNewerVersion } from '@shared/version';
 
 describe('isNewerVersion', () => {
-  it('compares each part as a number', () => {
-    expect(isNewerVersion('1.10.0', '1.9.3')).toBe(true);
-    expect(isNewerVersion('v2.0.0', '1.9.3')).toBe(true);
-    expect(isNewerVersion('1.2.0', '1.2.0')).toBe(false);
-    expect(isNewerVersion('1.1.9', '1.2.0')).toBe(false);
-  });
+  it.each([
+    { candidate: '1.10.0', current: '1.9.3', newer: true },
+    { candidate: 'v2.0.0', current: '1.9.3', newer: true },
+    { candidate: '1.2.0', current: '1.2.0', newer: false },
+    { candidate: '1.1.9', current: '1.2.0', newer: false },
+  ])(
+    'compares each part as a number: $candidate after $current is $newer',
+    ({ candidate, current, newer }) => {
+      expect(isNewerVersion(candidate, current)).toBe(newer);
+    },
+  );
 
-  it('never offers a pre-release or a malformed tag', () => {
-    expect(isNewerVersion('2.0.0-beta.1', '1.0.0')).toBe(false);
-    expect(isNewerVersion('latest', '1.0.0')).toBe(false);
-    expect(isNewerVersion('', '1.0.0')).toBe(false);
-  });
+  it.each(['2.0.0-beta.1', 'latest', ''])(
+    'never offers a pre-release or a malformed tag: "%s"',
+    (candidate) => {
+      expect(isNewerVersion(candidate, '1.0.0')).toBe(false);
+    },
+  );
 });

@@ -22,30 +22,36 @@ describe('onboarding schemas', () => {
     ).toEqual({ steamId: STEAM_ID, apiKey: KEY, verified });
   });
 
-  it('reject invalid values with a message key that exists in the translations', () => {
-    const issues = (value: unknown) =>
-      accountStepSchema
-        .safeParse(value)
-        .error?.issues.map(
-          (issue) => `${issue.path.join('.')}: ${issue.message}`,
-        );
+  it('rejects an unknown language', () => {
+    const result = languageStepSchema.safeParse({ language: 'xx' });
+
+    expect(result.error?.issues[0].message).toBe('languageRequired');
+  });
+
+  it('rejects a badly formed account, naming each problem by its message key', () => {
+    const result = accountStepSchema.safeParse({
+      steamId: '12345',
+      apiKey: 'short',
+    });
 
     expect(
-      languageStepSchema.safeParse({ language: 'xx' }).error?.issues[0].message,
-    ).toBe('languageRequired');
-    expect(issues({ steamId: '12345', apiKey: 'short' })).toEqual([
+      result.error?.issues.map(
+        (issue) => `${issue.path.join('.')}: ${issue.message}`,
+      ),
+    ).toEqual([
       'steamId: steamIdFormat',
       'apiKey: apiKeyFormat',
       'verified: verificationRequired',
     ]);
-    for (const key of [
-      'languageRequired',
-      'steamIdFormat',
-      'apiKeyFormat',
-      'verificationRequired',
-    ]) {
-      expect(en.validation).toHaveProperty(key);
-    }
+  });
+
+  it.each([
+    'languageRequired',
+    'steamIdFormat',
+    'apiKeyFormat',
+    'verificationRequired',
+  ])('the message key %s exists in the translations', (key) => {
+    expect(en.validation).toHaveProperty(key);
   });
 
   it('the form cannot be finished with a well-formed key that was never verified', () => {

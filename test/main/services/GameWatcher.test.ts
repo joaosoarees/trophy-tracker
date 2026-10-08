@@ -45,21 +45,30 @@ function setup(over: Partial<IGameWatcherDeps> = {}) {
 }
 
 describe('GameWatcher', () => {
-  it('uses the running game, then the last played one, then nothing', async () => {
-    const { watcher, run } = setup();
+  it('shows the last played game when none is running', async () => {
+    const { watcher } = setup();
+
     expect(await watcher.resolveCurrent()).toEqual({
       appid: 7,
       running: false,
     });
+  });
+
+  it('shows the running game over the last played one', async () => {
+    const { watcher, run } = setup();
     run(42);
+
     expect(await watcher.resolveCurrent()).toEqual({
       appid: 42,
       running: true,
     });
+  });
 
-    const unconfigured = setup({ isConfigured: () => false });
-    expect(await unconfigured.watcher.resolveCurrent()).toBeNull();
-    expect(unconfigured.deps.lastPlayedAppId).not.toHaveBeenCalled();
+  it('shows no game, and asks Steam nothing, before the app is set up', async () => {
+    const { watcher, deps } = setup({ isConfigured: () => false });
+
+    expect(await watcher.resolveCurrent()).toBeNull();
+    expect(deps.lastPlayedAppId).not.toHaveBeenCalled();
   });
 
   it('announces the current game only when it changes', async () => {
@@ -108,19 +117,25 @@ describe('GameWatcher', () => {
     expect(deps.onGameUpdated).not.toHaveBeenCalled();
   });
 
-  it('does not poll without a running game or when the setup is gone', async () => {
-    const idle = setup();
-    await idle.watcher.refreshCurrent();
-    await idle.watcher.checkUnlocks();
-    expect(idle.deps.pollGame).not.toHaveBeenCalled();
+  it('does not poll without a running game', async () => {
+    const { watcher, deps } = setup();
+    await watcher.refreshCurrent();
 
+    await watcher.checkUnlocks();
+
+    expect(deps.pollGame).not.toHaveBeenCalled();
+  });
+
+  it('stops polling once the setup is gone', async () => {
     let configured = true;
-    const erased = setup({ isConfigured: () => configured });
-    erased.run(42);
-    await erased.watcher.refreshCurrent();
+    const { watcher, deps, run } = setup({ isConfigured: () => configured });
+    run(42);
+    await watcher.refreshCurrent();
+
     configured = false;
-    await erased.watcher.checkUnlocks();
-    expect(erased.deps.pollGame).not.toHaveBeenCalled();
+    await watcher.checkUnlocks();
+
+    expect(deps.pollGame).not.toHaveBeenCalled();
   });
 
   it('reads one last time when the game closes, before announcing the change', async () => {

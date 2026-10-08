@@ -114,14 +114,22 @@ describe('AppUpdates', () => {
     expect(changes).toEqual([downloading(0)]);
   });
 
-  it('says there is nothing new without downloading anything', async () => {
-    for (const latest of [null, '1.0.0', '0.9.0']) {
+  it.each([
+    { found: 'no release', latest: null },
+    { found: 'the running version', latest: '1.0.0' },
+    { found: 'an older version', latest: '0.9.0' },
+  ])(
+    'says there is nothing new, and downloads nothing, when the check finds $found',
+    async ({ latest }) => {
       const { updates, calls, changes } = setup({ latest });
-      expect(await updates.checkNow()).toEqual({ ok: true, info: NOTHING });
+
+      const answer = await updates.checkNow();
+
+      expect(answer).toEqual({ ok: true, info: NOTHING });
       expect(calls.download).toBe(0);
       expect(changes).toEqual([]);
-    }
-  });
+    },
+  );
 
   it('announces the progress only when the whole number changes', async () => {
     const { updates, changes, emit } = setup();
@@ -141,16 +149,24 @@ describe('AppUpdates', () => {
     expect(await updates.getAppInfo()).toEqual(READY);
   });
 
-  it('installs only a version that finished downloading, and remembers the attempt', async () => {
-    const { updates, calls, attempt, emit } = setup();
+  it('does not install before a version has finished downloading', async () => {
+    const { updates, calls, attempt } = setup();
     updates.install();
     await updates.checkNow();
+
     updates.install();
+
     expect(calls.install).toBe(0);
     expect(attempt.version).toBeNull();
+  });
 
+  it('installs a downloaded version, remembering which one it closed for', async () => {
+    const { updates, calls, attempt, emit } = setup();
+    await updates.checkNow();
     emit().onReady('1.1.0');
+
     updates.install();
+
     expect(calls.install).toBe(1);
     expect(attempt.version).toBe('1.1.0');
   });
@@ -171,31 +187,49 @@ describe('AppUpdates', () => {
     expect(calls.download).toBe(1);
   });
 
-  it('forgets an attempt that worked', () => {
-    expect(setup({ attempted: '1.0.0' }).attempt.version).toBeNull();
-    expect(setup({ attempted: '0.9.0' }).attempt.version).toBeNull();
+  it.each([
+    { attempted: '1.0.0', outcome: 'the running version' },
+    { attempted: '0.9.0', outcome: 'a version since left behind' },
+  ])('forgets an attempt to install $outcome', ({ attempted }) => {
+    expect(setup({ attempted }).attempt.version).toBeNull();
+  });
+
+  it('keeps an attempt whose version is still not the running one', () => {
     expect(setup({ attempted: '1.1.0' }).attempt.version).toBe('1.1.0');
   });
 
-  it('looks in the background once every six hours, and not while a version is on its way', async () => {
+  it('does not look again in the background before six hours have passed', async () => {
     const { updates, calls, clock } = setup({ latest: null });
     await updates.getAppInfo();
     await settle();
+
     clock.now = 5 * HOUR;
     await updates.getAppInfo();
+
     expect(calls.check).toBe(1);
+  });
+
+  it('looks again in the background once six hours have passed', async () => {
+    const { updates, calls, clock } = setup({ latest: null });
+    await updates.getAppInfo();
+    await settle();
 
     clock.now = 7 * HOUR;
     await updates.getAppInfo();
     await settle();
-    expect(calls.check).toBe(2);
 
-    const found = setup();
-    await found.updates.checkNow();
-    found.clock.now = 20 * HOUR;
-    await found.updates.getAppInfo();
-    await found.updates.checkNow();
-    expect(found.calls.check).toBe(1);
+    expect(calls.check).toBe(2);
+  });
+
+  it('does not look again while a version is on its way, however long it takes', async () => {
+    const { updates, calls, clock } = setup();
+    await updates.checkNow();
+
+    clock.now = 20 * HOUR;
+    await updates.getAppInfo();
+    await updates.checkNow();
+
+    expect(calls.check).toBe(1);
   });
 
   it('shares one look between simultaneous checks', async () => {
@@ -215,17 +249,25 @@ describe('AppUpdates', () => {
     expect(await updates.getAppInfo()).toEqual(MANUAL);
   });
 
-  it('answers through GitHub when the automatic check cannot be made, and retries on request', async () => {
+  it('answers through GitHub when the automatic check cannot be made', async () => {
+    const { updates, net } = setup();
+    net.online = false;
+
+    const answer = await updates.checkNow();
+
+    expect(answer.ok).toBe(false);
+    expect(await updates.getAppInfo()).toEqual(MANUAL);
+  });
+
+  it('gives the automatic update another chance on the next requested check', async () => {
     const { updates, calls, net } = setup();
     net.online = false;
-    expect((await updates.checkNow()).ok).toBe(false);
-    expect(await updates.getAppInfo()).toEqual(MANUAL);
+    await updates.checkNow();
 
     net.online = true;
-    expect(await updates.checkNow()).toEqual({
-      ok: true,
-      info: downloading(0),
-    });
+    const answer = await updates.checkNow();
+
+    expect(answer).toEqual({ ok: true, info: downloading(0) });
     expect(calls.check).toBe(2);
   });
 

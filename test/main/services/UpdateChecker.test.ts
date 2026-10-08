@@ -36,15 +36,14 @@ describe('UpdateChecker', () => {
     expect((await checker.getAppInfo()).newVersion).toBeNull();
   });
 
-  it('treats a missing release, an error and bad JSON as nothing new', async () => {
-    for (const route of [
-      { status: 404, json: { message: 'Not Found' } },
-      { status: 403, json: { message: 'rate limit' } },
-      { text: '<html>' },
-    ]) {
-      const { checker } = setup(route);
-      expect((await checker.getAppInfo()).newVersion).toBeNull();
-    }
+  it.each([
+    { reason: 'no release yet', route: { status: 404, json: {} } },
+    { reason: 'a rate limit', route: { status: 403, json: {} } },
+    { reason: 'an answer that is not JSON', route: { text: '<html>' } },
+  ])('treats $reason as nothing new', async ({ route }) => {
+    const { checker } = setup(route);
+
+    expect((await checker.getAppInfo()).newVersion).toBeNull();
   });
 
   it('asks GitHub once, however many times and however fast it is asked', async () => {

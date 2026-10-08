@@ -35,20 +35,25 @@ describe('SetupService', () => {
     });
   });
 
-  it('saves the credentials only when Steam accepts the key', async () => {
-    const rejected = setup({ GetPlayerSummaries: FORBIDDEN_HTML });
-    expect((await rejected.service.saveConfig(STEAM_ID, KEY)).configured).toBe(
-      false,
-    );
-    expect(rejected.store.getCredentials()).toBeNull();
+  it('saves nothing when Steam rejects the key', async () => {
+    const { service, store } = setup({ GetPlayerSummaries: FORBIDDEN_HTML });
 
-    const accepted = setup({ GetPlayerSummaries: summary });
-    const state = await accepted.service.saveConfig(STEAM_ID, ` ${KEY} `);
+    const state = await service.saveConfig(STEAM_ID, KEY);
+
+    expect(state.configured).toBe(false);
+    expect(store.getCredentials()).toBeNull();
+  });
+
+  it('saves the credentials, trimmed, when Steam accepts the key', async () => {
+    const { service, store } = setup({ GetPlayerSummaries: summary });
+
+    const state = await service.saveConfig(STEAM_ID, ` ${KEY} `);
+
     expect(state).toMatchObject({
       configured: true,
       profile: { steamId: STEAM_ID, name: 'joao' },
     });
-    expect(accepted.store.getCredentials()).toEqual({
+    expect(store.getCredentials()).toEqual({
       steamId: STEAM_ID,
       apiKey: KEY,
     });

@@ -48,15 +48,27 @@ describe('Store', () => {
     expect(new Store(dir, cipher).getCredentials()?.apiKey).toBe(KEY);
   });
 
-  it('starts in English, remembers the language and drops the translated cache on change', () => {
+  it('starts in English', () => {
+    expect(new Store(tempDir()).getLanguage()).toBe('en');
+  });
+
+  it('remembers the language', () => {
+    const dir = tempDir();
+
+    new Store(dir).setLanguage('pt-BR');
+
+    expect(new Store(dir).getLanguage()).toBe('pt-BR');
+  });
+
+  it('drops what was read in the old language when the language changes, keeping the counts', () => {
     const dir = tempDir();
     const store = new Store(dir);
-    expect(store.getLanguage()).toBe('en');
     store.setSchema(1, []);
     store.setSummaries({ 1: { total: 4, unlocked: 1, playtime: 10 } });
+
     store.setLanguage('pt-BR');
+
     const again = new Store(dir);
-    expect(again.getLanguage()).toBe('pt-BR');
     expect(again.getSchema(1)).toBeNull();
     expect(again.getSummary(1)).toEqual({
       total: 4,
@@ -128,29 +140,56 @@ describe('Store', () => {
     });
   });
 
-  it('persists notes and pins, and removes empty entries', () => {
+  it('persists notes and pins', () => {
     const dir = tempDir();
-    const store = new Store(dir);
-    store.setUserData(10, 'A', { note: 'boss of the 3rd map', pinned: true });
-    store.setUserData(10, 'B', { note: '', pinned: true });
-    store.setUserData(10, 'B', { note: ' ', pinned: false });
+
+    new Store(dir).setUserData(10, 'A', {
+      note: 'boss of the 3rd map',
+      pinned: true,
+    });
+
     expect(new Store(dir).getUserData(10)).toEqual({
       A: { note: 'boss of the 3rd map', pinned: true },
     });
   });
 
-  it('keeps the entry while there is a checklist and remembers always-on-top', () => {
+  it('removes an entry left with a blank note and no pin', () => {
+    const dir = tempDir();
+    const store = new Store(dir);
+    store.setUserData(10, 'B', { note: '', pinned: true });
+
+    store.setUserData(10, 'B', { note: ' ', pinned: false });
+
+    expect(new Store(dir).getUserData(10)).toEqual({});
+  });
+
+  it('keeps an entry that has only a checklist', () => {
+    const dir = tempDir();
+    const checklist = [{ id: '1', text: 'Bridge Kodama', done: true }];
+
+    new Store(dir).setUserData(10, 'A', { note: '', pinned: false, checklist });
+
+    expect(new Store(dir).getUserData(10)).toEqual({
+      A: { note: '', pinned: false, checklist },
+    });
+  });
+
+  it('removes the entry when its checklist is emptied', () => {
     const dir = tempDir();
     const store = new Store(dir);
     const checklist = [{ id: '1', text: 'Bridge Kodama', done: true }];
     store.setUserData(10, 'A', { note: '', pinned: false, checklist });
-    store.setAlwaysOnTop(true);
-    const again = new Store(dir);
-    expect(again.getUserData(10)).toEqual({
-      A: { note: '', pinned: false, checklist },
-    });
-    expect(again.getAlwaysOnTop()).toBe(true);
-    again.setUserData(10, 'A', { note: '', pinned: false, checklist: [] });
+
+    store.setUserData(10, 'A', { note: '', pinned: false, checklist: [] });
+
     expect(new Store(dir).getUserData(10)).toEqual({});
+  });
+
+  it('remembers always-on-top', () => {
+    const dir = tempDir();
+
+    new Store(dir).setAlwaysOnTop(true);
+
+    expect(new Store(dir).getAlwaysOnTop()).toBe(true);
   });
 });

@@ -22,13 +22,22 @@ describe('logError', () => {
     expect(text).toContain('] main: uncaughtException\nboom\n');
   });
 
-  it('caps a single entry and rotates the file when it gets large', () => {
+  it('caps a single entry', () => {
     const log = file();
-    logError(log, 'big', 'x'.repeat(50_000));
-    expect(statSync(log).size).toBeLessThan(9_000);
 
+    logError(log, 'big', 'x'.repeat(50_000));
+
+    expect(statSync(log).size).toBeLessThan(9_000);
+  });
+
+  it('rotates the file when it gets large', () => {
+    const log = file();
+    // The first entry creates the folder; the file is then grown by hand.
+    logError(log, 'first', 'entry');
     writeFileSync(log, 'y'.repeat(600 * 1024));
+
     logError(log, 'after', 'small');
+
     expect(statSync(`${log}.old`).size).toBe(600 * 1024);
     expect(readFileSync(log, 'utf8')).toContain('] after\nsmall');
   });

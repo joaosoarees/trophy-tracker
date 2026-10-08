@@ -42,20 +42,12 @@ describe('listAchievements', () => {
     ]);
   });
 
-  it('sorts by rarest, by name and by closest to done', () => {
-    expect(ids(listAchievements(game, {}, { ...base, sort: 'rare' }))).toEqual([
-      'rare',
-      'halfway',
-      'common',
-    ]);
-    expect(ids(listAchievements(game, {}, { ...base, sort: 'name' }))).toEqual([
-      'common',
-      'halfway',
-      'rare',
-    ]);
-    expect(
-      ids(listAchievements(game, {}, { ...base, sort: 'closest' })),
-    ).toEqual(['halfway', 'common', 'rare']);
+  it.each([
+    { sort: 'rare', order: ['rare', 'halfway', 'common'] },
+    { sort: 'name', order: ['common', 'halfway', 'rare'] },
+    { sort: 'closest', order: ['halfway', 'common', 'rare'] },
+  ] as const)('sorts the pending list by $sort', ({ sort, order }) => {
+    expect(ids(listAchievements(game, {}, { ...base, sort }))).toEqual(order);
   });
 
   it('counts a user checklist as progress when sorting by closest', () => {
@@ -83,7 +75,13 @@ describe('listAchievements', () => {
     ).toBe('rare');
   });
 
-  it('sorts the unlocked list by date, rarity or name', () => {
+  it.each([
+    { sort: 'recent', order: ['new', 'mid', 'old'] },
+    { sort: 'oldest', order: ['old', 'mid', 'new'] },
+    { sort: 'rare', order: ['new', 'mid', 'old'] },
+    { sort: 'common', order: ['old', 'mid', 'new'] },
+    { sort: 'name', order: ['mid', 'old', 'new'] },
+  ] as const)('sorts the unlocked list by $sort', ({ sort, order }) => {
     const unlocked = view([
       achievement('old', {
         unlocked: true,
@@ -105,16 +103,14 @@ describe('listAchievements', () => {
       }),
       achievement('pending'),
     ]);
-    const sorted = (sort: 'recent' | 'oldest' | 'rare' | 'common' | 'name') =>
-      ids(
-        listAchievements(unlocked, {}, { ...base, filter: 'unlocked', sort }),
-      );
 
-    expect(sorted('recent')).toEqual(['new', 'mid', 'old']);
-    expect(sorted('oldest')).toEqual(['old', 'mid', 'new']);
-    expect(sorted('rare')).toEqual(['new', 'mid', 'old']);
-    expect(sorted('common')).toEqual(['old', 'mid', 'new']);
-    expect(sorted('name')).toEqual(['mid', 'old', 'new']);
+    const list = listAchievements(
+      unlocked,
+      {},
+      { ...base, filter: 'unlocked', sort },
+    );
+
+    expect(ids(list)).toEqual(order);
   });
 
   it('can keep only the hidden achievements of the list', () => {

@@ -10,21 +10,56 @@ const info = (
 ) => makeAppInfo({ updateStatus, newVersion });
 
 describe('update flow', () => {
-  it('holds the app only for a version it is installing by itself', () => {
-    expect(isUpdatingItself(info('downloading'))).toBe(true);
-    expect(isUpdatingItself(info('ready'))).toBe(true);
-    expect(isUpdatingItself(info('manual'))).toBe(false);
-    expect(isUpdatingItself(info('blocked'))).toBe(false);
+  it.each([
+    {
+      state: 'a version downloading',
+      appInfo: info('downloading'),
+      holds: true,
+    },
+    { state: 'a version ready', appInfo: info('ready'), holds: true },
+    {
+      state: 'a version to fetch by hand',
+      appInfo: info('manual'),
+      holds: false,
+    },
+    {
+      state: 'a version the system blocks',
+      appInfo: info('blocked'),
+      holds: false,
+    },
     // The automatic path with nothing found reports `downloading` and no version.
-    expect(isUpdatingItself(info('downloading', null))).toBe(false);
-    expect(isUpdatingItself(null)).toBe(false);
-  });
+    {
+      state: 'nothing found',
+      appInfo: info('downloading', null),
+      holds: false,
+    },
+    { state: 'nothing known yet', appInfo: null, holds: false },
+  ])(
+    'with $state, holding the app to update is $holds',
+    ({ appInfo, holds }) => {
+      expect(isUpdatingItself(appInfo)).toBe(holds);
+    },
+  );
 
-  it('tells the user about a version only they can fetch', () => {
-    expect(needsTheUser(info('manual'))).toBe(true);
-    expect(needsTheUser(info('blocked'))).toBe(true);
-    expect(needsTheUser(info('downloading'))).toBe(false);
-    expect(needsTheUser(info('manual', null))).toBe(false);
-    expect(needsTheUser(null)).toBe(false);
+  it.each([
+    {
+      state: 'a version to fetch by hand',
+      appInfo: info('manual'),
+      tells: true,
+    },
+    {
+      state: 'a version the system blocks',
+      appInfo: info('blocked'),
+      tells: true,
+    },
+    {
+      state: 'a version downloading',
+      appInfo: info('downloading'),
+      tells: false,
+    },
+    { state: 'nothing found', appInfo: info('manual', null), tells: false },
+    { state: 'nothing known yet', appInfo: null, tells: false },
+  ])('with $state, telling the user is $tells', ({ appInfo, tells }) => {
+    expect(needsTheUser(appInfo)).toBe(tells);
   });
 });

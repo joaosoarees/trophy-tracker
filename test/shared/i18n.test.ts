@@ -23,40 +23,49 @@ function shape(node: unknown, path = ''): string[] {
 describe('i18n', () => {
   it('defaults to English', () => {
     expect(DEFAULT_LANGUAGE).toBe('en');
-    expect(messagesFor('en').nav.dashboard).toBe('Dashboard');
-    expect(messagesFor('pt-BR').nav.dashboard).toBe('Painel');
-    expect(messagesFor('es').nav.dashboard).toBe('Panel');
-    expect(messagesFor('fr').nav.dashboard).toBe('Tableau de bord');
   });
 
-  it('recognises only registered languages', () => {
+  it.each([
+    { code: 'en', dashboard: 'Dashboard', steam: 'english' },
+    { code: 'pt-BR', dashboard: 'Painel', steam: 'brazilian' },
+    { code: 'es', dashboard: 'Panel', steam: 'spanish' },
+    { code: 'fr', dashboard: 'Tableau de bord', steam: 'french' },
+  ] as const)(
+    '$code has its own messages and the name Steam uses for it',
+    ({ code, dashboard, steam }) => {
+      expect(messagesFor(code).nav.dashboard).toBe(dashboard);
+      expect(LANGUAGES[code].steam).toBe(steam);
+    },
+  );
+
+  it('recognises a registered language', () => {
     expect(isLanguage('pt-BR')).toBe(true);
-    expect(isLanguage('de')).toBe(false);
-    expect(isLanguage(undefined)).toBe(false);
-    expect(isLanguage('toString')).toBe(false);
   });
 
-  it('every language has the same messages, with lists of the same length', () => {
-    const reference = shape(messagesFor('en')).sort();
-    for (const code of LANGUAGE_CODES)
+  it.each(['de', undefined, 'toString'])(
+    'does not take %s for a language',
+    (value) => {
+      expect(isLanguage(value)).toBe(false);
+    },
+  );
+
+  it.each(LANGUAGE_CODES)(
+    '%s has the same messages as English, with lists of the same length',
+    (code) => {
+      const reference = shape(messagesFor('en')).sort();
+
       expect(shape(messagesFor(code)).sort()).toEqual(reference);
-  });
+    },
+  );
 
-  it('no message is left empty', () => {
+  it.each(LANGUAGE_CODES)('%s leaves no message empty', (code) => {
     const empty = (node: unknown): boolean =>
       typeof node === 'string'
         ? node.trim() === ''
         : typeof node === 'object' &&
           node !== null &&
           Object.values(node).some(empty);
-    for (const code of LANGUAGE_CODES)
-      expect(empty(messagesFor(code))).toBe(false);
-  });
 
-  it('each language reports the name Steam uses for it', () => {
-    expect(LANGUAGES.en.steam).toBe('english');
-    expect(LANGUAGES['pt-BR'].steam).toBe('brazilian');
-    expect(LANGUAGES.es.steam).toBe('spanish');
-    expect(LANGUAGES.fr.steam).toBe('french');
+    expect(empty(messagesFor(code))).toBe(false);
   });
 });

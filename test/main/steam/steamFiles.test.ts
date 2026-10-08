@@ -38,16 +38,28 @@ describe('mostRecentSteamId', () => {
 });
 
 describe('steamDirCandidates', () => {
-  it('knows where the client lives on each system', () => {
+  it('knows the single place the client lives in on macOS', () => {
     expect(steamDirCandidates('darwin', '/Users/me')).toEqual([
       '/Users/me/Library/Application Support/Steam',
     ]);
-    const linux = steamDirCandidates('linux', '/home/me');
-    expect(linux[0]).toBe('/home/me/.local/share/Steam');
-    expect(linux).toContain('/home/me/.steam/steam');
-    expect(linux.some((dir) => dir.includes('com.valvesoftware.Steam'))).toBe(
-      true,
-    );
+  });
+
+  it('tries the usual Linux folder first', () => {
+    const [first] = steamDirCandidates('linux', '/home/me');
+
+    expect(first).toBe('/home/me/.local/share/Steam');
+  });
+
+  it.each(['/home/me/.steam/steam', 'com.valvesoftware.Steam', 'snap/steam'])(
+    'also looks on Linux where other packagings install it: %s',
+    (fragment) => {
+      const candidates = steamDirCandidates('linux', '/home/me');
+
+      expect(candidates.some((dir) => dir.includes(fragment))).toBe(true);
+    },
+  );
+
+  it('has nowhere to look on a system Steam does not run on', () => {
     expect(steamDirCandidates('freebsd', '/home/me')).toEqual([]);
   });
 });
