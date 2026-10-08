@@ -2,8 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useCallback, useEffect } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { isLanguage } from '../../shared/i18n';
-import type { AppState } from '../../shared/types';
+
 import { Stepper } from '@/components/Stepper';
 import { AccountStep } from '@/components/steps/AccountStep';
 import { accountStepSchema } from '@/components/steps/AccountStep/schema';
@@ -17,6 +16,9 @@ import { privacyStepSchema } from '@/components/steps/PrivacyStep/schema';
 import { useT } from '@/lib/i18n';
 import { safeSessionStorageGetItem } from '@/lib/utils';
 import { useStore } from '@/store';
+
+import { isLanguage } from '../../shared/i18n';
+import type { AppState } from '../../shared/types';
 
 const schema = z.object({
   languageStep: languageStepSchema,

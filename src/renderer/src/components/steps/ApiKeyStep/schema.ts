@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { API_KEY_PATTERN } from '../../../../../shared/validation';
 
 export const apiKeyStepSchema = z.object({

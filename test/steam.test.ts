@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import nioh from './fixtures/game-achievements-3681010.json';
-import onimusha from './fixtures/game-achievements-2638890.json';
+
 import {
   buildGameView,
   guideUrl,
@@ -12,14 +11,17 @@ import {
   steamErrorMessage,
   type RawSchemaAchievement,
 } from '../src/main/steam/client';
-import { en } from '../src/shared/i18n/locales/en';
-import { ptBR } from '../src/shared/i18n/locales/pt-BR';
 import { achievementStatMap, parseBinaryVdf } from '../src/main/steam/vdf';
 import {
   accountIdToSteamId,
   parseRegValue,
   toLocalPath,
 } from '../src/main/steam/windows';
+import { en } from '../src/shared/i18n/locales/en';
+import { ptBR } from '../src/shared/i18n/locales/pt-BR';
+
+import onimusha from './fixtures/game-achievements-2638890.json';
+import nioh from './fixtures/game-achievements-3681010.json';
 import {
   clientWith,
   fakeFetch,
@@ -96,7 +98,7 @@ describe('buildGameView', () => {
     const empty = buildGameView({
       appid: 2638890,
       name: 'Onimusha: Way of the Sword',
-      schema: onimusha.response.achievements as RawSchemaAchievement[],
+      schema: onimusha.response.achievements,
       player: [],
       stats: {},
       statMap: new Map(),
@@ -332,9 +334,9 @@ describe('SteamClient', () => {
   });
 
   it('recognises a network failure', async () => {
-    const client = new SteamClient((async () => {
+    const client = new SteamClient(async () => {
       throw new TypeError('fetch failed');
-    }) as typeof fetch);
+    });
     expect(await kind(client.getGameAchievements(1))).toBe('network');
   });
 });

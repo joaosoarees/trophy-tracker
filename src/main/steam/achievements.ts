@@ -1,4 +1,5 @@
 import type { Achievement, GameView, GuideSite } from '../../shared/types';
+
 import type { RawPlayerAchievement, RawSchemaAchievement } from './client';
 
 const iconUrl = (appid: number, file: string): string =>

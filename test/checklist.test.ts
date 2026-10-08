@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { parseChecklist, shownProgress } from '../src/shared/checklist';
 import type { Achievement } from '../src/shared/types';
 

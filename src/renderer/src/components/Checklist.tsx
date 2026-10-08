@@ -1,7 +1,6 @@
 import { ClipboardPaste, Plus, X } from 'lucide-react';
 import { useState } from 'react';
-import { parseChecklist } from '../../../shared/checklist';
-import type { ChecklistItem } from '../../../shared/types';
+
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -16,6 +15,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useLocale, useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+
+import { parseChecklist } from '../../../shared/checklist';
+import type { ChecklistItem } from '../../../shared/types';
 
 interface Props {
   achievement: string;

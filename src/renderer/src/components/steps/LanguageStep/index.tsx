@@ -1,5 +1,5 @@
 import { useFormContext } from 'react-hook-form';
-import type { OnboardingFormData } from '@/Onboarding';
+
 import { ControlledLanguageSelect } from '@/components/ControlledLanguageSelect';
 import { FieldError } from '@/components/FieldError';
 import { StepHeader } from '@/components/StepHeader';
@@ -8,6 +8,7 @@ import { useStepper } from '@/components/Stepper/useStepper';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useT } from '@/lib/i18n';
+import type { OnboardingFormData } from '@/Onboarding';
 
 interface ILanguageStepProps {
   /** Why the onboarding showed up again (e.g. the key stopped working). */

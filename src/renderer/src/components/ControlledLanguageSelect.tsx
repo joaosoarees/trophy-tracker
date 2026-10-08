@@ -5,8 +5,10 @@ import {
   type FieldPath,
   type FieldValues,
 } from 'react-hook-form';
-import { LANGUAGE_CODES, LANGUAGES } from '../../../shared/i18n';
+
 import { cn } from '@/lib/utils';
+
+import { LANGUAGE_CODES, LANGUAGES } from '../../../shared/i18n';
 
 interface IControlledLanguageSelectProps<T extends FieldValues> {
   control?: Control<T>;

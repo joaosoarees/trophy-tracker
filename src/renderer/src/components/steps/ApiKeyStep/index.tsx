@@ -1,7 +1,7 @@
 import { ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-import type { OnboardingFormData } from '@/Onboarding';
+
 import { FieldError } from '@/components/FieldError';
 import { StepHeader } from '@/components/StepHeader';
 import {
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useT } from '@/lib/i18n';
+import type { OnboardingFormData } from '@/Onboarding';
 
 export function ApiKeyStep() {
   const t = useT();

@@ -1,11 +1,7 @@
 import { LayoutGrid, Pin, Settings, Trophy } from 'lucide-react';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { isLanguage, LANGUAGE_CODES, LANGUAGES } from '../../shared/i18n';
-import type { AppState } from '../../shared/types';
-import { Dashboard } from './Dashboard';
-import { GameScreen } from './GameScreen';
-import { Onboarding } from './Onboarding';
+
 import { Empty } from '@/components/bits';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +16,13 @@ import { useT } from '@/lib/i18n';
 import { useSessionState } from '@/lib/useSessionState';
 import { cn } from '@/lib/utils';
 import { connectStore, useStore } from '@/store';
+
+import { isLanguage, LANGUAGE_CODES, LANGUAGES } from '../../shared/i18n';
+import type { AppState } from '../../shared/types';
+
+import { Dashboard } from './Dashboard';
+import { GameScreen } from './GameScreen';
+import { Onboarding } from './Onboarding';
 
 type Tab = 'game' | 'dashboard' | 'settings';
 

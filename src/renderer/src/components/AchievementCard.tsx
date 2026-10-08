@@ -8,19 +8,21 @@ import {
   StickyNote,
 } from 'lucide-react';
 import { memo, useState, type ReactNode } from 'react';
+
+import { ProgressBar } from '@/components/bits';
+import { Checklist } from '@/components/Checklist';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { useLocale, useT } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
+
 import { shownProgress } from '../../../shared/checklist';
 import type {
   Achievement,
   AchievementUserData,
   GuideSite,
 } from '../../../shared/types';
-import { Checklist } from '@/components/Checklist';
-import { ProgressBar } from '@/components/bits';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { useLocale, useT } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
 
 const GUIDES: { site: GuideSite; icon: ReactNode }[] = [
   { site: 'steam', icon: <BookOpen /> },

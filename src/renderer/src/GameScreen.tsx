@@ -1,19 +1,21 @@
 import { RefreshCw, Trophy } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { shownProgress } from '../../shared/checklist';
-import type {
-  Achievement,
-  AchievementUserData,
-  GameUserData,
-} from '../../shared/types';
-import { useStore } from '@/store';
+
 import { AchievementCard } from '@/components/AchievementCard';
 import { Empty, ProgressBar, SearchBox, Segmented } from '@/components/bits';
 import { Button } from '@/components/ui/button';
 import { useLocale, useT } from '@/lib/i18n';
 import { matches } from '@/lib/text';
 import { cn } from '@/lib/utils';
+import { useStore } from '@/store';
+
+import { shownProgress } from '../../shared/checklist';
+import type {
+  Achievement,
+  AchievementUserData,
+  GameUserData,
+} from '../../shared/types';
 
 type Sort = 'common' | 'rare' | 'closest' | 'name';
 type Filter = 'pending' | 'unlocked';

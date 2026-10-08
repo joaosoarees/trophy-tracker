@@ -6,6 +6,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
+
 import { DEFAULT_LANGUAGE, isLanguage, type Language } from '../shared/i18n';
 import type {
   AchievementUserData,
@@ -13,6 +14,7 @@ import type {
   GameView,
   Profile,
 } from '../shared/types';
+
 import type {
   Credentials,
   RawOwnedGame,

@@ -1,5 +1,7 @@
-import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron';
 import { join } from 'node:path';
+
+import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron';
+
 import { messagesFor, type Messages } from '../shared/i18n';
 import type {
   Api,
@@ -8,6 +10,7 @@ import type {
   GameView,
   GuideSite,
 } from '../shared/types';
+
 import { checkApiKey, checkPrivacy, checkSteamId } from './onboarding';
 import { guideUrl, newlyUnlocked } from './steam/achievements';
 import { SteamClient, SteamError, steamErrorMessage } from './steam/client';

@@ -1,8 +1,9 @@
+import { createSaver } from '@/lib/saver';
+
 import type {
   AchievementUserData,
   GameUserData,
 } from '../../../../shared/types';
-import { createSaver } from '@/lib/saver';
 import type { StoreSlice } from '../Store';
 
 type UserDataStore = {

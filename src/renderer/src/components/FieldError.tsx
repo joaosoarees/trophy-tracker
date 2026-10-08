@@ -1,7 +1,8 @@
 import { ErrorMessage } from '@hookform/error-message';
 import { useFormContext, type FieldPath } from 'react-hook-form';
-import type { OnboardingFormData } from '@/Onboarding';
+
 import { useT } from '@/lib/i18n';
+import type { OnboardingFormData } from '@/Onboarding';
 
 /**
  * Error of an onboarding field. The schemas hold the message key (not the text),

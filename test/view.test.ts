@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import type { Achievement, GameView } from '../src/shared/types';
 import { mergeView } from '../src/shared/view';
 

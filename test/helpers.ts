@@ -23,7 +23,7 @@ export function fakeFetch(
     }
     return new Response('not found', { status: 404 });
   };
-  return Object.assign(impl as typeof fetch, { calls });
+  return Object.assign(impl, { calls });
 }
 
 export const clientWith = (

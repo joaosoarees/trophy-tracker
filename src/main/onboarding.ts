@@ -1,8 +1,9 @@
 import type { Messages } from '../shared/i18n';
 import type { CheckResult, Profile, SteamIdCheck } from '../shared/types';
 import { API_KEY_PATTERN, STEAM_ID_PATTERN } from '../shared/validation';
+
 import {
-  SteamClient,
+  type SteamClient,
   SteamError,
   steamErrorMessage,
   type Fetch,

@@ -1,7 +1,7 @@
 import { ExternalLink } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
-import type { OnboardingFormData } from '@/Onboarding';
+
 import { StepHeader } from '@/components/StepHeader';
 import {
   StepperFooter,
@@ -10,6 +10,7 @@ import {
 } from '@/components/Stepper';
 import { Button } from '@/components/ui/button';
 import { useT } from '@/lib/i18n';
+import type { OnboardingFormData } from '@/Onboarding';
 
 export function PrivacyStep() {
   const t = useT();

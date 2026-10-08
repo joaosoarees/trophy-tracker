@@ -1,8 +1,9 @@
 import { mkdtempSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
-import nioh from './fixtures/game-achievements-3681010.json';
+
 import {
   checkApiKey,
   checkPrivacy,
@@ -10,9 +11,11 @@ import {
 } from '../src/main/onboarding';
 import { SteamClient } from '../src/main/steam/client';
 import { Store } from '../src/main/store';
+import { Tracker } from '../src/main/tracker';
 import { en } from '../src/shared/i18n/locales/en';
 import { ptBR } from '../src/shared/i18n/locales/pt-BR';
-import { Tracker } from '../src/main/tracker';
+
+import nioh from './fixtures/game-achievements-3681010.json';
 import {
   clientWith,
   fakeFetch,

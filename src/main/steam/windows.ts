@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { release } from 'node:os';
 import { join } from 'node:path';
+
 import { achievementStatMap, parseBinaryVdf } from './vdf';
 
 // The Steam client runs on Windows; from WSL we reach it through the .exe files via interop.

@@ -1,8 +1,9 @@
 import type { DashboardMode, GameSummary, GameView } from '../shared/types';
 import { mergeView } from '../shared/view';
+
 import { buildGameView } from './steam/achievements';
 import {
-  SteamClient,
+  type SteamClient,
   SteamError,
   type Credentials,
   type RawOwnedGame,

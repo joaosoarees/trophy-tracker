@@ -1,10 +1,11 @@
 import { useFormContext } from 'react-hook-form';
-import type { OnboardingFormData } from '@/Onboarding';
+
 import { FieldError } from '@/components/FieldError';
 import { StepHeader } from '@/components/StepHeader';
 import { StepperFooter, StepperPreviousButton } from '@/components/Stepper';
 import { Button } from '@/components/ui/button';
 import { useT } from '@/lib/i18n';
+import type { OnboardingFormData } from '@/Onboarding';
 
 export function DoneStep() {
   const t = useT();

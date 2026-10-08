@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+
 import { accountStepSchema } from '../src/renderer/src/components/steps/AccountStep/schema';
 import { apiKeyStepSchema } from '../src/renderer/src/components/steps/ApiKeyStep/schema';
 import { languageStepSchema } from '../src/renderer/src/components/steps/LanguageStep/schema';
 import { privacyStepSchema } from '../src/renderer/src/components/steps/PrivacyStep/schema';
 import { en } from '../src/shared/i18n/locales/en';
+
 import { KEY, STEAM_ID } from './helpers';
 
 const firstMessage = (result: {
