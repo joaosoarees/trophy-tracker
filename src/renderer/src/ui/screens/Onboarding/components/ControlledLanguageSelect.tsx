@@ -37,7 +37,7 @@ export function ControlledLanguageSelect<T extends FieldValues>({
             className={cn(
               'bg-card active:bg-accent/70 flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left active:scale-[0.99]',
               selected
-                ? 'border-primary text-foreground'
+                ? 'border-primary text-foreground hover:bg-accent/30'
                 : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground',
             )}
           >

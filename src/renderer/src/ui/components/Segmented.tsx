@@ -32,7 +32,7 @@ export function Segmented<T extends string>({
           className={cn(
             'rounded-[5px] px-2.5 py-1 text-xs font-medium',
             option.value === value
-              ? 'bg-accent text-accent-foreground'
+              ? 'bg-accent text-accent-foreground hover:bg-accent/80'
               : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
           )}
         >

@@ -91,7 +91,8 @@ export function Stepper({
                     isReached &&
                       !isCurrent &&
                       'hover:text-foreground active:text-primary',
-                    isCurrent && 'border-primary text-foreground',
+                    isCurrent &&
+                      'border-primary text-foreground hover:bg-accent/30',
                     index < current && 'border-success',
                     // Reached but ahead of the current one: the way back forward.
                     index > current && isReached && 'border-success/50',

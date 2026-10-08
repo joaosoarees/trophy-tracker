@@ -19,7 +19,9 @@ export function Switch({ label, checked, onChange }: ISwitchProps) {
       onClick={() => onChange(!checked)}
       className={cn(
         'flex h-5 w-9 flex-none items-center rounded-full p-0.5',
-        checked ? 'bg-primary' : 'bg-input hover:bg-input/80',
+        checked
+          ? 'bg-primary hover:bg-primary/85'
+          : 'bg-input hover:bg-muted-foreground/50',
       )}
     >
       <span

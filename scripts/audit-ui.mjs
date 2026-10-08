@@ -1,7 +1,9 @@
 // Opens the built app and checks every screen the way a release should be
-// checked by hand: accessibility (axe), no scrollbar on the window itself, no
-// sideways overflow, in each interface language. Saves a capture of each
-// screen to .audit-ui/ and exits with an error when something fails.
+// checked by hand, in each interface language: accessibility (axe), no
+// scrollbar on the window itself, no sideways overflow, and a visible hover
+// and keyboard-focus state on every kind of clickable element, none of them
+// wider than what contains it. Saves a capture of each screen to .audit-ui/
+// and exits with an error when something fails.
 //
 //   pnpm audit:ui
 //
@@ -106,6 +108,7 @@ async function launch(userData) {
     )?.result?.value;
 
   return {
+    send,
     evaluate,
     capture: async (name) => {
       const { data } = await send('Page.captureScreenshot', { format: 'png' });
@@ -132,6 +135,99 @@ async function launch(userData) {
   };
 }
 
+// The properties a state change may touch. If none of them differs between
+// rest and a forced state, the element gives no sign of that state.
+const STATE_STYLE = `(el) => { const s = getComputedStyle(el); return [s.backgroundColor, s.color, s.borderTopColor, s.boxShadow, s.outlineStyle + s.outlineWidth + s.outlineColor, s.opacity, s.textDecorationLine, s.scale, s.filter].join('|'); }`;
+
+/**
+ * Forces :hover and :focus-visible on every kind of clickable element on
+ * screen and reports the ones that look the same as at rest, and the ones
+ * that are wider than what contains them (a hover wash that spills out of its
+ * row or section). Elements with the same tag and classes are checked once.
+ */
+async function auditInteraction(page) {
+  // A state that is still animating reads as "no change".
+  await page.evaluate(`(() => {
+    if (document.getElementById('audit-no-transition')) return;
+    const style = document.createElement('style');
+    style.id = 'audit-no-transition';
+    style.textContent = '*, *::before, *::after { transition: none !important; animation: none !important; }';
+    document.head.append(style);
+  })()`);
+  // A really hovered element would already be in its hover state at "rest".
+  await page.send('Input.dispatchMouseEvent', {
+    type: 'mouseMoved',
+    x: 1,
+    y: 1,
+  });
+
+  const elements = JSON.parse(
+    await page.evaluate(`(() => {
+      const styleOf = ${STATE_STYLE};
+      const seen = new Set();
+      const found = [];
+      document.querySelectorAll('[data-audit]').forEach((el) => el.removeAttribute('data-audit'));
+      for (const el of document.querySelectorAll('button, a[href], [role="switch"], [role="checkbox"], label[for]')) {
+        if (el.offsetParent === null || el.disabled) continue;
+        const kind = el.tagName + '|' + el.getAttribute('role') + '|' + el.className;
+        if (seen.has(kind)) continue;
+        seen.add(kind);
+        const name = (el.getAttribute('aria-label') || el.innerText || el.tagName).trim().replace(/\\s+/g, ' ').slice(0, 40);
+        const box = el.getBoundingClientRect();
+        const around = el.parentElement.getBoundingClientRect();
+        const isPlaced = ['absolute', 'fixed'].includes(getComputedStyle(el).position);
+        el.setAttribute('data-audit', String(found.length));
+        found.push({
+          name,
+          rest: styleOf(el),
+          // A label has no state of its own: its control shows it.
+          hasOwnStates: el.tagName !== 'LABEL',
+          spills: !isPlaced && (box.left < around.left - 1 || box.right > around.right + 1),
+        });
+      }
+      return JSON.stringify(found);
+    })()`),
+  );
+
+  await page.send('DOM.enable');
+  await page.send('CSS.enable');
+  const { root } = await page.send('DOM.getDocument');
+  const problems = [];
+  for (const [index, element] of elements.entries()) {
+    if (element.spills) {
+      problems.push(`wider than what contains it: "${element.name}"`);
+    }
+    if (!element.hasOwnStates) continue;
+
+    const { nodeId } = await page.send('DOM.querySelector', {
+      nodeId: root.nodeId,
+      selector: `[data-audit="${index}"]`,
+    });
+    const styleWhen = async (state) => {
+      await page.send('CSS.forcePseudoState', {
+        nodeId,
+        forcedPseudoClasses: [state],
+      });
+      const style = await page.evaluate(
+        `(${STATE_STYLE})(document.querySelector('[data-audit="${index}"]'))`,
+      );
+      await page.send('CSS.forcePseudoState', {
+        nodeId,
+        forcedPseudoClasses: [],
+      });
+      return style;
+    };
+
+    if ((await styleWhen('hover')) === element.rest) {
+      problems.push(`no visible hover: "${element.name}"`);
+    }
+    if ((await styleWhen('focus-visible')) === element.rest) {
+      problems.push(`no visible keyboard focus: "${element.name}"`);
+    }
+  }
+  return problems;
+}
+
 /** Runs every check on what is on screen now. */
 async function audit(page, name) {
   await page.evaluate(axeSource);
@@ -144,7 +240,7 @@ async function audit(page, name) {
   );
   await page.capture(name);
 
-  const problems = [...result.violations];
+  const problems = [...result.violations, ...(await auditInteraction(page))];
   if (result.windowScrolls) problems.push('the window itself scrolls');
   if (result.overflowsSideways) problems.push('content overflows sideways');
   console.log(`${problems.length === 0 ? 'ok  ' : 'FAIL'} ${name}`);
