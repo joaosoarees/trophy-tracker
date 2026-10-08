@@ -1,10 +1,12 @@
-import { RefreshCw, Trophy } from 'lucide-react';
+import { ChevronDown, RefreshCw, Trophy } from 'lucide-react';
+import { type ReactNode } from 'react';
 
 import { useT } from '@app/hooks/useT';
 import { type IGameView } from '@shared/types/Game';
 import { IconButton } from '@ui/components/IconButton';
 import { ProgressBar } from '@ui/components/ProgressBar';
 import { RemoteImage } from '@ui/components/RemoteImage';
+import { Button } from '@ui/primitives/button';
 import { cn } from '@ui/utils/cn';
 
 interface IGameHeaderProps {
@@ -16,6 +18,10 @@ interface IGameHeaderProps {
   isLoading: boolean;
   error: string | null;
   onRefresh: () => void;
+  isDetailsOpen: boolean;
+  onToggleDetails: () => void;
+  /** The details, when they are open. */
+  children?: ReactNode;
 }
 
 export function GameHeader({
@@ -27,6 +33,9 @@ export function GameHeader({
   isLoading,
   error,
   onRefresh,
+  isDetailsOpen,
+  onToggleDetails,
+  children,
 }: IGameHeaderProps) {
   const t = useT();
 
@@ -85,11 +94,29 @@ export function GameHeader({
             </strong>
           )}
         </div>
-        <p className="text-muted-foreground mt-1.5 flex items-center gap-1.5 text-xs tabular-nums">
-          <Trophy className="size-3.5" />
-          {t.game.summary(view.unlockedCount, view.total, percent)}
-        </p>
+        <div className="mt-1 flex items-center gap-2">
+          <p className="text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 text-xs tabular-nums">
+            <Trophy className="size-3.5 flex-none" />
+            {t.game.summary(view.unlockedCount, view.total, percent)}
+          </p>
+          <Button
+            size="xs"
+            variant="ghost"
+            className="text-muted-foreground"
+            aria-expanded={isDetailsOpen}
+            onClick={onToggleDetails}
+          >
+            {t.game.details.toggle}
+            <ChevronDown
+              className={cn(
+                'transition-transform duration-150',
+                isDetailsOpen && 'rotate-180',
+              )}
+            />
+          </Button>
+        </div>
         {error && <p className="text-destructive mt-1 text-xs">{error}</p>}
+        {children}
       </div>
     </header>
   );

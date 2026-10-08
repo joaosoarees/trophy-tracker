@@ -57,3 +57,26 @@ describe('navigation: the hidden-only filter', () => {
     expect(navigation().hiddenOnly).toBe(true);
   });
 });
+
+describe('navigation: the game details', () => {
+  it('start closed', async () => {
+    const { navigation } = await setup();
+
+    expect(navigation().gameDetailsOpen).toBe(false);
+  });
+
+  it('stay open across games once opened', async () => {
+    const { navigation } = await setup();
+    navigation().toggleGameDetails();
+
+    navigation().pickGame(105600);
+
+    expect(navigation().gameDetailsOpen).toBe(true);
+  });
+
+  it('survive a window reload', async () => {
+    const { navigation } = await setup({ 'view-game-details': 'true' });
+
+    expect(navigation().gameDetailsOpen).toBe(true);
+  });
+});

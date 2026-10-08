@@ -57,7 +57,7 @@ export const ptBR: Messages = {
     label: 'Principal',
     pinWindow: 'Manter a janela sempre no topo',
     unpinWindow: 'Deixar de manter a janela no topo',
-    settingsWithUpdate: 'Configuração · nova versão disponível',
+    updateAvailable: (version) => `Versão ${version} disponível`,
   },
 
   common: {
@@ -105,6 +105,18 @@ export const ptBR: Messages = {
     },
     filterLabel: 'Conquistas mostradas',
     justCompleted: 'Todas as conquistas desbloqueadas!',
+    details: {
+      toggle: 'Detalhes',
+      progress: 'Seu progresso',
+      left: 'O que falta',
+      playtime: 'Tempo de jogo',
+      lastPlayed: 'Jogado pela última vez',
+      lastUnlocked: 'Última conquista',
+      easiest: 'Mais fácil',
+      rarest: 'Mais rara',
+      closest: 'Mais perto de concluir',
+      never: 'Ainda não',
+    },
     complete: {
       title: 'Todas as conquistas desbloqueadas',
       completedOn: (date) => `Concluído em ${date}`,
@@ -188,6 +200,33 @@ export const ptBR: Messages = {
     eraseDescription:
       'O app volta para a configuração inicial. Suas notas, checklists e conquistas fixadas são mantidas.',
     eraseConfirm: 'Apagar',
+    groups: {
+      account: 'Conta',
+      window: 'Janela e idioma',
+      data: 'Dados e privacidade',
+      about: 'Sobre',
+    },
+    redoAction: 'Refazer',
+    redoHint: 'Passa pela configuração de novo. Suas notas são mantidas.',
+    eraseHint: 'Esquece a chave e o SteamID neste computador.',
+    alwaysOnTop: 'Manter a janela sempre no topo',
+    alwaysOnTopHint:
+      'Fica acima das outras janelas, como um jogo em modo janela.',
+    rememberWindow: 'Lembrar o tamanho e a posição da janela',
+    notifyUnlocks: 'Avisar quando uma conquista for desbloqueada',
+    privacy:
+      'Tudo fica neste computador. O app só fala com a Steam e, para atualizações, com o GitHub.',
+    dataFolder: 'Pasta de dados',
+    openFolder: 'Abrir pasta',
+    copyPath: 'Copiar caminho',
+    pathCopied: 'Caminho copiado.',
+    errorLog: 'Registro de erros',
+    errorLogHint:
+      'Fica em logs/errors.log, dentro da pasta de dados. Nunca é enviado a lugar algum.',
+    versionLabel: 'Versão',
+    source: 'Código-fonte',
+    reportIssue: 'Relatar um problema',
+    license: 'Licença',
     version: (version) => `Versão ${version}`,
     updateAvailable: (version) => `A versão ${version} está disponível`,
     updateHint: 'Baixe e instale por cima desta; seus dados são mantidos.',

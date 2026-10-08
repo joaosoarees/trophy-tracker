@@ -63,7 +63,7 @@ export const es: Messages = {
     label: 'Principal',
     pinWindow: 'Mantener la ventana siempre visible',
     unpinWindow: 'Dejar de mantener la ventana siempre visible',
-    settingsWithUpdate: 'Ajustes · nueva versión disponible',
+    updateAvailable: (version) => `Versión ${version} disponible`,
   },
 
   common: {
@@ -111,6 +111,18 @@ export const es: Messages = {
     },
     filterLabel: 'Logros mostrados',
     justCompleted: '¡Todos los logros desbloqueados!',
+    details: {
+      toggle: 'Detalles',
+      progress: 'Tu progreso',
+      left: 'Lo que falta',
+      playtime: 'Tiempo de juego',
+      lastPlayed: 'Última partida',
+      lastUnlocked: 'Último logro',
+      easiest: 'El más fácil',
+      rarest: 'El más raro',
+      closest: 'El más cerca de completarse',
+      never: 'Todavía no',
+    },
     complete: {
       title: 'Todos los logros desbloqueados',
       completedOn: (date) => `Completado el ${date}`,
@@ -195,6 +207,33 @@ export const es: Messages = {
     eraseDescription:
       'La aplicación vuelve a la configuración inicial. Tus notas, listas y logros fijados se conservan.',
     eraseConfirm: 'Borrar',
+    groups: {
+      account: 'Cuenta',
+      window: 'Ventana e idioma',
+      data: 'Datos y privacidad',
+      about: 'Acerca de',
+    },
+    redoAction: 'Repetir',
+    redoHint: 'Repite la configuración. Tus notas se conservan.',
+    eraseHint: 'Olvida la clave y el SteamID en este ordenador.',
+    alwaysOnTop: 'Mantener la ventana siempre visible',
+    alwaysOnTopHint:
+      'Queda por encima de otras ventanas, como un juego en modo ventana.',
+    rememberWindow: 'Recordar el tamaño y la posición de la ventana',
+    notifyUnlocks: 'Avisar cuando se desbloquee un logro',
+    privacy:
+      'Todo se queda en este ordenador. La aplicación solo se comunica con Steam y, para las actualizaciones, con GitHub.',
+    dataFolder: 'Carpeta de datos',
+    openFolder: 'Abrir carpeta',
+    copyPath: 'Copiar ruta',
+    pathCopied: 'Ruta copiada.',
+    errorLog: 'Registro de errores',
+    errorLogHint:
+      'Está en logs/errors.log, dentro de la carpeta de datos. Nunca se envía a ningún sitio.',
+    versionLabel: 'Versión',
+    source: 'Código fuente',
+    reportIssue: 'Informar de un problema',
+    license: 'Licencia',
     version: (version) => `Versión ${version}`,
     updateAvailable: (version) => `La versión ${version} está disponible`,
     updateHint: 'Descárgala e instálala sobre esta; tus datos se conservan.',

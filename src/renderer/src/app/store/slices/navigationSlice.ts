@@ -15,6 +15,8 @@ type NavigationStore = {
   achievementFilter: AchievementFilter;
   /** Whether the game screen shows only hidden achievements. */
   hiddenOnly: boolean;
+  /** Whether the game header shows its details; the same for every game. */
+  gameDetailsOpen: boolean;
   /** Which list the dashboard shows. */
   dashboardFilter: DashboardFilter;
   /** Game picked in the dashboard; holds until a game is opened on Steam. */
@@ -30,6 +32,7 @@ type NavigationActions = {
   showAchievements: (filter: AchievementFilter) => void;
   showGames: (filter: DashboardFilter) => void;
   toggleHiddenOnly: () => void;
+  toggleGameDetails: () => void;
   pickGame: (appid: number) => void;
   /** Opening a game on Steam brings the app to it, once per opened game. */
   followRunningGame: (appid: number | null) => void;
@@ -45,6 +48,7 @@ const KEYS = {
   achievementFilter: 'view-achievement-filter',
   dashboardFilter: 'view-dashboard-filter',
   hiddenOnly: 'view-hidden-only',
+  gameDetailsOpen: 'view-game-details',
   pickedAppId: 'view-picked',
   seenRunningAppId: 'view-seen-running',
 } as const;
@@ -72,6 +76,8 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
   achievementFilter: savedFilter(),
   dashboardFilter: savedDashboardFilter(),
   hiddenOnly: safeSessionStorageGetItem<unknown>(KEYS.hiddenOnly) === true,
+  gameDetailsOpen:
+    safeSessionStorageGetItem<unknown>(KEYS.gameDetailsOpen) === true,
   pickedAppId: safeSessionStorageGetItem<number>(KEYS.pickedAppId),
   seenRunningAppId: safeSessionStorageGetItem<number>(KEYS.seenRunningAppId),
   reconfiguringFrom: null,
@@ -118,6 +124,18 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
       },
       false,
       'navigation/toggleHiddenOnly',
+    );
+  },
+
+  toggleGameDetails: () => {
+    const gameDetailsOpen = !get().navigation.gameDetailsOpen;
+    remember('gameDetailsOpen', gameDetailsOpen);
+    set(
+      (prevState) => {
+        prevState.navigation.gameDetailsOpen = gameDetailsOpen;
+      },
+      false,
+      'navigation/toggleGameDetails',
     );
   },
 

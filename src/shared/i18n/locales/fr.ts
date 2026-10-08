@@ -63,7 +63,7 @@ export const fr: Messages = {
     label: 'Principale',
     pinWindow: 'Garder la fenêtre toujours au premier plan',
     unpinWindow: 'Ne plus garder la fenêtre au premier plan',
-    settingsWithUpdate: 'Paramètres · nouvelle version disponible',
+    updateAvailable: (version) => `Version ${version} disponible`,
   },
 
   common: {
@@ -111,6 +111,18 @@ export const fr: Messages = {
     },
     filterLabel: 'Succès affichés',
     justCompleted: 'Tous les succès déverrouillés !',
+    details: {
+      toggle: 'Détails',
+      progress: 'Votre progression',
+      left: 'Ce qu’il reste',
+      playtime: 'Temps de jeu',
+      lastPlayed: 'Dernière session',
+      lastUnlocked: 'Dernier succès',
+      easiest: 'Le plus facile',
+      rarest: 'Le plus rare',
+      closest: 'Le plus proche du but',
+      never: 'Pas encore',
+    },
     complete: {
       title: 'Tous les succès déverrouillés',
       completedOn: (date) => `Terminé le ${date}`,
@@ -194,6 +206,33 @@ export const fr: Messages = {
     eraseDescription:
       'L’application revient à la configuration initiale. Vos notes, listes et succès épinglés sont conservés.',
     eraseConfirm: 'Effacer',
+    groups: {
+      account: 'Compte',
+      window: 'Fenêtre et langue',
+      data: 'Données et confidentialité',
+      about: 'À propos',
+    },
+    redoAction: 'Refaire',
+    redoHint: 'Reprend la configuration. Vos notes sont conservées.',
+    eraseHint: 'Oublie la clé et le SteamID sur cet ordinateur.',
+    alwaysOnTop: 'Garder la fenêtre au premier plan',
+    alwaysOnTopHint:
+      'Reste au-dessus des autres fenêtres, comme un jeu en mode fenêtré.',
+    rememberWindow: 'Mémoriser la taille et la position de la fenêtre',
+    notifyUnlocks: 'Prévenir quand un succès est déverrouillé',
+    privacy:
+      'Tout reste sur cet ordinateur. L’application ne communique qu’avec Steam et, pour les mises à jour, avec GitHub.',
+    dataFolder: 'Dossier des données',
+    openFolder: 'Ouvrir le dossier',
+    copyPath: 'Copier le chemin',
+    pathCopied: 'Chemin copié.',
+    errorLog: 'Journal des erreurs',
+    errorLogHint:
+      'Il se trouve dans logs/errors.log, dans le dossier des données. Il n’est jamais envoyé.',
+    versionLabel: 'Version',
+    source: 'Code source',
+    reportIssue: 'Signaler un problème',
+    license: 'Licence',
     version: (version) => `Version ${version}`,
     updateAvailable: (version) => `La version ${version} est disponible`,
     updateHint:

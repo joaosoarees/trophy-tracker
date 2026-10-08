@@ -55,7 +55,7 @@ export const en = {
     label: 'Main',
     pinWindow: 'Keep the window always on top',
     unpinWindow: 'Stop keeping the window on top',
-    settingsWithUpdate: 'Settings · new version available',
+    updateAvailable: (version: string) => `Version ${version} available`,
   },
 
   common: {
@@ -103,6 +103,18 @@ export const en = {
     },
     filterLabel: 'Achievements shown',
     justCompleted: 'Every achievement unlocked!',
+    details: {
+      toggle: 'Details',
+      progress: 'Your progress',
+      left: 'What is left',
+      playtime: 'Playtime',
+      lastPlayed: 'Last played',
+      lastUnlocked: 'Last achievement',
+      easiest: 'Easiest',
+      rarest: 'Rarest',
+      closest: 'Closest to done',
+      never: 'Not yet',
+    },
     complete: {
       title: 'Every achievement unlocked',
       completedOn: (date: string) => `Completed on ${date}`,
@@ -188,6 +200,33 @@ export const en = {
     eraseDescription:
       'The app goes back to the initial setup. Your notes, checklists and pinned achievements are kept.',
     eraseConfirm: 'Erase',
+    groups: {
+      account: 'Account',
+      window: 'Window and language',
+      data: 'Data and privacy',
+      about: 'About',
+    },
+    redoAction: 'Redo',
+    redoHint: 'Goes through the setup again. Your notes are kept.',
+    eraseHint: 'Forgets the key and the SteamID on this computer.',
+    alwaysOnTop: 'Keep the window on top',
+    alwaysOnTopHint:
+      'Stays above other windows, such as a game in windowed mode.',
+    rememberWindow: 'Remember the window size and position',
+    notifyUnlocks: 'Notify when an achievement is unlocked',
+    privacy:
+      'Everything stays on this computer. The app only talks to Steam and, for updates, to GitHub.',
+    dataFolder: 'Data folder',
+    openFolder: 'Open folder',
+    copyPath: 'Copy path',
+    pathCopied: 'Path copied.',
+    errorLog: 'Error log',
+    errorLogHint:
+      'Kept in logs/errors.log inside the data folder. It is never sent anywhere.',
+    versionLabel: 'Version',
+    source: 'Source code',
+    reportIssue: 'Report a problem',
+    license: 'License',
     version: (version: string) => `Version ${version}`,
     updateAvailable: (version: string) => `Version ${version} is available`,
     updateHint: 'Download it and install over this one; your data is kept.',

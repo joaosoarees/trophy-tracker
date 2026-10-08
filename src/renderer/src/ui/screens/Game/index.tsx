@@ -8,6 +8,7 @@ import { Button } from '@ui/primitives/button';
 import { AchievementCard } from './components/AchievementCard';
 import { AchievementToolbar } from './components/AchievementToolbar';
 import { GameComplete } from './components/GameComplete';
+import { GameDetails } from './components/GameDetails';
 import { GameHeader } from './components/GameHeader';
 import { GameSkeleton } from './components/GameSkeleton';
 import { useGameController } from './useGameController';
@@ -30,6 +31,12 @@ export function Game({ appid, running }: IGameProps) {
     percent,
     isComplete,
     completion,
+    details,
+    isDetailsOpen,
+    playtimeMinutes,
+    lastPlayed,
+    handleToggleDetails,
+    handleFindAchievement,
     otherFilter,
     matchesInOtherList,
     filter,
@@ -89,7 +96,18 @@ export function Game({ appid, running }: IGameProps) {
         isLoading={isLoading}
         error={error}
         onRefresh={handleRefresh}
-      />
+        isDetailsOpen={isDetailsOpen}
+        onToggleDetails={handleToggleDetails}
+      >
+        {isDetailsOpen && details && (
+          <GameDetails
+            details={details}
+            playtimeMinutes={playtimeMinutes}
+            lastPlayed={lastPlayed}
+            onFind={handleFindAchievement}
+          />
+        )}
+      </GameHeader>
 
       {justUnlocked.length > 0 && (
         <div

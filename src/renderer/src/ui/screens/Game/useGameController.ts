@@ -7,6 +7,7 @@ import {
   type AchievementFilter,
   type AchievementSort,
 } from '@shared/achievementSort';
+import { type IAchievement } from '@shared/types/Achievement';
 import {
   type GameUserData,
   type IAchievementUserData,
@@ -18,6 +19,7 @@ import {
   countMatchesInOtherList,
   listAchievements,
 } from './achievementList';
+import { gameDetailsOf } from './gameDetails';
 
 // Stable defaults: a new array or object on every render would re-render the screen each time.
 const NONE_UNLOCKED: string[] = [];
@@ -33,6 +35,9 @@ export function useGameController(appid: number) {
     userData,
     filter,
     hiddenOnly,
+    isDetailsOpen,
+    toggleDetails,
+    summary,
     sorts,
     open,
     toggleHiddenOnly,
@@ -54,6 +59,11 @@ export function useGameController(appid: number) {
         // Shared by every game, so they hold when the game changes.
         filter: state.navigation.achievementFilter,
         hiddenOnly: state.navigation.hiddenOnly,
+        isDetailsOpen: state.navigation.gameDetailsOpen,
+        toggleDetails: state.navigation.toggleGameDetails,
+        // Playtime comes with the library, which the dashboard reads.
+        summary:
+          state.dashboard.games?.find((game) => game.appid === appid) ?? null,
         toggleHiddenOnly: state.navigation.toggleHiddenOnly,
         sorts: state.settings.achievementSort,
         setFilter: state.navigation.showAchievements,
@@ -102,6 +112,10 @@ export function useGameController(appid: number) {
     () => (view && isComplete ? completionOf(view) : null),
     [view, isComplete],
   );
+  const details = useMemo(
+    () => (view ? gameDetailsOf(view, userData) : null),
+    [view, userData],
+  );
   const otherFilter: AchievementFilter =
     filter === 'pending' ? 'unlocked' : 'pending';
   const percent =
@@ -120,6 +134,16 @@ export function useGameController(appid: number) {
     percent,
     isComplete,
     completion,
+    details,
+    isDetailsOpen,
+    playtimeMinutes: summary?.playtimeMinutes ?? null,
+    lastPlayed: summary?.lastPlayed ?? null,
+    handleToggleDetails: toggleDetails,
+    // Shows one achievement: its list, with the search set to its name.
+    handleFindAchievement: (achievement: IAchievement) => {
+      setFilter(achievement.unlocked ? 'unlocked' : 'pending');
+      setQuery(achievement.name);
+    },
     otherFilter,
     // A search that finds nothing here may have matches one tab away.
     matchesInOtherList: view ? countMatchesInOtherList(view, filter, query) : 0,
