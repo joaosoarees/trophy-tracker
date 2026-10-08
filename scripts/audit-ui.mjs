@@ -225,7 +225,126 @@ async function auditInteraction(page) {
       problems.push(`no visible keyboard focus: "${element.name}"`);
     }
   }
+  await page.evaluate(
+    `document.getElementById('audit-no-transition')?.remove()`,
+  );
   return problems;
+}
+
+/**
+ * Clicks the control that opens a section and samples the section's height
+ * on every frame for a moment. Answers the heights seen, -1 where the section
+ * was not in the page.
+ */
+const sampleHeights = (toggle, section) => `(async () => {
+  document.querySelector(${JSON.stringify(toggle)}).click();
+  const heights = [];
+  const start = performance.now();
+  while (performance.now() - start < 450) {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const el = document.querySelector(${JSON.stringify(section)});
+    heights.push(el ? Math.round(el.getBoundingClientRect().height) : -1);
+  }
+  return JSON.stringify(heights);
+})()`;
+
+/**
+ * The game details as a flow, which no single capture shows: they have to
+ * animate open and closed, leave the page once closed, and every row that
+ * names an achievement has to lead to it, also with the hidden-only filter on.
+ */
+async function auditDetailsFlow(page) {
+  const TOGGLE = 'header [aria-expanded]';
+  const SECTION = 'header .collapsible';
+  const problems = [];
+  const fail = (problem) => {
+    console.log(`       ${problem}`);
+    problems.push(problem);
+    failures.push(`details flow: ${problem}`);
+  };
+
+  const isOpen = await page.evaluate(
+    `document.querySelector('${TOGGLE}').getAttribute('aria-expanded') === 'true'`,
+  );
+  if (isOpen) {
+    await page.evaluate(`document.querySelector('${TOGGLE}').click()`);
+    await sleep(500);
+  }
+
+  const opening = JSON.parse(
+    await page.evaluate(sampleHeights(TOGGLE, SECTION)),
+  );
+  const full = opening.at(-1);
+  if (!opening.some((height) => height > 0 && height < full)) {
+    fail(
+      `the details pop open instead of growing (heights: ${opening.slice(0, 8).join(', ')})`,
+    );
+  }
+  await page.capture('flow-details-open');
+
+  const closing = JSON.parse(
+    await page.evaluate(sampleHeights(TOGGLE, SECTION)),
+  );
+  if (!closing.some((height) => height > 0 && height < full)) {
+    fail(
+      `the details vanish instead of shrinking (heights: ${closing.slice(0, 8).join(', ')})`,
+    );
+  }
+  if (closing.at(-1) !== -1) fail('the closed details stay in the page');
+
+  // Every row that names an achievement, with the filter that could hide it on.
+  await page.evaluate(`document.querySelector('${TOGGLE}').click()`);
+  await sleep(500);
+  const rows = await page.evaluate(
+    `document.querySelectorAll('${SECTION} li button').length`,
+  );
+  let usedHiddenFilter = false;
+  for (let index = 0; index < rows; index++) {
+    const turnedOn = await page.evaluate(`(() => {
+      const group = [...document.querySelectorAll('[role="group"]')].find((el) => el.offsetParent !== null);
+      const toggle = group?.parentElement.querySelector(':scope > button[aria-pressed]');
+      if (!toggle) return false;
+      if (toggle.getAttribute('aria-pressed') === 'false') toggle.click();
+      return true;
+    })()`);
+    usedHiddenFilter ||= turnedOn;
+    await sleep(200);
+
+    const row = await page.evaluate(`(() => {
+      const button = document.querySelectorAll('${SECTION} li button')[${index}];
+      const label = button.innerText.replace(/\\s+/g, ' ').trim();
+      button.click();
+      return label;
+    })()`);
+    await sleep(600);
+    const found = JSON.parse(
+      await page.evaluate(`(() => {
+        const search = [...document.querySelectorAll('input')].find((el) => el.offsetParent !== null);
+        const titles = [...document.querySelectorAll('ul h2')].filter((el) => el.offsetParent !== null).map((el) => el.innerText.trim());
+        return JSON.stringify({ query: search?.value ?? '', shown: titles.includes(search?.value ?? '') });
+      })()`),
+    );
+    if (!found.shown) {
+      fail(
+        `"${row}" searches for "${found.query}" and shows no such achievement`,
+      );
+    }
+    // Back to an empty search for the next row.
+    await page.evaluate(`(() => {
+      const search = [...document.querySelectorAll('input')].find((el) => el.offsetParent !== null);
+      search?.parentElement.querySelector('button')?.click();
+    })()`);
+    await sleep(300);
+  }
+  await page.evaluate(`document.querySelector('${TOGGLE}').click()`);
+  await sleep(400);
+
+  console.log(
+    `${problems.length === 0 ? 'ok  ' : 'FAIL'} flow: game details open, close and lead to ${rows} achievement(s)` +
+      (usedHiddenFilter
+        ? ', with the hidden-only filter on'
+        : ' (this game has no hidden achievements: the filter was not exercised)'),
+  );
 }
 
 /** Runs every check on what is on screen now. */
@@ -312,6 +431,8 @@ async function auditApp() {
       await page.evaluate(navButton(0));
       await sleep(900);
       await audit(page, `game-${language}`);
+      // Flows do not depend on the language: once is enough.
+      if (language === LANGUAGES[0]) await auditDetailsFlow(page);
       // The details open from the header; they close again for the next pass.
       await page.evaluate(detailsToggle);
       await sleep(500);
