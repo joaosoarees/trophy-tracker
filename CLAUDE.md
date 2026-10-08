@@ -16,6 +16,7 @@ pnpm test:verbose    # lists every test by name, grouped by file
 pnpm typecheck   # tsc on both projects (main process and interface)
 pnpm lint        # ESLint (lint:fix to auto-fix)
 pnpm format      # Prettier (format:check to only verify)
+pnpm audit:ui    # builds, opens the app and audits every screen (axe, scrollbars, four languages)
 
 pnpm dist:linux  # AppImage and .deb into dist/ (dist:win, dist:mac, dist for the current system)
 pnpm dist:docker # Linux and Windows installers built inside a container
@@ -316,7 +317,7 @@ Conventions:
 
 ## Accessibility
 
-An automated audit (axe) of every screen reports zero violations; keep it that way.
+An automated audit (axe) of every screen reports zero violations; keep it that way. **`pnpm audit:ui` runs it** (`scripts/audit-ui.mjs`): it builds the app, opens it through the DevTools protocol and, for the onboarding and for Game, Dashboard and Settings in each of the four languages, runs axe, checks that the window itself has no scrollbar and that nothing overflows sideways, and saves a capture to `.audit-ui/`. Run it after changing a screen and look at the captures: the checks pass on whatever is on screen, so a capture of the wrong screen is the only sign that the script went astray. The app screens are audited on a throwaway copy of this computer's data folder (they need Steam data); the script never reads or prints the key in it. It does not open dialogs, the update screen or a finished game: audit those by hand when they change.
 
 - **Nothing clickable is a raw element.** Use `Button` (primitive), `IconButton` (icon only), or `Pressable` (the base of hand-made clickables such as tabs and rows). They carry the keyboard focus ring and the disabled state; a raw `<button>` or `<select>` in `ui/` fails the lint. The pointer cursor comes from a global rule in `styles/index.css`.
 - **Every clickable has three visible states besides rest:** hover (normally a background tint, `hover:bg-accent/40`), pressed, and keyboard focus. The pressed state comes from a global rule (`scale: 0.96` while `:active`); wide elements such as rows and cards tone it down with `active:scale-[0.99]` and darken instead, and list options use a tint (`active:bg-primary/25`).
