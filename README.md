@@ -1,20 +1,20 @@
-# Conquistas da Steam
+# Steam Achievements
 
-App desktop (Electron + React) que mostra, para o jogo aberto na Steam, as conquistas que faltam, as ocultas reveladas, contadores de progresso e atalhos para guias. Roda no WSL (janela via WSLg) e conversa com o cliente Steam do Windows.
+Desktop app (Electron + React) that shows, for the game open on Steam, which achievements are missing, what the hidden ones are, progress counters, your own checklists and shortcuts to guides. Available in English and Brazilian Portuguese. It runs on WSL (window through WSLg) and talks to the Steam client on Windows.
 
-## Preparar
+## Setup
 
 ```bash
-sudo apt install libnss3 libnspr4 libasound2t64   # bibliotecas que o Electron precisa
+sudo apt install libnss3 libnspr4 libasound2t64   # libraries Electron needs
 npm install
 ```
 
-## Usar
+## Usage
 
 ```bash
-npm run dev     # desenvolvimento, com recarga
+npm run dev     # development, with reload
 npm run build && npm start
 npm test
 ```
 
-Na primeira execução o app pede o SteamID, uma chave da Web API (https://steamcommunity.com/dev/apikey) e confere a privacidade do perfil. A configuração fica em `~/.config/steam-trophy-tracker/`.
+On first run the app asks for a language, your SteamID and a Web API key (https://steamcommunity.com/dev/apikey), and checks your profile privacy. The configuration lives in `~/.config/steam-trophy-tracker/`.
