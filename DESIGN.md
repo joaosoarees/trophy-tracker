@@ -208,7 +208,7 @@ A cool navy ramp carries the whole interface; four signal colors each mean exact
 - **Label** (500, 12px): the text of segmented options, small buttons and status words.
 - **Caption** (400, 12px): counts, dates, rarity and hints, in Quiet Steel.
 
-Two smaller sizes exist for a single badge and a single sub-label (10px and 11px). They are exceptions, not steps of the scale.
+Two smaller sizes exist for a single badge and a single sub-label (10px and 11px), and one larger size (36px) exists for the completion figure. They are exceptions, not steps of the scale.
 
 ### Named Rules
 
@@ -291,7 +291,7 @@ A toggle with a text label that is on (an open checklist, the hidden-only filter
 
 ### Segmented toggle
 
-Two or three options in a Recessed Slate well with 2px of padding. The selected option is a raised chip of Hover Steel with Lit White text; the others are Quiet Steel and take a wash on hover. Each option carries its count ("Pending 80").
+Two or three options in a Recessed Slate well with 2px of padding. The selected option is a chip of Hover Steel with Lit White text, told apart by tone alone; the others are Quiet Steel and take a wash on hover. Each option carries its count ("Pending 80").
 
 ### Select
 
@@ -313,6 +313,14 @@ The unit the whole app is built around. A 48px icon at the left; to its right th
 
 The game's art fills the header at 35 percent opacity with a slight blur, under a gradient that fades to the field color, so the title stays readable over any image. The title and a "running" indicator in Unlocked Green with a pulsing dot sit on top. Below them the overall progress bar shares a row with what is left ("80 left"), in title weight and the text color: it is the figure the header is glanced at for, and the only one that stands out. The full count sits under it in caption text.
 
+### Completion state (signature)
+
+What the Game screen shows in place of the pending list once nothing is pending. It is the one authored moment in the app: "100%" at 36px in Unlocked Green, the only figure above the headline size anywhere; under it a title, the completion date and the rarest achievement earned in caption text; and one primary button to the unlocked list. No filters, no card, no container. It rises in once, like any screen, and nothing loops. The header joins in: its art comes forward (60 percent opacity, no blur) and its bar turns green.
+
+### Unlock notice
+
+A wash of Unlocked Green (15 percent) with green text across the top of the list, naming what was just unlocked. It is a status, announced as one, with a 32px icon button at its end to dismiss it. The last unlock of a game says so instead of naming the achievement.
+
 ### Tooltip
 
 The inverse of the page: Glance White with Night Navy text, softly rounded, with a small arrow. Used for every icon button and for any control that needs a word of explanation.
@@ -326,6 +334,7 @@ The inverse of the page: Glance White with Night Navy text, softly rounded, with
 - **Do** give every clickable element three visible states besides rest: a wash on hover, a push on press (96 percent, or 99 percent for wide elements), and a focus ring.
 - **Do** use Signal Blue only for what can be acted on or what is current.
 - **Do** set every number that can change in tabular figures.
+- **Do** make a scrolling container the containing block of what is inside it (`relative`): visually hidden text is absolutely positioned and would otherwise give the window a second scrollbar.
 - **Do** show remote images in a fixed-size box with a skeleton while loading and an icon on failure.
 - **Do** animate only entrances, in 200ms or less, and let the reduced-motion preference turn them off.
 
@@ -336,6 +345,6 @@ The inverse of the page: Glance White with Night Navy text, softly rounded, with
 - **Don't** use green, amber or red for decoration or to tell list items apart.
 - **Don't** place red text on the usual hover wash; use the red wash.
 - **Don't** use a native select or the native `title` tooltip: the first opens a system popup that cannot be themed, the second is slow and never shows on keyboard focus.
-- **Don't** introduce a second typeface or a display size above 20px.
+- **Don't** introduce a second typeface, or a display size above 20px anywhere but the completion figure.
 - **Don't** make a control that only appears on hover unreachable by keyboard; it must also appear on focus.
 - **Don't** animate an exit, loop an animation for attention, or move anything more than 20 pixels.

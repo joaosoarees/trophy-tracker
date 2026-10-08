@@ -421,6 +421,7 @@
       "Do give every clickable element three visible states besides rest: a wash on hover, a push on press (96 percent, or 99 percent for wide elements), and a focus ring.",
       "Do use Signal Blue only for what can be acted on or what is current.",
       "Do set every number that can change in tabular figures.",
+      "Do make a scrolling container the containing block of what is inside it (`relative`): visually hidden text is absolutely positioned and would otherwise give the window a second scrollbar.",
       "Do show remote images in a fixed-size box with a skeleton while loading and an icon on failure.",
       "Do animate only entrances, in 200ms or less, and let the reduced-motion preference turn them off."
     ],
@@ -430,7 +431,7 @@
       "Don't use green, amber or red for decoration or to tell list items apart.",
       "Don't place red text on the usual hover wash; use the red wash.",
       "Don't use a native select or the native `title` tooltip: the first opens a system popup that cannot be themed, the second is slow and never shows on keyboard focus.",
-      "Don't introduce a second typeface or a display size above 20px.",
+      "Don't introduce a second typeface, or a display size above 20px anywhere but the completion figure.",
       "Don't make a control that only appears on hover unreachable by keyboard; it must also appear on focus.",
       "Don't animate an exit, loop an animation for attention, or move anything more than 20 pixels."
     ]
