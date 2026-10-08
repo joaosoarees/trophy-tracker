@@ -27,6 +27,8 @@ const calls = [
   'getDashboard',
   'getUserData',
   'setUserData',
+  'getAlwaysOnTop',
+  'setAlwaysOnTop',
   'openGuide',
   'openExternal'
 ] as const

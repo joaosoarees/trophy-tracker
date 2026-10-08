@@ -125,6 +125,12 @@ function registerIpc(): void {
       attempt(() => tracker.getDashboard(force, (done, total) => win?.webContents.send('dashboard-progress', done, total))),
     getUserData: async (appid) => store.getUserData(appid),
     setUserData: async (appid, achievementId, data) => store.setUserData(appid, achievementId, data),
+    getAlwaysOnTop: async () => store.getAlwaysOnTop(),
+    setAlwaysOnTop: async (value) => {
+      store.setAlwaysOnTop(value)
+      win?.setAlwaysOnTop(value)
+      return value
+    },
     openGuide: (site: GuideSite, appid, game, achievement) => openUrl(guideUrl(site, appid, game, achievement)),
     openExternal: (target) => openUrl(EXTERNAL[target])
   }
@@ -144,6 +150,7 @@ function createWindow(): void {
     title: 'Conquistas da Steam',
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true }
   })
+  win.setAlwaysOnTop(store.getAlwaysOnTop())
   win.on('closed', () => (win = null))
   win.webContents.setWindowOpenHandler(({ url }) => {
     void openUrl(url)

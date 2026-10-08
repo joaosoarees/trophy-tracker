@@ -33,8 +33,7 @@ export function GameScreen({ appid, running, onAuthProblem }: Props) {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('pending')
   const [sort, setSort] = useState<Sort>('common')
-  const [justUnlocked, setJustUnlocked] = useState<string[]>([])
-  const previous = useRef<GameView | null>(null)
+  const [query, setQuery] = useState('')
 
   const accept = useCallback((next: GameView) => {
     const before = previous.current
@@ -77,8 +76,10 @@ export function GameScreen({ appid, running, onAuthProblem }: Props) {
     const order =
       filter === 'unlocked' ? (a: Achievement, b: Achievement) => (b.unlockedAt ?? 0) - (a.unlockedAt ?? 0) : by[sort]
     const pinned = (a: Achievement): number => (userData[a.id]?.pinned ? 1 : 0)
-    return items.sort((a, b) => pinned(b) - pinned(a) || order(a, b))
-  }, [view, filter, sort, userData])
+    return view.achievements
+      .filter((a) => a.unlocked === (filter === 'unlocked') && matches(query, a.name, a.description))
+      .sort((a, b) => pinned(b) - pinned(a) || order(a, b))
+  }, [view, filter, sort, query, userData])
 
   if (!view) {
     return error ? (
@@ -140,10 +141,19 @@ export function GameScreen({ appid, running, onAuthProblem }: Props) {
                 ))}
               </select>
             )}
+            <div className="flex basis-full">
+              <SearchBox value={query} onChange={setQuery} placeholder="Buscar conquista por nome ou descrição" />
+            </div>
           </div>
 
           {list.length === 0 && (
-            <p className="empty">{filter === 'pending' ? 'Nada pendente. 100%!' : 'Nenhuma conquista desbloqueada ainda.'}</p>
+            <Empty>
+              {query.trim() !== ''
+                ? `Nada encontrado para “${query.trim()}”.`
+                : filter === 'pending'
+                  ? 'Nada pendente. 100%!'
+                  : 'Nenhuma conquista obtida ainda.'}
+            </Empty>
           )}
 
           <ul className="flex flex-col gap-2">

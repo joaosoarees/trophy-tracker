@@ -27,13 +27,10 @@ export function Dashboard({ onPick, onAuthProblem }: Props) {
     },
     [onAuthProblem]
   )
-
-  useEffect(() => {
-    void load(false)
-    return window.api.onDashboardProgress((done, total) => setProgress([done, total]))
-  }, [load])
+  const [query, setQuery] = useState('')
 
   const incomplete = games?.filter((g) => g.unlocked < g.total).length ?? 0
+  const shown = games?.filter((g) => matches(query, g.name)) ?? []
 
   return (
     <section className="dashboard">
@@ -54,10 +51,18 @@ export function Dashboard({ onPick, onAuthProblem }: Props) {
         {error && <p className="text-destructive mt-1">{error}</p>}
       </header>
 
-      {games && games.length === 0 && !loading && <p className="empty">Nenhum jogo jogado com conquistas.</p>}
+      {games && games.length > 0 && (
+        <div className="mb-3 flex">
+          <SearchBox value={query} onChange={setQuery} placeholder="Buscar jogo" />
+        </div>
+      )}
 
-      <ul className="games">
-        {games?.map((g) => {
+      {games && !loading && shown.length === 0 && (
+        <Empty>{query.trim() !== '' ? `Nenhum jogo encontrado para “${query.trim()}”.` : 'Nenhum jogo jogado com conquistas.'}</Empty>
+      )}
+
+      <ul className="flex flex-col gap-1.5">
+        {shown.map((g) => {
           const percent = Math.round((g.unlocked / g.total) * 100)
           const complete = g.unlocked === g.total
           return (

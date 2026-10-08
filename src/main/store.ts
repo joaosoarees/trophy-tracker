@@ -35,6 +35,7 @@ export class Store {
   private config: ConfigFile
   private cache: CacheFile
   private userData: UserDataFile
+  private settings: SettingsFile
 
   constructor(
     private dir: string,
@@ -44,6 +45,7 @@ export class Store {
     this.config = this.read('config.json', {})
     this.cache = this.read('cache.json', { games: {}, summaries: {} })
     this.userData = this.read('userdata.json', {})
+    this.settings = this.read('settings.json', { alwaysOnTop: false })
   }
 
   private read<T>(name: string, fallback: T): T {

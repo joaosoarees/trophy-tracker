@@ -89,6 +89,9 @@ export interface Api {
   getUserData(appid: number): Promise<GameUserData>
   setUserData(appid: number, achievementId: string, data: AchievementUserData): Promise<void>
 
+  getAlwaysOnTop(): Promise<boolean>
+  setAlwaysOnTop(value: boolean): Promise<boolean>
+
   openGuide(site: GuideSite, appid: number, game: string, achievement: string): Promise<void>
   openExternal(target: 'apikey' | 'privacy' | 'account'): Promise<void>
 

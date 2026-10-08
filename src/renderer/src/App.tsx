@@ -27,11 +27,14 @@ export function App() {
   const [current, setCurrent] = useState<Current>(null)
   /** Jogo escolhido no painel; vale até um jogo ser aberto na Steam. */
   const [picked, setPicked] = useState<number | null>(null)
+  const [onTop, setOnTop] = useState(false)
+  const [confirmingReset, setConfirmingReset] = useState(false)
 
   const refreshState = useCallback(() => window.api.getState().then(setState), [])
 
   useEffect(() => {
     void refreshState()
+    void window.api.getAlwaysOnTop().then(setOnTop)
   }, [refreshState])
 
   useEffect(() => {
@@ -74,11 +77,26 @@ export function App() {
         <TabButton active={tab === 'dashboard'} onClick={() => setTab('dashboard')}>
           <LayoutGrid />
           Painel
-        </button>
-        <span className="spacer" />
-        <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
-          Configuração
-        </button>
+        </TabButton>
+        <span className="flex-1" />
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          title={onTop ? 'Deixar de manter a janela no topo' : 'Manter a janela sempre no topo'}
+          className={cn(onTop && 'text-primary hover:text-primary')}
+          onClick={() => void window.api.setAlwaysOnTop(!onTop).then(setOnTop)}
+        >
+          <Pin className={cn(onTop && 'fill-current')} />
+        </Button>
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          title="Configuração"
+          className={cn(tab === 'settings' && 'text-primary hover:text-primary')}
+          onClick={() => setTab('settings')}
+        >
+          <Settings />
+        </Button>
       </nav>
 
       {tab === 'game' &&
