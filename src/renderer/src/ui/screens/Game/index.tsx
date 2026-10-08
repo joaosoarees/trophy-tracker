@@ -28,6 +28,9 @@ export function Game({ appid, running }: IGameProps) {
     filter,
     sort,
     query,
+    hiddenOnly,
+    hiddenCount,
+    handleToggleHiddenOnly,
     setFilter,
     setQuery,
     handleSortChange,
@@ -83,7 +86,10 @@ export function Game({ appid, running }: IGameProps) {
             query={query}
             pending={pending}
             unlocked={view.unlockedCount}
+            hiddenOnly={hiddenOnly}
+            hiddenCount={hiddenCount}
             onFilterChange={setFilter}
+            onHiddenOnlyToggle={handleToggleHiddenOnly}
             onSortChange={handleSortChange}
             onQueryChange={setQuery}
           />
@@ -92,9 +98,11 @@ export function Game({ appid, running }: IGameProps) {
             <Empty>
               {query.trim() !== ''
                 ? t.game.nothingFound(query.trim())
-                : filter === 'pending'
-                  ? t.game.nothingPending
-                  : t.game.nothingUnlocked}
+                : hiddenOnly
+                  ? t.game.nothingHidden
+                  : filter === 'pending'
+                    ? t.game.nothingPending
+                    : t.game.nothingUnlocked}
             </Empty>
           )}
 

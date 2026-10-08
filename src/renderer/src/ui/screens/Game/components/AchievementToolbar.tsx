@@ -1,3 +1,5 @@
+import { EyeOff } from 'lucide-react';
+
 import { useT } from '@app/hooks/useT';
 import {
   type AchievementFilter,
@@ -6,6 +8,7 @@ import {
 } from '@shared/achievementSort';
 import { SearchBox } from '@ui/components/SearchBox';
 import { Segmented } from '@ui/components/Segmented';
+import { Button } from '@ui/primitives/button';
 
 interface IAchievementToolbarProps {
   filter: AchievementFilter;
@@ -14,7 +17,11 @@ interface IAchievementToolbarProps {
   query: string;
   pending: number;
   unlocked: number;
+  hiddenOnly: boolean;
+  /** Hidden achievements in the list being shown. */
+  hiddenCount: number;
   onFilterChange: (filter: AchievementFilter) => void;
+  onHiddenOnlyToggle: () => void;
   onSortChange: (sort: AchievementSort) => void;
   onQueryChange: (query: string) => void;
 }
@@ -25,7 +32,10 @@ export function AchievementToolbar({
   query,
   pending,
   unlocked,
+  hiddenOnly,
+  hiddenCount,
   onFilterChange,
+  onHiddenOnlyToggle,
   onSortChange,
   onQueryChange,
 }: IAchievementToolbarProps) {
@@ -41,6 +51,17 @@ export function AchievementToolbar({
           { value: 'unlocked', label: t.game.unlocked(unlocked) },
         ]}
       />
+      <Button
+        size="sm"
+        variant={hiddenOnly ? 'default' : 'ghost'}
+        className="h-8 px-2 text-xs"
+        title={t.game.hiddenOnlyTitle}
+        aria-pressed={hiddenOnly}
+        onClick={onHiddenOnlyToggle}
+      >
+        <EyeOff />
+        {t.game.hiddenOnly(hiddenCount)}
+      </Button>
       <span className="flex-1" />
       <select
         value={sort}

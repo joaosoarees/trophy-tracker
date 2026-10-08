@@ -13,6 +13,8 @@ type NavigationStore = {
   tab: Tab;
   /** Which list the game screen shows; the same for every game. */
   achievementFilter: AchievementFilter;
+  /** Whether the game screen shows only hidden achievements. */
+  hiddenOnly: boolean;
   /** Which list the dashboard shows. */
   dashboardFilter: DashboardFilter;
   /** Game picked in the dashboard; holds until a game is opened on Steam. */
@@ -27,6 +29,7 @@ type NavigationActions = {
   goTo: (tab: Tab) => void;
   showAchievements: (filter: AchievementFilter) => void;
   showGames: (filter: DashboardFilter) => void;
+  toggleHiddenOnly: () => void;
   pickGame: (appid: number) => void;
   /** Opening a game on Steam brings the app to it, once per opened game. */
   followRunningGame: (appid: number | null) => void;
@@ -41,6 +44,7 @@ const KEYS = {
   tab: 'view-tab',
   achievementFilter: 'view-achievement-filter',
   dashboardFilter: 'view-dashboard-filter',
+  hiddenOnly: 'view-hidden-only',
   pickedAppId: 'view-picked',
   seenRunningAppId: 'view-seen-running',
 } as const;
@@ -67,6 +71,7 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
   tab: safeSessionStorageGetItem<Tab>(KEYS.tab) ?? 'game',
   achievementFilter: savedFilter(),
   dashboardFilter: savedDashboardFilter(),
+  hiddenOnly: safeSessionStorageGetItem<unknown>(KEYS.hiddenOnly) === true,
   pickedAppId: safeSessionStorageGetItem<number>(KEYS.pickedAppId),
   seenRunningAppId: safeSessionStorageGetItem<number>(KEYS.seenRunningAppId),
   reconfiguringFrom: null,
@@ -101,6 +106,18 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
       },
       false,
       'navigation/showGames',
+    );
+  },
+
+  toggleHiddenOnly: () => {
+    const hiddenOnly = !get().navigation.hiddenOnly;
+    remember('hiddenOnly', hiddenOnly);
+    set(
+      (prevState) => {
+        prevState.navigation.hiddenOnly = hiddenOnly;
+      },
+      false,
+      'navigation/toggleHiddenOnly',
     );
   },
 

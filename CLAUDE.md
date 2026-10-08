@@ -54,6 +54,7 @@ src/shared/            the contract between the two sides: types and pure logic
   ipcEvents.ts           names of the events the main process pushes to the interface
   checklist.ts           parseChecklist, createChecklistItem, shownProgress
   achievementSort.ts     the orders each list of a game can have, and the stored preference
+  dashboardSort.ts       the same for the two lists of the dashboard
   view.ts                mergeView: merges reads, reusing what did not change
   validation.ts          SteamID and key formats
   i18n/                  languages: index.ts (registry) and locales/ (one file per language)
@@ -238,7 +239,7 @@ Conventions:
 - Do not use `persist`: what must survive closing the app is written by the main process (`main/storage/Store.ts`). The navigation slice keeps the tab and the picked game in `sessionStorage` only so they survive the window reload of a language change.
 - Where a piece of screen state lives depends on how long it should last:
   - only while the screen is mounted (search text, an open field) → `useState` in the controller;
-  - across games and the reload of a language change (current tab, Pending/Unlocked list, picked game) → `navigationSlice`, mirrored in `sessionStorage`;
+  - across games and the reload of a language change (current tab, Pending/Unlocked list and hidden-only filter of a game, In progress/Complete list of the dashboard, picked game) → `navigationSlice`, mirrored in `sessionStorage`;
   - across restarts, because it is a preference (order of each list, always on top, language) → `settingsSlice`, saved by the main process in `settings.json`.
 - There is no router: `navigationSlice` holds the tab and `AppShell` draws it. The Game and Dashboard tabs stay mounted; switching tabs only hides the other one.
 - Edits to notes and checklists update the screen right away and are written half a second later (`app/lib/saver.ts`), with a flush when the window closes.

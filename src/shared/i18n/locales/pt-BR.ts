@@ -77,6 +77,9 @@ export const ptBR: Messages = {
     pending: (n) => `Pendentes ${n}`,
     unlocked: (n) => `Obtidas ${n}`,
     search: 'Buscar conquista por nome ou descrição',
+    hiddenOnly: (n) => `Ocultas ${n}`,
+    hiddenOnlyTitle: 'Mostrar só as conquistas ocultas',
+    nothingHidden: 'Nenhuma conquista oculta nesta lista.',
     sort: {
       common: 'Mais comuns primeiro',
       rare: 'Mais raras primeiro',

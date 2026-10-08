@@ -9,7 +9,7 @@ import {
   type IAchievementUserData,
 } from '@shared/types/UserData';
 
-import { listAchievements } from './achievementList';
+import { countHidden, listAchievements } from './achievementList';
 
 // Stable defaults: a new array or object on every render would re-render the screen each time.
 const NONE_UNLOCKED: string[] = [];
@@ -24,8 +24,10 @@ export function useGameController(appid: number) {
     justUnlocked,
     userData,
     filter,
+    hiddenOnly,
     sorts,
     open,
+    toggleHiddenOnly,
     load,
     updateUserData,
     dismissUnlocked,
@@ -43,6 +45,8 @@ export function useGameController(appid: number) {
         userData: state.userData.byGame[appid] ?? NO_USER_DATA,
         // Shared by every game, so they hold when the game changes.
         filter: state.navigation.achievementFilter,
+        hiddenOnly: state.navigation.hiddenOnly,
+        toggleHiddenOnly: state.navigation.toggleHiddenOnly,
         sorts: state.settings.achievementSort,
         setFilter: state.navigation.showAchievements,
         setAchievementSort: state.settings.setAchievementSort,
@@ -62,9 +66,15 @@ export function useGameController(appid: number) {
   const achievements = useMemo(
     () =>
       view
-        ? listAchievements(view, userData, { filter, sort, query, locale })
+        ? listAchievements(view, userData, {
+            filter,
+            sort,
+            query,
+            locale,
+            hiddenOnly,
+          })
         : [],
-    [view, userData, filter, sort, query, locale],
+    [view, userData, filter, sort, query, locale, hiddenOnly],
   );
 
   const handleUserDataChange = useCallback(
@@ -92,6 +102,9 @@ export function useGameController(appid: number) {
     filter,
     sort,
     query,
+    hiddenOnly,
+    hiddenCount: view ? countHidden(view, filter) : 0,
+    handleToggleHiddenOnly: toggleHiddenOnly,
     setFilter,
     setQuery,
     handleSortChange: (next: AchievementSort) =>

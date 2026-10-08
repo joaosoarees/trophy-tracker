@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { listAchievements } from '../src/renderer/src/ui/screens/Game/achievementList';
+import {
+  countHidden,
+  listAchievements,
+} from '../src/renderer/src/ui/screens/Game/achievementList';
 import { type IAchievement } from '../src/shared/types/Achievement';
 import { type IGameView } from '../src/shared/types/Game';
 
@@ -132,6 +135,34 @@ describe('listAchievements', () => {
     expect(sorted('rare')).toEqual(['new', 'mid', 'old']);
     expect(sorted('common')).toEqual(['old', 'mid', 'new']);
     expect(sorted('name')).toEqual(['mid', 'old', 'new']);
+  });
+
+  it('can keep only the hidden achievements of the list', () => {
+    const mixed = view([
+      achievement('a', { hidden: true }),
+      achievement('b'),
+      achievement('c', { hidden: true, unlocked: true, unlockedAt: 5 }),
+      achievement('d', { unlocked: true, unlockedAt: 9 }),
+    ]);
+    expect(
+      ids(listAchievements(mixed, {}, { ...base, hiddenOnly: true })),
+    ).toEqual(['a']);
+    expect(
+      ids(
+        listAchievements(
+          mixed,
+          {},
+          {
+            ...base,
+            filter: 'unlocked',
+            sort: 'recent',
+            hiddenOnly: true,
+          },
+        ),
+      ),
+    ).toEqual(['c']);
+    expect(countHidden(mixed, 'pending')).toBe(1);
+    expect(countHidden(mixed, 'unlocked')).toBe(1);
   });
 
   it('searches name and description without caring about accents or case', () => {
