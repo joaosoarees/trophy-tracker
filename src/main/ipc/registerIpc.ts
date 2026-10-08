@@ -90,6 +90,8 @@ export function registerIpc({
       return state;
     },
 
+    setAchievementSort: (sort) => store.setAchievementSort(sort),
+
     getAlwaysOnTop: () => store.getAlwaysOnTop(),
     setAlwaysOnTop: (value) => {
       store.setAlwaysOnTop(value);

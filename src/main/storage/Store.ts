@@ -7,6 +7,10 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 
+import {
+  type IAchievementSort,
+  parseAchievementSort,
+} from '@shared/achievementSort';
 import { DEFAULT_LANGUAGE, isLanguage, type Language } from '@shared/i18n';
 import { type IGameView } from '@shared/types/Game';
 import { type IProfile } from '@shared/types/Profile';
@@ -58,6 +62,7 @@ interface ICacheFile {
 interface ISettingsFile {
   alwaysOnTop: boolean;
   language?: string;
+  achievementSort?: unknown;
 }
 
 type UserDataFile = Record<string, GameUserData>;
@@ -216,6 +221,15 @@ export class Store {
     this.cache.art = {};
     this.cache.language = this.getLanguage();
     this.saveCache();
+  }
+
+  getAchievementSort(): IAchievementSort {
+    return parseAchievementSort(this.settings.achievementSort);
+  }
+
+  setAchievementSort(sort: IAchievementSort): void {
+    this.settings.achievementSort = parseAchievementSort(sort);
+    this.write('settings.json', this.settings);
   }
 
   getAlwaysOnTop(): boolean {

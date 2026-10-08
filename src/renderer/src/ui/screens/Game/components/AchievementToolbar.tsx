@@ -1,17 +1,21 @@
 import { useT } from '@app/hooks/useT';
+import {
+  type AchievementFilter,
+  type AchievementSort,
+  SORTS_BY_FILTER,
+} from '@shared/achievementSort';
 import { SearchBox } from '@ui/components/SearchBox';
 import { Segmented } from '@ui/components/Segmented';
 
-import { type Filter, type Sort, SORTS } from '../achievementList';
-
 interface IAchievementToolbarProps {
-  filter: Filter;
-  sort: Sort;
+  filter: AchievementFilter;
+  /** The order chosen for the list being shown. */
+  sort: AchievementSort;
   query: string;
   pending: number;
   unlocked: number;
-  onFilterChange: (filter: Filter) => void;
-  onSortChange: (sort: Sort) => void;
+  onFilterChange: (filter: AchievementFilter) => void;
+  onSortChange: (sort: AchievementSort) => void;
   onQueryChange: (query: string) => void;
 }
 
@@ -29,7 +33,7 @@ export function AchievementToolbar({
 
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2">
-      <Segmented<Filter>
+      <Segmented<AchievementFilter>
         value={filter}
         onChange={onFilterChange}
         options={[
@@ -38,19 +42,19 @@ export function AchievementToolbar({
         ]}
       />
       <span className="flex-1" />
-      {filter === 'pending' && (
-        <select
-          value={sort}
-          onChange={(event) => onSortChange(event.target.value as Sort)}
-          className="bg-muted text-foreground h-8 rounded-md border px-2 text-xs"
-        >
-          {SORTS.map((value) => (
-            <option key={value} value={value}>
-              {t.game.sort[value]}
-            </option>
-          ))}
-        </select>
-      )}
+      <select
+        value={sort}
+        onChange={(event) =>
+          onSortChange(event.target.value as AchievementSort)
+        }
+        className="bg-muted text-foreground h-8 rounded-md border px-2 text-xs"
+      >
+        {SORTS_BY_FILTER[filter].map((value) => (
+          <option key={value} value={value}>
+            {t.game.sort[value]}
+          </option>
+        ))}
+      </select>
       <div className="flex basis-full">
         <SearchBox
           value={query}

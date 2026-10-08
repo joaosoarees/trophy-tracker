@@ -1,3 +1,4 @@
+import { type IAchievementSort } from '@shared/achievementSort';
 import { type Language } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
 
@@ -16,6 +17,10 @@ export class SettingsService extends Service {
   /** Saves the language and drops the translated cache; the caller decides whether to reload. */
   static setLanguage(language: Language): Promise<IAppState> {
     return this.api.setLanguage(language);
+  }
+
+  static setAchievementSort(sort: IAchievementSort): Promise<void> {
+    return this.api.setAchievementSort(sort);
   }
 
   static getAlwaysOnTop(): Promise<boolean> {

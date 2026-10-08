@@ -81,6 +81,8 @@ export const ptBR: Messages = {
       common: 'Mais comuns primeiro',
       rare: 'Mais raras primeiro',
       closest: 'Mais perto de concluir',
+      recent: 'Mais recentes primeiro',
+      oldest: 'Mais antigas primeiro',
       name: 'Nome',
     },
     nothingFound: (query) => `Nada encontrado para “${query}”.`,

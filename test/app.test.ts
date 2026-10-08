@@ -270,6 +270,33 @@ describe('Store', () => {
     });
   });
 
+  it('remembers the order chosen for each list and ignores invalid stored values', () => {
+    const dir = tempDir();
+    const store = new Store(dir);
+    expect(store.getAchievementSort()).toEqual({
+      pending: 'common',
+      unlocked: 'recent',
+    });
+
+    store.setAchievementSort({ pending: 'closest', unlocked: 'rare' });
+    expect(new Store(dir).getAchievementSort()).toEqual({
+      pending: 'closest',
+      unlocked: 'rare',
+    });
+
+    // `closest` only makes sense for pending achievements.
+    writeFileSync(
+      join(dir, 'settings.json'),
+      JSON.stringify({
+        achievementSort: { pending: 'recent', unlocked: 'closest' },
+      }),
+    );
+    expect(new Store(dir).getAchievementSort()).toEqual({
+      pending: 'common',
+      unlocked: 'recent',
+    });
+  });
+
   it('persists notes and pins, and removes empty entries', () => {
     const dir = tempDir();
     const store = new Store(dir);

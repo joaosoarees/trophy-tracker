@@ -1,11 +1,17 @@
 import { safeSessionStorageGetItem } from '@app/lib/safeSessionStorageGetItem';
 import type { StoreSlice } from '@app/store/Store';
+import {
+  type AchievementFilter,
+  isAchievementFilter,
+} from '@shared/achievementSort';
 import { type Language } from '@shared/i18n';
 
 export type Tab = 'game' | 'dashboard' | 'settings';
 
 type NavigationStore = {
   tab: Tab;
+  /** Which list the game screen shows; the same for every game. */
+  achievementFilter: AchievementFilter;
   /** Game picked in the dashboard; holds until a game is opened on Steam. */
   pickedAppId: number | null;
   /** Running game the app has already jumped to, so a reload does not jump again. */
@@ -16,6 +22,7 @@ type NavigationStore = {
 
 type NavigationActions = {
   goTo: (tab: Tab) => void;
+  showAchievements: (filter: AchievementFilter) => void;
   pickGame: (appid: number) => void;
   /** Opening a game on Steam brings the app to it, once per opened game. */
   followRunningGame: (appid: number | null) => void;
@@ -28,6 +35,7 @@ export type NavigationSlice = NavigationStore & NavigationActions;
 // Where the user was survives the window reload of a language change (but not closing the app).
 const KEYS = {
   tab: 'view-tab',
+  achievementFilter: 'view-achievement-filter',
   pickedAppId: 'view-picked',
   seenRunningAppId: 'view-seen-running',
 } as const;
@@ -36,11 +44,18 @@ function remember(key: keyof typeof KEYS, value: unknown): void {
   sessionStorage.setItem(KEYS[key], JSON.stringify(value));
 }
 
+/** The app always opens on what is left to do; the choice only survives a reload. */
+function savedFilter(): AchievementFilter {
+  const saved = safeSessionStorageGetItem<unknown>(KEYS.achievementFilter);
+  return isAchievementFilter(saved) ? saved : 'pending';
+}
+
 export const createNavigationSlice: StoreSlice<NavigationSlice> = (
   set,
   get,
 ) => ({
   tab: safeSessionStorageGetItem<Tab>(KEYS.tab) ?? 'game',
+  achievementFilter: savedFilter(),
   pickedAppId: safeSessionStorageGetItem<number>(KEYS.pickedAppId),
   seenRunningAppId: safeSessionStorageGetItem<number>(KEYS.seenRunningAppId),
   reconfiguringFrom: null,
@@ -53,6 +68,17 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
       },
       false,
       'navigation/goTo',
+    );
+  },
+
+  showAchievements: (filter) => {
+    remember('achievementFilter', filter);
+    set(
+      (prevState) => {
+        prevState.navigation.achievementFilter = filter;
+      },
+      false,
+      'navigation/showAchievements',
     );
   },
 

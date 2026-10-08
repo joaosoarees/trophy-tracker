@@ -39,6 +39,7 @@ export class SetupService {
       language: this.store.getLanguage(),
       profile: this.store.getProfile(),
       configError: this.configError,
+      achievementSort: this.store.getAchievementSort(),
     };
   }
 

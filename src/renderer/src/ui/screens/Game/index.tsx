@@ -29,8 +29,8 @@ export function Game({ appid, running }: IGameProps) {
     sort,
     query,
     setFilter,
-    setSort,
     setQuery,
+    handleSortChange,
     handleUserDataChange,
     handleRefresh,
     handleDismissUnlocked,
@@ -84,7 +84,7 @@ export function Game({ appid, running }: IGameProps) {
             pending={pending}
             unlocked={view.unlockedCount}
             onFilterChange={setFilter}
-            onSortChange={setSort}
+            onSortChange={handleSortChange}
             onQueryChange={setQuery}
           />
 

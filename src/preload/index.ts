@@ -31,6 +31,7 @@ const calls = [
   'getUserData',
   'setUserData',
   'setLanguage',
+  'setAchievementSort',
   'getAlwaysOnTop',
   'setAlwaysOnTop',
   'openGuide',

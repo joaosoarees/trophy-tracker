@@ -31,6 +31,7 @@ describe('SetupService', () => {
       language: 'en',
       profile: null,
       configError: null,
+      achievementSort: { pending: 'common', unlocked: 'recent' },
     });
   });
 

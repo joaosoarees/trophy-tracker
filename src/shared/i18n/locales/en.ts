@@ -79,6 +79,8 @@ export const en = {
       common: 'Most common first',
       rare: 'Rarest first',
       closest: 'Closest to done',
+      recent: 'Most recent first',
+      oldest: 'Oldest first',
       name: 'Name',
     },
     nothingFound: (query: string) => `Nothing found for “${query}”.`,

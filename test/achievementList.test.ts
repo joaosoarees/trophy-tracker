@@ -100,16 +100,38 @@ describe('listAchievements', () => {
     ).toBe('rare');
   });
 
-  it('shows unlocked ones newest first, ignoring the sort', () => {
-    expect(
+  it('sorts the unlocked list by date, rarity or name', () => {
+    const unlocked = view([
+      achievement('old', {
+        unlocked: true,
+        unlockedAt: 100,
+        rarity: 80,
+        name: 'Beta',
+      }),
+      achievement('new', {
+        unlocked: true,
+        unlockedAt: 900,
+        rarity: 5,
+        name: 'Gamma',
+      }),
+      achievement('mid', {
+        unlocked: true,
+        unlockedAt: 500,
+        rarity: 40,
+        name: 'Alpha',
+      }),
+      achievement('pending'),
+    ]);
+    const sorted = (sort: 'recent' | 'oldest' | 'rare' | 'common' | 'name') =>
       ids(
-        listAchievements(
-          game,
-          {},
-          { ...base, filter: 'unlocked', sort: 'name' },
-        ),
-      ),
-    ).toEqual(['new', 'old']);
+        listAchievements(unlocked, {}, { ...base, filter: 'unlocked', sort }),
+      );
+
+    expect(sorted('recent')).toEqual(['new', 'mid', 'old']);
+    expect(sorted('oldest')).toEqual(['old', 'mid', 'new']);
+    expect(sorted('rare')).toEqual(['new', 'mid', 'old']);
+    expect(sorted('common')).toEqual(['old', 'mid', 'new']);
+    expect(sorted('name')).toEqual(['mid', 'old', 'new']);
   });
 
   it('searches name and description without caring about accents or case', () => {

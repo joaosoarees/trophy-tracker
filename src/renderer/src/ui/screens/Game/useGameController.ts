@@ -3,12 +3,13 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { useLocale } from '@app/hooks/useLocale';
 import { useStore } from '@app/store';
+import { type AchievementSort } from '@shared/achievementSort';
 import {
   type GameUserData,
   type IAchievementUserData,
 } from '@shared/types/UserData';
 
-import { type Filter, listAchievements, type Sort } from './achievementList';
+import { listAchievements } from './achievementList';
 
 // Stable defaults: a new array or object on every render would re-render the screen each time.
 const NONE_UNLOCKED: string[] = [];
@@ -22,10 +23,14 @@ export function useGameController(appid: number) {
     error,
     justUnlocked,
     userData,
+    filter,
+    sorts,
     open,
     load,
     updateUserData,
     dismissUnlocked,
+    setFilter,
+    setAchievementSort,
   } = useStore(
     useShallow((state) => {
       const entry = state.games.entries[appid];
@@ -36,6 +41,11 @@ export function useGameController(appid: number) {
         error: entry?.error ?? null,
         justUnlocked: entry?.justUnlocked ?? NONE_UNLOCKED,
         userData: state.userData.byGame[appid] ?? NO_USER_DATA,
+        // Shared by every game, so they hold when the game changes.
+        filter: state.navigation.achievementFilter,
+        sorts: state.settings.achievementSort,
+        setFilter: state.navigation.showAchievements,
+        setAchievementSort: state.settings.setAchievementSort,
         open: state.games.open,
         load: state.games.load,
         updateUserData: state.userData.update,
@@ -43,9 +53,9 @@ export function useGameController(appid: number) {
       };
     }),
   );
-  const [filter, setFilter] = useState<Filter>('pending');
-  const [sort, setSort] = useState<Sort>('common');
+  // The search is about one game, so it stays with the screen.
   const [query, setQuery] = useState('');
+  const sort = sorts[filter];
 
   useEffect(() => open(appid), [open, appid]);
 
@@ -83,8 +93,9 @@ export function useGameController(appid: number) {
     sort,
     query,
     setFilter,
-    setSort,
     setQuery,
+    handleSortChange: (next: AchievementSort) =>
+      void setAchievementSort(filter, next),
     handleUserDataChange,
     handleRefresh: () => void load(appid, true),
     handleDismissUnlocked: () => dismissUnlocked(appid),

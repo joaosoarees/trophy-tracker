@@ -1,3 +1,4 @@
+import { type IAchievementSort } from '../achievementSort';
 import { type Language } from '../i18n';
 
 import { type IAppState } from './AppState';
@@ -40,6 +41,8 @@ export interface IApi {
 
   /** Saves the language and drops the translated cache; the caller decides whether to reload the window. */
   setLanguage: (language: Language) => Promise<IAppState>;
+
+  setAchievementSort: (sort: IAchievementSort) => Promise<void>;
 
   getAlwaysOnTop: () => Promise<boolean>;
   setAlwaysOnTop: (value: boolean) => Promise<boolean>;

@@ -53,6 +53,7 @@ src/shared/            the contract between the two sides: types and pure logic
                          UserData, Guide, and Api (IApi: everything the interface can ask)
   ipcEvents.ts           names of the events the main process pushes to the interface
   checklist.ts           parseChecklist, createChecklistItem, shownProgress
+  achievementSort.ts     the orders each list of a game can have, and the stored preference
   view.ts                mergeView: merges reads, reusing what did not change
   validation.ts          SteamID and key formats
   i18n/                  languages: index.ts (registry) and locales/ (one file per language)
@@ -220,8 +221,8 @@ store/
   connect.ts            wires the store to the main process events once the app is set up
   slices/
     sessionSlice.ts       language, current game and failure counter
-    settingsSlice.ts      app state from the main process, always on top, language change, erase
-    navigationSlice.ts    current tab, game picked in the dashboard, redoing the setup
+    settingsSlice.ts      app state from the main process, always on top, list order, language change, erase
+    navigationSlice.ts    current tab, Pending/Unlocked list, game picked in the dashboard, redoing the setup
     gamesSlice.ts         game views already read, by appid
     userDataSlice.ts      notes, pins and checklists
     dashboardSlice.ts     dashboard
@@ -235,7 +236,10 @@ Conventions:
 - Slices reach the main process through `@app/services`, never through `window.api`.
 - Controllers read state and actions together with `useStore(useShallow(state => ({ ... })))`. Default values inside the selector must be stable constants (e.g. `NONE_UNLOCKED`), otherwise the component re-renders every time.
 - Do not use `persist`: what must survive closing the app is written by the main process (`main/storage/Store.ts`). The navigation slice keeps the tab and the picked game in `sessionStorage` only so they survive the window reload of a language change.
-- Screen-only state (filter, search, open field) stays in `useState` in the controller.
+- Where a piece of screen state lives depends on how long it should last:
+  - only while the screen is mounted (search text, an open field) → `useState` in the controller;
+  - across games and the reload of a language change (current tab, Pending/Unlocked list, picked game) → `navigationSlice`, mirrored in `sessionStorage`;
+  - across restarts, because it is a preference (order of each list, always on top, language) → `settingsSlice`, saved by the main process in `settings.json`.
 - There is no router: `navigationSlice` holds the tab and `AppShell` draws it. The Game and Dashboard tabs stay mounted; switching tabs only hides the other one.
 - Edits to notes and checklists update the screen right away and are written half a second later (`app/lib/saver.ts`), with a flush when the window closes.
 - `connectStore` drops what was read from Steam when the app leaves the configured state; language, settings and navigation are kept.

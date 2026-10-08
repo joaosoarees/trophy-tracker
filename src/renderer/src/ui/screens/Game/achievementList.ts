@@ -1,17 +1,17 @@
+import {
+  type AchievementFilter,
+  type AchievementSort,
+} from '@shared/achievementSort';
 import { shownProgress } from '@shared/checklist';
 import { type IAchievement } from '@shared/types/Achievement';
 import { type IGameView } from '@shared/types/Game';
 import { type GameUserData } from '@shared/types/UserData';
 import { matches } from '@ui/utils/text';
 
-export type Sort = 'common' | 'rare' | 'closest' | 'name';
-export type Filter = 'pending' | 'unlocked';
-
-export const SORTS: Sort[] = ['common', 'rare', 'closest', 'name'];
-
 interface IListOptions {
-  filter: Filter;
-  sort: Sort;
+  filter: AchievementFilter;
+  /** The order chosen for the list being shown. */
+  sort: AchievementSort;
   query: string;
   locale: string;
 }
@@ -20,8 +20,7 @@ type Compare = (a: IAchievement, b: IAchievement) => number;
 
 /**
  * The achievements a game screen shows: pending or unlocked, matching the
- * search, pinned ones first. Unlocked ones are always newest first; `sort`
- * applies to the pending ones.
+ * search, in the chosen order, pinned ones first.
  */
 export function listAchievements(
   view: IGameView,
@@ -33,15 +32,17 @@ export function listAchievements(
     return progress ? progress.current / progress.target : -1;
   };
   const byRarity: Compare = (a, b) => (b.rarity ?? -1) - (a.rarity ?? -1);
-  const by: Record<Sort, Compare> = {
+  const newestFirst: Compare = (a, b) =>
+    (b.unlockedAt ?? 0) - (a.unlockedAt ?? 0);
+  const by: Record<AchievementSort, Compare> = {
     common: byRarity,
     rare: (a, b) => (a.rarity ?? 101) - (b.rarity ?? 101),
     closest: (a, b) => ratio(b) - ratio(a) || byRarity(a, b),
     name: (a, b) => a.name.localeCompare(b.name, locale),
+    recent: newestFirst,
+    oldest: (a, b) => newestFirst(b, a),
   };
-  const newestFirst: Compare = (a, b) =>
-    (b.unlockedAt ?? 0) - (a.unlockedAt ?? 0);
-  const order = filter === 'unlocked' ? newestFirst : by[sort];
+  const order = by[sort];
   const pinned = (a: IAchievement): number => (userData[a.id]?.pinned ? 1 : 0);
 
   return view.achievements
