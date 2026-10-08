@@ -10,36 +10,38 @@ export const en = {
     network: 'Could not reach Steam. Check your connection.',
     notConfigured: 'The app has not been set up yet.',
     steamStatus: (status: number) => `Steam responded with error ${status}.`,
-    unexpected: 'Unexpected error. Try again.'
+    unexpected: 'Unexpected error. Try again.',
   },
 
   validation: {
     steamIdFormat: 'A SteamID has 17 digits and starts with 7656119.',
-    apiKeyFormat: 'A Web API key has 32 characters (letters A to F and digits).',
+    apiKeyFormat:
+      'A Web API key has 32 characters (letters A to F and digits).',
     languageRequired: 'Choose a language.',
-    privacyRequired: 'Run the privacy check before finishing.'
+    privacyRequired: 'Run the privacy check before finishing.',
   },
 
   check: {
     profileNotFound: 'Steam found no profile with that SteamID.',
-    privacyBlocked: 'Steam did not allow reading your games. Set “Game details” to Public in your privacy settings.',
+    privacyBlocked:
+      'Steam did not allow reading your games. Set “Game details” to Public in your privacy settings.',
     reasonNetwork: 'could not reach Steam',
     reasonStatus: (status: number) => `Steam responded with error ${status}`,
     reasonSteamSaid: (text: string) => `Steam responded: ${text}`,
-    reasonUnexpected: 'Steam returned an unexpected response'
+    reasonUnexpected: 'Steam returned an unexpected response',
   },
 
   toast: {
     title: (game: string) => `Achievement unlocked — ${game}`,
     body: (achievement: string, left: number) =>
-      `${achievement} · ${left === 0 ? 'all achievements unlocked!' : `${left} left`}`
+      `${achievement} · ${left === 0 ? 'all achievements unlocked!' : `${left} left`}`,
   },
 
   guides: {
     query: 'how to get',
     steam: 'Guides',
     steamTitle: 'Search the Steam community guides',
-    searchOn: (site: string) => `Search on ${site}`
+    searchOn: (site: string) => `Search on ${site}`,
   },
 
   nav: {
@@ -47,7 +49,7 @@ export const en = {
     dashboard: 'Dashboard',
     settings: 'Settings',
     pinWindow: 'Keep the window always on top',
-    unpinWindow: 'Stop keeping the window on top'
+    unpinWindow: 'Stop keeping the window on top',
   },
 
   common: {
@@ -57,14 +59,15 @@ export const en = {
     back: 'Back',
     next: 'Next',
     clearSearch: 'Clear search',
-    openInBrowser: 'Open in browser'
+    openInBrowser: 'Open in browser',
   },
 
   game: {
     none: 'No game is open and nothing has been played yet. Pick one in the Dashboard.',
     loading: 'Loading achievements…',
     running: 'running',
-    summary: (unlocked: number, total: number, percent: number) => `${unlocked} of ${total} achievements · ${percent}%`,
+    summary: (unlocked: number, total: number, percent: number) =>
+      `${unlocked} of ${total} achievements · ${percent}%`,
     left: (n: number) => `${n} left`,
     allUnlocked: 'all unlocked',
     justUnlocked: (names: string) => `Achievement unlocked: ${names}`,
@@ -76,11 +79,11 @@ export const en = {
       common: 'Most common first',
       rare: 'Rarest first',
       closest: 'Closest to done',
-      name: 'Name'
+      name: 'Name',
     },
     nothingFound: (query: string) => `Nothing found for “${query}”.`,
     nothingPending: 'Nothing pending. 100%!',
-    nothingUnlocked: 'No achievements unlocked yet.'
+    nothingUnlocked: 'No achievements unlocked yet.',
   },
 
   card: {
@@ -95,7 +98,7 @@ export const en = {
     note: 'Add a note',
     notePlaceholder: 'Your note or a guide link',
     pin: 'Pin to top',
-    unpin: 'Unpin'
+    unpin: 'Unpin',
   },
 
   checklist: {
@@ -109,13 +112,14 @@ export const en = {
       `Paste the items from a guide for “${achievement}”, one per line. Bullets and numbering are removed.`,
     pastePlaceholder: 'Item 1\nItem 2\nItem 3',
     addButton: 'Add',
-    addCount: (n: number) => `Add ${n} ${n === 1 ? 'item' : 'items'}`
+    addCount: (n: number) => `Add ${n} ${n === 1 ? 'item' : 'items'}`,
   },
 
   dashboard: {
     title: 'Dashboard',
     refreshAll: 'Refresh everything',
-    reading: (done: number, total: number) => `Reading achievements: ${done} of ${total} games…`,
+    reading: (done: number, total: number) =>
+      `Reading achievements: ${done} of ${total} games…`,
     loadingLibrary: 'Loading your library…',
     summary: (games: number, complete: number, ongoing: number) =>
       `${games} games with achievements · ${complete} complete · ${ongoing} in progress`,
@@ -123,7 +127,7 @@ export const en = {
     nothingFound: (query: string) => `No game found for “${query}”.`,
     empty: 'No played games with achievements.',
     complete: 'complete',
-    left: (n: number) => `${n} left`
+    left: (n: number) => `${n} left`,
   },
 
   settings: {
@@ -131,12 +135,14 @@ export const en = {
     account: 'Steam account',
     steamId: (id: string) => `SteamID ${id}`,
     language: 'Language',
-    languageHint: 'The app reloads to apply the language, including achievement names.',
+    languageHint:
+      'The app reloads to apply the language, including achievement names.',
     redo: 'Redo setup',
     erase: 'Erase key and SteamID',
     eraseTitle: 'Erase key and SteamID?',
-    eraseDescription: 'The app goes back to the initial setup. Your notes, checklists and pinned achievements are kept.',
-    eraseConfirm: 'Erase'
+    eraseDescription:
+      'The app goes back to the initial setup. Your notes, checklists and pinned achievements are kept.',
+    eraseConfirm: 'Erase',
   },
 
   onboarding: {
@@ -145,7 +151,7 @@ export const en = {
       account: 'Account',
       apiKey: 'Key',
       privacy: 'Privacy',
-      done: 'Done'
+      done: 'Done',
     },
     loading: 'Loading…',
     redoNotice: (reason: string) => `${reason} Set the app up again.`,
@@ -159,23 +165,25 @@ export const en = {
       items: [
         'confirm which account is yours (SteamID);',
         'create a free Steam Web API key;',
-        'check that your game details are public.'
+        'check that your game details are public.',
       ],
       keyStaysLocal: 'The key is stored only on this computer.',
       label: 'Language',
-      start: 'Get started'
+      start: 'Get started',
     },
 
     account: {
       title: 'Your account',
       description: 'Which Steam account should the app follow?',
-      detected: 'I found the account signed in to the Steam client on this computer. Confirm it is yours.',
-      notDetected: 'I could not find an account signed in to the Steam client. Paste your 17-digit SteamID below.',
+      detected:
+        'I found the account signed in to the Steam client on this computer. Confirm it is yours.',
+      notDetected:
+        'I could not find an account signed in to the Steam client. Paste your 17-digit SteamID below.',
       helpTitle: 'Where do I find my SteamID?',
       help: [
         'In the Steam client, click your name in the top right corner.',
         'Choose “Account details”.',
-        'The 17-digit number under “Steam ID”, right below the account name, is your SteamID. It is not the friend code or the username.'
+        'The 17-digit number under “Steam ID”, right below the account name, is your SteamID. It is not the friend code or the username.',
       ],
       openAccount: 'Open “Account details” in the browser',
       label: 'SteamID',
@@ -185,7 +193,7 @@ export const en = {
       verify: 'Verify',
       verifying: 'Verifying…',
       mine: 'This is my account',
-      continueAnyway: 'Continue anyway'
+      continueAnyway: 'Continue anyway',
     },
 
     apiKey: {
@@ -194,12 +202,12 @@ export const en = {
       steps: [
         'Open the Steam key page.',
         'Sign in with your account. Under “Domain name”, type anything, for example localhost.',
-        'Accept the terms, click Register and copy the 32-character key.'
+        'Accept the terms, click Register and copy the 32-character key.',
       ],
       label: 'Key',
       placeholder: 'Paste the key here',
       verify: 'Verify key',
-      verifying: 'Verifying…'
+      verifying: 'Verifying…',
     },
 
     privacy: {
@@ -210,22 +218,23 @@ export const en = {
       steps: [
         'Open the privacy settings.',
         'Set “My profile” and “Game details” to Public.',
-        'Come back and test again (Steam may take a minute to apply it).'
+        'Come back and test again (Steam may take a minute to apply it).',
       ],
-      testAgain: 'Test again'
+      testAgain: 'Test again',
     },
 
     done: {
       title: 'All set',
       description: 'The setup is complete.',
-      found: (n: number) => `I found ${n} ${n === 1 ? 'played game' : 'played games'} on your account.`,
+      found: (n: number) =>
+        `I found ${n} ${n === 1 ? 'played game' : 'played games'} on your account.`,
       howItWorks:
         'Open a game on Steam and the app switches to it on its own. With no game open it shows the last one you played; the Dashboard lists them all.',
       saveFailed: 'Could not save the setup. Go back and check the key.',
       finish: 'Enter the app',
-      saving: 'Saving…'
-    }
-  }
-}
+      saving: 'Saving…',
+    },
+  },
+};
 
-export type Messages = typeof en
+export type Messages = typeof en;

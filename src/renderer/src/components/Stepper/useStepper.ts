@@ -1,6 +1,6 @@
-import { useContext } from 'react'
-import { StepperContext } from '.'
+import { useContext } from 'react';
+import { StepperContext } from '.';
 
 export function useStepper() {
-  return useContext(StepperContext)
+  return useContext(StepperContext);
 }

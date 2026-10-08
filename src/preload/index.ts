@@ -1,18 +1,18 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import type { Api } from '../shared/types'
+import { contextBridge, ipcRenderer } from 'electron';
+import type { Api } from '../shared/types';
 
 const invoke =
   (channel: string) =>
   (...args: unknown[]) =>
-    ipcRenderer.invoke(channel, ...args)
+    ipcRenderer.invoke(channel, ...args);
 
 const listen = (channel: string) => (cb: (...args: any[]) => void) => {
-  const handler = (_e: unknown, ...args: unknown[]): void => cb(...args)
-  ipcRenderer.on(channel, handler)
+  const handler = (_e: unknown, ...args: unknown[]): void => cb(...args);
+  ipcRenderer.on(channel, handler);
   return () => {
-    ipcRenderer.removeListener(channel, handler)
-  }
-}
+    ipcRenderer.removeListener(channel, handler);
+  };
+};
 
 const calls = [
   'getState',
@@ -31,14 +31,14 @@ const calls = [
   'getAlwaysOnTop',
   'setAlwaysOnTop',
   'openGuide',
-  'openExternal'
-] as const
+  'openExternal',
+] as const;
 
 const api = {
   ...Object.fromEntries(calls.map((c) => [c, invoke(c)])),
   onGameChanged: listen('game-changed'),
   onGameUpdated: listen('game-updated'),
-  onDashboardProgress: listen('dashboard-progress')
-} as unknown as Api
+  onDashboardProgress: listen('dashboard-progress'),
+} as unknown as Api;
 
-contextBridge.exposeInMainWorld('api', api)
+contextBridge.exposeInMainWorld('api', api);

@@ -1,123 +1,153 @@
-import { LayoutGrid, Pin, Settings, Trophy } from 'lucide-react'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { useShallow } from 'zustand/react/shallow'
-import { isLanguage, LANGUAGE_CODES, LANGUAGES } from '../../shared/i18n'
-import type { AppState } from '../../shared/types'
-import { Dashboard } from './Dashboard'
-import { GameScreen } from './GameScreen'
-import { Onboarding } from './Onboarding'
-import { Empty } from '@/components/bits'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useT } from '@/lib/i18n'
-import { useSessionState } from '@/lib/useSessionState'
-import { cn } from '@/lib/utils'
-import { connectStore, useStore } from '@/store'
+import { LayoutGrid, Pin, Settings, Trophy } from 'lucide-react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { isLanguage, LANGUAGE_CODES, LANGUAGES } from '../../shared/i18n';
+import type { AppState } from '../../shared/types';
+import { Dashboard } from './Dashboard';
+import { GameScreen } from './GameScreen';
+import { Onboarding } from './Onboarding';
+import { Empty } from '@/components/bits';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useT } from '@/lib/i18n';
+import { useSessionState } from '@/lib/useSessionState';
+import { cn } from '@/lib/utils';
+import { connectStore, useStore } from '@/store';
 
-type Tab = 'game' | 'dashboard' | 'settings'
+type Tab = 'game' | 'dashboard' | 'settings';
 
-function TabButton({ active, onClick, children }: { active: boolean; onClick(): void; children: ReactNode }) {
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick(): void;
+  children: ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
       className={cn(
         '-mb-px flex items-center gap-1.5 border-b-2 px-2.5 pt-2 pb-2 text-sm font-medium transition-colors [&_svg]:size-4',
-        active ? 'border-primary text-foreground' : 'text-muted-foreground hover:text-foreground border-transparent'
+        active
+          ? 'border-primary text-foreground'
+          : 'text-muted-foreground hover:text-foreground border-transparent',
       )}
     >
       {children}
     </button>
-  )
+  );
 }
 
 export function App() {
-  const t = useT()
-  const [state, setState] = useState<AppState | null>(null)
+  const t = useT();
+  const [state, setState] = useState<AppState | null>(null);
   /** Language in use when reconfiguration started, or `null` outside of it. */
-  const [reconfiguring, setReconfiguring] = useState<string | null>(null)
+  const [reconfiguring, setReconfiguring] = useState<string | null>(null);
   // Tab, picked game and already-seen running game survive the reload of a language change.
-  const [tab, setTab] = useSessionState<Tab>('view-tab', 'game')
+  const [tab, setTab] = useSessionState<Tab>('view-tab', 'game');
   const { current, failures, language, setLanguage } = useStore(
     useShallow((state) => ({
       current: state.session.current,
       failures: state.session.failures,
       language: state.session.language,
-      setLanguage: state.session.setLanguage
-    }))
-  )
+      setLanguage: state.session.setLanguage,
+    })),
+  );
   /** Game picked in the dashboard; holds until a game is opened on Steam. */
-  const [picked, setPicked] = useSessionState<number | null>('view-picked', null)
-  const [seenRunning, setSeenRunning] = useSessionState<number | null>('view-seen-running', null)
-  const [onTop, setOnTop] = useState(false)
-  const [confirmingReset, setConfirmingReset] = useState(false)
+  const [picked, setPicked] = useSessionState<number | null>(
+    'view-picked',
+    null,
+  );
+  const [seenRunning, setSeenRunning] = useSessionState<number | null>(
+    'view-seen-running',
+    null,
+  );
+  const [onTop, setOnTop] = useState(false);
+  const [confirmingReset, setConfirmingReset] = useState(false);
 
   const applyState = useCallback(
     (next: AppState) => {
-      setLanguage(next.language)
-      setState(next)
+      setLanguage(next.language);
+      setState(next);
     },
-    [setLanguage]
-  )
-  const refreshState = useCallback(() => window.api.getState().then(applyState), [applyState])
+    [setLanguage],
+  );
+  const refreshState = useCallback(
+    () => window.api.getState().then(applyState),
+    [applyState],
+  );
 
   useEffect(() => {
-    void refreshState()
-    void window.api.getAlwaysOnTop().then(setOnTop)
-  }, [refreshState])
+    void refreshState();
+    void window.api.getAlwaysOnTop().then(setOnTop);
+  }, [refreshState]);
 
   useEffect(() => {
-    document.title = t.appTitle
-    document.documentElement.lang = language
-  }, [t, language])
+    document.title = t.appTitle;
+    document.documentElement.lang = language;
+  }, [t, language]);
 
   useEffect(() => {
-    if (state?.configured) return connectStore()
-  }, [state?.configured])
+    if (state?.configured) return connectStore();
+  }, [state?.configured]);
 
   // A read failed: check whether the key stopped being valid.
   useEffect(() => {
-    if (failures > 0) void refreshState()
-  }, [failures, refreshState])
+    if (failures > 0) void refreshState();
+  }, [failures, refreshState]);
 
   // Opening a game on Steam brings the app to it, once per opened game: reloading the window
   // with the same game still running does not undo what the user picked afterwards.
-  const runningAppId = current === null ? undefined : current.running ? current.appid : null
+  const runningAppId =
+    current === null ? undefined : current.running ? current.appid : null;
   useEffect(() => {
-    if (runningAppId === undefined || runningAppId === seenRunning) return
-    setSeenRunning(runningAppId)
-    if (runningAppId === null) return
-    setPicked(null)
-    setTab('game')
-  }, [runningAppId, seenRunning, setSeenRunning, setPicked, setTab])
+    if (runningAppId === undefined || runningAppId === seenRunning) return;
+    setSeenRunning(runningAppId);
+    if (runningAppId === null) return;
+    setPicked(null);
+    setTab('game');
+  }, [runningAppId, seenRunning, setSeenRunning, setPicked, setTab]);
 
-  if (!state) return null
+  if (!state) return null;
 
   if (!state.configured || reconfiguring !== null) {
     // Redoing the setup with the app already in use: if the language changed along the way, what is
     // loaded came from Steam in the old language, and only a reload guarantees none of it is left.
     const leave = (next?: AppState): void => {
-      if (reconfiguring !== null && language !== reconfiguring) return window.location.reload()
-      setReconfiguring(null)
-      if (next) applyState(next)
-    }
+      if (reconfiguring !== null && language !== reconfiguring)
+        return window.location.reload();
+      setReconfiguring(null);
+      if (next) applyState(next);
+    };
     return (
       <Onboarding
         state={state}
-        onCancel={reconfiguring !== null && state.configured ? () => leave() : undefined}
+        onCancel={
+          reconfiguring !== null && state.configured ? () => leave() : undefined
+        }
         onDone={leave}
       />
-    )
+    );
   }
 
   // Achievement names and art come from Steam already translated; reloading guarantees nothing old stays on screen.
   const changeLanguage = async (value: string): Promise<void> => {
-    if (!isLanguage(value) || value === language) return
-    await window.api.setLanguage(value)
-    window.location.reload()
-  }
+    if (!isLanguage(value) || value === language) return;
+    await window.api.setLanguage(value);
+    window.location.reload();
+  };
 
-  const appid = picked ?? current?.appid ?? null
-  const running = current?.running === true && appid === current.appid
+  const appid = picked ?? current?.appid ?? null;
+  const running = current?.running === true && appid === current.appid;
 
   return (
     <div className="flex h-screen flex-col">
@@ -126,7 +156,10 @@ export function App() {
           <Trophy />
           {t.nav.game}
         </TabButton>
-        <TabButton active={tab === 'dashboard'} onClick={() => setTab('dashboard')}>
+        <TabButton
+          active={tab === 'dashboard'}
+          onClick={() => setTab('dashboard')}
+        >
           <LayoutGrid />
           {t.nav.dashboard}
         </TabButton>
@@ -144,7 +177,9 @@ export function App() {
           size="icon-sm"
           variant="ghost"
           title={t.nav.settings}
-          className={cn(tab === 'settings' && 'text-primary hover:text-primary')}
+          className={cn(
+            tab === 'settings' && 'text-primary hover:text-primary',
+          )}
           onClick={() => setTab('settings')}
         >
           <Settings />
@@ -152,7 +187,12 @@ export function App() {
       </nav>
 
       {/* Both screens stay mounted; switching tabs only hides one, with no reload and no lost scroll position. */}
-      <div className={cn('flex min-h-0 flex-1 flex-col', tab !== 'game' && 'hidden')}>
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col',
+          tab !== 'game' && 'hidden',
+        )}
+      >
         {appid === null ? (
           <Empty>{t.game.none}</Empty>
         ) : (
@@ -160,11 +200,16 @@ export function App() {
         )}
       </div>
 
-      <div className={cn('flex min-h-0 flex-1 flex-col', tab !== 'dashboard' && 'hidden')}>
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col',
+          tab !== 'dashboard' && 'hidden',
+        )}
+      >
         <Dashboard
           onPick={(id) => {
-            setPicked(id)
-            setTab('game')
+            setPicked(id);
+            setTab('game');
           }}
         />
       </div>
@@ -174,10 +219,20 @@ export function App() {
           <h1 className="text-xl font-semibold">{t.settings.title}</h1>
           {state.profile && (
             <div className="bg-card flex w-full items-center gap-3 rounded-lg border p-3">
-              {state.profile.avatar && <img src={state.profile.avatar} alt="" className="size-12 rounded-md" />}
+              {state.profile.avatar && (
+                <img
+                  src={state.profile.avatar}
+                  alt=""
+                  className="size-12 rounded-md"
+                />
+              )}
               <div>
-                <strong className="block">{state.profile.name || t.settings.account}</strong>
-                <small className="text-muted-foreground">{t.settings.steamId(state.profile.steamId)}</small>
+                <strong className="block">
+                  {state.profile.name || t.settings.account}
+                </strong>
+                <small className="text-muted-foreground">
+                  {t.settings.steamId(state.profile.steamId)}
+                </small>
               </div>
             </div>
           )}
@@ -195,13 +250,22 @@ export function App() {
                 </option>
               ))}
             </select>
-            <small className="text-muted-foreground">{t.settings.languageHint}</small>
+            <small className="text-muted-foreground">
+              {t.settings.languageHint}
+            </small>
           </label>
 
-          <Button variant="secondary" onClick={() => setReconfiguring(language)}>
+          <Button
+            variant="secondary"
+            onClick={() => setReconfiguring(language)}
+          >
             {t.settings.redo}
           </Button>
-          <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setConfirmingReset(true)}>
+          <Button
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setConfirmingReset(true)}
+          >
             {t.settings.erase}
           </Button>
 
@@ -209,17 +273,22 @@ export function App() {
             <DialogContent className="max-w-[min(24rem,calc(100vw-2rem))]">
               <DialogHeader>
                 <DialogTitle>{t.settings.eraseTitle}</DialogTitle>
-                <DialogDescription>{t.settings.eraseDescription}</DialogDescription>
+                <DialogDescription>
+                  {t.settings.eraseDescription}
+                </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button variant="ghost" onClick={() => setConfirmingReset(false)}>
+                <Button
+                  variant="ghost"
+                  onClick={() => setConfirmingReset(false)}
+                >
                   {t.common.cancel}
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={() => {
-                    setConfirmingReset(false)
-                    void window.api.resetConfig().then(applyState)
+                    setConfirmingReset(false);
+                    void window.api.resetConfig().then(applyState);
                   }}
                 >
                   {t.settings.eraseConfirm}
@@ -230,5 +299,5 @@ export function App() {
         </section>
       )}
     </div>
-  )
+  );
 }

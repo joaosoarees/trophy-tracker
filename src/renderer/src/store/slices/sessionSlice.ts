@@ -1,25 +1,25 @@
-import { DEFAULT_LANGUAGE, type Language } from '../../../../shared/i18n'
-import type { StoreSlice } from '../Store'
+import { DEFAULT_LANGUAGE, type Language } from '../../../../shared/i18n';
+import type { StoreSlice } from '../Store';
 
-export type CurrentGame = { appid: number; running: boolean } | null
+export type CurrentGame = { appid: number; running: boolean } | null;
 
 type SessionStore = {
   /** Interface language; mirrors what the main process has saved. */
-  language: Language
+  language: Language;
   /** Game open on Steam or, with no game open, the last one played. */
-  current: CurrentGame
+  current: CurrentGame;
   /** Goes up on every failed read; the App checks whether the setup is still valid. */
-  failures: number
-}
+  failures: number;
+};
 
 type SessionActions = {
-  setLanguage: (language: Language) => void
-  loadCurrent: () => Promise<void>
-  setCurrent: (current: CurrentGame) => void
-  reportFailure: () => void
-}
+  setLanguage: (language: Language) => void;
+  loadCurrent: () => Promise<void>;
+  setCurrent: (current: CurrentGame) => void;
+  reportFailure: () => void;
+};
 
-export type SessionSlice = SessionStore & SessionActions
+export type SessionSlice = SessionStore & SessionActions;
 
 export const createSessionSlice: StoreSlice<SessionSlice> = (set, get) => ({
   language: DEFAULT_LANGUAGE,
@@ -29,35 +29,36 @@ export const createSessionSlice: StoreSlice<SessionSlice> = (set, get) => ({
   setLanguage: (language) =>
     set(
       (prevState) => {
-        prevState.session.language = language
+        prevState.session.language = language;
       },
       false,
-      'session/setLanguage'
+      'session/setLanguage',
     ),
 
   loadCurrent: async () => {
-    get().session.setCurrent(await window.api.getCurrentAppId())
+    get().session.setCurrent(await window.api.getCurrentAppId());
   },
 
   setCurrent: (current) => {
-    const closed = get().session.current?.running === true && current?.running !== true
+    const closed =
+      get().session.current?.running === true && current?.running !== true;
     set(
       (prevState) => {
-        prevState.session.current = current
+        prevState.session.current = current;
       },
       false,
-      'session/setCurrent'
-    )
+      'session/setCurrent',
+    );
     // Playtime has just changed; re-read only the games that changed.
-    if (closed) void get().dashboard.load('changed')
+    if (closed) void get().dashboard.load('changed');
   },
 
   reportFailure: () =>
     set(
       (prevState) => {
-        prevState.session.failures++
+        prevState.session.failures++;
       },
       false,
-      'session/reportFailure'
-    )
-})
+      'session/reportFailure',
+    ),
+});

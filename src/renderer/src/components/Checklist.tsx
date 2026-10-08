@@ -1,61 +1,78 @@
-import { ClipboardPaste, Plus, X } from 'lucide-react'
-import { useState } from 'react'
-import { parseChecklist } from '../../../shared/checklist'
-import type { ChecklistItem } from '../../../shared/types'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { useLocale, useT } from '@/lib/i18n'
-import { cn } from '@/lib/utils'
+import { ClipboardPaste, Plus, X } from 'lucide-react';
+import { useState } from 'react';
+import { parseChecklist } from '../../../shared/checklist';
+import type { ChecklistItem } from '../../../shared/types';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useLocale, useT } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 
 interface Props {
-  achievement: string
-  items: ChecklistItem[]
-  onChange(items: ChecklistItem[]): void
+  achievement: string;
+  items: ChecklistItem[];
+  onChange(items: ChecklistItem[]): void;
 }
 
 export function Checklist({ achievement, items, onChange }: Props) {
-  const t = useT()
-  const locale = useLocale()
-  const [draft, setDraft] = useState('')
-  const [pasting, setPasting] = useState(false)
-  const [pasted, setPasted] = useState('')
-  const [editing, setEditing] = useState<string | null>(null)
-  const [duplicate, setDuplicate] = useState(false)
+  const t = useT();
+  const locale = useLocale();
+  const [draft, setDraft] = useState('');
+  const [pasting, setPasting] = useState(false);
+  const [pasted, setPasted] = useState('');
+  const [editing, setEditing] = useState<string | null>(null);
+  const [duplicate, setDuplicate] = useState(false);
 
   const add = (text: string): void => {
-    const added = parseChecklist(text, items)
-    if (added.length > 0) onChange([...items, ...added])
-  }
+    const added = parseChecklist(text, items);
+    if (added.length > 0) onChange([...items, ...added]);
+  };
   /** A hand-typed item goes in as written; if it already exists, the text stays in the field with a warning. */
   const addDraft = (): void => {
-    const text = draft.trim()
-    if (text === '') return
-    const key = text.toLocaleLowerCase(locale)
-    if (items.some((i) => i.text.toLocaleLowerCase(locale) === key)) return setDuplicate(true)
-    onChange([...items, { id: `${Date.now().toString(36)}-${items.length}`, text, done: false }])
-    setDraft('')
-  }
+    const text = draft.trim();
+    if (text === '') return;
+    const key = text.toLocaleLowerCase(locale);
+    if (items.some((i) => i.text.toLocaleLowerCase(locale) === key))
+      return setDuplicate(true);
+    onChange([
+      ...items,
+      { id: `${Date.now().toString(36)}-${items.length}`, text, done: false },
+    ]);
+    setDraft('');
+  };
   const patch = (id: string, change: Partial<ChecklistItem>): void =>
-    onChange(items.map((i) => (i.id === id ? { ...i, ...change } : i)))
+    onChange(items.map((i) => (i.id === id ? { ...i, ...change } : i)));
   const rename = (id: string, text: string): void => {
-    setEditing(null)
-    if (text.trim() !== '') patch(id, { text: text.trim() })
-  }
+    setEditing(null);
+    if (text.trim() !== '') patch(id, { text: text.trim() });
+  };
 
   // Pending first: what is missing is what matters.
-  const ordered = [...items].sort((a, b) => Number(a.done) - Number(b.done))
-  const preview = parseChecklist(pasted, items).length
+  const ordered = [...items].sort((a, b) => Number(a.done) - Number(b.done));
+  const preview = parseChecklist(pasted, items).length;
 
   return (
     <div className="mt-2.5 space-y-1.5">
       {ordered.length > 0 && (
         <ul className="space-y-0.5">
           {ordered.map((item) => (
-            <li key={item.id} className="group hover:bg-muted/60 -mx-1.5 flex items-center gap-2 rounded px-1.5 py-1">
-              <Checkbox checked={item.done} onCheckedChange={(v) => patch(item.id, { done: v === true })} />
+            <li
+              key={item.id}
+              className="group hover:bg-muted/60 -mx-1.5 flex items-center gap-2 rounded px-1.5 py-1"
+            >
+              <Checkbox
+                checked={item.done}
+                onCheckedChange={(v) => patch(item.id, { done: v === true })}
+              />
               {editing === item.id ? (
                 <Input
                   autoFocus
@@ -63,15 +80,19 @@ export function Checklist({ achievement, items, onChange }: Props) {
                   className="h-6 flex-1 px-1.5 text-sm"
                   onBlur={(e) => rename(item.id, e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') rename(item.id, e.currentTarget.value)
-                    if (e.key === 'Escape') setEditing(null)
+                    if (e.key === 'Enter')
+                      rename(item.id, e.currentTarget.value);
+                    if (e.key === 'Escape') setEditing(null);
                   }}
                 />
               ) : (
                 <span
                   title={t.checklist.rename}
                   onClick={() => setEditing(item.id)}
-                  className={cn('min-w-0 flex-1 cursor-text break-words', item.done && 'text-muted-foreground line-through')}
+                  className={cn(
+                    'min-w-0 flex-1 cursor-text break-words',
+                    item.done && 'text-muted-foreground line-through',
+                  )}
                 >
                   {item.text}
                 </span>
@@ -95,12 +116,12 @@ export function Checklist({ achievement, items, onChange }: Props) {
           className="h-7 flex-1 text-sm"
           aria-invalid={duplicate}
           onChange={(e) => {
-            setDraft(e.target.value)
-            setDuplicate(false)
+            setDraft(e.target.value);
+            setDuplicate(false);
           }}
           onKeyDown={(e) => {
             // An Enter that only confirms an accent or a composition does not add anything.
-            if (e.key === 'Enter' && !e.nativeEvent.isComposing) addDraft()
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) addDraft();
           }}
         />
         <Button
@@ -113,19 +134,26 @@ export function Checklist({ achievement, items, onChange }: Props) {
         >
           <Plus />
         </Button>
-        <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={() => setPasting(true)}>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="h-7 text-xs"
+          onClick={() => setPasting(true)}
+        >
           <ClipboardPaste />
           {t.checklist.paste}
         </Button>
       </div>
 
-      {duplicate && <p className="text-warning text-xs">{t.checklist.duplicate}</p>}
+      {duplicate && (
+        <p className="text-warning text-xs">{t.checklist.duplicate}</p>
+      )}
 
       <Dialog
         open={pasting}
         onOpenChange={(open) => {
-          setPasting(open)
-          if (!open) setPasted('')
+          setPasting(open);
+          if (!open) setPasted('');
         }}
       >
         <DialogContent className="max-w-[min(26rem,calc(100vw-2rem))]">
@@ -150,16 +178,18 @@ export function Checklist({ achievement, items, onChange }: Props) {
             <Button
               disabled={preview === 0}
               onClick={() => {
-                add(pasted)
-                setPasting(false)
-                setPasted('')
+                add(pasted);
+                setPasting(false);
+                setPasted('');
               }}
             >
-              {preview === 0 ? t.checklist.addButton : t.checklist.addCount(preview)}
+              {preview === 0
+                ? t.checklist.addButton
+                : t.checklist.addCount(preview)}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

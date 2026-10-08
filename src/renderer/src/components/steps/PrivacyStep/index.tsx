@@ -1,47 +1,68 @@
-import { ExternalLink } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useFormContext, useWatch } from 'react-hook-form'
-import type { OnboardingFormData } from '@/Onboarding'
-import { StepHeader } from '@/components/StepHeader'
-import { StepperFooter, StepperNextButton, StepperPreviousButton } from '@/components/Stepper'
-import { Button } from '@/components/ui/button'
-import { useT } from '@/lib/i18n'
+import { ExternalLink } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFormContext, useWatch } from 'react-hook-form';
+import type { OnboardingFormData } from '@/Onboarding';
+import { StepHeader } from '@/components/StepHeader';
+import {
+  StepperFooter,
+  StepperNextButton,
+  StepperPreviousButton,
+} from '@/components/Stepper';
+import { Button } from '@/components/ui/button';
+import { useT } from '@/lib/i18n';
 
 export function PrivacyStep() {
-  const t = useT()
-  const form = useFormContext<OnboardingFormData>()
-  const gamesWithPlaytime = useWatch({ control: form.control, name: 'privacyStep.gamesWithPlaytime' })
-  const [isTesting, setIsTesting] = useState(false)
-  const [problem, setProblem] = useState<string | null>(null)
-  const started = useRef(false)
+  const t = useT();
+  const form = useFormContext<OnboardingFormData>();
+  const gamesWithPlaytime = useWatch({
+    control: form.control,
+    name: 'privacyStep.gamesWithPlaytime',
+  });
+  const [isTesting, setIsTesting] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const started = useRef(false);
 
   const test = useCallback(async () => {
-    setIsTesting(true)
-    setProblem(null)
-    const { accountStep, apiKeyStep } = form.getValues()
-    const result = await window.api.checkPrivacy(accountStep.steamId.trim(), apiKeyStep.apiKey)
-    setIsTesting(false)
+    setIsTesting(true);
+    setProblem(null);
+    const { accountStep, apiKeyStep } = form.getValues();
+    const result = await window.api.checkPrivacy(
+      accountStep.steamId.trim(),
+      apiKeyStep.apiKey,
+    );
+    setIsTesting(false);
 
     if (result.ok) {
-      form.setValue('privacyStep.gamesWithPlaytime', result.value.gamesWithPlaytime, { shouldValidate: true })
+      form.setValue(
+        'privacyStep.gamesWithPlaytime',
+        result.value.gamesWithPlaytime,
+        { shouldValidate: true },
+      );
     } else {
-      form.resetField('privacyStep.gamesWithPlaytime')
-      setProblem(result.error)
+      form.resetField('privacyStep.gamesWithPlaytime');
+      setProblem(result.error);
     }
-  }, [form])
+  }, [form]);
 
   // Runs the test on its own when the step opens, unless it has already passed.
   useEffect(() => {
-    if (started.current || form.getValues('privacyStep.gamesWithPlaytime') !== undefined) return
-    started.current = true
-    void test()
-  }, [form, test])
+    if (
+      started.current ||
+      form.getValues('privacyStep.gamesWithPlaytime') !== undefined
+    )
+      return;
+    started.current = true;
+    void test();
+  }, [form, test]);
 
-  const verified = gamesWithPlaytime !== undefined && !isTesting
+  const verified = gamesWithPlaytime !== undefined && !isTesting;
 
   return (
     <div>
-      <StepHeader title={t.onboarding.privacy.title} description={t.onboarding.privacy.description} />
+      <StepHeader
+        title={t.onboarding.privacy.title}
+        description={t.onboarding.privacy.description}
+      />
 
       {isTesting && <p>{t.onboarding.privacy.testing}</p>}
       {verified && <p className="text-success">{t.onboarding.privacy.ok}</p>}
@@ -56,7 +77,12 @@ export function PrivacyStep() {
                 {index === 0 && (
                   <>
                     {' '}
-                    <Button type="button" size="xs" variant="secondary" onClick={() => void window.api.openExternal('privacy')}>
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="secondary"
+                      onClick={() => void window.api.openExternal('privacy')}
+                    >
                       <ExternalLink />
                       {t.common.openInBrowser}
                     </Button>
@@ -79,5 +105,5 @@ export function PrivacyStep() {
         )}
       </StepperFooter>
     </div>
-  )
+  );
 }

@@ -4,5 +4,12 @@
     "lib": ["ES2023"],
     "types": ["node"]
   },
-  "include": ["src/main", "src/preload", "src/shared", "test", "*.config.ts", "*.config.mjs"]
+  "include": [
+    "src/main",
+    "src/preload",
+    "src/shared",
+    "test",
+    "*.config.ts",
+    "*.config.mjs"
+  ]
 }

@@ -61,15 +61,15 @@ Boundary rule: the interface never calls `fetch` against Steam and never touches
 
 ## Data sources
 
-| Data | Source | Key? |
-|---|---|---|
-| Achievement list, hidden descriptions, counter target, rarity | `IPlayerService/GetGameAchievements` (in the app language) | no |
-| Unlocked or not, and when | `ISteamUserStats/GetPlayerAchievements` | yes |
-| Current counter values | `ISteamUserStats/GetUserStatsForGame` | yes |
-| Which stat feeds each counter | local file `appcache/stats/UserGameStatsSchema_<appid>.bin` | — |
-| Library and playtime | `IPlayerService/GetOwnedGames` | yes |
-| Game art | `IStoreBrowseService/GetItems` (batched) | no |
-| Name and avatar in the onboarding | `steamcommunity.com/profiles/<id>/?xml=1` | no |
+| Data                                                          | Source                                                      | Key? |
+| ------------------------------------------------------------- | ----------------------------------------------------------- | ---- |
+| Achievement list, hidden descriptions, counter target, rarity | `IPlayerService/GetGameAchievements` (in the app language)  | no   |
+| Unlocked or not, and when                                     | `ISteamUserStats/GetPlayerAchievements`                     | yes  |
+| Current counter values                                        | `ISteamUserStats/GetUserStatsForGame`                       | yes  |
+| Which stat feeds each counter                                 | local file `appcache/stats/UserGameStatsSchema_<appid>.bin` | —    |
+| Library and playtime                                          | `IPlayerService/GetOwnedGames`                              | yes  |
+| Game art                                                      | `IStoreBrowseService/GetItems` (batched)                    | no   |
+| Name and avatar in the onboarding                             | `steamcommunity.com/profiles/<id>/?xml=1`                   | no   |
 
 Things that have already cost time:
 

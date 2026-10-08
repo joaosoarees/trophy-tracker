@@ -1,4 +1,4 @@
-import type { Messages } from './en'
+import type { Messages } from './en';
 
 export const ptBR: Messages = {
   appTitle: 'Conquistas da Steam',
@@ -11,14 +11,15 @@ export const ptBR: Messages = {
     network: 'Não foi possível falar com a Steam. Verifique sua conexão.',
     notConfigured: 'O app ainda não foi configurado.',
     steamStatus: (status) => `A Steam respondeu com erro ${status}.`,
-    unexpected: 'Erro inesperado. Tente de novo.'
+    unexpected: 'Erro inesperado. Tente de novo.',
   },
 
   validation: {
     steamIdFormat: 'O SteamID tem 17 dígitos e começa com 7656119.',
-    apiKeyFormat: 'A chave da Web API tem 32 caracteres (letras de A a F e números).',
+    apiKeyFormat:
+      'A chave da Web API tem 32 caracteres (letras de A a F e números).',
     languageRequired: 'Escolha um idioma.',
-    privacyRequired: 'Faça a verificação de privacidade antes de concluir.'
+    privacyRequired: 'Faça a verificação de privacidade antes de concluir.',
   },
 
   check: {
@@ -28,19 +29,20 @@ export const ptBR: Messages = {
     reasonNetwork: 'não foi possível falar com a Steam',
     reasonStatus: (status) => `a Steam respondeu com erro ${status}`,
     reasonSteamSaid: (text) => `a Steam respondeu: ${text}`,
-    reasonUnexpected: 'a Steam devolveu uma resposta inesperada'
+    reasonUnexpected: 'a Steam devolveu uma resposta inesperada',
   },
 
   toast: {
     title: (game) => `Conquista desbloqueada — ${game}`,
-    body: (achievement, left) => `${achievement} · ${left === 0 ? 'todas as conquistas obtidas!' : `faltam ${left}`}`
+    body: (achievement, left) =>
+      `${achievement} · ${left === 0 ? 'todas as conquistas obtidas!' : `faltam ${left}`}`,
   },
 
   guides: {
     query: 'como conseguir',
     steam: 'Guias',
     steamTitle: 'Buscar nos guias da comunidade Steam',
-    searchOn: (site) => `Buscar no ${site}`
+    searchOn: (site) => `Buscar no ${site}`,
   },
 
   nav: {
@@ -48,7 +50,7 @@ export const ptBR: Messages = {
     dashboard: 'Painel',
     settings: 'Configuração',
     pinWindow: 'Manter a janela sempre no topo',
-    unpinWindow: 'Deixar de manter a janela no topo'
+    unpinWindow: 'Deixar de manter a janela no topo',
   },
 
   common: {
@@ -58,14 +60,15 @@ export const ptBR: Messages = {
     back: 'Voltar',
     next: 'Próximo',
     clearSearch: 'Limpar busca',
-    openInBrowser: 'Abrir no navegador'
+    openInBrowser: 'Abrir no navegador',
   },
 
   game: {
     none: 'Nenhum jogo aberto e nenhum jogo jogado ainda. Escolha um no Painel.',
     loading: 'Carregando conquistas…',
     running: 'em execução',
-    summary: (unlocked, total, percent) => `${unlocked} de ${total} conquistas · ${percent}%`,
+    summary: (unlocked, total, percent) =>
+      `${unlocked} de ${total} conquistas · ${percent}%`,
     left: (n) => `faltam ${n}`,
     allUnlocked: 'todas obtidas',
     justUnlocked: (names) => `Conquista desbloqueada: ${names}`,
@@ -77,11 +80,11 @@ export const ptBR: Messages = {
       common: 'Mais comuns primeiro',
       rare: 'Mais raras primeiro',
       closest: 'Mais perto de concluir',
-      name: 'Nome'
+      name: 'Nome',
     },
     nothingFound: (query) => `Nada encontrado para “${query}”.`,
     nothingPending: 'Nada pendente. 100%!',
-    nothingUnlocked: 'Nenhuma conquista obtida ainda.'
+    nothingUnlocked: 'Nenhuma conquista obtida ainda.',
   },
 
   card: {
@@ -96,7 +99,7 @@ export const ptBR: Messages = {
     note: 'Anotar',
     notePlaceholder: 'Sua anotação ou um link de guia',
     pin: 'Fixar no topo',
-    unpin: 'Desafixar'
+    unpin: 'Desafixar',
   },
 
   checklist: {
@@ -110,7 +113,7 @@ export const ptBR: Messages = {
       `Cole os itens de um guia para “${achievement}”, um por linha. Marcadores e numeração são removidos.`,
     pastePlaceholder: 'Item 1\nItem 2\nItem 3',
     addButton: 'Adicionar',
-    addCount: (n) => `Adicionar ${n} ${n === 1 ? 'item' : 'itens'}`
+    addCount: (n) => `Adicionar ${n} ${n === 1 ? 'item' : 'itens'}`,
   },
 
   dashboard: {
@@ -124,7 +127,7 @@ export const ptBR: Messages = {
     nothingFound: (query) => `Nenhum jogo encontrado para “${query}”.`,
     empty: 'Nenhum jogo jogado com conquistas.',
     complete: 'completo',
-    left: (n) => `faltam ${n}`
+    left: (n) => `faltam ${n}`,
   },
 
   settings: {
@@ -132,13 +135,14 @@ export const ptBR: Messages = {
     account: 'Conta Steam',
     steamId: (id) => `SteamID ${id}`,
     language: 'Idioma',
-    languageHint: 'O app recarrega para aplicar o idioma, inclusive nos nomes das conquistas.',
+    languageHint:
+      'O app recarrega para aplicar o idioma, inclusive nos nomes das conquistas.',
     redo: 'Refazer a configuração',
     erase: 'Apagar chave e SteamID',
     eraseTitle: 'Apagar chave e SteamID?',
     eraseDescription:
       'O app volta para a configuração inicial. Suas notas, checklists e conquistas fixadas são mantidas.',
-    eraseConfirm: 'Apagar'
+    eraseConfirm: 'Apagar',
   },
 
   onboarding: {
@@ -147,37 +151,40 @@ export const ptBR: Messages = {
       account: 'Conta',
       apiKey: 'Chave',
       privacy: 'Privacidade',
-      done: 'Pronto'
+      done: 'Pronto',
     },
     loading: 'Carregando…',
     redoNotice: (reason) => `${reason} Refaça a configuração.`,
 
     language: {
       title: 'Conquistas da Steam',
-      description: 'Veja o que falta desbloquear no jogo que você está jogando.',
+      description:
+        'Veja o que falta desbloquear no jogo que você está jogando.',
       intro:
         'Este app mostra, para o jogo que você está jogando, quais conquistas faltam, o que são as ocultas, quanto falta nas que têm contador e atalhos para guias.',
       before: 'Antes de usar, três coisas rápidas:',
       items: [
         'confirmar qual é a sua conta (SteamID);',
         'gerar uma chave da Web API da Steam, gratuita;',
-        'conferir se os detalhes dos seus jogos estão públicos.'
+        'conferir se os detalhes dos seus jogos estão públicos.',
       ],
       keyStaysLocal: 'A chave fica guardada só neste computador.',
       label: 'Idioma',
-      start: 'Começar'
+      start: 'Começar',
     },
 
     account: {
       title: 'Sua conta',
       description: 'Qual conta da Steam o app deve acompanhar?',
-      detected: 'Encontrei a conta logada no cliente Steam deste computador. Confirme se é a sua.',
-      notDetected: 'Não encontrei uma conta logada no cliente Steam. Cole abaixo o seu SteamID de 17 dígitos.',
+      detected:
+        'Encontrei a conta logada no cliente Steam deste computador. Confirme se é a sua.',
+      notDetected:
+        'Não encontrei uma conta logada no cliente Steam. Cole abaixo o seu SteamID de 17 dígitos.',
       helpTitle: 'Onde encontro meu SteamID?',
       help: [
         'No cliente Steam, clique no seu nome no canto superior direito.',
         'Escolha “Detalhes da conta”.',
-        'O número de 17 dígitos em “ID Steam”, logo abaixo do nome da conta, é o seu SteamID. Não é o código de amigo nem o nome de usuário.'
+        'O número de 17 dígitos em “ID Steam”, logo abaixo do nome da conta, é o seu SteamID. Não é o código de amigo nem o nome de usuário.',
       ],
       openAccount: 'Abrir “Detalhes da conta” no navegador',
       label: 'SteamID',
@@ -187,7 +194,7 @@ export const ptBR: Messages = {
       verify: 'Verificar',
       verifying: 'Verificando…',
       mine: 'É a minha conta',
-      continueAnyway: 'Continuar mesmo assim'
+      continueAnyway: 'Continuar mesmo assim',
     },
 
     apiKey: {
@@ -196,12 +203,12 @@ export const ptBR: Messages = {
       steps: [
         'Abra a página de chaves da Steam.',
         'Entre com a sua conta. Em “Nome de domínio”, digite qualquer coisa, por exemplo localhost.',
-        'Aceite os termos, clique em Registrar e copie a chave de 32 caracteres.'
+        'Aceite os termos, clique em Registrar e copie a chave de 32 caracteres.',
       ],
       label: 'Chave',
       placeholder: 'Cole a chave aqui',
       verify: 'Verificar chave',
-      verifying: 'Verificando…'
+      verifying: 'Verificando…',
     },
 
     privacy: {
@@ -212,20 +219,22 @@ export const ptBR: Messages = {
       steps: [
         'Abra as configurações de privacidade.',
         'Deixe “Meu perfil” e “Detalhes dos jogos” como Público.',
-        'Volte aqui e teste de novo (a Steam pode levar um minuto para aplicar).'
+        'Volte aqui e teste de novo (a Steam pode levar um minuto para aplicar).',
       ],
-      testAgain: 'Testar de novo'
+      testAgain: 'Testar de novo',
     },
 
     done: {
       title: 'Pronto',
       description: 'A configuração está completa.',
-      found: (n) => `Encontrei ${n} ${n === 1 ? 'jogo já jogado' : 'jogos já jogados'} na sua conta.`,
+      found: (n) =>
+        `Encontrei ${n} ${n === 1 ? 'jogo já jogado' : 'jogos já jogados'} na sua conta.`,
       howItWorks:
         'Abra um jogo na Steam e o app troca para ele sozinho. Sem jogo aberto, ele mostra o último que você jogou; o Painel lista todos.',
-      saveFailed: 'Não foi possível salvar a configuração. Volte e confira a chave.',
+      saveFailed:
+        'Não foi possível salvar a configuração. Volte e confira a chave.',
       finish: 'Entrar no app',
-      saving: 'Salvando…'
-    }
-  }
-}
+      saving: 'Salvando…',
+    },
+  },
+};

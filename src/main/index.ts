@@ -1,155 +1,187 @@
-import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron'
-import { join } from 'node:path'
-import { messagesFor, type Messages } from '../shared/i18n'
-import type { Api, AppState, CheckResult, GameView, GuideSite } from '../shared/types'
-import { checkApiKey, checkPrivacy, checkSteamId } from './onboarding'
-import { guideUrl, newlyUnlocked } from './steam/achievements'
-import { SteamClient, SteamError, steamErrorMessage } from './steam/client'
+import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron';
+import { join } from 'node:path';
+import { messagesFor, type Messages } from '../shared/i18n';
+import type {
+  Api,
+  AppState,
+  CheckResult,
+  GameView,
+  GuideSite,
+} from '../shared/types';
+import { checkApiKey, checkPrivacy, checkSteamId } from './onboarding';
+import { guideUrl, newlyUnlocked } from './steam/achievements';
+import { SteamClient, SteamError, steamErrorMessage } from './steam/client';
 import {
   getActiveSteamId,
   getRunningAppId,
   isWsl,
   openInWindowsBrowser,
   readStatMap,
-  windowsToast
-} from './steam/windows'
-import { Store, type Cipher } from './store'
-import { Tracker } from './tracker'
+  windowsToast,
+} from './steam/windows';
+import { Store, type Cipher } from './store';
+import { Tracker } from './tracker';
 
-const RUNNING_CHECK_MS = 10_000
-const UNLOCK_CHECK_MS = 60_000
+const RUNNING_CHECK_MS = 10_000;
+const UNLOCK_CHECK_MS = 60_000;
 
 const EXTERNAL = {
   apikey: 'https://steamcommunity.com/dev/apikey',
   privacy: 'https://steamcommunity.com/my/edit/settings',
-  account: 'https://store.steampowered.com/account/'
-}
+  account: 'https://store.steampowered.com/account/',
+};
 
-let win: BrowserWindow | null = null
-let store: Store
-let tracker: Tracker
-const client = new SteamClient()
+let win: BrowserWindow | null = null;
+let store: Store;
+let tracker: Tracker;
+const client = new SteamClient();
 
 /** Set when Steam starts rejecting the saved key; forces the onboarding again. */
-let configError: string | null = null
-let current: { appid: number; running: boolean } | null = null
-let lastView: GameView | null = null
+let configError: string | null = null;
+let current: { appid: number; running: boolean } | null = null;
+let lastView: GameView | null = null;
 
-const openUrl = (url: string): Promise<void> => (isWsl ? openInWindowsBrowser(url) : shell.openExternal(url))
+const openUrl = (url: string): Promise<void> =>
+  isWsl ? openInWindowsBrowser(url) : shell.openExternal(url);
 
-const m = (): Messages => messagesFor(store.getLanguage())
+const m = (): Messages => messagesFor(store.getLanguage());
 
 function state(): AppState {
-  const configured = store.getCredentials() !== null && configError === null
-  return { configured, language: store.getLanguage(), profile: store.getProfile(), configError }
+  const configured = store.getCredentials() !== null && configError === null;
+  return {
+    configured,
+    language: store.getLanguage(),
+    profile: store.getProfile(),
+    configError,
+  };
 }
 
 async function attempt<T>(fn: () => Promise<T>): Promise<CheckResult<T>> {
   try {
-    return { ok: true, value: await fn() }
+    return { ok: true, value: await fn() };
   } catch (e) {
     if (e instanceof SteamError) {
-      const error = steamErrorMessage(m(), e)
-      if (e.kind === 'invalid-key') configError = error
-      return { ok: false, error }
+      const error = steamErrorMessage(m(), e);
+      if (e.kind === 'invalid-key') configError = error;
+      return { ok: false, error };
     }
-    console.error(e)
-    return { ok: false, error: m().errors.unexpected }
+    console.error(e);
+    return { ok: false, error: m().errors.unexpected };
   }
 }
 
 async function resolveCurrent(): Promise<typeof current> {
-  const running = await getRunningAppId()
-  if (running !== null) return { appid: running, running: true }
-  if (!state().configured) return null
-  const last = await tracker.lastPlayedAppId().catch(() => null)
-  return last === null ? null : { appid: last, running: false }
+  const running = await getRunningAppId();
+  if (running !== null) return { appid: running, running: true };
+  if (!state().configured) return null;
+  const last = await tracker.lastPlayedAppId().catch(() => null);
+  return last === null ? null : { appid: last, running: false };
 }
 
 async function checkRunningGame(): Promise<void> {
-  const next = await resolveCurrent()
-  if (next?.appid === current?.appid && next?.running === current?.running) return
+  const next = await resolveCurrent();
+  if (next?.appid === current?.appid && next?.running === current?.running)
+    return;
   // The game was closed: one last read catches what was unlocked in the final minute.
-  if (current?.running && !(next?.running && next.appid === current.appid)) await checkUnlocks()
-  current = next
-  lastView = null
-  win?.webContents.send('game-changed', current)
+  if (current?.running && !(next?.running && next.appid === current.appid))
+    await checkUnlocks();
+  current = next;
+  lastView = null;
+  win?.webContents.send('game-changed', current);
 }
 
 async function checkUnlocks(): Promise<void> {
-  if (!current?.running || !state().configured) return
-  const { appid } = current
-  const result = await attempt(() => tracker.getGame(appid, 'poll'))
-  if (!result.ok || current?.appid !== appid) return
-  const view = result.value
+  if (!current?.running || !state().configured) return;
+  const { appid } = current;
+  const result = await attempt(() => tracker.getGame(appid, 'poll'));
+  if (!result.ok || current?.appid !== appid) return;
+  const view = result.value;
   // The tracker returns the same object when nothing changed; then there is nothing to announce.
-  if (view === lastView) return
+  if (view === lastView) return;
   if (lastView?.appid === appid) {
     for (const a of newlyUnlocked(lastView, view)) {
-      const left = view.total - view.unlockedCount
-      windowsToast(m().toast.title(view.name), m().toast.body(a.name, left)).catch(() => {})
+      const left = view.total - view.unlockedCount;
+      windowsToast(
+        m().toast.title(view.name),
+        m().toast.body(a.name, left),
+      ).catch(() => {});
     }
   }
-  lastView = view
-  win?.webContents.send('game-updated', view)
+  lastView = view;
+  win?.webContents.send('game-updated', view);
 }
 
 function registerIpc(): void {
-  const handlers: Omit<Api, 'onGameChanged' | 'onGameUpdated' | 'onDashboardProgress'> = {
+  const handlers: Omit<
+    Api,
+    'onGameChanged' | 'onGameUpdated' | 'onDashboardProgress'
+  > = {
     getState: async () => state(),
     detectSteamId: () => getActiveSteamId(),
     checkSteamId: async (steamId) => {
-      const result = await checkSteamId(m(), steamId)
-      if (result.status === 'unconfirmed') console.warn(`SteamID ${result.steamId} not confirmed: ${result.reason}`)
-      return result
+      const result = await checkSteamId(m(), steamId);
+      if (result.status === 'unconfirmed')
+        console.warn(
+          `SteamID ${result.steamId} not confirmed: ${result.reason}`,
+        );
+      return result;
     },
     checkApiKey: (steamId, apiKey) => checkApiKey(m(), client, steamId, apiKey),
-    checkPrivacy: (steamId, apiKey) => checkPrivacy(m(), client, steamId, apiKey),
+    checkPrivacy: (steamId, apiKey) =>
+      checkPrivacy(m(), client, steamId, apiKey),
     saveConfig: async (steamId, apiKey) => {
-      const check = await checkApiKey(m(), client, steamId, apiKey)
+      const check = await checkApiKey(m(), client, steamId, apiKey);
       if (check.ok) {
-        store.setCredentials({ steamId, apiKey: apiKey.trim() }, check.value)
-        configError = null
-        void checkRunningGame()
+        store.setCredentials({ steamId, apiKey: apiKey.trim() }, check.value);
+        configError = null;
+        void checkRunningGame();
       }
-      return state()
+      return state();
     },
     resetConfig: async () => {
-      store.clearCredentials()
-      configError = null
-      current = null
-      lastView = null
-      return state()
+      store.clearCredentials();
+      configError = null;
+      current = null;
+      lastView = null;
+      return state();
     },
     getCurrentAppId: async () => (current = await resolveCurrent()),
     getGame: (appid, force) =>
       attempt(async () => {
-        const view = await tracker.getGame(appid, force)
-        if (current?.appid === appid) lastView = view
-        return view
+        const view = await tracker.getGame(appid, force);
+        if (current?.appid === appid) lastView = view;
+        return view;
       }),
     getDashboard: (mode) =>
-      attempt(() => tracker.getDashboard(mode, (done, total) => win?.webContents.send('dashboard-progress', done, total))),
+      attempt(() =>
+        tracker.getDashboard(mode, (done, total) =>
+          win?.webContents.send('dashboard-progress', done, total),
+        ),
+      ),
     getUserData: async (appid) => store.getUserData(appid),
-    setUserData: async (appid, achievementId, data) => store.setUserData(appid, achievementId, data),
+    setUserData: async (appid, achievementId, data) =>
+      store.setUserData(appid, achievementId, data),
     setLanguage: async (language) => {
-      store.setLanguage(language)
-      client.language = language
-      lastView = null
-      win?.setTitle(m().appTitle)
-      return state()
+      store.setLanguage(language);
+      client.language = language;
+      lastView = null;
+      win?.setTitle(m().appTitle);
+      return state();
     },
     getAlwaysOnTop: async () => store.getAlwaysOnTop(),
     setAlwaysOnTop: async (value) => {
-      store.setAlwaysOnTop(value)
-      win?.setAlwaysOnTop(value)
-      return value
+      store.setAlwaysOnTop(value);
+      win?.setAlwaysOnTop(value);
+      return value;
     },
-    openGuide: (site: GuideSite, appid, game, achievement) => openUrl(guideUrl(site, appid, game, achievement, m().guides.query)),
-    openExternal: (target) => openUrl(EXTERNAL[target])
-  }
+    openGuide: (site: GuideSite, appid, game, achievement) =>
+      openUrl(guideUrl(site, appid, game, achievement, m().guides.query)),
+    openExternal: (target) => openUrl(EXTERNAL[target]),
+  };
   for (const [name, fn] of Object.entries(handlers)) {
-    ipcMain.handle(name, (_event, ...args) => (fn as (...a: unknown[]) => unknown)(...args))
+    ipcMain.handle(name, (_event, ...args) =>
+      (fn as (...a: unknown[]) => unknown)(...args),
+    );
   }
 }
 
@@ -162,38 +194,44 @@ function createWindow(): void {
     backgroundColor: '#171a21',
     autoHideMenuBar: true,
     title: m().appTitle,
-    webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true }
-  })
-  win.setAlwaysOnTop(store.getAlwaysOnTop())
-  win.on('closed', () => (win = null))
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: true,
+    },
+  });
+  win.setAlwaysOnTop(store.getAlwaysOnTop());
+  win.on('closed', () => (win = null));
   win.webContents.setWindowOpenHandler(({ url }) => {
-    void openUrl(url)
-    return { action: 'deny' }
-  })
-  if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL)
-  else void win.loadFile(join(__dirname, '../renderer/index.html'))
+    void openUrl(url);
+    return { action: 'deny' };
+  });
+  if (process.env.ELECTRON_RENDERER_URL)
+    void win.loadURL(process.env.ELECTRON_RENDERER_URL);
+  else void win.loadFile(join(__dirname, '../renderer/index.html'));
 }
 
 app.whenReady().then(() => {
   // Without a keyring (common on WSL) safeStorage would fall back to a weak scheme; the 600-permission file is used instead.
   const secure =
     safeStorage.isEncryptionAvailable() &&
-    (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text')
+    (process.platform !== 'linux' ||
+      safeStorage.getSelectedStorageBackend() !== 'basic_text');
   const cipher: Cipher | null = secure
     ? {
         encrypt: (plain) => safeStorage.encryptString(plain).toString('base64'),
-        decrypt: (encoded) => safeStorage.decryptString(Buffer.from(encoded, 'base64'))
+        decrypt: (encoded) =>
+          safeStorage.decryptString(Buffer.from(encoded, 'base64')),
       }
-    : null
+    : null;
 
-  store = new Store(app.getPath('userData'), cipher)
-  client.language = store.getLanguage()
-  tracker = new Tracker({ store, client, readStatMap })
+  store = new Store(app.getPath('userData'), cipher);
+  client.language = store.getLanguage();
+  tracker = new Tracker({ store, client, readStatMap });
 
-  registerIpc()
-  createWindow()
-  setInterval(() => void checkRunningGame(), RUNNING_CHECK_MS)
-  setInterval(() => void checkUnlocks(), UNLOCK_CHECK_MS)
-})
+  registerIpc();
+  createWindow();
+  setInterval(() => void checkRunningGame(), RUNNING_CHECK_MS);
+  setInterval(() => void checkUnlocks(), UNLOCK_CHECK_MS);
+});
 
-app.on('window-all-closed', () => app.quit())
+app.on('window-all-closed', () => app.quit());

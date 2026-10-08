@@ -1,6 +1,6 @@
 interface IStepHeaderProps {
-  title: string
-  description: string
+  title: string;
+  description: string;
 }
 
 export function StepHeader({ title, description }: IStepHeaderProps) {
@@ -9,5 +9,5 @@ export function StepHeader({ title, description }: IStepHeaderProps) {
       <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
       <span className="text-muted-foreground">{description}</span>
     </header>
-  )
+  );
 }
