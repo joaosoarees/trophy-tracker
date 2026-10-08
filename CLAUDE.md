@@ -1,6 +1,6 @@
 # Conquistas da Steam
 
-App desktop (Electron + React + TypeScript) que mostra, para o jogo aberto na Steam, as conquistas que faltam, as ocultas reveladas, contadores de progresso, checklists do usuário e atalhos para guias. Uso pessoal; pode virar produto. Tudo voltado ao usuário é em **português do Brasil**.
+App desktop (Electron + React + TypeScript) que mostra, para o jogo aberto na Steam, as conquistas que faltam, as ocultas reveladas, contadores de progresso, checklists do usuário e atalhos para guias. Uso pessoal; pode virar produto. A interface tem dois idiomas, **inglês (padrão) e português do Brasil**; código, comentários, testes e commits são em português.
 
 ## Comandos
 
@@ -31,6 +31,8 @@ src/shared/     tipos e lógica pura usados pelos dois lados
   types.ts        modelo (Achievement, GameView, GameSummary...) e a interface Api do IPC
   checklist.ts    parseChecklist (texto colado → itens) e shownProgress (qual contador mostrar)
   view.ts         mergeView: junta leituras reaproveitando o que não mudou
+  validation.ts   formatos de SteamID e chave, usados no formulário e no processo principal
+  i18n/           idiomas: index.ts (cadastro) e locales/ (um arquivo por idioma)
 src/main/       processo principal: única parte que fala com a Steam e com o disco
   steam/client.ts       chamadas HTTP à Web API; traduz erros em SteamError
   steam/achievements.ts buildGameView (junta as fontes), newlyUnlocked, guideUrl
@@ -44,9 +46,11 @@ src/preload/    expõe `window.api` (contextBridge), tipado por `Api`
 src/renderer/src/
   App.tsx, Onboarding.tsx, GameScreen.tsx, Dashboard.tsx
   components/     AchievementCard, Checklist, bits (ProgressBar, Segmented, SearchBox, Empty)
+  components/Stepper/, StepHeader, FieldError, ControlledLanguageSelect   peças do formulário em etapas
+  components/steps/<Etapa>Step/   uma pasta por etapa do onboarding: index.tsx + schema.ts
   components/ui/  componentes shadcn/ui (gerados; não editar à mão sem motivo)
   store/          estado da interface (Zustand)
-  lib/            utils (cn), text (busca sem acento), saver (gravação com pausa)
+  lib/            utils (cn, sessionStorage seguro), i18n (useT, useLocale), text (busca sem acento), saver (gravação com pausa)
 test/           Vitest, com respostas reais da API em test/fixtures
 ```
 
@@ -56,7 +60,7 @@ Regra de fronteira: a interface nunca faz `fetch` para a Steam nem toca em arqui
 
 | Dado | Origem | Chave? |
 |---|---|---|
-| Lista de conquistas, descrição das ocultas, alvo do contador, raridade | `IPlayerService/GetGameAchievements` (`language=brazilian`) | não |
+| Lista de conquistas, descrição das ocultas, alvo do contador, raridade | `IPlayerService/GetGameAchievements` (no idioma do app) | não |
 | Desbloqueada ou não, e quando | `ISteamUserStats/GetPlayerAchievements` | sim |
 | Valor atual dos contadores | `ISteamUserStats/GetUserStatsForGame` | sim |
 | Qual stat alimenta cada contador | arquivo local `appcache/stats/UserGameStatsSchema_<appid>.bin` | — |
@@ -71,6 +75,30 @@ Coisas que já custaram tempo:
 - A Steam não informa quais conquistas são de DLC (`groupid` vem sempre 0) nem quais itens faltam num "colete todos"; para isso existe o checklist do usuário.
 - Jogos novos não têm capa em caminho fixo (`header.jpg` dá 404); o caminho com hash vem só do serviço da loja.
 - Erro de chave vem como HTML com status 403; perfil privado vem como JSON com 403.
+
+## Idiomas
+
+- Um arquivo por idioma em `src/shared/i18n/locales/`. `en.ts` é a referência: o tipo `Messages` sai dele, então uma chave nova começa lá e o compilador acusa o que faltar nos outros. Mensagens são textos ou funções (`left: (n) => ...`) para interpolação e plural; não há biblioteca de tradução.
+- Novo idioma: criar o arquivo e registrá-lo em `i18n/index.ts` com o nome que a Steam usa (`steam`), a localidade para datas e números (`locale`) e o país da loja.
+- O idioma muda **o app inteiro**: textos, mensagens de erro e notificação (o processo principal traduz com `messagesFor(store.getLanguage())`), nomes e descrições das conquistas e capas (pedidos à Steam no idioma), e o complemento das buscas de guia.
+- Nenhum texto voltado ao usuário fica solto no código: na interface use `const t = useT()`; no processo principal, receba `Messages` por parâmetro. `SteamError` carrega só o tipo do erro; o texto sai de `steamErrorMessage(m, e)`.
+- O idioma fica em `settings.json`. Trocar descarta o cache traduzido (jogos, listas de conquistas, capas); o `cache.json` guarda em que idioma foi lido e é descartado ao abrir se não bater.
+- Na Configuração, trocar o idioma salva e **recarrega a janela**. No onboarding a troca é imediata, sem recarregar, porque ainda não há dado da Steam na tela.
+
+## Formulários (react-hook-form + zod)
+
+O onboarding é um formulário único em etapas:
+
+- `Onboarding.tsx` é o dono do formulário: `useForm` com `zodResolver`, `FormProvider`, e o schema geral montado com um schema por etapa (`languageStep`, `accountStep`, `apiKeyStep`, `privacyStep`). `DoneStep` não tem schema: é só o envio.
+- Cada etapa mora em `components/steps/<Etapa>Step/` com `index.tsx` e `schema.ts`, lê o formulário com `useFormContext<OnboardingFormData>()` e só avança depois de `form.trigger('<etapa>Step', { shouldFocus: true })`.
+- `Stepper` guarda a etapa atual e expõe `previousStep`/`nextStep` por contexto (`useStepper`); `StepperFooter`, `StepperPreviousButton` e `StepperNextButton` montam o rodapé.
+- Verificação na Steam é feita ao avançar: se falhar, `form.setError('<campo>', { message })` mostra o erro no próprio campo.
+- Os schemas guardam a **chave** da mensagem (`'steamIdFormat'`), não o texto; `FieldError` traduz na hora de mostrar, para o erro acompanhar a troca de idioma. Toda chave usada num schema precisa existir em `validation` nos idiomas (há teste para isso).
+- Campo que não é um `<input>` simples vira componente controlado com `useController` (ex.: `ControlledLanguageSelect`).
+- Efeitos colaterais de um campo usam a assinatura do `form.watch` (ex.: trocar o idioma da tela, invalidar a confirmação do perfil quando o SteamID muda), sempre com `unsubscribe` na limpeza.
+- A privacidade não tem campo digitado: o valor do formulário é preenchido quando a verificação passa, e o schema exige esse valor para concluir.
+- O rascunho (idioma, SteamID e etapa) vai para o `sessionStorage` para sobreviver a um recarregamento. **A chave da Web API nunca entra no rascunho**; depois de recarregar, o formulário retoma no máximo na etapa da chave.
+- Enter num campo não envia o formulário inteiro: cada etapa trata o Enter como o seu próprio "avançar".
 
 ## Política de leitura (não disparar requests à toa)
 
@@ -111,14 +139,14 @@ Convenções:
 
 ## Interface
 
-- Tailwind v4 (config em `src/renderer/src/styles.css`, sem `tailwind.config`) + componentes shadcn/ui + ícones Lucide. Novo componente shadcn: `npx shadcn@latest add <nome>` e conferir que o import de `cn` aponta para `@/lib/utils`.
+- Tailwind v4 (config em `src/renderer/src/styles.css`, sem `tailwind.config`) + componentes shadcn/ui + ícones Lucide. Novo componente shadcn: `npx shadcn@latest add <nome>`; o comando costuma instalar um pacote `cn` errado e importar dele: remover com `npm uninstall cn` e apontar o import para `@/lib/utils`.
 - Só tema escuro, com a paleta da Steam nos tokens de `styles.css` (`--primary` azul-claro, `--success` verde, `--warning` âmbar).
 - A janela é estreita (cerca de 520 px, para o segundo monitor): conferir que barras e botões cabem nessa largura.
 - Prioridade é leveza: nada de biblioteca com estilização em tempo de execução.
 
 ## Dados locais
 
-`~/.config/steam-trophy-tracker/`: `config.json` (SteamID e chave, permissão 600; cifrado só se houver keyring), `cache.json`, `userdata.json` (notas, fixadas, checklists), `settings.json`. Nunca copiar a chave para fora dessa pasta nem imprimi-la.
+`~/.config/steam-trophy-tracker/`: `config.json` (SteamID e chave, permissão 600; cifrado só se houver keyring), `cache.json`, `userdata.json` (notas, fixadas, checklists), `settings.json` (idioma, sempre no topo). Nunca copiar a chave para fora dessa pasta nem imprimi-la.
 
 ## Testes
 
