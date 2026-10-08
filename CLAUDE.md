@@ -82,7 +82,7 @@ src/renderer/src/      the interface, in two layers
   ui/                  everything that is drawn
     App.tsx + useAppController.ts   decides between onboarding and the app
     screens/             one folder per screen: Game, Dashboard, Settings, Onboarding
-    components/          shared between screens: AppShell, ProgressBar, Segmented, SearchBox, Empty
+    components/          shared between screens: AppShell, RemoteImage, ProgressBar, Segmented, SearchBox, Empty
     primitives/          shadcn/ui components (generated; do not hand-edit without a reason)
     styles/index.css     Tailwind and the theme tokens
     utils/               cn, text (accent-free search), format (dates and numbers)
@@ -149,6 +149,7 @@ Things that have already cost time:
 - The Web API does not say which stat feeds a counter; only the local Steam client file does. Without the file, the achievement shows no counter (never invent a value).
 - Steam does not report which achievements belong to DLC (`groupid` is always 0) nor which items are missing in a "collect them all"; the user checklist exists for that.
 - New games have no art at a fixed path (`header.jpg` returns 404); the hashed path comes only from the store service.
+- Achievement icons must come from `shared.fastly.steamstatic.com/community_assets/images`. The older `steamcommunity/public/images` hosts return 404 for the icons of newer (DLC) achievements.
 - A key error comes back as HTML with status 403; a private profile comes back as JSON with 403.
 
 ## Languages
@@ -186,8 +187,19 @@ Onboarding/
 - The draft (language, SteamID and step) goes to `sessionStorage` to survive a reload. **The Web API key never goes into the draft**; after a reload the form resumes at the key step at most.
 - Enter in a field does not submit the whole form: each step treats Enter as its own "advance".
 
+## Optimistic UI
+
+The screen never waits for something it can already show, and never keeps showing something that was not saved.
+
+- **Optimistic update (writes).** Apply the change to the store at once, save afterwards, and on failure put back what is actually saved and tell the user with a toast (`sonner`, message `errors.changeNotSaved`). User data goes through `app/lib/saver.ts`, which batches the writes, remembers the last saved value per key and skips the rollback when a newer edit is waiting; `settings.toggleAlwaysOnTop` shows the same pattern for a single call. A new action that writes follows it: remember the previous value, apply, save, roll back in the `catch`.
+- **No `pending` state on items.** Saves are local and take milliseconds, so marking an item as pending would only flicker. Revisit if a write ever goes to a remote server.
+- **Optimistic read.** `Tracker.getGameStaleFirst` answers with the last known view, however old, and refreshes it in the background; the interface gets a `game-updated` event only if something changed. A game that was opened before never shows a loading state.
+- **Skeletons are for first loads only:** `GameSkeleton` the first time a game is opened, skeleton rows the first time the dashboard loads.
+- **Remote images** always go through `ui/components/RemoteImage` (never a bare `<img>` with a network URL): fixed-size box, skeleton while loading, fallback icon on failure. Each instance tracks its own load, so one image that fails or lags does not affect the others.
+
 ## Read policy (do not fire requests for nothing)
 
+- **Opening a game** serves the cached view at once (see Optimistic UI); a view older than 60 s triggers one background refresh.
 - **Game open:** every 60 s it re-reads only the player state (and counters, if the game has them). The achievement list is cached for 24 h; the ↻ button forces everything.
 - **No change, no event:** `Tracker.getGame` returns the same object when nothing changed, and the main process only emits `game-updated` when the object is a different one.
 - **Dashboard:** loads on startup, on ↻ (`all`) and when a game closes (`changed`: only games whose playtime changed).
