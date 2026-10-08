@@ -264,6 +264,16 @@ An automated audit (axe) of every screen reports zero violations; keep it that w
 - **Selects** go through `NativeSelect`, whose `label` is mandatory.
 - **Structure:** one `<main>` per window, `<nav>` with a label, and headings in order (`h1` for the screen, `h2` inside it).
 - **Motion** is turned off globally under `prefers-reduced-motion`; do not add animation that bypasses it.
+
+### Motion
+
+Transitions are CSS only (no animation library), short and small: the app sits next to a game and is read at a glance. The tokens are in `ui/styles/index.css`.
+
+- `animate-screen-in` (fade + 6 px rise, 180 ms) on a main tab when it is shown.
+- `animate-list-in` (fade, 160 ms) on a list keyed by its filter, so switching Pending/Unlocked or In progress/Complete fades the new list in.
+- `animate-step-forward` / `animate-step-backward` (20 px slide, 200 ms) on onboarding steps; `Stepper` tracks the direction.
+- `expand-in` on a section that opens inside a card (checklist, note): it grows to its height instead of popping in.
+- Only entries are animated. Animating exits would need the element to outlive its state, which is what an animation library is for; add one only if that becomes a real need.
 - An element shown only on hover must also show on keyboard focus (`focus-visible:opacity-100`).
 - After changing a screen, run the axe audit against the running app and tab through it with the keyboard.
 

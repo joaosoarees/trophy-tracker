@@ -64,7 +64,7 @@ export function AppShell() {
         {/* Both screens stay mounted; switching tabs only hides one, with no reload and no lost scroll position. */}
         <div
           className={cn(
-            'flex min-h-0 flex-1 flex-col',
+            'animate-screen-in flex min-h-0 flex-1 flex-col',
             tab !== 'game' && 'hidden',
           )}
         >
@@ -77,14 +77,18 @@ export function AppShell() {
 
         <div
           className={cn(
-            'flex min-h-0 flex-1 flex-col',
+            'animate-screen-in flex min-h-0 flex-1 flex-col',
             tab !== 'dashboard' && 'hidden',
           )}
         >
           <Dashboard />
         </div>
 
-        {tab === 'settings' && <Settings />}
+        {tab === 'settings' && (
+          <div className="animate-screen-in flex min-h-0 flex-1 flex-col">
+            <Settings />
+          </div>
+        )}
       </main>
     </div>
   );

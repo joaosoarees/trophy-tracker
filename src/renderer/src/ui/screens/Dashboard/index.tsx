@@ -82,7 +82,8 @@ export function Dashboard() {
         </Empty>
       )}
 
-      <ul className="flex flex-col gap-1.5">
+      {/* Keyed by list so switching In progress/Complete fades the new one in. */}
+      <ul key={filter} className="animate-list-in flex flex-col gap-1.5">
         {!hasLoaded &&
           isLoading &&
           SKELETON_ROWS.map((row) => (

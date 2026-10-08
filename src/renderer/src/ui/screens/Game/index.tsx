@@ -108,7 +108,8 @@ export function Game({ appid, running }: IGameProps) {
             </Empty>
           )}
 
-          <ul className="flex flex-col gap-2">
+          {/* Keyed by list so switching Pending/Unlocked fades the new one in. */}
+          <ul key={filter} className="animate-list-in flex flex-col gap-2">
             {achievements.map((achievement) => (
               <AchievementCard
                 key={achievement.id}

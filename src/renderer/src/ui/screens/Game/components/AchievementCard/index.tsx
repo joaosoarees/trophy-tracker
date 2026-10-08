@@ -166,23 +166,27 @@ export const AchievementCard = memo(function AchievementCard(
         )}
 
         {isChecklistOpen && !achievement.unlocked && (
-          <Checklist
-            achievement={achievement.name}
-            items={checklist}
-            onChange={handleChecklistChange}
-          />
+          <div className="expand-in">
+            <Checklist
+              achievement={achievement.name}
+              items={checklist}
+              onChange={handleChecklistChange}
+            />
+          </div>
         )}
 
         {isNoteVisible && (
-          <Textarea
-            value={note}
-            rows={2}
-            autoFocus={shouldFocusNote}
-            placeholder={t.card.notePlaceholder}
-            className="mt-2.5 min-h-0 text-sm"
-            onChange={(event) => handleNoteChange(event.target.value)}
-            onBlur={handleCloseNote}
-          />
+          <div className="expand-in">
+            <Textarea
+              value={note}
+              rows={2}
+              autoFocus={shouldFocusNote}
+              placeholder={t.card.notePlaceholder}
+              className="mt-2.5 min-h-0 text-sm"
+              onChange={(event) => handleNoteChange(event.target.value)}
+              onBlur={handleCloseNote}
+            />
+          </div>
         )}
       </div>
     </li>

@@ -37,13 +37,17 @@ export function Stepper({
     Math.min(Math.max(0, initialStep), steps.length - 1),
   );
 
+  // Which way the last move went, so the new step slides in from that side.
+  const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
+
   const goTo = useCallback(
     (step: number) => {
       const next = Math.min(Math.max(0, step), steps.length - 1);
+      setDirection(next < currentStep ? 'backward' : 'forward');
       setCurrentStep(next);
       onStepChange?.(next);
     },
-    [steps.length, onStepChange],
+    [steps.length, onStepChange, currentStep],
   );
   const previousStep = useCallback(
     () => goTo(currentStep - 1),
@@ -63,7 +67,7 @@ export function Stepper({
               key={step.label}
               aria-current={index === currentStep ? 'step' : undefined}
               className={cn(
-                'text-muted-foreground flex-1 border-t-[3px] pt-1.5 text-xs',
+                'text-muted-foreground flex-1 border-t-[3px] pt-1.5 text-xs transition-colors duration-200',
                 index === currentStep && 'border-primary text-foreground',
                 index < currentStep && 'border-success',
               )}
@@ -73,7 +77,16 @@ export function Stepper({
           ))}
         </ol>
 
-        {steps[currentStep].content}
+        <div
+          key={currentStep}
+          className={
+            direction === 'forward'
+              ? 'animate-step-forward'
+              : 'animate-step-backward'
+          }
+        >
+          {steps[currentStep].content}
+        </div>
       </div>
     </StepperContext.Provider>
   );

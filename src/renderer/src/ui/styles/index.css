@@ -55,6 +55,11 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --animate-fade-in: fade-in 200ms ease-out;
+  /* Transitions are short and small on purpose: the app is read at a glance. */
+  --animate-screen-in: rise-in 180ms ease-out;
+  --animate-list-in: fade-in 160ms ease-out;
+  --animate-step-forward: slide-from-right 200ms ease-out;
+  --animate-step-backward: slide-from-left 200ms ease-out;
 }
 
 @layer base {
@@ -107,6 +112,43 @@
 
 @keyframes fade-in {
   from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes slide-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+@keyframes slide-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+}
+
+/* A section that opens inside a card grows to its height instead of popping in. */
+@utility expand-in {
+  interpolate-size: allow-keywords;
+  overflow: clip;
+  /* Room for the focus ring of the fields inside. */
+  overflow-clip-margin: 4px;
+  transition:
+    height 180ms ease-out,
+    opacity 180ms ease-out;
+
+  @starting-style {
+    height: 0;
     opacity: 0;
   }
 }
