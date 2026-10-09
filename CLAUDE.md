@@ -338,6 +338,8 @@ Tests passing is not the end of a change that touches the interface. Every new o
 5. **Check by eye what no script measures**, on those captures: lines and separators (one between two things, never two in a row and none at the end of a group), alignment of text with the page margin, spacing between groups, text that wraps or is cut in Spanish and French, and anything said twice on the same screen.
 6. **Open by hand what the script does not**: dialogs, the update screen, a finished game, toasts, and the pressed state. Say in the report which of these were not opened.
 
+**The audit runs on a developer's machine only.** It is not part of CI nor of the commit and push hooks: it takes several minutes, needs a display and fetches pictures from Steam.
+
 **The fake Steam is reachable in development only.** `main/index.ts` reads `TROPHY_TRACKER_FAKE_STEAM` (and `TROPHY_TRACKER_FAKE_STEAM_HOME`, the home folder holding the fake Steam client) when the app is not packaged; an installed app ignores both, because the user's key is sent to whatever address that is. In that mode the app behaves as on Linux whatever the system: the signed-in account and the stat that feeds each counter come from the fake client folder (`writeFakeSteamFolder`), the running game comes from the fake Web API, and the periodic checks run every two or three seconds instead of every ten and sixty, so the audit does not wait a minute for an unlock. What the fake still does not stand in for: the pictures (art and icons are fetched from Steam's real servers, so without internet the audit only notes that the art did not load), GitHub (the update check always finds nothing) and the Windows registry.
 
 ### Rules
