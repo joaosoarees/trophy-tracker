@@ -5,16 +5,21 @@
 //   pnpm audit:ui
 //
 // The app runs for real, against a fake Steam (scripts/fake-steam.mjs) that
-// answers from the real responses in test/fixtures. Nothing of this
-// computer's Trophy Tracker data, account or key is read. The audit:
-// - goes through the onboarding as a new user, including a rejected key, a
-//   private profile and Steam being unreachable;
-// - checks every screen in each language: accessibility (axe), no scrollbar
-//   on the window, no sideways overflow, and a visible hover and keyboard
-//   focus on every kind of clickable element, none wider than what holds it;
-// - runs the flows no single capture shows: the game details opening and
-//   closing, an achievement being unlocked, a game being finished, and Steam
-//   going off the air with the app open and before it opens.
+// answers from the real responses in test/fixtures, and a fake Steam client
+// folder. Nothing of this computer's Trophy Tracker data, account or key is
+// read. The audit runs once per language, as a new user each time, so that
+// everything on screen (interface, errors, achievement names) is in that
+// language from the first screen on:
+// - the onboarding, with the SteamID found in the Steam client, through a
+//   rejected key, a private profile and Steam being unreachable;
+// - every screen, checked for accessibility (axe), no scrollbar on the
+//   window, no sideways overflow, and a visible hover and keyboard focus on
+//   every kind of clickable element, none wider than what holds it;
+// - the screen shown when the interface fails to draw, and the way back.
+// Then, in the first language, the flows no single capture shows: the game
+// details opening and closing, a game starting, an achievement unlocked
+// while playing, the game finished and closed, and Steam off the air with
+// the app open, before it opens, and before it opens for the first time.
 import { spawn } from 'node:child_process';
 import {
   existsSync,
@@ -28,10 +33,20 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { startFakeSteam } from './fake-steam.mjs';
+import { startFakeSteam, writeFakeSteamFolder } from './fake-steam.mjs';
 
 const PORT = 9333;
+// In the order of the onboarding's language list, with Steam's name for each.
 const LANGUAGES = ['en', 'pt-BR', 'es', 'fr'];
+const STEAM_LANGUAGE = {
+  en: 'english',
+  'pt-BR': 'brazilian',
+  es: 'spanish',
+  fr: 'french',
+};
+const STEAM_ID = '76561198000000042';
+const NIOH = 3681010;
+const ONIMUSHA = 2638890;
 const OUT = '.audit-ui';
 const axeSource = readFileSync(
   createRequire(import.meta.url).resolve('axe-core/axe.min.js'),
@@ -44,8 +59,12 @@ const electronBinary = createRequire(import.meta.url)('electron');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const failures = [];
 
-/** Starts the built app on the given data folder and connects to its window. */
-async function launch(userData, steamUrl) {
+/**
+ * Starts the built app on the given data folder, talking to the fake Steam
+ * and reading the fake Steam client folder under `home`, and connects to its
+ * window.
+ */
+async function launch(userData, steamUrl, home) {
   const isPortBusy = await fetch(`http://127.0.0.1:${PORT}/json`).then(
     () => true,
     () => false,
@@ -61,7 +80,11 @@ async function launch(userData, steamUrl) {
     ['.', `--remote-debugging-port=${PORT}`, `--user-data-dir=${userData}`],
     {
       stdio: 'ignore',
-      env: { ...process.env, TROPHY_TRACKER_FAKE_STEAM: steamUrl },
+      env: {
+        ...process.env,
+        TROPHY_TRACKER_FAKE_STEAM: steamUrl,
+        TROPHY_TRACKER_FAKE_STEAM_HOME: home,
+      },
     },
   );
 
@@ -379,69 +402,115 @@ function expectThat(flow, condition, problem) {
 const visibleText = (selector) =>
   `[...document.querySelectorAll(${JSON.stringify(selector)})].filter((el) => el.offsetParent !== null).map((el) => el.innerText.trim()).join(' | ')`;
 
+/** Waits for something to become true in the page; answers whether it did. */
+async function waitFor(page, expression, timeout = 12_000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    if (await page.evaluate(expression)) return true;
+    await sleep(250);
+  }
+  return false;
+}
+
 /** Clicks the last button of the onboarding step: its own "advance". */
 const advance = `[...document.querySelectorAll('main button')].filter((el) => el.offsetParent !== null).at(-1).click()`;
 
 async function type(page, selector, text) {
   await page.evaluate(
-    `document.querySelector(${JSON.stringify(selector)}).focus()`,
+    `document.querySelector(${JSON.stringify(selector)}).select()`,
   );
   await page.send('Input.insertText', { text });
 }
 
 /**
- * The onboarding as a new user meets it, with Steam answering badly before
- * it answers well. Leaves the app set up, on its first screen.
+ * The onboarding as a new user meets it, in the language picked on its first
+ * screen, with Steam answering badly before it answers well. Leaves the app
+ * set up, on its first screen.
  */
-async function auditOnboarding(page, steam) {
-  const FLOW = 'onboarding';
-  await audit(page, 'onboarding-language');
+async function auditOnboarding(page, steam, language) {
+  const FLOW = `onboarding (${language})`;
+  const failuresBefore = failures.length;
+  const isFirst = language === LANGUAGES[0];
+  await page.evaluate(
+    `document.querySelectorAll('[role="radio"]')[${LANGUAGES.indexOf(language)}].click()`,
+  );
+  await sleep(600);
+  await audit(page, `onboarding-language-${language}`);
   await page.evaluate(advance);
   await sleep(1000);
-  await audit(page, 'onboarding-account');
 
-  await type(page, 'input[placeholder^="7656119"]', '76561198000000042');
-  await type(
-    page,
-    'input[type="password"]',
-    '0123456789ABCDEF0123456789ABCDEF',
+  const steamId = JSON.parse(
+    await page.evaluate(
+      `JSON.stringify({ value: document.querySelector('#steamId').value, locked: document.querySelector('#steamId').readOnly })`,
+    ),
   );
+  expectThat(
+    FLOW,
+    steamId.value === STEAM_ID && steamId.locked,
+    `the SteamID of the Steam client is not filled in and locked (shown: "${steamId.value}")`,
+  );
+  await audit(page, `onboarding-account-${language}`);
+  if (isFirst) {
+    // The way out of the detected account: the field opens for typing.
+    await page.evaluate(
+      `document.querySelector('#steamId').closest('.space-y-2').querySelector('p button').click()`,
+    );
+    await sleep(500);
+    expectThat(
+      FLOW,
+      !(await page.evaluate(`document.querySelector('#steamId').readOnly`)),
+      '"Use another account" does not open the SteamID for typing',
+    );
+    await audit(page, `onboarding-account-typed-${language}`);
+    await type(page, '#steamId', STEAM_ID);
+  }
+  await type(page, '#apiKey', '0123456789ABCDEF0123456789ABCDEF');
 
   const verify = async () => {
     await page.evaluate(advance);
     await sleep(1800);
     return page.evaluate(visibleText('main [role="alert"]'));
   };
-
-  steam.state.mode = 'bad-key';
-  let alert = await verify();
+  // Each answer of Steam has its own error; the words are checked in the
+  // first language, and everywhere that the three are different and present.
+  const alerts = [];
+  const refuse = async (mode, words, capture, problem) => {
+    steam.state.mode = mode;
+    const alert = await verify();
+    alerts.push(alert);
+    expectThat(
+      FLOW,
+      isFirst ? words.test(alert) : alert !== '',
+      `${problem} (shown: "${alert}")`,
+    );
+    await audit(page, `${capture}-${language}`);
+  };
+  await refuse(
+    'bad-key',
+    /key/i,
+    'onboarding-key-rejected',
+    'a rejected key shows no error about the key',
+  );
+  await refuse(
+    'down',
+    /reach|connection/i,
+    'onboarding-steam-down',
+    'Steam being unreachable shows no error about it',
+  );
+  await refuse(
+    'private',
+    /privacy|public/i,
+    'onboarding-profile-private',
+    'a private profile shows no error about privacy',
+  );
   expectThat(
     FLOW,
-    /key/i.test(alert),
-    `a rejected key shows no error about the key (shown: "${alert}")`,
+    new Set(alerts).size === alerts.length,
+    'two different answers of Steam show the same error',
   );
-  await audit(page, 'onboarding-key-rejected');
-
-  steam.state.mode = 'down';
-  alert = await verify();
-  expectThat(
-    FLOW,
-    /reach|connection/i.test(alert),
-    `Steam being unreachable shows no error about it (shown: "${alert}")`,
-  );
-  await audit(page, 'onboarding-steam-down');
-
-  steam.state.mode = 'private';
-  alert = await verify();
-  expectThat(
-    FLOW,
-    /privacy|public/i.test(alert),
-    `a private profile shows no error about privacy (shown: "${alert}")`,
-  );
-  await audit(page, 'onboarding-profile-private');
 
   steam.state.mode = 'ok';
-  alert = await verify();
+  const alert = await verify();
   expectThat(
     FLOW,
     alert === '',
@@ -452,65 +521,140 @@ async function auditOnboarding(page, steam) {
   );
   expectThat(
     FLOW,
-    /Verified/.test(verified),
-    'a good key is not shown as verified',
+    verified.includes('Audit Hunter'),
+    'a good key does not show whose account it is',
   );
-  await audit(page, 'onboarding-verified');
+  await audit(page, `onboarding-verified-${language}`);
 
   await page.evaluate(advance);
   await sleep(1000);
-  await audit(page, 'onboarding-done');
+  await audit(page, `onboarding-done-${language}`);
   await page.evaluate(advance);
-  await sleep(4000);
-  const isInTheApp = await page.evaluate(
-    `document.querySelector('nav') !== null`,
+  const isInTheApp = await waitFor(
+    page,
+    `document.querySelector('nav') !== null && document.querySelector('header h1') !== null`,
   );
   expectThat(FLOW, isInTheApp, 'finishing the setup does not open the app');
+  await sleep(1500);
   console.log(
-    `${isInTheApp ? 'ok  ' : 'FAIL'} flow: onboarding, through a rejected key, Steam down and a private profile`,
+    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: onboarding in ${language}, through a rejected key, Steam down and a private profile`,
   );
 }
 
-/** Every screen of the app, in every language. */
-async function auditScreens(page) {
-  for (const language of LANGUAGES) {
+const gameTitle = `document.querySelector('header h1')?.innerText ?? ''`;
+
+/** Every screen of the app, and that what Steam sent is in the app's language. */
+async function auditScreens(page, steam, language) {
+  await page.evaluate(navButton(0));
+  await sleep(900);
+  await audit(page, `game-${language}`);
+
+  // The game on screen is the last one played, with Steam's own texts.
+  const FLOW = `language (${language})`;
+  const names = new Set(steam.names(NIOH, STEAM_LANGUAGE[language]));
+  const shown = JSON.parse(
     await page.evaluate(
-      `window.api.setLanguage(${JSON.stringify(language)}).then(() => location.reload())`,
-    );
-    await sleep(6000);
-    await page.evaluate(navButton(0));
-    await sleep(900);
-    await audit(page, `game-${language}`);
-    // Flows do not depend on the language: once is enough.
-    if (language === LANGUAGES[0]) await auditDetailsFlow(page);
-    // The details open from the header; they close again for the next pass.
-    await page.evaluate(detailsToggle);
-    await sleep(500);
-    await audit(page, `game-details-${language}`);
-    await page.evaluate(detailsToggle);
-    await page.evaluate(navButton(1));
-    await sleep(1200);
-    await audit(page, `dashboard-${language}`);
-    await page.evaluate(navButton(-1));
-    await sleep(800);
-    await audit(page, `settings-${language}`);
-    // Settings is taller than the window: capture its end as well.
-    await page.evaluate(
-      `document.querySelector('main > div:last-child > section').scrollTo(0, 99999)`,
-    );
-    await sleep(300);
-    await audit(page, `settings-end-${language}`);
-  }
-  await page.evaluate(
-    `window.api.setLanguage(${JSON.stringify(LANGUAGES[0])}).then(() => location.reload())`,
+      `JSON.stringify([...document.querySelectorAll('ul h2')].filter((el) => el.offsetParent !== null).map((el) => el.innerText.trim()))`,
+    ),
   );
-  await sleep(6000);
+  const foreign = shown.filter((name) => !names.has(name));
+  expectThat(
+    FLOW,
+    shown.length > 0 && foreign.length === 0,
+    `achievement names are not the ones Steam has in this language (${shown.length} shown; e.g. "${foreign[0] ?? ''}")`,
+  );
+  const list = await page.evaluate(
+    `[...document.querySelectorAll('ul')].find((el) => el.offsetParent !== null)?.innerText ?? ''`,
+  );
+  expectThat(
+    FLOW,
+    /\d\s?\/\s?\d/.test(list),
+    'no achievement shows a counter, though Steam reports them',
+  );
+  const hasArt = await waitFor(
+    page,
+    `[...document.querySelectorAll('header img')].some((el) => el.naturalWidth > 0)`,
+    6000,
+  );
+  if (!hasArt) {
+    // The pictures come from Steam's real servers: not a fault of the app.
+    console.log('note the game art did not load (no internet?)');
+  }
+
+  // Flows do not depend on the language: once is enough.
+  if (language === LANGUAGES[0]) await auditDetailsFlow(page);
+  // The details open from the header; they close again for the next screen.
+  await page.evaluate(detailsToggle);
+  await sleep(500);
+  await audit(page, `game-details-${language}`);
+  await page.evaluate(detailsToggle);
+  await page.evaluate(navButton(1));
+  await sleep(1200);
+  await audit(page, `dashboard-${language}`);
+  await page.evaluate(navButton(-1));
+  await sleep(800);
+  await audit(page, `settings-${language}`);
+  // Settings is taller than the window: capture its end as well.
+  await page.evaluate(
+    `document.querySelector('main > div:last-child > section').scrollTo(0, 99999)`,
+  );
+  await sleep(300);
+  await audit(page, `settings-end-${language}`);
+  await page.evaluate(navButton(0));
+  await sleep(600);
+}
+
+const IS_CRASHED = `document.querySelector('main [role="alert"] h1') !== null`;
+
+/**
+ * The interface fails to draw: the crash screen must take its place, the
+ * error must reach the local log, and "Reload" must bring the app back.
+ */
+async function auditCrash(page, language, userData) {
+  const FLOW = `crash screen (${language})`;
+  const failuresBefore = failures.length;
+  // Numbers are formatted while drawing; from here on, doing it throws.
+  await page.evaluate(
+    `Number.prototype.toLocaleString = () => { throw new Error('audit: forced render error'); }`,
+  );
+  // Showing the other list draws its cards, numbers included.
+  await page.evaluate(
+    `[...document.querySelectorAll('[role="group"] button')].filter((el) => el.offsetParent !== null).at(1).click()`,
+  );
+  const crashed = await waitFor(page, `(${IS_CRASHED})`, 5000);
+  expectThat(
+    FLOW,
+    crashed,
+    'an error while drawing does not show the crash screen',
+  );
+  if (crashed) await audit(page, `crash-${language}`);
+
+  await sleep(500);
+  const log = join(userData, 'logs', 'errors.log');
+  expectThat(
+    FLOW,
+    existsSync(log) &&
+      readFileSync(log, 'utf8').includes('audit: forced render error'),
+    'the error did not reach logs/errors.log',
+  );
+
+  await page.evaluate(`document.querySelector('main button')?.click()`);
+  const isBack = await waitFor(
+    page,
+    `document.querySelector('nav') !== null && !(${IS_CRASHED}) && (${gameTitle}) !== ''`,
+  );
+  expectThat(FLOW, isBack, '"Reload" does not bring the app back');
+  await sleep(1500);
+  console.log(
+    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: the interface fails to draw in ${language}, and reloads`,
+  );
 }
 
 const refreshGame = `document.querySelector('header [aria-label="Refresh"]').click()`;
-const gameTitle = `document.querySelector('header h1')?.innerText ?? ''`;
 const showList = (name) =>
   `[...document.querySelectorAll('[role="group"] button')].filter((el) => el.offsetParent !== null).find((el) => el.innerText.startsWith(${JSON.stringify(name)}))?.click()`;
+const isOnGameTab = `document.querySelector('nav button')?.getAttribute('aria-current') === 'page'`;
+const headerText = `document.querySelector('header')?.innerText ?? ''`;
 
 /** Opens a game from the dashboard by its name. */
 async function openGame(page, name) {
@@ -522,32 +666,54 @@ async function openGame(page, name) {
   await sleep(2500);
 }
 
-/** An achievement is unlocked while the game is on screen, and then the last one. */
-async function auditUnlocks(page, steam) {
-  const FLOW = 'unlock';
+/**
+ * A game is started, an achievement is unlocked while it runs, the last one
+ * follows, and the game is closed. Nobody touches the app until the last
+ * unlock: it has to notice by itself.
+ */
+async function auditPlaying(page, steam) {
+  const FLOW = 'playing';
   const failuresBefore = failures.length;
-  const game = steam.games.find((g) => g.appid === 2638890);
-  await openGame(page, game.name);
-  // The app was last left on a list chosen by an earlier step.
+  const game = steam.games.find((g) => g.appid === ONIMUSHA);
+  const total = steam.names(ONIMUSHA, 'english').length;
+  // From another tab, with another game as the last one seen.
+  await page.evaluate(navButton(1));
+  await sleep(800);
+
+  steam.play(ONIMUSHA);
+  const switched = await waitFor(
+    page,
+    `(${isOnGameTab}) && (${gameTitle}) === ${JSON.stringify(game.name)}`,
+  );
+  expectThat(
+    FLOW,
+    switched,
+    `the app does not switch to the game that started (on screen: "${await page.evaluate(gameTitle)}")`,
+  );
+  await sleep(1500);
+  expectThat(
+    FLOW,
+    /running/i.test(await page.evaluate(headerText)),
+    'the header does not say the game is running',
+  );
   await page.evaluate(showList('Pending'));
   await sleep(600);
-  const leftBefore = game.schema.length - game.unlocked;
+  await audit(page, 'flow-game-running');
+  const leftBefore = total - game.unlocked;
 
-  const unlocked = steam.unlockNext(game.appid);
-  await page.evaluate(refreshGame);
-  await sleep(2500);
-  const notice = await page.evaluate(visibleText('section [role="status"]'));
-  expectThat(
-    FLOW,
-    notice.includes(unlocked),
-    `the notice does not name "${unlocked}" (shown: "${notice}")`,
-  );
-  const header = await page.evaluate(
-    `document.querySelector('header').innerText`,
+  const unlocked = steam.unlockNext(ONIMUSHA);
+  const noticed = await waitFor(
+    page,
+    `(${visibleText('section [role="status"]')}).includes(${JSON.stringify(unlocked)})`,
   );
   expectThat(
     FLOW,
-    header.includes(`${leftBefore - 1} left`),
+    noticed,
+    `the app does not notice "${unlocked}" by itself (notice: "${await page.evaluate(visibleText('section [role="status"]'))}")`,
+  );
+  expectThat(
+    FLOW,
+    (await page.evaluate(headerText)).includes(`${leftBefore - 1} left`),
     `the header does not say ${leftBefore - 1} left`,
   );
   const stillPending = await page.evaluate(visibleText('ul h2'));
@@ -568,7 +734,8 @@ async function auditUnlocks(page, steam) {
   await page.evaluate(showList('Pending'));
   await sleep(600);
 
-  steam.unlockNext(game.appid);
+  // The last one, asked for with the refresh button.
+  steam.unlockNext(ONIMUSHA);
   await page.evaluate(refreshGame);
   await sleep(2500);
   const finished = await page.evaluate(
@@ -588,8 +755,22 @@ async function auditUnlocks(page, steam) {
     `the last unlock is not announced as the end (shown: "${lastNotice}")`,
   );
   await audit(page, 'flow-game-finished');
+
+  steam.quit();
+  const closed = await waitFor(page, `!/running/i.test(${headerText})`);
+  expectThat(
+    FLOW,
+    closed,
+    'the header still says running after the game closed',
+  );
+  expectThat(
+    FLOW,
+    (await page.evaluate(gameTitle)) === game.name,
+    'the game that was just closed left the screen',
+  );
+  await audit(page, 'flow-game-closed');
   console.log(
-    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: "${unlocked}" unlocked, then the last one`,
+    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: a game starts, "${unlocked}" is unlocked while playing, then the last one, and the game closes`,
   );
 }
 
@@ -664,6 +845,58 @@ async function auditColdStartOffline(page) {
   );
 }
 
+/**
+ * The app is opened with Steam unreachable and nothing kept from before: it
+ * has nothing to show, and must say why and recover when Steam is back.
+ */
+async function auditFirstStartOffline(page, steam) {
+  const FLOW = 'Steam down, nothing cached';
+  const failuresBefore = failures.length;
+  await sleep(7000);
+  const mainText = `[...document.querySelectorAll('main section, main > div')].filter((el) => el.offsetParent !== null).map((el) => el.innerText).join(' ')`;
+  const game = (await page.evaluate(mainText)).replace(/\s+/g, ' ');
+  expectThat(
+    FLOW,
+    /reach|connection/i.test(game),
+    `the Game tab does not say Steam cannot be reached (shown: "${game.slice(0, 120)}")`,
+  );
+  expectThat(
+    FLOW,
+    !/nothing has been played/i.test(game),
+    'the Game tab says nothing was played, when it only could not ask',
+  );
+  await audit(page, 'flow-first-start-offline-game');
+
+  await page.evaluate(navButton(1));
+  await sleep(1500);
+  const dashboard = (await page.evaluate(mainText)).replace(/\s+/g, ' ');
+  expectThat(
+    FLOW,
+    /reach|connection/i.test(dashboard),
+    `the dashboard does not say Steam cannot be reached (shown: "${dashboard.slice(0, 120)}")`,
+  );
+  await audit(page, 'flow-first-start-offline-dashboard');
+
+  // Steam is back: the app must recover without being restarted.
+  steam.state.mode = 'ok';
+  await page.evaluate(navButton(0));
+  await sleep(600);
+  await page.evaluate(
+    `[...document.querySelectorAll('main button')].filter((el) => el.offsetParent !== null).at(-1)?.click()`,
+  );
+  const recovered = await waitFor(page, `(${gameTitle}) !== ''`);
+  expectThat(
+    FLOW,
+    recovered,
+    'with Steam back, "Try again" does not bring a game to the screen',
+  );
+  await sleep(1500);
+  await audit(page, 'flow-first-start-recovered');
+  console.log(
+    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: the app opened with Steam unreachable and nothing cached, then Steam came back`,
+  );
+}
+
 if (!existsSync('out/main/index.js')) {
   console.error('No build found. Run `pnpm build` first.');
   process.exit(1);
@@ -671,30 +904,47 @@ if (!existsSync('out/main/index.js')) {
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 
-const steam = await startFakeSteam();
-const userData = mkdtempSync(join(tmpdir(), 'tt-audit-'));
-try {
-  let page = await launch(userData, steam.url);
-  try {
-    await sleep(6000);
-    await auditOnboarding(page, steam);
-    await auditScreens(page);
-    await auditUnlocks(page, steam);
-    await auditOutage(page, steam);
-  } finally {
-    await page.close();
-  }
+// `AUDIT_LANGUAGES=en pnpm audit:ui` runs one language while working on it.
+const languages = process.env.AUDIT_LANGUAGES?.split(',') ?? LANGUAGES;
 
-  // Same data folder, Steam still off the air.
-  page = await launch(userData, steam.url);
+for (const language of languages) {
+  console.log(`\n== ${language} ==`);
+  // Each language starts from nothing: its own Steam, client folder and data.
+  const steam = await startFakeSteam();
+  const home = mkdtempSync(join(tmpdir(), 'tt-audit-home-'));
+  const userData = mkdtempSync(join(tmpdir(), 'tt-audit-'));
+  writeFakeSteamFolder(home, STEAM_ID);
+  const withApp = async (run) => {
+    const page = await launch(userData, steam.url, home);
+    try {
+      await run(page);
+    } finally {
+      await page.close();
+    }
+  };
+
   try {
-    await auditColdStartOffline(page);
+    await withApp(async (page) => {
+      await sleep(6000);
+      await auditOnboarding(page, steam, language);
+      await auditScreens(page, steam, language);
+      await auditCrash(page, language, userData);
+      if (language !== LANGUAGES[0]) return;
+      await auditPlaying(page, steam);
+      await auditOutage(page, steam);
+    });
+    if (language !== LANGUAGES[0]) continue;
+
+    // Same data folder, Steam still off the air.
+    await withApp((page) => auditColdStartOffline(page));
+    // And once more with nothing kept from before.
+    rmSync(join(userData, 'cache.json'), { force: true });
+    await withApp((page) => auditFirstStartOffline(page, steam));
   } finally {
-    await page.close();
+    await steam.stop();
+    rmSync(userData, { recursive: true, force: true });
+    rmSync(home, { recursive: true, force: true });
   }
-} finally {
-  await steam.stop();
-  rmSync(userData, { recursive: true, force: true });
 }
 
 console.log(
