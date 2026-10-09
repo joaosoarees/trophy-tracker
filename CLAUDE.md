@@ -207,6 +207,7 @@ The app keeps several Steam accounts and follows one at a time. An account is a 
 - **Switching** (`settings.switchAccount`) flushes pending note edits first, since they belong to the account being left. `useAppController` runs `connectStore` again for each account: what was read for one goes off the screen and the other is loaded, instantly when it has a cache.
 - **The app follows the account signed in to Steam** where the client says who that is without being asked (the registry, so Windows and WSL): `services/accountFollower.ts` switches when the client's account changes, and once as the app opens, and a toast says so. It acts on a change only, so an account picked by hand is not taken back. On macOS and Linux the switch is manual.
 - **One card per account.** Settings lists the accounts as `AccountCard`s: the one in use has the accent border and opens, inside the card, its masked key with "Replace key" and "Remove account" (`Settings/components/AccountDetails`); any other card is one button that switches to it. Nothing about an account is drawn outside its card. This replaced a grid of avatar tiles with the details as loose rows under it, which had more hover than content and tied nothing to the account it described.
+- **A card keeps its shape when the account in use changes.** `AccountCard` is drawn the same way in use or not; what makes another account clickable is a button laid under the card's content. When the card itself was a button in one case and a plain element in the other, every switch threw away and redrew both cards, and the avatars flickered. The same goes for anything whose state flips between "is a button" and "is not": change what is inside, not the element.
 - **Adding and removing.** The dashed card at the end of the list opens the onboarding with only its account and final steps (`navigation.isAddingAccount`), the form already open; the account just added becomes the one in use. A SteamID that is already saved is refused. Removing an account deletes its key, its cache and its notes, and the dialog says so by name; removing the last one leads back to the onboarding.
 - **In the setup, everything about accounts happens in the account step.** An account Steam accepts is saved at once and joins a list of cards above the form, which closes into "Add another account"; the last step is only the summary. The first setup ends on the account signed in to Steam, or the first added. An account added in that visit can be taken out again in one click; an older one cannot, because it may have notes and Settings asks first.
 
@@ -290,6 +291,15 @@ The screen never waits for something it can already show, and never keeps showin
 - **Art and names** are cached on disk; a store failure never takes the screen down.
 
 When touching this, measure before and after: count HTTP and IPC calls on startup, while idle and when switching tabs.
+
+## What redraws
+
+Measured on the built app with a React commit hook (the way React DevTools counts: a subtree whose first child is the same object was skipped):
+
+- **Idle redraws nothing**, on any tab. A timer, a poll or an event that changes nothing must stay that way.
+- **The screens are memoised** (`Game`, `Dashboard`, `Settings`), because `AppShell` redraws for its own reasons (the tab, a toggle in the bar): switching tabs redraws the shell, about 45 components, not the 80 achievement cards behind it. `AchievementCard` and `GameRow` are memoised too, with handlers that keep their identity (`useCallback`, or a store action passed as is).
+- **Costs that were measured and left alone:** a letter typed in a note redraws the Game screen around the list and that one card, about 1 ms; switching accounts loads another account's game and dashboard, about 45 ms of script. Memoising further would add code for nothing anyone can see.
+- When a list item or a screen gets a new prop, check it does not get a new identity on every render (an inline function, an object built in the selector): that silently turns the memo off.
 
 ## Interface state (Zustand)
 
