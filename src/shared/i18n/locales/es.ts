@@ -185,6 +185,8 @@ export const es: Messages = {
   },
 
   accounts: {
+    keyNotEncrypted:
+      'Este sistema no tiene llavero de contraseñas, así que la clave se guarda sin cifrar, en un archivo que solo tu usuario puede leer.',
     use: (name: string) => `Usar ${name}`,
     verified: 'Verificada',
     inUse: 'En uso',

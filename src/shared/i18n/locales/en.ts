@@ -183,6 +183,8 @@ export const en = {
   },
 
   accounts: {
+    keyNotEncrypted:
+      'This system has no password keyring, so the key is saved without encryption, in a file only your user can read.',
     use: (name: string) => `Use ${name}`,
     verified: 'Verified',
     inUse: 'In use',

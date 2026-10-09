@@ -11,6 +11,7 @@ const account: IAccount = {
   name: 'Audit Hunter',
   avatar: '',
   keyEnding: 'CDEF',
+  isKeyEncrypted: true,
   status: 'valid',
   checkedAt: 1_790_000_000_000,
 };

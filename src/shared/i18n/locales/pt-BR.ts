@@ -184,6 +184,8 @@ export const ptBR: Messages = {
   },
 
   accounts: {
+    keyNotEncrypted:
+      'Este sistema não tem cofre de senhas, então a chave fica salva sem criptografia, em um arquivo que só o seu usuário pode ler.',
     use: (name: string) => `Usar ${name}`,
     verified: 'Verificada',
     inUse: 'Em uso',

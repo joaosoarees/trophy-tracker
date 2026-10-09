@@ -336,9 +336,10 @@ export class Store {
   /** Every account, as the interface may see it: without the key. */
   getAccounts(): IAccount[] {
     return this.config.accounts.map(
-      ({ profile, keyEnding, status, checkedAt }) => ({
+      ({ profile, keyEnding, status, checkedAt, apiKeyEncrypted }) => ({
         ...profile,
         keyEnding,
+        isKeyEncrypted: apiKeyEncrypted !== undefined,
         status,
         checkedAt,
       }),

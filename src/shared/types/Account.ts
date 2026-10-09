@@ -13,6 +13,8 @@ export type AccountStatus = 'valid' | 'rejected' | 'rateLimited' | 'unchecked';
 export interface IAccount extends IProfile {
   /** The last four characters of the key, to tell one key from another. */
   keyEnding: string;
+  /** Whether the key is kept encrypted by the system's keyring; without one it is only private to the user. */
+  isKeyEncrypted: boolean;
   status: AccountStatus;
   /** When Steam was last asked about the key (epoch in milliseconds); `null` if never. */
   checkedAt: number | null;

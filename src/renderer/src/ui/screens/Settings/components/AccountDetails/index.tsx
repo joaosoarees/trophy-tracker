@@ -1,3 +1,4 @@
+import { LockOpen } from 'lucide-react';
 import { useId } from 'react';
 
 import { useLocale } from '@app/hooks/useLocale';
@@ -62,6 +63,12 @@ export function AccountDetails({ account }: IAccountDetailsProps) {
               </small>
             )}
           </span>
+          {!account.isKeyEncrypted && (
+            <small className="text-muted-foreground flex items-start gap-1 pt-0.5 text-xs">
+              <LockOpen className="mt-0.5 size-3 flex-none" aria-hidden />
+              {t.accounts.keyNotEncrypted}
+            </small>
+          )}
         </p>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {account.status !== 'valid' && (

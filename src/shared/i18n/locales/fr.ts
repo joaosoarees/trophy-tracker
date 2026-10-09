@@ -185,6 +185,8 @@ export const fr: Messages = {
   },
 
   accounts: {
+    keyNotEncrypted:
+      'Ce système n’a pas de trousseau de mots de passe : la clé est enregistrée sans chiffrement, dans un fichier que seul votre utilisateur peut lire.',
     use: (name: string) => `Utiliser ${name}`,
     verified: 'Vérifié',
     inUse: 'Utilisé',

@@ -15,6 +15,7 @@ export function makeAppState(props: Partial<IAppState> = {}): IAppState {
         name: 'player',
         avatar: '',
         keyEnding: 'CDEF',
+        isKeyEncrypted: true,
         status: 'valid',
         checkedAt: null,
       },

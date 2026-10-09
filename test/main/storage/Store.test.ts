@@ -257,16 +257,30 @@ describe('Store: several accounts', () => {
       {
         ...profile,
         keyEnding: KEY.slice(-4),
+        isKeyEncrypted: false,
         status: 'valid',
         checkedAt: 1000,
       },
       {
         ...other,
         keyEnding: OTHER_KEY.slice(-4),
+        isKeyEncrypted: false,
         status: 'valid',
         checkedAt: 2000,
       },
     ]);
+  });
+
+  it('says whether a key is kept encrypted', () => {
+    const cipher = {
+      encrypt: (plain: string) => `enc:${plain}`,
+      decrypt: (encoded: string) => encoded.slice(4),
+    };
+    const store = new Store(tempDir(), cipher);
+
+    store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
+
+    expect(store.getAccounts()[0].isKeyEncrypted).toBe(true);
   });
 
   it('remembers which account is in use', () => {
@@ -408,6 +422,7 @@ describe('Store: files of the versions with a single account', () => {
       {
         ...profile,
         keyEnding: KEY.slice(-4),
+        isKeyEncrypted: false,
         status: 'unchecked',
         checkedAt: null,
       },
