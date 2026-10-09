@@ -17,7 +17,12 @@ import {
 
 import { useAccountStepController } from './useAccountStepController';
 
-export function AccountStep() {
+interface IAccountStepProps {
+  /** SteamID of the account the app is already set up with, when redoing the setup. */
+  savedSteamId: string | null;
+}
+
+export function AccountStep({ savedSteamId }: IAccountStepProps) {
   const t = useT();
   const {
     form,
@@ -32,7 +37,7 @@ export function AccountStep() {
     handleChange,
     handleEditSteamId,
     handleNext,
-  } = useAccountStepController();
+  } = useAccountStepController(savedSteamId);
   const text = t.onboarding.account;
 
   // Enter in a field checks the account instead of submitting the whole form.
@@ -54,7 +59,7 @@ export function AccountStep() {
             <Input
               id="steamId"
               inputMode="numeric"
-              placeholder="7656119…"
+              placeholder="7656…"
               readOnly={isSteamIdLocked}
               className={isSteamIdLocked ? 'bg-muted pr-9' : undefined}
               {...form.register('accountStep.steamId')}

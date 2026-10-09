@@ -8,7 +8,7 @@ import { type OnboardingFormData } from '@ui/screens/Onboarding/schema';
 /** Where the SteamID in the field came from, which decides how it is presented. */
 type SteamIdSource = 'detected' | 'saved' | 'typed';
 
-export function useAccountStepController() {
+export function useAccountStepController(savedSteamId: string | null) {
   const { nextStep, lockFollowingSteps } = useStepper();
   const form = useFormContext<OnboardingFormData>();
   const verified = useWatch({
@@ -16,9 +16,14 @@ export function useAccountStepController() {
     name: 'accountStep.verified',
   });
 
-  // A SteamID that was already there (saved setup or draft) starts locked, like a detected one.
+  // Only the account the app is already set up with starts locked, like a
+  // detected one. Anything else in the field was typed by the user (and kept
+  // by the draft), and stays theirs to edit.
   const [source, setSource] = useState<SteamIdSource>(() =>
-    form.getValues('accountStep.steamId') ? 'saved' : 'typed',
+    savedSteamId !== null &&
+    form.getValues('accountStep.steamId') === savedSteamId
+      ? 'saved'
+      : 'typed',
   );
   const [isEditingSteamId, setIsEditingSteamId] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);

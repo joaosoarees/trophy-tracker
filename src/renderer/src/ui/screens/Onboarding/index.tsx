@@ -42,7 +42,11 @@ export function Onboarding({ state, onDone, onCancel }: IOnboardingProps) {
                 },
                 {
                   label: t.onboarding.steps.account,
-                  content: <AccountStep />,
+                  content: (
+                    <AccountStep
+                      savedSteamId={state.profile?.steamId ?? null}
+                    />
+                  ),
                 },
                 {
                   label: t.onboarding.steps.done,
