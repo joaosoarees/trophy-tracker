@@ -1,0 +1,40 @@
+import { Canvas, Controls, Meta } from '@storybook/addon-docs/blocks';
+
+import * as NoticeStories from './Notice.stories';
+
+<Meta of={NoticeStories} />
+
+# Notice
+
+A message that stays on the page until its cause is gone, with the one action
+that deals with it.
+
+## Anatomy
+
+A tinted, bordered box (6px): a title in medium weight, an optional line under
+it in Quiet Steel, and one small button at its end.
+
+## Variants
+
+**Information** is a 10 percent wash and a 40 percent border of Signal Blue.
+It is announced politely.
+
+<Canvas of={NoticeStories.Information} />
+
+**Problem** is the same in Erase Red, with a warning triangle at its start. It
+is announced at once.
+
+<Canvas of={NoticeStories.Problem} />
+<Canvas of={NoticeStories.WithoutAction} />
+
+## Do and don't
+
+- **Do** keep its words in the text colour. The icon carries the meaning.
+- **Don't** set the words in red: red text fails contrast on a red tint.
+- **Don't** use it for something that goes away by itself in a moment; that is a toast.
+- The unlock notice at the top of an achievement list is a different thing (a
+  one-line status that is dismissed) and is not built on this.
+
+## Props
+
+<Controls of={NoticeStories.Information} />

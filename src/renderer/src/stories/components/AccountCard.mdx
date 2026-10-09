@@ -1,0 +1,50 @@
+import { Canvas, Controls, Meta } from '@storybook/addon-docs/blocks';
+
+import * as AccountCardStories from './AccountCard.stories';
+
+<Meta of={AccountCardStories} />
+
+# Account card
+
+One account, with everything about it in one place. A list of them shows
+whose accounts the app has and switches between them.
+
+## Anatomy
+
+A card (Panel Navy, hairline, 8px): a 40px avatar, the name in title weight
+with the SteamID under it in caption text, and the status of the key at the
+end. A list ends with a dashed card of the same width, a plus and "Add account".
+
+<Canvas of={AccountCardStories.InAList} />
+
+## States
+
+The account in use has a Signal Blue border at 60 percent and the words "In
+use" beside its name. It is not a button, and it is where the card opens:
+under a hairline, on the field colour, the masked key with its actions.
+
+<Canvas of={AccountCardStories.InUse} />
+
+Any other account is one button exactly as wide as the card. Its hover is a
+wash and a lighter border, never the accent: a hover must not make an account
+look like the one in use.
+
+<Canvas of={AccountCardStories.Switchable} />
+<Canvas of={AccountCardStories.KeyRefused} />
+<Canvas of={AccountCardStories.LongName} />
+
+## Do and don't
+
+- **Do** keep what belongs to an account inside its card.
+- **Do** keep the card the same shape whether it is in use or not. What makes
+  it clickable is a button laid under its content; when the card itself
+  changed from a button to a plain element, every switch redrew both cards
+  and the avatars flickered.
+- **Don't** list an account's facts as loose rows under a row of faces:
+  nothing ties them to the account, and a face-sized tile has more hover than
+  content.
+- **Don't** show the key. It appears only masked (see `MaskedKey`).
+
+## Props
+
+<Controls of={AccountCardStories.Switchable} />

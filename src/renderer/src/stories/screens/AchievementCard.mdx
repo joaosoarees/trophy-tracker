@@ -1,0 +1,54 @@
+import { Canvas, Controls, Meta } from '@storybook/addon-docs/blocks';
+
+import * as AchievementCardStories from './AchievementCard.stories';
+
+<Meta of={AchievementCardStories} />
+
+# Achievement card
+
+The unit the whole app is built around.
+
+## Anatomy
+
+A 48px icon at the left; to its right the name in title weight, with the
+rarity percentage in caption text at the far end; the description below at 75
+percent opacity; then, when there is one, a progress bar with its count; and a
+last row of ghost buttons, with guide searches at the left in Quiet Steel and
+the user's own tools (checklist, note, pin) at the right.
+
+<Canvas of={AchievementCardStories.Pending} />
+
+A title and its description share one size: weight and opacity do the work,
+which keeps a card short enough for a list to stay in view.
+
+## What Steam says
+
+<Canvas of={AchievementCardStories.Hidden} />
+<Canvas of={AchievementCardStories.WithCounter} />
+<Canvas of={AchievementCardStories.Unlocked} />
+
+The counter is shown only when Steam reports it and the local Steam client
+says which stat feeds it. The app never invents a value.
+
+## What the user adds
+
+Steam does not say which items are missing in a "collect them all". The
+checklist, the note and the pin are where the user keeps that. They open
+inside the card, growing to their height, and are saved half a second after
+the last edit.
+
+<Canvas of={AchievementCardStories.Pinned} />
+<Canvas of={AchievementCardStories.WithANote} />
+<Canvas of={AchievementCardStories.WithAChecklist} />
+
+## Do and don't
+
+- **Do** keep the card memoised and its handlers stable: a list has up to a
+  hundred of these, and typing in one must not redraw the others.
+- **Don't** hide the tools until hover: the app is read at a glance, beside a game.
+- **Don't** colour a card to add variety. Amber is "set apart" (pinned,
+  hidden) and green is "done".
+
+## Props
+
+<Controls of={AchievementCardStories.Pending} />

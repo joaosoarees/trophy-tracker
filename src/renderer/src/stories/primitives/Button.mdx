@@ -1,0 +1,45 @@
+import { Canvas, Controls, Meta } from '@storybook/addon-docs/blocks';
+
+import * as ButtonStories from './Button.stories';
+
+<Meta of={ButtonStories} />
+
+# Button
+
+A button is one action. Softly rounded (6px), 36px tall by default and 32px
+(`sm`) in toolbars, cards and rows.
+
+## When to use each
+
+- **Primary** (`default`): the action that moves the user forward. One per view at most.
+- **Secondary**: an alternative that is not destructive.
+- **Outline**: an action that sits beside others without competing.
+- **Ghost**: actions inside a card, such as opening a guide or a note, and "Cancel".
+- **Destructive**: outlined, with red text and border. It hovers on a red wash, never on the usual tint: red text does not have enough contrast there.
+- **Link**: a way out written into a sentence.
+
+<Canvas of={ButtonStories.Primary} />
+<Canvas of={ButtonStories.Secondary} />
+<Canvas of={ButtonStories.Outline} />
+<Canvas of={ButtonStories.Ghost} />
+<Canvas of={ButtonStories.Destructive} />
+<Canvas of={ButtonStories.Link} />
+
+## Sizes and content
+
+<Canvas of={ButtonStories.Small} />
+<Canvas of={ButtonStories.WithIcon} />
+
+## States
+
+Hover adds a wash, pressing scales the button to 96 percent, and keyboard
+focus draws a 3px ring of Signal Blue at half opacity. A disabled button
+keeps its place and loses half its opacity.
+
+<Canvas of={ButtonStories.Disabled} />
+
+A button with only an icon is an `IconButton`, which makes its label mandatory.
+
+## Props
+
+<Controls of={ButtonStories.Primary} />
