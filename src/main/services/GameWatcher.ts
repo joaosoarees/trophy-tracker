@@ -27,6 +27,8 @@ export class GameWatcher {
   private current: CurrentGame = null;
   /** Last view of the current game the interface has seen. */
   private lastView: IGameView | null = null;
+  /** The game last seen running since the app opened. */
+  private lastSeenRunning: number | null = null;
 
   constructor(private deps: IGameWatcherDeps) {}
 
@@ -42,8 +44,16 @@ export class GameWatcher {
   /** Game open on Steam or, with no game open, the last one played. */
   async resolveCurrent(): Promise<CurrentGame> {
     const running = await this.deps.getRunningAppId();
-    if (running !== null) return { appid: running, running: true };
+    if (running !== null) {
+      this.lastSeenRunning = running;
+      return { appid: running, running: true };
+    }
     if (!this.deps.isConfigured()) return null;
+    // A game seen closing is the last one played, whatever the library read
+    // before it was started still says.
+    if (this.lastSeenRunning !== null) {
+      return { appid: this.lastSeenRunning, running: false };
+    }
 
     const last = await this.deps.lastPlayedAppId().catch(() => null);
     return last === null ? null : { appid: last, running: false };
@@ -63,7 +73,10 @@ export class GameWatcher {
   /** Drops what was read: language changed or the setup was erased. */
   forget({ current = false } = {}): void {
     this.lastView = null;
-    if (current) this.current = null;
+    if (current) {
+      this.current = null;
+      this.lastSeenRunning = null;
+    }
   }
 
   async checkRunningGame(): Promise<void> {

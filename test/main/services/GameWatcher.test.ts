@@ -51,6 +51,19 @@ describe('GameWatcher', () => {
     });
   });
 
+  it('keeps showing a game that was closed, not the one the library had as last played', async () => {
+    const { watcher, run } = setup();
+    run(42);
+    await watcher.resolveCurrent();
+
+    run(null);
+
+    expect(await watcher.resolveCurrent()).toEqual({
+      appid: 42,
+      running: false,
+    });
+  });
+
   it('shows the running game over the last played one', async () => {
     const { watcher, run } = setup();
     run(42);
@@ -147,7 +160,7 @@ describe('GameWatcher', () => {
 
     expect(events).toEqual([
       ['updated', 3],
-      ['changed', { appid: 7, running: false }],
+      ['changed', { appid: 42, running: false }],
     ]);
   });
 
