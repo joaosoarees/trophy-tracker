@@ -421,6 +421,50 @@ async function waitFor(page, expression, timeout = 12_000) {
 /** Clicks the last button of the onboarding step: its own "advance". */
 const advance = `[...document.querySelectorAll('main button')].filter((el) => el.offsetParent !== null).at(-1).click()`;
 
+/**
+ * "Verify". The form of the first account is verified by the step's own
+ * forward button; one opened to add another account sits in a panel with its
+ * own. With no form open, the same place holds "Add another account".
+ */
+const verifyAccount = `(() => {
+  const shown = (el) => el.offsetParent !== null;
+  const panel = document.querySelector('#steamId')?.closest('.rounded-lg.border');
+  const own = [...document.querySelectorAll('main button')].filter((el) => shown(el) && !el.closest('footer'));
+  const all = [...document.querySelectorAll('main button')].filter(shown);
+  const target = panel
+    ? [...panel.querySelectorAll('button')].filter(shown).at(-1)
+    : document.querySelector('#steamId')
+      ? all.at(-1)
+      : own.at(-1);
+  target.click();
+})()`;
+const accountCards = `document.querySelectorAll('main form ul[aria-label] > li').length`;
+
+/**
+ * Captures the screen with the pointer "over" an element. The checks only
+ * say that a hover changes something; what it looks like has to be seen.
+ */
+async function captureHover(page, element, name) {
+  await page.evaluate(`(() => {
+    document.querySelectorAll('[data-audit-hover]').forEach((el) => el.removeAttribute('data-audit-hover'));
+    (${element}).setAttribute('data-audit-hover', '');
+  })()`);
+  await page.send('DOM.enable');
+  await page.send('CSS.enable');
+  const { root } = await page.send('DOM.getDocument');
+  const { nodeId } = await page.send('DOM.querySelector', {
+    nodeId: root.nodeId,
+    selector: '[data-audit-hover]',
+  });
+  await page.send('CSS.forcePseudoState', {
+    nodeId,
+    forcedPseudoClasses: ['hover'],
+  });
+  await sleep(250);
+  await page.capture(name);
+  await page.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] });
+}
+
 async function type(page, selector, text) {
   await page.evaluate(
     `document.querySelector(${JSON.stringify(selector)}).select()`,
@@ -473,12 +517,12 @@ async function auditOnboarding(page, steam, language) {
   await type(page, '#apiKey', '0123456789ABCDEF0123456789ABCDEF');
 
   const verify = async () => {
-    await page.evaluate(advance);
-    // The button is disabled while Steam is being asked, however long it takes.
+    await page.evaluate(verifyAccount);
+    // Buttons are disabled while Steam is being asked, however long it takes.
     await sleep(300);
     await waitFor(
       page,
-      `![...document.querySelectorAll('main button')].filter((el) => el.offsetParent !== null).at(-1).disabled`,
+      `![...document.querySelectorAll('main button')].some((el) => el.offsetParent !== null && el.disabled)`,
     );
     await sleep(500);
     return page.evaluate(visibleText('main [role="alert"]'));
@@ -536,17 +580,23 @@ async function auditOnboarding(page, steam, language) {
     verified.includes('Audit Hunter'),
     'a good key does not show whose account it is',
   );
+  expectThat(
+    FLOW,
+    (await page.evaluate(accountCards)) === 1 &&
+      (await page.evaluate(`document.querySelector('#steamId')`)) === null,
+    'a verified account does not join the list with the form put away',
+  );
   await audit(page, `onboarding-verified-${language}`);
 
-  await page.evaluate(advance);
-  await sleep(1000);
-  await audit(page, `onboarding-done-${language}`);
   if (isFirst) {
-    // The last tile of the grid adds another account before the app opens.
-    await page.evaluate(
-      `document.querySelector('main section ul li:last-child button').click()`,
+    // One more account, without leaving the step that is about accounts.
+    await captureHover(
+      page,
+      `[...document.querySelectorAll('main button')].filter((el) => el.offsetParent !== null && !el.closest('footer')).at(-1)`,
+      'hover-onboarding-add-another',
     );
-    await sleep(900);
+    await page.evaluate(verifyAccount);
+    await sleep(700);
     const blank = await page.evaluate(
       `document.querySelector('#steamId').value + '|' + document.querySelector('#steamId').readOnly`,
     );
@@ -555,6 +605,7 @@ async function auditOnboarding(page, steam, language) {
       blank === '|false',
       `adding another account does not start from an empty SteamID (shown: "${blank}")`,
     );
+    await audit(page, `onboarding-add-another-${language}`);
     await type(page, '#steamId', SECOND_STEAM_ID);
     await type(page, '#apiKey', 'FEDCBA9876543210FEDCBA9876540000');
     expectThat(
@@ -562,18 +613,17 @@ async function auditOnboarding(page, steam, language) {
       (await verify()) === '',
       'the second account could not be verified',
     );
-    await page.evaluate(advance);
-    await sleep(1000);
-    const tiles = await page.evaluate(
-      `document.querySelectorAll('main section ul li').length`,
-    );
     expectThat(
       FLOW,
-      tiles === 3,
-      `the last step does not show both accounts and the tile to add one (${tiles} tiles)`,
+      (await page.evaluate(accountCards)) === 2,
+      'the account step does not list both accounts',
     );
     await audit(page, `onboarding-two-accounts-${language}`);
   }
+
+  await page.evaluate(advance);
+  await sleep(1000);
+  await audit(page, `onboarding-done-${language}`);
   await page.evaluate(advance);
   const isInTheApp = await waitFor(
     page,
@@ -715,8 +765,12 @@ const visible = `(el) => el.offsetParent !== null`;
 /** Clicks the visible button with exactly this text, inside `scope`. */
 const clickButton = (scope, text) =>
   `[...document.querySelectorAll('${scope} button')].filter(${visible}).find((el) => el.innerText.trim() === ${JSON.stringify(text)})?.click()`;
-const ACCOUNT_TILES = `[...document.querySelectorAll('ul[aria-label="Accounts"] li button')]`;
-const activeAccountTile = `${ACCOUNT_TILES}.findIndex((el) => el.getAttribute('aria-pressed') === 'true')`;
+/** The cards under "Accounts" in Settings: one per account, and the one that adds. */
+const ACCOUNT_CARDS = `[...[...document.querySelectorAll('main h2')].find((el) => el.innerText.trim() === 'Accounts').nextElementSibling.children]`;
+const activeAccountCard = `${ACCOUNT_CARDS}.findIndex((el) => el.getAttribute('aria-current') === 'true')`;
+/** Clicks the card of an account that is not in use, or the one that adds. */
+const clickAccountCard = (index) =>
+  `${ACCOUNT_CARDS}.at(${index}).querySelector('button').click()`;
 const settingsText = `document.querySelector('main > div:last-child > section')?.innerText ?? ''`;
 
 /**
@@ -736,15 +790,25 @@ async function auditAccounts(page, steam, home) {
   await openSettings();
   expectThat(
     FLOW,
-    (await page.evaluate(`${ACCOUNT_TILES}.length`)) === 3 &&
-      (await page.evaluate(activeAccountTile)) === 0,
+    (await page.evaluate(`${ACCOUNT_CARDS}.length`)) === 3 &&
+      (await page.evaluate(activeAccountCard)) === 0,
     'Settings does not show two accounts with the first one in use',
   );
   await audit(page, 'flow-accounts-settings');
+  await captureHover(
+    page,
+    `${ACCOUNT_CARDS}[1].querySelector('button')`,
+    'hover-account-card',
+  );
+  await captureHover(
+    page,
+    `${ACCOUNT_CARDS}.at(-1).querySelector('button')`,
+    'hover-add-account',
+  );
 
-  // By hand: one click on the other face.
-  await page.evaluate(`${ACCOUNT_TILES}[1].click()`);
-  const switched = await waitFor(page, `(${activeAccountTile}) === 1`);
+  // By hand: one click on the other card.
+  await page.evaluate(clickAccountCard(1));
+  const switched = await waitFor(page, `(${activeAccountCard}) === 1`);
   expectThat(FLOW, switched, 'clicking another account does not switch to it');
   expectThat(
     FLOW,
@@ -809,9 +873,10 @@ async function auditAccounts(page, steam, home) {
   expectThat(FLOW, fieldOpen, 'the notice does not lead to the key field');
   expectThat(
     FLOW,
-    (await page.evaluate(`${ACCOUNT_TILES}[0].getAttribute('aria-label')`)) ===
-      'Audit Hunter, Key refused by Steam',
-    'the account whose key was refused is not marked in the grid',
+    (await page.evaluate(`${ACCOUNT_CARDS}[0].innerText`)).includes(
+      'Key refused by Steam',
+    ),
+    'the card of the account whose key was refused does not say so',
   );
   await sleep(400);
   await audit(page, 'flow-key-refused-settings');
@@ -849,7 +914,7 @@ async function auditAccounts(page, steam, home) {
   );
 
   // Adding an account from the app: the account step alone, and a way out.
-  await page.evaluate(`${ACCOUNT_TILES}.at(-1).click()`);
+  await page.evaluate(clickAccountCard(-1));
   const adding = await waitFor(
     page,
     `document.querySelector('#steamId') !== null`,
@@ -873,10 +938,10 @@ async function auditAccounts(page, steam, home) {
 
   // Removing: the question names the account, and can be backed out of.
   await openSettings();
-  await page.evaluate(`${ACCOUNT_TILES}[1].click()`);
-  await waitFor(page, `(${activeAccountTile}) === 1`);
+  await page.evaluate(clickAccountCard(1));
+  await waitFor(page, `(${activeAccountCard}) === 1`);
   const dialogText = `document.querySelector('[role="dialog"]')?.innerText ?? ''`;
-  await page.evaluate(clickButton('main', 'Remove'));
+  await page.evaluate(clickButton('main', 'Remove account'));
   await sleep(600);
   expectThat(
     FLOW,
@@ -889,15 +954,15 @@ async function auditAccounts(page, steam, home) {
   expectThat(
     FLOW,
     (await page.evaluate(dialogText)) === '' &&
-      (await page.evaluate(`${ACCOUNT_TILES}.length`)) === 3,
+      (await page.evaluate(`${ACCOUNT_CARDS}.length`)) === 3,
     'backing out of the question removed the account or left it open',
   );
-  await page.evaluate(clickButton('main', 'Remove'));
+  await page.evaluate(clickButton('main', 'Remove account'));
   await sleep(600);
   await page.evaluate(clickButton('[role="dialog"]', 'Remove'));
   const removed = await waitFor(
     page,
-    `${ACCOUNT_TILES}.length === 2 && (${activeAccountTile}) === 0`,
+    `${ACCOUNT_CARDS}.length === 2 && (${activeAccountCard}) === 0`,
   );
   expectThat(
     FLOW,
