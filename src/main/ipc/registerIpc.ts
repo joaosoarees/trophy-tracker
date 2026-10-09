@@ -65,10 +65,6 @@ export function registerIpc({
       if (state.configured) void watcher.checkRunningGame();
       return state;
     },
-    resetConfig: () => {
-      watcher.forget({ current: true });
-      return setup.resetConfig();
-    },
     // The game on screen belongs to the account that is being left.
     setActiveAccount: (steamId) => {
       watcher.forget({ current: true });

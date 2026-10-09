@@ -23,7 +23,6 @@ const calls = [
   'checkApiKey',
   'checkPrivacy',
   'saveConfig',
-  'resetConfig',
   'setActiveAccount',
   'removeAccount',
   'replaceKey',

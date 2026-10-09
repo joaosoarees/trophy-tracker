@@ -160,16 +160,6 @@ describe('SetupService', () => {
     expect(service.messages.nav.dashboard).toBe('Painel');
   });
 
-  it('erasing the setup forgets every account', async () => {
-    const { service, store } = await withTwoAccounts();
-
-    expect(service.resetConfig()).toMatchObject({
-      configured: false,
-      accounts: [],
-    });
-    expect(store.getCredentials()).toBeNull();
-  });
-
   it('follows an account as soon as it is added', async () => {
     const { service } = await withTwoAccounts();
 

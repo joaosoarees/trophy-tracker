@@ -168,12 +168,6 @@ export class SetupService {
     return this.getState();
   }
 
-  /** Forgets every account; the app goes back to the initial setup. */
-  resetConfig(): IAppState {
-    this.store.clearCredentials();
-    return this.getState();
-  }
-
   /** Changing the language also changes what is asked of Steam from now on. */
   setLanguage(language: Language): IAppState {
     this.store.setLanguage(language);

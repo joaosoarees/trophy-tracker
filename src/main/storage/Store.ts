@@ -421,14 +421,6 @@ export class Store {
     this.saveUserData();
   }
 
-  /** Forgets every account and what was read for them. What the user wrote is kept. */
-  clearCredentials(): void {
-    this.config = { accounts: [] };
-    this.saveConfig();
-    this.cache.accounts = {};
-    this.saveCache();
-  }
-
   /**
    * What was read for an account: the one in use, unless a read that started
    * for another one is only now handing in its result. A result for an

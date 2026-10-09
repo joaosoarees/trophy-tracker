@@ -11,11 +11,6 @@ export class SettingsService extends Service {
     return this.api.getState();
   }
 
-  /** Erases the key and the SteamID; notes and checklists are kept. */
-  static resetConfig(): Promise<IAppState> {
-    return this.api.resetConfig();
-  }
-
   /** Saves the language and drops the translated cache; the caller decides whether to reload. */
   static setLanguage(language: Language): Promise<IAppState> {
     return this.api.setLanguage(language);

@@ -351,16 +351,6 @@ describe('Store: several accounts', () => {
     expect(store.getActiveSteamId()).toBe(STEAM_ID);
   });
 
-  it('erasing every account keeps the notes for when one comes back', () => {
-    const { store } = withTwoAccounts();
-    store.setUserData(10, 'A', note);
-
-    store.clearCredentials();
-    store.setCredentials({ steamId: OTHER_STEAM_ID, apiKey: OTHER_KEY }, other);
-
-    expect(store.getUserData(10)).toEqual({ A: note });
-  });
-
   it('gives a new key to an account that is already there, keeping the rest', () => {
     const { store } = withTwoAccounts();
     store.setUserData(10, 'A', note);
