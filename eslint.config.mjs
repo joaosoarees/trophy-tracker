@@ -18,6 +18,7 @@ export default defineConfig(
     'out',
     'dist',
     'node_modules',
+    'coverage',
     'src/renderer/src/ui/primitives',
     'storybook-static',
     // ESLint skips folders that start with a dot unless told otherwise.
