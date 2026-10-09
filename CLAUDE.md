@@ -58,6 +58,7 @@ The same code runs on Windows, macOS, Linux and, for development, WSL. What diff
 - The Web API only reports the running game when the profile shows it; on macOS and Linux a profile that hides the game status simply never switches games on its own.
 - The data folder is `trophy-tracker` on every system (set in `main/index.ts`); `storage/migrateUserData.ts` moves the files of the old `steam-trophy-tracker` folder once.
 - A second launch focuses the open window (`requestSingleInstanceLock`).
+- **Windows and macOS have no title bar** (`system/windowFrame.ts`): the system draws only its own buttons, over the app's tab bar, so snapping and the maximise menu keep working. The interface never asks which system it is on: CSS learns where the buttons are from `env(titlebar-area-*)` (the `window-drag`, `window-buttons-inset`, `window-bar` and `h-below-window-bar` utilities in `ui/styles/index.css`), and the fallbacks leave Linux, which keeps the system's title bar, as it was. The tab bar drags the window; a screen without it (onboarding, update, crash) starts with `ui/components/WindowBar`, the strip the window is dragged by. Whatever is added to the tab bar must fit beside the system's buttons at 480 px in French, the tightest case (138 px of buttons on Windows).
 
 ## Packaging and releases
 
@@ -127,6 +128,7 @@ src/main/              main process: the only part that talks to Steam and to th
   storage/               Store.ts (JSON persistence), secureCipher.ts and createCipher.ts (key encryption),
                          migrateUserData.ts (one-off move from the old data folder)
   system/                browser.ts (links), errorLog.ts (local log), dataFolder.ts, windowBounds.ts,
+                         windowFrame.ts (title bar or only the system's buttons, per system),
                          autoUpdate.ts (electron-updater, where the app can replace itself)
 
 src/preload/           exposes `window.api` (contextBridge), typed by `IApi`
@@ -143,7 +145,7 @@ src/renderer/src/      the interface, in two layers
     screens/             one folder per screen: Game, Dashboard, Settings, Onboarding, Update
     components/          shared between screens: AppShell, Pressable, IconButton, Hint, OptionSelect,
                          RemoteImage, ProgressBar, Segmented, SearchBox, Empty, ErrorBoundary, CrashScreen,
-                         UpdateReadyDialog, DetailList (DetailGroup and DetailRow), Switch, Collapsible
+                         UpdateReadyDialog, DetailList (DetailGroup and DetailRow), Switch, Collapsible, WindowBar
     primitives/          shadcn/ui components (generated; do not hand-edit without a reason)
     styles/index.css     Tailwind and the theme tokens
     utils/               cn, text (accent-free search), format (dates and numbers)
