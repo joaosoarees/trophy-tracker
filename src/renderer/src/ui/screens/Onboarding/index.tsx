@@ -28,11 +28,13 @@ export function Onboarding({
   const {
     form,
     initialStep,
+    saved,
     accounts,
-    knownSteamIds,
+    gamesFound,
+    gamesFoundOnOnly,
     isFinishing,
     handleSubmit,
-    handleAddAnother,
+    handleAccountsChange,
     handleStepChange,
   } = useOnboardingController({ state, isAddingAccount, onDone });
 
@@ -40,7 +42,14 @@ export function Onboarding({
     {
       label: t.onboarding.steps.account,
       content: (
-        <AccountStep knownSteamIds={knownSteamIds} onCancel={onCancel} />
+        <AccountStep
+          accounts={accounts}
+          gamesFound={gamesFound}
+          onChange={handleAccountsChange}
+          startsOpen={isAddingAccount}
+          // Accounts are saved as they are verified: leaving keeps them.
+          onCancel={onCancel ? () => onDone(saved) : undefined}
+        />
       ),
     },
     {
@@ -48,9 +57,9 @@ export function Onboarding({
       content: (
         <DoneStep
           accounts={accounts}
+          gamesFound={gamesFoundOnOnly}
           showLanguage={!isAddingAccount}
           isFinishing={isFinishing}
-          onAddAnother={handleAddAnother}
         />
       ),
     },

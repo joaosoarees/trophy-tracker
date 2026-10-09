@@ -3,43 +3,33 @@ import { useFormContext } from 'react-hook-form';
 import { useT } from '@app/hooks/useT';
 import { LANGUAGES } from '@shared/i18n';
 import { type IAccount } from '@shared/types/Account';
-import { AccountGrid } from '@ui/components/AccountGrid';
 import { Button } from '@ui/primitives/button';
-import { FieldError } from '@ui/screens/Onboarding/components/FieldError';
 import { StepHeader } from '@ui/screens/Onboarding/components/StepHeader';
 import {
   StepperFooter,
   StepperPreviousButton,
 } from '@ui/screens/Onboarding/components/Stepper';
-import { useStepper } from '@ui/screens/Onboarding/components/Stepper/useStepper';
 import type { OnboardingFormData } from '@ui/screens/Onboarding/schema';
 
 interface IDoneStepProps {
-  /** Every account the app will have: the saved ones and the one just verified. */
   accounts: IAccount[];
+  /** Played games found on the only account, when it was verified in this visit. */
+  gamesFound: number | null;
   /** Left out when the step was opened only to add an account. */
   showLanguage: boolean;
   isFinishing: boolean;
-  /** Saves the verified account and empties the form; answers whether it could. */
-  onAddAnother: () => Promise<boolean>;
 }
 
+/** The summary of what was set up, and the way into the app. Nothing is decided here. */
 export function DoneStep({
   accounts,
+  gamesFound,
   showLanguage,
   isFinishing,
-  onAddAnother,
 }: IDoneStepProps) {
   const t = useT();
-  const { previousStep } = useStepper();
   const form = useFormContext<OnboardingFormData>();
-  const { errors } = form.formState;
-  const { languageStep, accountStep } = form.getValues();
-  const account = accountStep.verified;
-
-  async function handleAddAnother() {
-    if (await onAddAnother()) previousStep();
-  }
+  const { languageStep } = form.getValues();
 
   return (
     <div>
@@ -48,30 +38,27 @@ export function DoneStep({
         description={t.onboarding.done.description}
       />
 
-      <section aria-label={t.accounts.title} className="-mx-2 mb-4">
-        <AccountGrid
-          label={t.accounts.title}
-          accounts={accounts}
-          activeId={null}
-          onAdd={isFinishing ? undefined : () => void handleAddAnother()}
-        />
-      </section>
+      <dl className="bg-card mb-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-lg border p-3">
+        {showLanguage && (
+          <>
+            <dt className="text-muted-foreground">
+              {t.onboarding.done.language}
+            </dt>
+            <dd>{LANGUAGES[languageStep.language].label}</dd>
+          </>
+        )}
+        <dt className="text-muted-foreground">{t.accounts.title}</dt>
+        <dd className="min-w-0">
+          {accounts
+            .map((account) => account.name || account.steamId)
+            .join(', ')}
+        </dd>
+      </dl>
 
       <div className="space-y-2">
-        {showLanguage && (
-          <p className="text-muted-foreground">
-            {t.onboarding.done.language}:{' '}
-            {LANGUAGES[languageStep.language].label}
-          </p>
-        )}
-        {account && <p>{t.onboarding.done.found(account.gamesWithPlaytime)}</p>}
+        {gamesFound !== null && <p>{t.onboarding.done.found(gamesFound)}</p>}
         <p>{t.onboarding.done.howItWorks}</p>
       </div>
-
-      {errors.root?.message && (
-        <p className="text-destructive mt-3">{t.onboarding.done.saveFailed}</p>
-      )}
-      <FieldError name="accountStep.verified" />
 
       <StepperFooter>
         <StepperPreviousButton disabled={isFinishing} />

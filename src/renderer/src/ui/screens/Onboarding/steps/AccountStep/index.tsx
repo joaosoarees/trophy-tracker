@@ -1,9 +1,12 @@
-import { CircleCheck, Lock, User } from 'lucide-react';
+import { CircleCheck, Lock, Plus, X } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { SystemService } from '@app/services/SystemService';
+import { type IAccount } from '@shared/types/Account';
+import { type IAppState } from '@shared/types/AppState';
+import { AccountCard } from '@ui/components/AccountCard';
+import { IconButton } from '@ui/components/IconButton';
 import { KeyField } from '@ui/components/KeyField';
-import { RemoteImage } from '@ui/components/RemoteImage';
 import { Button } from '@ui/primitives/button';
 import { Input } from '@ui/primitives/input';
 import { Label } from '@ui/primitives/label';
@@ -15,163 +18,231 @@ import {
   StepperNextButton,
   StepperPreviousButton,
 } from '@ui/screens/Onboarding/components/Stepper';
+import { cn } from '@ui/utils/cn';
 
 import { useAccountStepController } from './useAccountStepController';
 
 interface IAccountStepProps {
-  /** The accounts the app already has: the one signed in to Steam is not offered twice. */
-  knownSteamIds: string[];
+  /** The accounts the app already has: verified, saved, shown above the form. */
+  accounts: IAccount[];
+  /** Played games found for the accounts verified in this visit, by SteamID. */
+  gamesFound: Record<string, number>;
+  onChange: (state: IAppState, games?: number) => void;
+  /** The step was opened to add an account: its form starts open. */
+  startsOpen: boolean;
   /** The way out when the step was opened only to add an account. */
   onCancel?: () => void;
 }
 
-export function AccountStep({ knownSteamIds, onCancel }: IAccountStepProps) {
+/**
+ * Everything about accounts happens here: the ones already verified are
+ * listed, and one more can be verified below them. A verified account is
+ * saved at once, so there is nothing left to confirm in a later step.
+ */
+export function AccountStep({
+  accounts,
+  gamesFound,
+  onChange,
+  startsOpen,
+  onCancel,
+}: IAccountStepProps) {
   const t = useT();
   const {
     form,
-    verified,
-    isVerified,
+    isFormOpen,
+    isFormOptional,
     isVerifying,
     problem,
     privacyProblem,
+    isMissingAccount,
     steamIdSource,
     isSteamIdLocked,
     handleVerify,
-    handleChange,
+    handleRemove,
+    handleOpenForm,
+    handleCloseForm,
     handleEditSteamId,
     handleNext,
-  } = useAccountStepController(knownSteamIds);
+  } = useAccountStepController({ accounts, startsOpen, onChange });
   const text = t.onboarding.account;
+  const hasAccounts = accounts.length > 0;
+  const verifyLabel = isVerifying
+    ? text.verifying
+    : privacyProblem
+      ? text.privacy.testAgain
+      : text.verify;
 
   // Enter in a field checks the account instead of submitting the whole form.
   function handleEnter(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key !== 'Enter') return;
     event.preventDefault();
-    if (isVerified) handleNext();
-    else handleVerify();
+    handleVerify();
   }
 
   return (
     <div>
       <StepHeader title={text.title} description={text.description} />
 
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="steamId">{text.steamId.label}</Label>
-          <div className="relative">
-            <Input
-              id="steamId"
-              inputMode="numeric"
-              placeholder="7656…"
-              readOnly={isSteamIdLocked}
-              className={isSteamIdLocked ? 'bg-muted pr-9' : undefined}
-              {...form.register('accountStep.steamId')}
-              onKeyDown={handleEnter}
+      {hasAccounts && (
+        <ul aria-label={t.accounts.title} className="mb-4 flex flex-col gap-2">
+          {accounts.map((account) => (
+            <AccountCard
+              key={account.steamId}
+              account={account}
+              status={
+                <span className="text-success flex items-center gap-1 text-xs">
+                  <CircleCheck className="size-3.5" aria-hidden />
+                  {t.accounts.verified}
+                </span>
+              }
+              action={
+                // Only what was added in this visit is undone here, in one
+                // click: an older account has notes, and Settings asks first.
+                account.steamId in gamesFound && (
+                  <IconButton
+                    type="button"
+                    label={t.accounts.removeNamed(
+                      account.name || account.steamId,
+                    )}
+                    className="-mr-1"
+                    onClick={() => handleRemove(account.steamId)}
+                  >
+                    <X />
+                  </IconButton>
+                )
+              }
             />
+          ))}
+        </ul>
+      )}
+
+      {isFormOpen ? (
+        // Opened to add one more, the form is a thing of its own, with its
+        // own way out: a panel holds it and its two buttons together.
+        <div
+          className={cn(
+            'space-y-4',
+            isFormOptional && 'bg-card/50 rounded-lg border p-3',
+          )}
+        >
+          <div className="space-y-2">
+            <Label htmlFor="steamId">{text.steamId.label}</Label>
+            <div className="relative">
+              <Input
+                id="steamId"
+                inputMode="numeric"
+                placeholder="7656…"
+                readOnly={isSteamIdLocked}
+                className={isSteamIdLocked ? 'bg-muted pr-9' : undefined}
+                {...form.register('accountStep.steamId')}
+                onKeyDown={handleEnter}
+              />
+              {isSteamIdLocked && (
+                <Lock className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 size-3.5 -translate-y-1/2" />
+              )}
+            </div>
+            <FieldError name="accountStep.steamId" />
+
             {isSteamIdLocked && (
-              <Lock className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 size-3.5 -translate-y-1/2" />
+              <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-xs">
+                {text.steamId.detected}
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-xs"
+                  onClick={handleEditSteamId}
+                >
+                  {text.steamId.change}
+                </Button>
+              </p>
+            )}
+
+            {!isSteamIdLocked && (
+              <>
+                {steamIdSource === 'typed' && !hasAccounts && (
+                  <p className="text-muted-foreground text-xs">
+                    {text.steamId.notDetected}
+                  </p>
+                )}
+                <HelpList
+                  title={text.steamId.helpTitle}
+                  items={text.steamId.help}
+                  action={text.steamId.openAccount}
+                  onAction={() => void SystemService.openExternal('account')}
+                />
+              </>
             )}
           </div>
-          <FieldError name="accountStep.steamId" />
 
-          {isSteamIdLocked && !isVerified && (
-            <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-xs">
-              {text.steamId.detected}
-              <Button
-                type="button"
-                variant="link"
-                className="h-auto p-0 text-xs"
-                onClick={handleEditSteamId}
-              >
-                {text.steamId.change}
-              </Button>
-            </p>
-          )}
-
-          {!isSteamIdLocked && (
-            <>
-              {steamIdSource === 'typed' && (
-                <p className="text-muted-foreground text-xs">
-                  {text.steamId.notDetected}
-                </p>
-              )}
-              <HelpList
-                title={text.steamId.helpTitle}
-                items={text.steamId.help}
-                action={text.steamId.openAccount}
-                onAction={() => void SystemService.openExternal('account')}
-              />
-            </>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="apiKey">{text.key.label}</Label>
-          <KeyField
-            id="apiKey"
-            placeholder={text.key.placeholder}
-            readOnly={isVerified}
-            {...form.register('accountStep.apiKey')}
-            onKeyDown={handleEnter}
-          />
-          <FieldError name="accountStep.apiKey" />
-
-          {!isVerified && (
+          <div className="space-y-2">
+            <Label htmlFor="apiKey">{text.key.label}</Label>
+            <KeyField
+              id="apiKey"
+              placeholder={text.key.placeholder}
+              {...form.register('accountStep.apiKey')}
+              onKeyDown={handleEnter}
+            />
+            <FieldError name="accountStep.apiKey" />
             <HelpList
               title={text.key.helpTitle}
               items={text.key.help}
               action={text.key.openPage}
               onAction={() => void SystemService.openExternal('apikey')}
             />
+          </div>
+
+          {problem && (
+            <p role="alert" className="text-destructive">
+              {problem}
+            </p>
+          )}
+
+          {privacyProblem && (
+            <div role="alert" className="space-y-2">
+              <p className="text-destructive">{privacyProblem}</p>
+              <HelpList
+                open
+                items={text.privacy.help}
+                action={text.privacy.openSettings}
+                onAction={() => void SystemService.openExternal('privacy')}
+              />
+            </div>
+          )}
+
+          {isFormOptional && (
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isVerifying}
+                onClick={handleCloseForm}
+              >
+                {t.common.cancel}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={isVerifying}
+                onClick={handleVerify}
+              >
+                {verifyLabel}
+              </Button>
+            </div>
           )}
         </div>
-      </div>
+      ) : (
+        <Button type="button" variant="outline" onClick={handleOpenForm}>
+          <Plus />
+          {t.accounts.addAnother}
+        </Button>
+      )}
 
-      {problem && (
+      {isMissingAccount && !hasAccounts && (
         <p role="alert" className="text-destructive mt-4">
-          {problem}
+          {t.validation.verificationRequired}
         </p>
       )}
-
-      {privacyProblem && (
-        <div role="alert" className="mt-4 space-y-2">
-          <p className="text-destructive">{privacyProblem}</p>
-          <HelpList
-            open
-            items={text.privacy.help}
-            action={text.privacy.openSettings}
-            onAction={() => void SystemService.openExternal('privacy')}
-          />
-        </div>
-      )}
-
-      {verified && (
-        <div className="bg-card collapsible mt-4 flex items-center gap-3 rounded-lg border p-3">
-          <RemoteImage
-            src={verified.avatar}
-            fallback={<User className="size-5" />}
-            className="size-12 flex-none"
-          />
-          <div className="min-w-0 flex-1">
-            <strong className="block truncate">{verified.name}</strong>
-            <small className="text-success flex items-center gap-1">
-              <CircleCheck className="size-3.5" />
-              {text.verified(verified.gamesWithPlaytime)}
-            </small>
-            <small className="text-muted-foreground block">{text.locked}</small>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={handleChange}
-          >
-            {text.change}
-          </Button>
-        </div>
-      )}
-
-      <FieldError name="accountStep.verified" />
 
       <StepperFooter>
         {onCancel ? (
@@ -181,16 +252,18 @@ export function AccountStep({ knownSteamIds, onCancel }: IAccountStepProps) {
         ) : (
           <StepperPreviousButton disabled={isVerifying} />
         )}
-        {isVerified ? (
-          <StepperNextButton />
-        ) : (
+        {isFormOpen && !isFormOptional ? (
+          // The form is all there is to do here: verifying is the way forward.
           <StepperNextButton disabled={isVerifying} onClick={handleVerify}>
-            {isVerifying
-              ? text.verifying
-              : privacyProblem
-                ? text.privacy.testAgain
-                : text.verify}
+            {verifyLabel}
           </StepperNextButton>
+        ) : (
+          <StepperNextButton
+            // With one more account being typed, its "Verify" is the action.
+            variant={isFormOpen ? 'secondary' : 'default'}
+            disabled={isVerifying}
+            onClick={handleNext}
+          />
         )}
       </StepperFooter>
     </div>

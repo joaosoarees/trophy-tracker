@@ -184,6 +184,10 @@ export const ptBR: Messages = {
   },
 
   accounts: {
+    verified: 'Verificada',
+    inUse: 'Em uso',
+    addAnother: 'Adicionar outra conta',
+    removeNamed: (name: string) => `Remover ${name}`,
     title: 'Contas',
     add: 'Adicionar conta',
     status: {
@@ -343,10 +347,6 @@ export const ptBR: Messages = {
       },
       verify: 'Verificar',
       verifying: 'Verificando…',
-      verified: (games) =>
-        `Verificado · ${games} ${games === 1 ? 'jogo já jogado' : 'jogos já jogados'}`,
-      locked: 'Para usar outra conta ou chave, clique em Alterar.',
-      change: 'Alterar',
     },
 
     done: {

@@ -183,6 +183,10 @@ export const en = {
   },
 
   accounts: {
+    verified: 'Verified',
+    inUse: 'In use',
+    addAnother: 'Add another account',
+    removeNamed: (name: string) => `Remove ${name}`,
     title: 'Accounts',
     add: 'Add account',
     status: {
@@ -340,10 +344,6 @@ export const en = {
       },
       verify: 'Verify',
       verifying: 'Verifying…',
-      verified: (games: number) =>
-        `Verified · ${games} ${games === 1 ? 'played game' : 'played games'}`,
-      locked: 'To use another account or key, click Change.',
-      change: 'Change',
     },
 
     done: {

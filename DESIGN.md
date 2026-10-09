@@ -347,7 +347,7 @@ The app can follow more than one Steam account, each with its own Web API key. T
 - **Anatomy:** a 14px icon and words, in label size.
 - **Variants:** working (a check in a circle), refused by Steam (a cross in a circle), limited by Steam (an hourglass), not checked yet (a dashed circle). Steam answers a revoked key and a mistyped one alike, so there is one "refused".
 - **States:** none of its own; it is not a control.
-- **Do:** keep the icon and the words together, always. **Don't:** colour a working key green: green is "done", and a key is never done. Only "refused" takes a colour, Erase Red, because it is a loss.
+- **Do:** keep the icon and the words together, always. **Don't:** colour a working key green: green is "done", and a key is never done. Only "refused" takes a colour, Erase Red, because it is a loss, and only on its icon: its words stay in the text colour, since red text does not have enough contrast on a card.
 
 #### Masked key
 
@@ -365,13 +365,13 @@ The app can follow more than one Steam account, each with its own Web API key. T
 
 The monospaced face exists for this field and the masked key alone, because 32 characters have to be told apart one by one. It is the system's own (`ui-monospace`, Cascadia Mono, SF Mono, Menlo, Consolas) and is never used as a "technical" costume for labels or numbers.
 
-#### Account grid
+#### Account card
 
-- **Purpose:** shows whose accounts the app has and switches between them.
-- **Anatomy:** tiles 112px wide that wrap: a 48px avatar and the account's name under it, on two lines at most. The last tile is a dashed square with a plus and "Add another account".
-- **Variants:** with or without the add tile.
-- **States:** the account in use has a 2px Signal Blue ring around its avatar and its name in Glance White at medium weight, and is announced as pressed; the others are Quiet Steel. A refused key puts a red cross on the corner of the avatar and adds "Key refused by Steam" to the tile's name. Hover is the usual wash, press the usual push, keyboard focus the usual ring.
-- **Do:** switch on one click, with no confirmation: nothing is lost by switching. **Don't:** put the SteamID, the status words or actions inside a tile; they belong to the details under the grid.
+- **Purpose:** one account, with everything about it in one place. A list of them shows whose accounts the app has and switches between them.
+- **Anatomy:** a card (Panel Navy, hairline, 8px): a 40px avatar, the name in title weight with the SteamID under it in caption text, and the status of the key at the end. A list ends with a dashed card of the same width, a plus and "Add account".
+- **Variants:** in a list that switches (Settings), and in a list that only shows what was verified (the setup), where the end of the card carries "Verified" and, for an account added in that visit, a 32px button that takes it out again.
+- **States:** the account in use has a Signal Blue border at 60 percent and the words "In use" beside its name; it is not a button, and it is where the card opens: under a hairline, on the field colour, the masked key with its actions. Any other account is one button exactly as wide as the card, hovering like a game row (Signal Blue border and the usual wash), so no empty area lights up around it.
+- **Do:** keep what belongs to an account inside its card. **Don't:** list an account's facts as loose rows under a row of faces: nothing ties them to the account, and a face-sized tile has more hover than content.
 
 #### Confirmation dialog
 

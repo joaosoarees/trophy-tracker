@@ -7,7 +7,6 @@ import { OnboardingService } from '@app/services/OnboardingService';
 import { SettingsService } from '@app/services/SettingsService';
 import { useStore } from '@app/store';
 import { isLanguage } from '@shared/i18n';
-import { type IAccount } from '@shared/types/Account';
 import { type IAppState } from '@shared/types/AppState';
 
 import { clearDraft, loadDraft, loadStep, saveDraft, saveStep } from './draft';
@@ -29,8 +28,11 @@ export function useOnboardingController({
   // Read once: the draft only seeds the form.
   const [draft] = useState(() => (isAddingAccount ? null : loadDraft()));
   const [initialStep] = useState(() => (isAddingAccount ? 0 : loadStep()));
-  /** What the main process has saved, as accounts are added one by one. */
+  /** What the main process has saved: accounts are saved as they are verified. */
   const [saved, setSaved] = useState(state);
+  /** Played games found for each account verified in this visit. */
+  const [gamesFound, setGamesFound] = useState<Record<string, number>>({});
+  const [isFinishing, setIsFinishing] = useState(false);
 
   const form = useForm<OnboardingFormData>({
     resolver: zodResolver(onboardingSchema),
@@ -64,55 +66,17 @@ export function useOnboardingController({
     };
   }, [form, setLanguage, isAddingAccount]);
 
-  const verified = form.watch('accountStep.verified');
-  const steamId = form.watch('accountStep.steamId');
-  const apiKey = form.watch('accountStep.apiKey');
-  /** The account in the form, verified and not saved yet, as it will look once saved. */
-  const pending: IAccount | null = verified
-    ? {
-        steamId: steamId.trim(),
-        name: verified.name,
-        avatar: verified.avatar,
-        keyEnding: apiKey.trim().slice(-4),
-        status: 'valid',
-        checkedAt: null,
-      }
-    : null;
-
-  /**
-   * Saves the account in the form, if there is one. Answers the state after
-   * it, or `null` when it could not be saved.
-   */
-  async function savePending(): Promise<IAppState | null> {
-    if (!pending) return saved;
-    const next = await OnboardingService.saveConfig(pending.steamId, apiKey);
-    if (!next.accounts.some((a) => a.steamId === pending.steamId)) {
-      form.setError('root', { type: 'server', message: 'saveFailed' });
-      return null;
-    }
+  /** An account was saved or removed in the account step. */
+  function handleAccountsChange(next: IAppState, games?: number) {
     setSaved(next);
-    return next;
-  }
-
-  /** Saves the account in the form and empties it for the next one. */
-  async function handleAddAnother(): Promise<boolean> {
-    const next = await savePending();
-    if (!next) return false;
-    form.setValue('accountStep.steamId', '');
-    form.setValue('accountStep.apiKey', '');
-    form.unregister('accountStep.verified');
-    return true;
+    if (games !== undefined && next.activeSteamId) {
+      // Saving follows the account that was saved.
+      setGamesFound((found) => ({ ...found, [next.activeSteamId!]: games }));
+    }
   }
 
   async function finish() {
-    // With nothing verified and nothing saved, say what is missing.
-    if (!pending && saved.accounts.length === 0) {
-      await form.trigger();
-      return;
-    }
-    let next = await savePending();
-    if (!next) return;
-
+    let next = saved;
     // The first setup ends on the account signed in to Steam when it is one
     // of them, otherwise on the first one added. Adding an account from the
     // app ends on the account that was just added.
@@ -129,26 +93,27 @@ export function useOnboardingController({
     onDone(next);
   }
 
-  const [isFinishing, setIsFinishing] = useState(false);
   function handleSubmit(event: SyntheticEvent) {
     event.preventDefault();
+    if (saved.accounts.length === 0) return;
     setIsFinishing(true);
     void finish().finally(() => setIsFinishing(false));
   }
 
+  const [only] = saved.accounts;
+
   return {
     form,
     initialStep,
-    accounts: pending
-      ? [
-          ...saved.accounts.filter((a) => a.steamId !== pending.steamId),
-          pending,
-        ]
-      : saved.accounts,
-    knownSteamIds: saved.accounts.map((a) => a.steamId),
+    saved,
+    accounts: saved.accounts,
+    gamesFound,
+    /** For the summary: only said when there is one account and it was just verified. */
+    gamesFoundOnOnly:
+      saved.accounts.length === 1 ? (gamesFound[only.steamId] ?? null) : null,
     isFinishing,
     handleSubmit,
-    handleAddAnother,
+    handleAccountsChange,
     handleStepChange: isAddingAccount ? undefined : saveStep,
   };
 }

@@ -185,6 +185,10 @@ export const es: Messages = {
   },
 
   accounts: {
+    verified: 'Verificada',
+    inUse: 'En uso',
+    addAnother: 'Añadir otra cuenta',
+    removeNamed: (name: string) => `Quitar ${name}`,
     title: 'Cuentas',
     add: 'Añadir cuenta',
     status: {
@@ -346,10 +350,6 @@ export const es: Messages = {
       },
       verify: 'Verificar',
       verifying: 'Verificando…',
-      verified: (games) =>
-        `Verificada · ${games} ${games === 1 ? 'juego jugado' : 'juegos jugados'}`,
-      locked: 'Para usar otra cuenta u otra clave, haz clic en Cambiar.',
-      change: 'Cambiar',
     },
 
     done: {

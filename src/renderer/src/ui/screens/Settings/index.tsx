@@ -1,8 +1,9 @@
 import { ExternalLink } from 'lucide-react';
+import { useId } from 'react';
 
 import { useT } from '@app/hooks/useT';
 import { LANGUAGE_CODES, LANGUAGES } from '@shared/i18n';
-import { AccountGrid } from '@ui/components/AccountGrid';
+import { AccountCard, AddAccountCard } from '@ui/components/AccountCard';
 import { DetailGroup, DetailRow } from '@ui/components/DetailList';
 import { OptionSelect } from '@ui/components/OptionSelect';
 import { Switch } from '@ui/components/Switch';
@@ -14,6 +15,7 @@ import { useSettingsController } from './useSettingsController';
 
 export function Settings() {
   const t = useT();
+  const accountsId = useId();
   const {
     accounts,
     activeAccount,
@@ -58,21 +60,29 @@ export function Settings() {
         />
       )}
 
-      <DetailGroup title={t.accounts.title}>
-        <li className="pb-1">
-          <AccountGrid
-            label={t.accounts.title}
-            accounts={accounts}
-            activeId={activeAccount?.steamId ?? null}
-            onSelect={handleSwitchAccount}
-            onAdd={handleAddAccount}
-          />
-        </li>
-        {/* Keyed: what is typed for one account is never carried to another. */}
-        {activeAccount && (
-          <AccountDetails key={activeAccount.steamId} account={activeAccount} />
-        )}
-      </DetailGroup>
+      {/* Not a group of rows: each account is a card that holds everything about it. */}
+      <section aria-labelledby={accountsId}>
+        <h2 id={accountsId} className="pb-2 font-semibold">
+          {t.accounts.title}
+        </h2>
+        <ul className="flex flex-col gap-2">
+          {accounts.map((account) => {
+            const isActive = account.steamId === activeAccount?.steamId;
+
+            return (
+              <AccountCard
+                key={account.steamId}
+                account={account}
+                isActive={isActive}
+                onSelect={() => handleSwitchAccount(account.steamId)}
+              >
+                {isActive && <AccountDetails account={account} />}
+              </AccountCard>
+            );
+          })}
+          <AddAccountCard onAdd={handleAddAccount} />
+        </ul>
+      </section>
 
       <DetailGroup title={t.settings.groups.window}>
         <DetailRow
