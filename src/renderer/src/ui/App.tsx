@@ -7,6 +7,7 @@ import { AppShell } from './components/AppShell';
 import { CrashScreen } from './components/CrashScreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { UpdateReadyDialog } from './components/UpdateReadyDialog';
+import { WindowBar } from './components/WindowBar';
 import { Skeleton } from './primitives/skeleton';
 import { TooltipProvider } from './primitives/tooltip';
 import { Update } from './screens/Update';
@@ -18,11 +19,14 @@ const { Onboarding } = namedLazyLoad(() => import('./screens/Onboarding'));
 
 function OnboardingFallback() {
   return (
-    <main className="mx-auto max-w-lg space-y-4 p-5" aria-busy="true">
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-8 w-1/2" />
-      <Skeleton className="h-24 w-full" />
-    </main>
+    <>
+      <WindowBar />
+      <main className="mx-auto max-w-lg space-y-4 p-5" aria-busy="true">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-8 w-1/2" />
+        <Skeleton className="h-24 w-full" />
+      </main>
+    </>
   );
 }
 

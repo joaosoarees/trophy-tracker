@@ -39,7 +39,7 @@ export function AppShell() {
     <div className="flex h-screen flex-col">
       <nav
         aria-label={t.nav.label}
-        className="flex items-center gap-1 border-b px-2"
+        className="window-drag window-buttons-inset flex items-center gap-1 border-b"
       >
         <TabButton active={tab === 'game'} onClick={() => goTo('game')}>
           <Trophy />

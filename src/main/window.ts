@@ -6,6 +6,7 @@ import { type IpcEvent } from '@shared/ipcEvents';
 
 import { openUrl } from './system/browser';
 import { type IBounds } from './system/windowBounds';
+import { windowFrame } from './system/windowFrame';
 
 interface IMainWindowOptions {
   title: string;
@@ -35,6 +36,7 @@ export class MainWindow {
       // Linux takes the window icon from here; Windows and macOS from the package.
       icon: join(__dirname, '../../build/icon.png'),
       autoHideMenuBar: true,
+      ...windowFrame(),
       title,
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),

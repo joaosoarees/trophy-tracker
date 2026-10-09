@@ -2,6 +2,7 @@ import { FormProvider } from 'react-hook-form';
 
 import { useT } from '@app/hooks/useT';
 import { type IAppState } from '@shared/types/AppState';
+import { WindowBar } from '@ui/components/WindowBar';
 
 import { Stepper } from './components/Stepper';
 import { AccountStep } from './steps/AccountStep';
@@ -21,34 +22,37 @@ export function Onboarding({ state, onDone, onCancel }: IOnboardingProps) {
     useOnboardingController(state, onDone);
 
   return (
-    <main className="mx-auto max-w-lg p-5">
-      <FormProvider {...form}>
-        <form onSubmit={handleSubmit} noValidate>
-          <Stepper
-            initialStep={initialStep}
-            onStepChange={handleStepChange}
-            steps={[
-              {
-                label: t.onboarding.steps.language,
-                content: (
-                  <LanguageStep
-                    notice={state.configError}
-                    onCancel={onCancel}
-                  />
-                ),
-              },
-              {
-                label: t.onboarding.steps.account,
-                content: <AccountStep />,
-              },
-              {
-                label: t.onboarding.steps.done,
-                content: <DoneStep />,
-              },
-            ]}
-          />
-        </form>
-      </FormProvider>
-    </main>
+    <>
+      <WindowBar />
+      <main className="mx-auto max-w-lg p-5">
+        <FormProvider {...form}>
+          <form onSubmit={handleSubmit} noValidate>
+            <Stepper
+              initialStep={initialStep}
+              onStepChange={handleStepChange}
+              steps={[
+                {
+                  label: t.onboarding.steps.language,
+                  content: (
+                    <LanguageStep
+                      notice={state.configError}
+                      onCancel={onCancel}
+                    />
+                  ),
+                },
+                {
+                  label: t.onboarding.steps.account,
+                  content: <AccountStep />,
+                },
+                {
+                  label: t.onboarding.steps.done,
+                  content: <DoneStep />,
+                },
+              ]}
+            />
+          </form>
+        </FormProvider>
+      </main>
+    </>
   );
 }

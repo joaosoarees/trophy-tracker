@@ -77,6 +77,19 @@
     @apply select-text;
   }
 
+  /*
+   * Where the system draws only its buttons over the app (Windows and macOS,
+   * see main/system/windowFrame.ts), it says where they are; elsewhere the
+   * fallbacks leave everything as it is.
+   */
+  :root {
+    --window-bar-height: env(titlebar-area-height, 0px);
+    --window-buttons-left: env(titlebar-area-x, 0px);
+    --window-buttons-right: calc(
+      100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)
+    );
+  }
+
   /* Tailwind resets the cursor on buttons; anything that can be clicked says so. */
   button:not(:disabled),
   [role='button']:not([aria-disabled='true']),
@@ -168,4 +181,30 @@
     height: 0;
     opacity: 0;
   }
+}
+
+/* The window is dragged by its top bar; what can be clicked there still can. */
+@utility window-drag {
+  -webkit-app-region: drag;
+
+  & :is(button, a, input, [role='button']) {
+    -webkit-app-region: no-drag;
+  }
+}
+
+/* The drag strip of a screen without the tab bar. */
+@utility window-bar {
+  -webkit-app-region: drag;
+  height: var(--window-bar-height);
+}
+
+/* A screen as tall as the window, below the drag strip. */
+@utility h-below-window-bar {
+  height: calc(100vh - var(--window-bar-height));
+}
+
+/* Keeps a bar's content clear of the system's buttons at either end. */
+@utility window-buttons-inset {
+  padding-left: max(0.5rem, var(--window-buttons-left));
+  padding-right: max(0.5rem, var(--window-buttons-right));
 }
