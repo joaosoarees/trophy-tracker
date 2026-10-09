@@ -2,7 +2,8 @@
 # Publishes a release with what the build of the three systems left in a
 # folder: each installer under a label that says who it is for, and the files
 # the installed app reads to update itself labelled as such, so the list on
-# the release page explains itself. The notes start with which file to pick.
+# the release page explains itself. The notes are what CHANGELOG.md says about
+# the version, followed by which file to pick.
 #
 #   scripts/publish-release.sh v1.2.0 installers/
 #
@@ -44,7 +45,21 @@ for file in "$dir"/*; do
   assets+=("$file#$(label_of "$name")")
 done
 
-notes="## Which file to download
+# What changed, as written for the people who use the app. A version with
+# nothing written about it is not published.
+changes=$(awk -v heading="## $version" '
+  $0 == heading { found = 1; next }
+  found && /^## / { exit }
+  found { print }
+' CHANGELOG.md)
+if [ -z "$(printf '%s' "$changes" | tr -d '[:space:]')" ]; then
+  echo "CHANGELOG.md says nothing about $version" >&2
+  exit 1
+fi
+
+notes="$changes
+
+## Which file to download
 
 | System | File |
 | --- | --- |
