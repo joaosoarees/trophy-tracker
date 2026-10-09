@@ -33,7 +33,11 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { startFakeSteam, writeFakeSteamFolder } from './fake-steam.mjs';
+import {
+  SECOND_STEAM_ID,
+  startFakeSteam,
+  writeFakeSteamFolder,
+} from './fake-steam.mjs';
 
 const PORT = 9333;
 // In the order of the onboarding's language list, with Steam's name for each.
@@ -172,6 +176,8 @@ async function auditInteraction(page) {
     style.textContent = '*, *::before, *::after { transition: none !important; animation: none !important; }';
     document.head.append(style);
   })()`);
+  // So would a focused one: a dialog puts the focus on its first button.
+  await page.evaluate(`document.activeElement?.blur()`);
   // A really hovered element would already be in its hover state at "rest".
   await page.send('Input.dispatchMouseEvent', {
     type: 'mouseMoved',
@@ -535,6 +541,39 @@ async function auditOnboarding(page, steam, language) {
   await page.evaluate(advance);
   await sleep(1000);
   await audit(page, `onboarding-done-${language}`);
+  if (isFirst) {
+    // The last tile of the grid adds another account before the app opens.
+    await page.evaluate(
+      `document.querySelector('main section ul li:last-child button').click()`,
+    );
+    await sleep(900);
+    const blank = await page.evaluate(
+      `document.querySelector('#steamId').value + '|' + document.querySelector('#steamId').readOnly`,
+    );
+    expectThat(
+      FLOW,
+      blank === '|false',
+      `adding another account does not start from an empty SteamID (shown: "${blank}")`,
+    );
+    await type(page, '#steamId', SECOND_STEAM_ID);
+    await type(page, '#apiKey', 'FEDCBA9876543210FEDCBA9876540000');
+    expectThat(
+      FLOW,
+      (await verify()) === '',
+      'the second account could not be verified',
+    );
+    await page.evaluate(advance);
+    await sleep(1000);
+    const tiles = await page.evaluate(
+      `document.querySelectorAll('main section ul li').length`,
+    );
+    expectThat(
+      FLOW,
+      tiles === 3,
+      `the last step does not show both accounts and the tile to add one (${tiles} tiles)`,
+    );
+    await audit(page, `onboarding-two-accounts-${language}`);
+  }
   await page.evaluate(advance);
   const isInTheApp = await waitFor(
     page,
@@ -670,6 +709,210 @@ async function openGame(page, name) {
     `[...document.querySelectorAll('ul button')].find((el) => el.innerText.includes(${JSON.stringify(name)}))?.click()`,
   );
   await sleep(2500);
+}
+
+const visible = `(el) => el.offsetParent !== null`;
+/** Clicks the visible button with exactly this text, inside `scope`. */
+const clickButton = (scope, text) =>
+  `[...document.querySelectorAll('${scope} button')].filter(${visible}).find((el) => el.innerText.trim() === ${JSON.stringify(text)})?.click()`;
+const ACCOUNT_TILES = `[...document.querySelectorAll('ul[aria-label="Accounts"] li button')]`;
+const activeAccountTile = `${ACCOUNT_TILES}.findIndex((el) => el.getAttribute('aria-pressed') === 'true')`;
+const settingsText = `document.querySelector('main > div:last-child > section')?.innerText ?? ''`;
+
+/**
+ * Two accounts: switching between them by hand, the app following the one
+ * signed in to Steam, a key that Steam starts refusing and its replacement,
+ * adding an account from the app, and removing one.
+ */
+async function auditAccounts(page, steam, home) {
+  const FLOW = 'accounts';
+  const failuresBefore = failures.length;
+  const openSettings = async () => {
+    await page.evaluate(navButton(-1));
+    await sleep(800);
+  };
+
+  // The setup added two; the app follows the one signed in to Steam.
+  await openSettings();
+  expectThat(
+    FLOW,
+    (await page.evaluate(`${ACCOUNT_TILES}.length`)) === 3 &&
+      (await page.evaluate(activeAccountTile)) === 0,
+    'Settings does not show two accounts with the first one in use',
+  );
+  await audit(page, 'flow-accounts-settings');
+
+  // By hand: one click on the other face.
+  await page.evaluate(`${ACCOUNT_TILES}[1].click()`);
+  const switched = await waitFor(page, `(${activeAccountTile}) === 1`);
+  expectThat(FLOW, switched, 'clicking another account does not switch to it');
+  expectThat(
+    FLOW,
+    (await page.evaluate(settingsText)).includes('Second Hunter'),
+    'the details under the grid are not those of the account now in use',
+  );
+  await page.evaluate(navButton(0));
+  const itsGame = await waitFor(
+    page,
+    `(${gameTitle}) === 'Onimusha: Way of the Sword' && (${headerText}).includes('42 left')`,
+  );
+  expectThat(
+    FLOW,
+    itsGame,
+    `the Game tab does not show the other account's game and progress (header: "${(await page.evaluate(headerText)).replace(/\s+/g, ' ').slice(0, 80)}")`,
+  );
+  // The tab is still fading in, which reads as text with too little contrast.
+  await sleep(900);
+  await audit(page, 'flow-account-switched');
+
+  // Steam signs in to the other account and back: the app follows the change.
+  writeFakeSteamFolder(home, SECOND_STEAM_ID);
+  await sleep(3500);
+  writeFakeSteamFolder(home, STEAM_ID);
+  const followed = await waitFor(page, `(${gameTitle}) === 'Nioh 3'`);
+  expectThat(
+    FLOW,
+    followed,
+    'the app does not follow the account that signed in to Steam',
+  );
+  const toast = await page.evaluate(
+    `[...document.querySelectorAll('[data-sonner-toast]')].map((el) => el.innerText).join(' | ')`,
+  );
+  expectThat(
+    FLOW,
+    toast.includes('Now following Audit Hunter'),
+    `the switch made by the app is not announced (toasts: "${toast}")`,
+  );
+
+  // Steam starts refusing the key in use: the game stays, with a notice.
+  steam.state.mode = 'bad-key';
+  await page.evaluate(refreshGame);
+  const noticed = await waitFor(
+    page,
+    `(${visibleText('[role="alert"]')}).includes('Steam refused the key of Audit Hunter')`,
+  );
+  expectThat(FLOW, noticed, 'a refused key shows no notice over the app');
+  expectThat(
+    FLOW,
+    (await page.evaluate(gameTitle)) === 'Nioh 3',
+    'the game left the screen when its key was refused',
+  );
+  await sleep(900);
+  await audit(page, 'flow-key-refused');
+
+  // The notice leads to where the key is replaced, with the field open.
+  await page.evaluate(clickButton('[role="alert"]', 'Replace key'));
+  const fieldOpen = await waitFor(
+    page,
+    `document.querySelector('main input[type="password"]') !== null`,
+  );
+  expectThat(FLOW, fieldOpen, 'the notice does not lead to the key field');
+  expectThat(
+    FLOW,
+    (await page.evaluate(`${ACCOUNT_TILES}[0].getAttribute('aria-label')`)) ===
+      'Audit Hunter, Key refused by Steam',
+    'the account whose key was refused is not marked in the grid',
+  );
+  await sleep(400);
+  await audit(page, 'flow-key-refused-settings');
+
+  await type(page, 'main input[type="password"]', 'not-a-key');
+  await page.evaluate(clickButton('main', 'Verify and save'));
+  await sleep(500);
+  expectThat(
+    FLOW,
+    /32/.test(await page.evaluate(visibleText('main [role="alert"]'))),
+    'a key in the wrong format is not refused before Steam is asked',
+  );
+  steam.state.mode = 'ok';
+  await type(
+    page,
+    'main input[type="password"]',
+    '00112233445566778899AABBCCDDEEFF',
+  );
+  await page.evaluate(clickButton('main', 'Verify and save'));
+  const repaired = await waitFor(
+    page,
+    `(${settingsText}).includes('Key working') && (${settingsText}).includes('EEFF') && document.querySelector('main input[type="password"]') === null`,
+  );
+  expectThat(
+    FLOW,
+    repaired,
+    'a new key that Steam accepts does not repair the account',
+  );
+  expectThat(
+    FLOW,
+    !(await page.evaluate(`document.body.innerText`)).includes(
+      '00112233445566778899AABBCCDDEEFF',
+    ),
+    'the saved key is on screen in full',
+  );
+
+  // Adding an account from the app: the account step alone, and a way out.
+  await page.evaluate(`${ACCOUNT_TILES}.at(-1).click()`);
+  const adding = await waitFor(
+    page,
+    `document.querySelector('#steamId') !== null`,
+  );
+  expectThat(FLOW, adding, 'the tile to add an account opens nothing');
+  expectThat(
+    FLOW,
+    (await page.evaluate(
+      `document.querySelector('main ol').children.length`,
+    )) === 2,
+    'adding an account from the app goes through the language step again',
+  );
+  await sleep(600);
+  await audit(page, 'flow-add-account');
+  await page.evaluate(clickButton('main', 'Cancel'));
+  expectThat(
+    FLOW,
+    await waitFor(page, `document.querySelector('nav') !== null`),
+    'cancelling does not bring the app back',
+  );
+
+  // Removing: the question names the account, and can be backed out of.
+  await openSettings();
+  await page.evaluate(`${ACCOUNT_TILES}[1].click()`);
+  await waitFor(page, `(${activeAccountTile}) === 1`);
+  const dialogText = `document.querySelector('[role="dialog"]')?.innerText ?? ''`;
+  await page.evaluate(clickButton('main', 'Remove'));
+  await sleep(600);
+  expectThat(
+    FLOW,
+    (await page.evaluate(dialogText)).includes('Remove Second Hunter?'),
+    'the question before removing does not name the account',
+  );
+  await audit(page, 'flow-remove-account');
+  await page.evaluate(clickButton('[role="dialog"]', 'Cancel'));
+  await sleep(600);
+  expectThat(
+    FLOW,
+    (await page.evaluate(dialogText)) === '' &&
+      (await page.evaluate(`${ACCOUNT_TILES}.length`)) === 3,
+    'backing out of the question removed the account or left it open',
+  );
+  await page.evaluate(clickButton('main', 'Remove'));
+  await sleep(600);
+  await page.evaluate(clickButton('[role="dialog"]', 'Remove'));
+  const removed = await waitFor(
+    page,
+    `${ACCOUNT_TILES}.length === 2 && (${activeAccountTile}) === 0`,
+  );
+  expectThat(
+    FLOW,
+    removed,
+    'removing the account in use does not move on to the other one',
+  );
+  await page.evaluate(navButton(0));
+  expectThat(
+    FLOW,
+    await waitFor(page, `(${gameTitle}) === 'Nioh 3'`),
+    'after the removal the Game tab is not on the remaining account',
+  );
+  console.log(
+    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: two accounts switched by hand and by Steam, a refused key replaced, one added and one removed`,
+  );
 }
 
 /**
@@ -936,6 +1179,7 @@ for (const language of languages) {
       await auditScreens(page, steam, language);
       await auditCrash(page, language, userData);
       if (language !== LANGUAGES[0]) return;
+      await auditAccounts(page, steam, home);
       await auditPlaying(page, steam);
       await auditOutage(page, steam);
     });

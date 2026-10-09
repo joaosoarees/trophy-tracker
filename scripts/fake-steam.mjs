@@ -153,8 +153,20 @@ export function writeFakeSteamFolder(home, steamId) {
 const FORBIDDEN_HTML =
   '<html><head><title>Forbidden</title></head><body><h1>Forbidden</h1>Access is denied.</body></html>';
 
+/**
+ * A second account of the same person, for what happens between two: it has
+ * played one of the same games, and is much further from finishing it.
+ */
+export const SECOND_STEAM_ID = '76561198000000043';
+
 export async function startFakeSteam() {
   const games = LIBRARY.map((game) => ({ ...game }));
+  const secondGames = [
+    { ...LIBRARY[1], playtime: 310, lastPlayed: NOW - 2 * DAY, unlocked: 10 },
+  ];
+  /** The library of whoever is asked about; anyone but the second account is the first. */
+  const libraryOf = (steamId) =>
+    steamId === SECOND_STEAM_ID ? secondGames : games;
   const state = {
     /** `ok`, `bad-key` (Steam rejects the key), `private` (profile hidden) or `down` (no answer at all). */
     mode: 'ok',
@@ -172,7 +184,11 @@ export async function startFakeSteam() {
       return [403, FORBIDDEN_HTML];
     }
 
+    const owned = libraryOf(query.get('steamid'));
+    const ownedGame = (appid) => owned.find((g) => g.appid === Number(appid));
+
     if (path.includes('GetPlayerSummaries')) {
+      const isSecond = query.get('steamids') === SECOND_STEAM_ID;
       return [
         200,
         {
@@ -180,9 +196,12 @@ export async function startFakeSteam() {
             players: [
               {
                 steamid: query.get('steamids'),
-                personaname: 'Audit Hunter',
+                personaname: isSecond ? 'Second Hunter' : 'Audit Hunter',
                 avatarfull: '',
-                ...(state.running ? { gameid: String(state.running) } : {}),
+                // Only the first account plays during the audit.
+                ...(state.running && !isSecond
+                  ? { gameid: String(state.running) }
+                  : {}),
               },
             ],
           },
@@ -195,8 +214,8 @@ export async function startFakeSteam() {
         200,
         {
           response: {
-            game_count: games.length,
-            games: games.map((g) => ({
+            game_count: owned.length,
+            games: owned.map((g) => ({
               appid: g.appid,
               name: g.name,
               playtime_forever: g.playtime,
@@ -224,7 +243,7 @@ export async function startFakeSteam() {
           { playerstats: { error: 'Profile is not public', success: false } },
         ];
       }
-      const found = game(query.get('appid'));
+      const found = ownedGame(query.get('appid'));
       const achievements = found ? achievementsOf(found) : [];
       if (achievements.length === 0) {
         return [
@@ -256,7 +275,7 @@ export async function startFakeSteam() {
       ];
     }
     if (path.includes('GetUserStatsForGame')) {
-      const found = game(query.get('appid'));
+      const found = ownedGame(query.get('appid'));
       const achievements = found ? achievementsOf(found) : [];
       return [
         200,
