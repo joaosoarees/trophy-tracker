@@ -181,6 +181,43 @@ export const ptBR: Messages = {
     left: (n) => `faltam ${n}`,
   },
 
+  accounts: {
+    title: 'Contas',
+    add: 'Adicionar conta',
+    addAnother: 'Adicionar outra conta',
+    inUse: 'Em uso',
+    status: {
+      valid: 'Chave funcionando',
+      rejected: 'Chave recusada pela Steam',
+      rateLimited: 'A Steam está limitando esta chave',
+      unchecked: 'Chave ainda não verificada',
+    },
+    keyEnding: (ending: string) => `Chave terminada em ${ending}`,
+    checkedOn: (date: string) => `Verificada em ${date}`,
+    showKey: 'Mostrar chave',
+    hideKey: 'Ocultar chave',
+    key: 'Chave da Web API',
+    replaceKey: 'Trocar a chave',
+    newKey: 'Nova chave da Web API',
+    saveKey: 'Verificar e salvar',
+    recheck: 'Verificar de novo',
+    remove: 'Remover conta',
+    removeTitle: (name: string) => `Remover ${name}?`,
+    removeDescription: (name: string) =>
+      `A chave de ${name}, o que foi lido da Steam e as notas, checklists e conquistas fixadas dessa conta são apagados deste computador. Nada muda na Steam.`,
+    removeConfirm: 'Remover',
+    alreadyAdded:
+      'Esta conta já foi adicionada. Para mudar a chave dela, use “Trocar a chave” em Configuração.',
+    wrongAccount: 'Esta chave não conseguiu ler essa conta.',
+    switched: (name: string) =>
+      `Agora acompanhando ${name}, a conta conectada na Steam.`,
+    keyRefused: (name: string) => `A Steam recusou a chave de ${name}.`,
+    keyRefusedHint:
+      'O que já foi lido continua na tela. Troque a chave para manter os dados atualizados.',
+    keyLimited: (name: string) => `A Steam está limitando a chave de ${name}.`,
+    keyLimitedHint:
+      'A leitura volta sozinha quando a Steam aceitar a chave de novo.',
+  },
   settings: {
     title: 'Configuração',
     account: 'Conta Steam',

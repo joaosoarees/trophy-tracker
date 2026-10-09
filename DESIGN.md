@@ -198,6 +198,8 @@ A cool navy ramp carries the whole interface; four signal colors each mean exact
 
 **Body Font:** the system interface font (`system-ui`, with Segoe UI and Roboto as fallbacks)
 
+**Key Font:** the system monospaced font (`ui-monospace`, with Cascadia Mono, SF Mono, Menlo and Consolas as fallbacks), for a Web API key and nothing else
+
 **Character:** The app uses whatever the operating system uses, so it renders at native sharpness on every system and feels like part of the desktop. There is one family and no display face; hierarchy comes from two weights and a small step in size.
 
 ### Hierarchy
@@ -332,6 +334,57 @@ A wash of Unlocked Green (15 percent) with green text across the top of the list
 ### Tooltip
 
 The inverse of the page: Glance White with Night Navy text, softly rounded, with a small arrow. Used for every icon button and for any control that needs a word of explanation.
+
+### Accounts
+
+The app can follow more than one Steam account, each with its own Web API key. These components are the whole vocabulary for that; they are used in Settings and in the onboarding, and nowhere else shows a key.
+
+**The Masked Key Rule.** A saved key never comes back to the screen. Everywhere it appears as its last four characters behind a mask; it is never in a list, a toast, a log or an error message. Only a key being typed can be shown, and only in its own field.
+
+#### Account status
+
+- **Purpose:** says what is known about an account's key.
+- **Anatomy:** a 14px icon and words, in label size.
+- **Variants:** working (a check in a circle), refused by Steam (a cross in a circle), limited by Steam (an hourglass), not checked yet (a dashed circle). Steam answers a revoked key and a mistyped one alike, so there is one "refused".
+- **States:** none of its own; it is not a control.
+- **Do:** keep the icon and the words together, always. **Don't:** colour a working key green: green is "done", and a key is never done. Only "refused" takes a colour, Erase Red, because it is a loss.
+
+#### Masked key
+
+- **Purpose:** tells one saved key from another without showing it.
+- **Anatomy:** two groups of four dots and the last four characters, in the monospaced face at caption size.
+- **States:** one. It is read aloud as "Key ending in A1B2", not as dots.
+- **Do:** use it wherever a saved key is mentioned. **Don't:** offer to reveal or copy it; the key is on Steam's page for whoever needs it.
+
+#### Key field
+
+- **Purpose:** where a key is typed or pasted.
+- **Anatomy:** a text field in the monospaced face, hidden like a password, with a 32px icon button inside its right edge that shows or hides what was typed.
+- **States:** empty, filled and hidden, filled and shown, in error (red border, the message under it), read-only once verified (Recessed Slate, no toggle).
+- **Do:** let Enter verify. **Don't:** fill it with a saved key: it starts empty every time.
+
+The monospaced face exists for this field and the masked key alone, because 32 characters have to be told apart one by one. It is the system's own (`ui-monospace`, Cascadia Mono, SF Mono, Menlo, Consolas) and is never used as a "technical" costume for labels or numbers.
+
+#### Account grid
+
+- **Purpose:** shows whose accounts the app has and switches between them.
+- **Anatomy:** tiles 88px wide that wrap: a 48px avatar and the account's name under it, truncated on one line. The last tile is a dashed square with a plus and "Add another account".
+- **Variants:** with or without the add tile.
+- **States:** the account in use has a 2px Signal Blue ring around its avatar and its name in Glance White at medium weight, and is announced as pressed; the others are Quiet Steel. A refused key puts a red cross on the corner of the avatar and adds "Key refused by Steam" to the tile's name. Hover is the usual wash, press the usual push, keyboard focus the usual ring.
+- **Do:** switch on one click, with no confirmation: nothing is lost by switching. **Don't:** put the SteamID, the status words or actions inside a tile; they belong to the details under the grid.
+
+#### Confirmation dialog
+
+- **Purpose:** asks before something is deleted for good.
+- **Anatomy:** a title that is the question and names what is lost ("Remove Maria?"), one paragraph saying exactly what is deleted and what is not, a ghost "Cancel" and a destructive button whose label is the verb.
+- **Do:** name the thing. **Don't:** use it for anything that can be undone.
+
+#### Notice
+
+- **Purpose:** a message that stays on the page until its cause is gone, with the one action that deals with it.
+- **Anatomy:** a tinted, bordered box (6px): a title in medium weight, an optional line under it in Quiet Steel, and one small button at its end.
+- **Variants:** information (a 10 percent wash and 40 percent border of Signal Blue; a version is available) and problem (the same in Erase Red, with a warning triangle at its start; a key was refused). A problem is announced at once; information is announced politely.
+- **Do:** keep its words in the text colour. **Don't:** set them in red: red text fails contrast on a red tint, so the icon carries the meaning. The unlock notice is a different thing (a one-line status that is dismissed) and stays as it is.
 
 ## Do's and Don'ts
 

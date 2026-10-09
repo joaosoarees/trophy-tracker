@@ -182,6 +182,42 @@ export const fr: Messages = {
     left: (n) => (n === 1 ? '1 restant' : `${n} restants`),
   },
 
+  accounts: {
+    title: 'Comptes',
+    add: 'Ajouter un compte',
+    addAnother: 'Ajouter un autre compte',
+    inUse: 'Utilisé',
+    status: {
+      valid: 'Clé opérationnelle',
+      rejected: 'Clé refusée par Steam',
+      rateLimited: 'Steam limite cette clé',
+      unchecked: 'Clé pas encore vérifiée',
+    },
+    keyEnding: (ending: string) => `Clé se terminant par ${ending}`,
+    checkedOn: (date: string) => `Vérifiée le ${date}`,
+    showKey: 'Afficher la clé',
+    hideKey: 'Masquer la clé',
+    key: 'Clé de l’API Web',
+    replaceKey: 'Remplacer la clé',
+    newKey: 'Nouvelle clé de l’API Web',
+    saveKey: 'Vérifier et enregistrer',
+    recheck: 'Vérifier à nouveau',
+    remove: 'Retirer le compte',
+    removeTitle: (name: string) => `Retirer ${name} ?`,
+    removeDescription: (name: string) =>
+      `La clé de ${name}, ce qui a été lu sur Steam et ses notes, listes et succès épinglés sont supprimés de cet ordinateur. Rien ne change sur Steam.`,
+    removeConfirm: 'Retirer',
+    alreadyAdded:
+      'Ce compte a déjà été ajouté. Pour changer sa clé, utilisez « Remplacer la clé » dans les Paramètres.',
+    wrongAccount: 'Cette clé n’a pas pu lire ce compte.',
+    switched: (name: string) => `Suivi de ${name}, le compte connecté à Steam.`,
+    keyRefused: (name: string) => `Steam a refusé la clé de ${name}.`,
+    keyRefusedHint:
+      'Ce qui a déjà été lu reste à l’écran. Remplacez la clé pour le garder à jour.',
+    keyLimited: (name: string) => `Steam limite la clé de ${name}.`,
+    keyLimitedHint:
+      'La lecture reprend d’elle-même dès que Steam accepte à nouveau la clé.',
+  },
   settings: {
     title: 'Paramètres',
     account: 'Compte Steam',

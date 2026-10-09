@@ -2,6 +2,7 @@ import { Download, ExternalLink, RotateCw } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { type UpdateStatus } from '@shared/types/AppInfo';
+import { Notice } from '@ui/components/Notice';
 import { Button } from '@ui/primitives/button';
 
 interface IUpdateNoticeProps {
@@ -26,30 +27,15 @@ export function UpdateNotice({
     ready: t.settings.updateReady(version),
     blocked: t.settings.updateAvailable(version),
   }[status];
+  const hint = {
+    manual: t.settings.updateHint,
+    downloading: undefined,
+    ready: t.settings.updateReadyHint,
+    blocked: t.settings.updateBlockedHint,
+  }[status];
 
   return (
-    <div
-      role="status"
-      className="border-primary/40 bg-primary/10 flex w-full items-center gap-3 rounded-md border p-3"
-    >
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="font-medium">{title}</span>
-        {status === 'manual' && (
-          <small className="text-muted-foreground">
-            {t.settings.updateHint}
-          </small>
-        )}
-        {status === 'blocked' && (
-          <small className="text-muted-foreground">
-            {t.settings.updateBlockedHint}
-          </small>
-        )}
-        {status === 'ready' && (
-          <small className="text-muted-foreground">
-            {t.settings.updateReadyHint}
-          </small>
-        )}
-      </div>
+    <Notice title={title} description={hint}>
       {status === 'manual' && (
         <Button size="sm" onClick={onDownload}>
           <Download />
@@ -68,6 +54,6 @@ export function UpdateNotice({
           {t.settings.restart}
         </Button>
       )}
-    </div>
+    </Notice>
   );
 }

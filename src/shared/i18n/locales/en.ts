@@ -181,6 +181,42 @@ export const en = {
     left: (n: number) => `${n} left`,
   },
 
+  accounts: {
+    title: 'Accounts',
+    add: 'Add account',
+    addAnother: 'Add another account',
+    inUse: 'In use',
+    status: {
+      valid: 'Key working',
+      rejected: 'Key refused by Steam',
+      rateLimited: 'Steam is limiting this key',
+      unchecked: 'Key not checked yet',
+    },
+    keyEnding: (ending: string) => `Key ending in ${ending}`,
+    checkedOn: (date: string) => `Checked on ${date}`,
+    showKey: 'Show key',
+    hideKey: 'Hide key',
+    key: 'Web API key',
+    replaceKey: 'Replace key',
+    newKey: 'New Web API key',
+    saveKey: 'Verify and save',
+    recheck: 'Check again',
+    remove: 'Remove account',
+    removeTitle: (name: string) => `Remove ${name}?`,
+    removeDescription: (name: string) =>
+      `The key of ${name}, what was read from Steam and its notes, checklists and pinned achievements are deleted from this computer. Nothing changes on Steam.`,
+    removeConfirm: 'Remove',
+    alreadyAdded:
+      'This account was already added. To change its key, use “Replace key” in Settings.',
+    wrongAccount: 'This key could not read that account.',
+    switched: (name: string) =>
+      `Now following ${name}, the account signed in to Steam.`,
+    keyRefused: (name: string) => `Steam refused the key of ${name}.`,
+    keyRefusedHint:
+      'What was already read stays on screen. Replace the key to keep it up to date.',
+    keyLimited: (name: string) => `Steam is limiting the key of ${name}.`,
+    keyLimitedHint: 'Reading resumes by itself once Steam accepts it again.',
+  },
   settings: {
     title: 'Settings',
     account: 'Steam account',

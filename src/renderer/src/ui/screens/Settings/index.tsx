@@ -2,12 +2,12 @@ import { ExternalLink } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { LANGUAGE_CODES, LANGUAGES } from '@shared/i18n';
+import { ConfirmDialog } from '@ui/components/ConfirmDialog';
 import { DetailGroup, DetailRow } from '@ui/components/DetailList';
 import { OptionSelect } from '@ui/components/OptionSelect';
 import { Switch } from '@ui/components/Switch';
 import { Button } from '@ui/primitives/button';
 
-import { EraseDialog } from './components/EraseDialog';
 import { ProfileRow } from './components/ProfileRow';
 import { UpdateNotice } from './components/UpdateNotice';
 import { useSettingsController } from './useSettingsController';
@@ -175,9 +175,12 @@ export function Settings() {
         </DetailRow>
       </DetailGroup>
 
-      <EraseDialog
+      <ConfirmDialog
         open={isConfirmingErase}
         onOpenChange={setIsConfirmingErase}
+        title={t.settings.eraseTitle}
+        description={t.settings.eraseDescription}
+        confirmLabel={t.settings.eraseConfirm}
         onConfirm={handleErase}
       />
 

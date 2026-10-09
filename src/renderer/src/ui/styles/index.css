@@ -50,6 +50,9 @@
   --color-ring: var(--ring);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  /* Only for a Web API key: 32 characters that have to be told apart one by one. */
+  --font-mono:
+    ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

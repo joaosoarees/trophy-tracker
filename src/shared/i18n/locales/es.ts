@@ -183,6 +183,43 @@ export const es: Messages = {
     left: (n) => (n === 1 ? 'falta 1' : `faltan ${n}`),
   },
 
+  accounts: {
+    title: 'Cuentas',
+    add: 'Añadir cuenta',
+    addAnother: 'Añadir otra cuenta',
+    inUse: 'En uso',
+    status: {
+      valid: 'Clave en funcionamiento',
+      rejected: 'Clave rechazada por Steam',
+      rateLimited: 'Steam está limitando esta clave',
+      unchecked: 'Clave aún sin verificar',
+    },
+    keyEnding: (ending: string) => `Clave terminada en ${ending}`,
+    checkedOn: (date: string) => `Verificada el ${date}`,
+    showKey: 'Mostrar clave',
+    hideKey: 'Ocultar clave',
+    key: 'Clave de la Web API',
+    replaceKey: 'Cambiar la clave',
+    newKey: 'Nueva clave de la Web API',
+    saveKey: 'Verificar y guardar',
+    recheck: 'Verificar de nuevo',
+    remove: 'Quitar cuenta',
+    removeTitle: (name: string) => `¿Quitar ${name}?`,
+    removeDescription: (name: string) =>
+      `La clave de ${name}, lo que se leyó de Steam y sus notas, listas y logros fijados se borran de este ordenador. Nada cambia en Steam.`,
+    removeConfirm: 'Quitar',
+    alreadyAdded:
+      'Esta cuenta ya se añadió. Para cambiar su clave, usa «Cambiar la clave» en Ajustes.',
+    wrongAccount: 'Esta clave no pudo leer esa cuenta.',
+    switched: (name: string) =>
+      `Ahora se sigue a ${name}, la cuenta conectada en Steam.`,
+    keyRefused: (name: string) => `Steam rechazó la clave de ${name}.`,
+    keyRefusedHint:
+      'Lo que ya se leyó sigue en pantalla. Cambia la clave para mantenerlo al día.',
+    keyLimited: (name: string) => `Steam está limitando la clave de ${name}.`,
+    keyLimitedHint:
+      'La lectura se reanuda sola cuando Steam vuelva a aceptar la clave.',
+  },
   settings: {
     title: 'Ajustes',
     account: 'Cuenta de Steam',
