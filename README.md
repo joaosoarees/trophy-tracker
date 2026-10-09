@@ -8,19 +8,19 @@ Not affiliated with Valve or Steam.
 
 Download the installer for your system from the [latest release](https://github.com/joaosoarees/trophy-tracker/releases/latest):
 
-| System  | File                                                               |
-| ------- | ------------------------------------------------------------------ |
-| Windows | `Trophy-Tracker-Setup-<version>.exe`                               |
-| macOS   | `Trophy-Tracker-<version>-arm64.dmg` (Apple Silicon) or `-x64.dmg` |
-| Linux   | `Trophy-Tracker-<version>-amd64.deb` or `-x86_64.AppImage`         |
+| System  | File                                                                                       |
+| ------- | ------------------------------------------------------------------------------------------ |
+| Windows | `Trophy-Tracker-<version>-Windows.exe`                                                     |
+| macOS   | `Trophy-Tracker-<version>-macOS-arm64.dmg` (Apple Silicon) or `-macOS-x64.dmg` (Intel)     |
+| Linux   | `Trophy-Tracker-<version>-Linux.AppImage` (any distribution) or `-Linux-Debian-Ubuntu.deb` |
 
 The installers are not signed with a paid certificate yet, so the system warns on first run:
 
 - **Windows:** on the SmartScreen warning, choose "More info" and then "Run anyway". If **Smart App Control** is on (Windows Security → App & browser control), Windows may refuse to run the installer altogether, with no way to allow it: an unsigned installer only runs there when Microsoft's reputation service happens to accept it. Signing the installers is being arranged.
 - **macOS:** after the first attempt to open the app, go to System Settings → Privacy & Security and choose "Open Anyway".
-- **Linux:** `sudo apt install ./Trophy-Tracker-<version>-amd64.deb`, or make the AppImage executable (`chmod +x`) and run it.
+- **Linux:** `sudo apt install ./Trophy-Tracker-<version>-Linux-Debian-Ubuntu.deb`, or make the AppImage executable (`chmod +x`) and run it.
 
-On first run the app asks for a language, your SteamID and a Web API key (https://steamcommunity.com/dev/apikey), and checks your profile privacy. The app looks for a newer version as it opens. On Windows and with the Linux AppImage it downloads the version, showing the progress, and restarts into it; a version found while the app is in use downloads in the background and the app asks before restarting. On macOS and with the `.deb`, the app says a version is available and links to the download.
+On first run the app asks for a language, your SteamID and a Web API key (https://steamcommunity.com/dev/apikey), and checks your profile privacy. The app looks for a newer version as it opens. On Windows and with the Linux AppImage it downloads the version, showing the progress, and restarts into it; a version found while the app is in use downloads in the background and the app asks before restarting. On macOS and with the `.deb`, the app says a version is available and links to the download (on macOS, straight to the disk image for that Mac).
 
 Your data stays on your computer, in `%APPDATA%\trophy-tracker` (Windows), `~/Library/Application Support/trophy-tracker` (macOS) or `~/.config/trophy-tracker` (Linux).
 

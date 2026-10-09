@@ -70,6 +70,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Only for the script that publishes.
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: installers
@@ -77,8 +79,4 @@ jobs:
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >
-          gh release create "$GITHUB_REF_NAME" installers/*
-          --repo "$GITHUB_REPOSITORY"
-          --title "Trophy Tracker ${GITHUB_REF_NAME#v}"
-          --generate-notes
+        run: scripts/publish-release.sh "$GITHUB_REF_NAME" installers

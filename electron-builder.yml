@@ -24,7 +24,7 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
-  artifactName: Trophy-Tracker-Setup-${version}.${ext}
+  artifactName: Trophy-Tracker-${version}-Windows.${ext}
   # The wizard's pictures are build/installerSidebar.bmp, uninstallerSidebar.bmp
   # and installerHeader.bmp, found by name and drawn by scripts/installer-art.mjs.
   # The wizard speaks the languages the app does, picked after the system's;
@@ -46,7 +46,9 @@ mac:
     - target: dmg
       arch: [x64, arm64]
 dmg:
-  artifactName: Trophy-Tracker-${version}-${arch}.${ext}
+  # The app builds the download link of its update notice from this name
+  # (main/services/releases.ts); change both together.
+  artifactName: Trophy-Tracker-${version}-macOS-${arch}.${ext}
   # build/background.png (and @2x) is the window's picture: a tray with an
   # arrow from the app, on the left, to Applications, on the right.
   window:
@@ -70,7 +72,6 @@ linux:
   target:
     - AppImage
     - deb
-  artifactName: Trophy-Tracker-${version}-${arch}.${ext}
 
 # Where the installed app looks for new versions. electron-builder writes this
 # into the package and produces the latest*.yml files the updater reads; the
@@ -80,7 +81,11 @@ publish:
   owner: joaosoarees
   repo: trophy-tracker
 
+appImage:
+  artifactName: Trophy-Tracker-${version}-Linux.${ext}
+
 deb:
+  artifactName: Trophy-Tracker-${version}-Linux-Debian-Ubuntu.${ext}
   # electron-builder's default list plus what a minimal system lacks (found by
   # installing the package in a clean container).
   depends:
