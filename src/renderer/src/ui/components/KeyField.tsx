@@ -27,7 +27,12 @@ export function KeyField({
         autoComplete="off"
         spellCheck={false}
         readOnly={readOnly}
-        className={cn('pr-10 font-mono', readOnly && 'bg-muted', className)}
+        className={cn(
+          // The hint is a sentence, not a key: it keeps the interface face.
+          'pr-10 font-mono placeholder:font-sans',
+          readOnly && 'bg-muted',
+          className,
+        )}
         {...props}
       />
       {!readOnly && (

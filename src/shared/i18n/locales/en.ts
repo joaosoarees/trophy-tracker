@@ -185,8 +185,6 @@ export const en = {
   accounts: {
     title: 'Accounts',
     add: 'Add account',
-    addAnother: 'Add another account',
-    inUse: 'In use',
     status: {
       valid: 'Key working',
       rejected: 'Key refused by Steam',
@@ -209,7 +207,6 @@ export const en = {
     removeConfirm: 'Remove',
     alreadyAdded:
       'This account was already added. To change its key, use “Replace key” in Settings.',
-    wrongAccount: 'This key could not read that account.',
     switched: (name: string) =>
       `Now following ${name}, the account signed in to Steam.`,
     keyRefused: (name: string) => `Steam refused the key of ${name}.`,
@@ -220,26 +217,16 @@ export const en = {
   },
   settings: {
     title: 'Settings',
-    account: 'Steam account',
     steamId: (id: string) => `SteamID ${id}`,
     language: 'Language',
     languageHint:
       'The app reloads to apply the language, including achievement names.',
-    redo: 'Redo setup',
-    erase: 'Erase key and SteamID',
-    eraseTitle: 'Erase key and SteamID?',
-    eraseDescription:
-      'The app goes back to the initial setup. Your notes, checklists and pinned achievements are kept.',
-    eraseConfirm: 'Erase',
     groups: {
       account: 'Account',
       window: 'Window and language',
       data: 'Data and privacy',
       about: 'About',
     },
-    redoAction: 'Redo',
-    redoHint: 'Goes through the setup again. Your notes are kept.',
-    eraseHint: 'Forgets the key and the SteamID on this computer.',
     alwaysOnTop: 'Keep the window on top',
     alwaysOnTopHint:
       'Stays above other windows, such as a game in windowed mode.',
@@ -297,7 +284,6 @@ export const en = {
       done: 'Done',
     },
     goToStep: (step: string) => `Go to ${step}`,
-    redoNotice: (reason: string) => `${reason} Set the app up again.`,
 
     language: {
       title: 'Trophy Tracker',
@@ -321,7 +307,6 @@ export const en = {
       steamId: {
         label: 'SteamID',
         detected: 'Detected from the Steam client on this computer.',
-        saved: 'The account this app is set up with.',
         notDetected:
           'I could not find an account signed in to the Steam client. Paste your 17-digit SteamID.',
         change: 'Use another account',

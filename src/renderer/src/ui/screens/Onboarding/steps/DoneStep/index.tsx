@@ -48,7 +48,7 @@ export function DoneStep({
         description={t.onboarding.done.description}
       />
 
-      <section aria-label={t.accounts.title} className="mb-4">
+      <section aria-label={t.accounts.title} className="-mx-2 mb-4">
         <AccountGrid
           label={t.accounts.title}
           accounts={accounts}

@@ -187,8 +187,6 @@ export const fr: Messages = {
   accounts: {
     title: 'Comptes',
     add: 'Ajouter un compte',
-    addAnother: 'Ajouter un autre compte',
-    inUse: 'Utilisé',
     status: {
       valid: 'Clé opérationnelle',
       rejected: 'Clé refusée par Steam',
@@ -211,7 +209,6 @@ export const fr: Messages = {
     removeConfirm: 'Retirer',
     alreadyAdded:
       'Ce compte a déjà été ajouté. Pour changer sa clé, utilisez « Remplacer la clé » dans les Paramètres.',
-    wrongAccount: 'Cette clé n’a pas pu lire ce compte.',
     switched: (name: string) => `Suivi de ${name}, le compte connecté à Steam.`,
     keyRefused: (name: string) => `Steam a refusé la clé de ${name}.`,
     keyRefusedHint:
@@ -222,26 +219,16 @@ export const fr: Messages = {
   },
   settings: {
     title: 'Paramètres',
-    account: 'Compte Steam',
     steamId: (id) => `SteamID ${id}`,
     language: 'Langue',
     languageHint:
       'L’application se recharge pour appliquer la langue, y compris aux noms des succès.',
-    redo: 'Refaire la configuration',
-    erase: 'Effacer la clé et le SteamID',
-    eraseTitle: 'Effacer la clé et le SteamID ?',
-    eraseDescription:
-      'L’application revient à la configuration initiale. Vos notes, listes et succès épinglés sont conservés.',
-    eraseConfirm: 'Effacer',
     groups: {
       account: 'Compte',
       window: 'Fenêtre et langue',
       data: 'Données et confidentialité',
       about: 'À propos',
     },
-    redoAction: 'Refaire',
-    redoHint: 'Reprend la configuration. Vos notes sont conservées.',
-    eraseHint: 'Oublie la clé et le SteamID sur cet ordinateur.',
     alwaysOnTop: 'Garder la fenêtre au premier plan',
     alwaysOnTopHint:
       'Reste au-dessus des autres fenêtres, comme un jeu en mode fenêtré.',
@@ -301,7 +288,6 @@ export const fr: Messages = {
       done: 'Terminé',
     },
     goToStep: (step) => `Aller à ${step}`,
-    redoNotice: (reason) => `${reason} Configurez de nouveau l’application.`,
 
     language: {
       title: 'Trophy Tracker',
@@ -326,7 +312,6 @@ export const fr: Messages = {
       steamId: {
         label: 'SteamID',
         detected: 'Détecté dans le client Steam de cet ordinateur.',
-        saved: 'Le compte avec lequel cette application est configurée.',
         notDetected:
           'Je n’ai trouvé aucun compte connecté au client Steam. Collez votre SteamID à 17 chiffres.',
         change: 'Utiliser un autre compte',

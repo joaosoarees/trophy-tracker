@@ -59,7 +59,7 @@ export function Settings() {
       )}
 
       <DetailGroup title={t.accounts.title}>
-        <li className="px-1 pb-1">
+        <li className="pb-1">
           <AccountGrid
             label={t.accounts.title}
             accounts={accounts}

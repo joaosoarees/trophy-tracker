@@ -368,7 +368,7 @@ The monospaced face exists for this field and the masked key alone, because 32 c
 #### Account grid
 
 - **Purpose:** shows whose accounts the app has and switches between them.
-- **Anatomy:** tiles 88px wide that wrap: a 48px avatar and the account's name under it, truncated on one line. The last tile is a dashed square with a plus and "Add another account".
+- **Anatomy:** tiles 112px wide that wrap: a 48px avatar and the account's name under it, on two lines at most. The last tile is a dashed square with a plus and "Add another account".
 - **Variants:** with or without the add tile.
 - **States:** the account in use has a 2px Signal Blue ring around its avatar and its name in Glance White at medium weight, and is announced as pressed; the others are Quiet Steel. A refused key puts a red cross on the corner of the avatar and adds "Key refused by Steam" to the tile's name. Hover is the usual wash, press the usual push, keyboard focus the usual ring.
 - **Do:** switch on one click, with no confirmation: nothing is lost by switching. **Don't:** put the SteamID, the status words or actions inside a tile; they belong to the details under the grid.

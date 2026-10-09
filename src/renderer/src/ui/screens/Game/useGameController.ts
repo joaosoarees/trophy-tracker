@@ -49,11 +49,21 @@ export function useGameController(appid: number) {
   } = useStore(
     useShallow((state) => {
       const entry = state.games.entries[appid];
+      const appState = state.settings.appState;
+      // The notice over the app already says so; with the game on screen,
+      // its header does not say it a second time.
+      const isKeyRefused =
+        entry?.view != null &&
+        appState?.accounts.some(
+          (account) =>
+            account.steamId === appState.activeSteamId &&
+            account.status === 'rejected',
+        ) === true;
 
       return {
         view: entry?.view ?? null,
         isLoading: entry?.loading ?? true,
-        error: entry?.error ?? null,
+        error: isKeyRefused ? null : (entry?.error ?? null),
         justUnlocked: entry?.justUnlocked ?? NONE_UNLOCKED,
         userData: state.userData.byGame[appid] ?? NO_USER_DATA,
         // Shared by every game, so they hold when the game changes.

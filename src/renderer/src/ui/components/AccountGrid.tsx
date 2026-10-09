@@ -19,8 +19,12 @@ interface IAccountGridProps {
   label: string;
 }
 
-const TILE =
-  'hover:bg-accent/40 active:bg-accent/70 flex w-22 flex-col items-center gap-1.5 rounded-md px-1 py-2 text-xs';
+/**
+ * A tile is inset by 8px, as a detail row is: its avatar sits on the text
+ * margin of the group it is in, and its hover wash is as wide as a row's.
+ */
+const TILE_BOX = 'flex w-28 flex-col items-start gap-1.5 p-2 text-left text-xs';
+const TILE = `${TILE_BOX} hover:bg-accent/40 active:bg-accent/70 rounded-md`;
 
 /**
  * The accounts the app can follow, as faces: one click switches to an
@@ -62,7 +66,10 @@ export function AccountGrid({
                 />
               )}
             </span>
-            <span className="w-full truncate text-center">{name}</span>
+            {/* A name is what tells two accounts apart: it gets a second line before it is cut. */}
+            <span className="line-clamp-2 w-full leading-tight break-words">
+              {name}
+            </span>
           </>
         );
 
@@ -70,7 +77,7 @@ export function AccountGrid({
           return (
             <li
               key={account.steamId}
-              className="text-foreground flex w-22 flex-col items-center gap-1.5 px-1 py-2 text-xs"
+              className={cn(TILE_BOX, 'text-foreground')}
             >
               {face}
             </li>
@@ -108,8 +115,9 @@ export function AccountGrid({
             <span className="border-input flex size-12 items-center justify-center rounded-md border border-dashed">
               <Plus className="size-5" aria-hidden />
             </span>
-            <span className="w-full truncate text-center">
-              {accounts.length === 0 ? t.accounts.add : t.accounts.addAnother}
+            {/* Two lines at most: "Add account" is long in French. */}
+            <span className="line-clamp-2 w-full leading-tight">
+              {t.accounts.add}
             </span>
           </Pressable>
         </li>

@@ -187,8 +187,6 @@ export const es: Messages = {
   accounts: {
     title: 'Cuentas',
     add: 'Añadir cuenta',
-    addAnother: 'Añadir otra cuenta',
-    inUse: 'En uso',
     status: {
       valid: 'Clave en funcionamiento',
       rejected: 'Clave rechazada por Steam',
@@ -211,7 +209,6 @@ export const es: Messages = {
     removeConfirm: 'Quitar',
     alreadyAdded:
       'Esta cuenta ya se añadió. Para cambiar su clave, usa «Cambiar la clave» en Ajustes.',
-    wrongAccount: 'Esta clave no pudo leer esa cuenta.',
     switched: (name: string) =>
       `Ahora se sigue a ${name}, la cuenta conectada en Steam.`,
     keyRefused: (name: string) => `Steam rechazó la clave de ${name}.`,
@@ -223,26 +220,16 @@ export const es: Messages = {
   },
   settings: {
     title: 'Ajustes',
-    account: 'Cuenta de Steam',
     steamId: (id) => `SteamID ${id}`,
     language: 'Idioma',
     languageHint:
       'La aplicación se recarga para aplicar el idioma, también en los nombres de los logros.',
-    redo: 'Repetir la configuración',
-    erase: 'Borrar clave y SteamID',
-    eraseTitle: '¿Borrar clave y SteamID?',
-    eraseDescription:
-      'La aplicación vuelve a la configuración inicial. Tus notas, listas y logros fijados se conservan.',
-    eraseConfirm: 'Borrar',
     groups: {
       account: 'Cuenta',
       window: 'Ventana e idioma',
       data: 'Datos y privacidad',
       about: 'Acerca de',
     },
-    redoAction: 'Repetir',
-    redoHint: 'Repite la configuración. Tus notas se conservan.',
-    eraseHint: 'Olvida la clave y el SteamID en este ordenador.',
     alwaysOnTop: 'Mantener la ventana siempre visible',
     alwaysOnTopHint:
       'Queda por encima de otras ventanas, como un juego en modo ventana.',
@@ -301,7 +288,6 @@ export const es: Messages = {
       done: 'Listo',
     },
     goToStep: (step) => `Ir a ${step}`,
-    redoNotice: (reason) => `${reason} Configura la aplicación de nuevo.`,
 
     language: {
       title: 'Trophy Tracker',
@@ -327,7 +313,6 @@ export const es: Messages = {
       steamId: {
         label: 'SteamID',
         detected: 'Detectado en el cliente de Steam de este ordenador.',
-        saved: 'La cuenta con la que está configurada esta aplicación.',
         notDetected:
           'No he encontrado ninguna cuenta con sesión iniciada en el cliente de Steam. Pega tu SteamID de 17 dígitos.',
         change: 'Usar otra cuenta',

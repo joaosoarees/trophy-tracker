@@ -186,8 +186,6 @@ export const ptBR: Messages = {
   accounts: {
     title: 'Contas',
     add: 'Adicionar conta',
-    addAnother: 'Adicionar outra conta',
-    inUse: 'Em uso',
     status: {
       valid: 'Chave funcionando',
       rejected: 'Chave recusada pela Steam',
@@ -210,7 +208,6 @@ export const ptBR: Messages = {
     removeConfirm: 'Remover',
     alreadyAdded:
       'Esta conta já foi adicionada. Para mudar a chave dela, use “Trocar a chave” em Configuração.',
-    wrongAccount: 'Esta chave não conseguiu ler essa conta.',
     switched: (name: string) =>
       `Agora acompanhando ${name}, a conta conectada na Steam.`,
     keyRefused: (name: string) => `A Steam recusou a chave de ${name}.`,
@@ -222,26 +219,16 @@ export const ptBR: Messages = {
   },
   settings: {
     title: 'Configuração',
-    account: 'Conta Steam',
     steamId: (id) => `SteamID ${id}`,
     language: 'Idioma',
     languageHint:
       'O app recarrega para aplicar o idioma, inclusive nos nomes das conquistas.',
-    redo: 'Refazer a configuração',
-    erase: 'Apagar chave e SteamID',
-    eraseTitle: 'Apagar chave e SteamID?',
-    eraseDescription:
-      'O app volta para a configuração inicial. Suas notas, checklists e conquistas fixadas são mantidas.',
-    eraseConfirm: 'Apagar',
     groups: {
       account: 'Conta',
       window: 'Janela e idioma',
       data: 'Dados e privacidade',
       about: 'Sobre',
     },
-    redoAction: 'Refazer',
-    redoHint: 'Passa pela configuração de novo. Suas notas são mantidas.',
-    eraseHint: 'Esquece a chave e o SteamID neste computador.',
     alwaysOnTop: 'Manter a janela sempre no topo',
     alwaysOnTopHint:
       'Fica acima das outras janelas, como um jogo em modo janela.',
@@ -299,7 +286,6 @@ export const ptBR: Messages = {
       done: 'Pronto',
     },
     goToStep: (step) => `Ir para ${step}`,
-    redoNotice: (reason) => `${reason} Refaça a configuração.`,
 
     language: {
       title: 'Trophy Tracker',
@@ -324,7 +310,6 @@ export const ptBR: Messages = {
       steamId: {
         label: 'SteamID',
         detected: 'Detectado no cliente Steam deste computador.',
-        saved: 'A conta com que este app está configurado.',
         notDetected:
           'Não encontrei uma conta logada no cliente Steam. Cole o seu SteamID de 17 dígitos.',
         change: 'Usar outra conta',
