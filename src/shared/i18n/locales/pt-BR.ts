@@ -184,6 +184,7 @@ export const ptBR: Messages = {
   },
 
   accounts: {
+    use: (name: string) => `Usar ${name}`,
     verified: 'Verificada',
     inUse: 'Em uso',
     addAnother: 'Adicionar outra conta',

@@ -11,9 +11,9 @@ import { RemoteImage } from './RemoteImage';
 
 interface IAccountCardProps {
   account: IAccount;
-  /** The account the app is following: it carries the accent and is not a button. */
+  /** The account the app is following: it carries the accent and cannot be switched to. */
   isActive?: boolean;
-  /** Makes the card one button that switches to the account. Ignored for the active one. */
+  /** Makes the whole card switch to the account. Ignored for the active one. */
   onSelect?: () => void;
   /** Said at the end of the card in place of the status of the key. */
   status?: ReactNode;
@@ -23,13 +23,16 @@ interface IAccountCardProps {
   children?: ReactNode;
 }
 
-const CARD = 'bg-card rounded-lg border';
-
 /**
  * One account: face, name, SteamID and what is known about its key, all
  * inside one card, so nothing about an account sits apart from it. The
- * account in use has the accent border and says so in words; any other is a
- * single button, exactly as wide as the card, that switches to it.
+ * account in use has the accent border and says so in words; any other can
+ * be switched to by clicking anywhere on its card.
+ *
+ * The card is drawn the same way whether it is in use or not, and what makes
+ * it clickable is a button laid under its content. Were the card itself a button in
+ * one case and not in the other, switching accounts would throw away and
+ * redraw both cards, avatars included, which shows as a flicker.
  */
 export function AccountCard({
   account,
@@ -41,58 +44,55 @@ export function AccountCard({
 }: IAccountCardProps) {
   const t = useT();
   const name = account.name || account.steamId;
-
-  const face = (
-    <>
-      <RemoteImage
-        src={account.avatar}
-        fallback={<User className="size-5" />}
-        className="size-10 flex-none"
-      />
-      <span className="min-w-0 flex-1">
-        <span className="flex items-baseline gap-2">
-          <strong className="truncate font-semibold">{name}</strong>
-          {isActive && (
-            <span className="text-primary flex-none text-xs font-medium">
-              {t.accounts.inUse}
-            </span>
-          )}
-        </span>
-        <small className="text-muted-foreground block truncate text-xs tabular-nums">
-          {t.settings.steamId(account.steamId)}
-        </small>
-      </span>
-      <span className="flex-none">
-        {status ?? <AccountStatus status={account.status} />}
-      </span>
-    </>
-  );
-
-  if (onSelect && !isActive) {
-    return (
-      <li>
-        <Pressable
-          onClick={onSelect}
-          className={cn(
-            CARD,
-            // The accent border belongs to the account in use; a hover must not
-            // make another account look like it.
-            'hover:border-input hover:bg-accent/40 active:bg-accent/70 flex w-full items-center gap-3 p-3 text-left active:scale-[0.99]',
-          )}
-        >
-          {face}
-        </Pressable>
-      </li>
-    );
-  }
+  const isSwitch = onSelect !== undefined && !isActive;
 
   return (
     <li
       aria-current={isActive ? 'true' : undefined}
-      className={cn(CARD, isActive && 'border-primary/60')}
+      className={cn(
+        'bg-card relative rounded-lg border transition-colors',
+        isActive && 'border-primary/60',
+        // The accent border belongs to the account in use; a hover must not
+        // make another account look like it.
+        isSwitch && 'has-[>button:hover]:border-input',
+      )}
     >
-      <div className="flex items-center gap-3 p-3">
-        {face}
+      {isSwitch && (
+        // Under the content, which lets clicks through to it: the wash of
+        // its hover sits behind the text, as on any other card.
+        <Pressable
+          aria-label={t.accounts.use(name)}
+          onClick={onSelect}
+          className="hover:bg-accent/40 active:bg-accent/70 absolute inset-0 rounded-[7px] active:scale-100"
+        />
+      )}
+      <div
+        className={cn(
+          'relative flex items-center gap-3 p-3',
+          isSwitch && 'pointer-events-none',
+        )}
+      >
+        <RemoteImage
+          src={account.avatar}
+          fallback={<User className="size-5" />}
+          className="size-10 flex-none"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline gap-2">
+            <strong className="truncate font-semibold">{name}</strong>
+            {isActive && (
+              <span className="text-primary flex-none text-xs font-medium">
+                {t.accounts.inUse}
+              </span>
+            )}
+          </span>
+          <small className="text-muted-foreground block truncate text-xs tabular-nums">
+            {t.settings.steamId(account.steamId)}
+          </small>
+        </span>
+        <span className="flex-none">
+          {status ?? <AccountStatus status={account.status} />}
+        </span>
         {action}
       </div>
       {children}

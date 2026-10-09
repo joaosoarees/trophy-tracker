@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { memo } from 'react';
 
 import { useT } from '@app/hooks/useT';
 import { Collapsible } from '@ui/components/Collapsible';
@@ -19,7 +20,9 @@ interface IGameProps {
   running: boolean;
 }
 
-export function Game({ appid, running }: IGameProps) {
+// Memoised: the shell around the screens redraws for its own reasons (the
+// tab, a toggle in the bar), and none of them is this screen's business.
+export const Game = memo(function Game({ appid, running }: IGameProps) {
   const t = useT();
   const {
     view,
@@ -196,4 +199,4 @@ export function Game({ appid, running }: IGameProps) {
       )}
     </section>
   );
-}
+});

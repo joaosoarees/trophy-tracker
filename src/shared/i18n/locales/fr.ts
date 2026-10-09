@@ -185,6 +185,7 @@ export const fr: Messages = {
   },
 
   accounts: {
+    use: (name: string) => `Utiliser ${name}`,
     verified: 'Vérifié',
     inUse: 'Utilisé',
     addAnother: 'Ajouter un autre compte',

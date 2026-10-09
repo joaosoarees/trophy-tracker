@@ -1,5 +1,5 @@
 import { ExternalLink } from 'lucide-react';
-import { useId } from 'react';
+import { memo, useId } from 'react';
 
 import { useT } from '@app/hooks/useT';
 import { LANGUAGE_CODES, LANGUAGES } from '@shared/i18n';
@@ -13,7 +13,9 @@ import { AccountDetails } from './components/AccountDetails';
 import { UpdateNotice } from './components/UpdateNotice';
 import { useSettingsController } from './useSettingsController';
 
-export function Settings() {
+// Memoised: the shell around the screens redraws for its own reasons (the
+// tab, a toggle in the bar), and none of them is this screen's business.
+export const Settings = memo(function Settings() {
   const t = useT();
   const accountsId = useId();
   const {
@@ -189,4 +191,4 @@ export function Settings() {
       </footer>
     </section>
   );
-}
+});

@@ -1,4 +1,5 @@
 import { RefreshCw } from 'lucide-react';
+import { memo } from 'react';
 
 import { useT } from '@app/hooks/useT';
 import { Empty } from '@ui/components/Empty';
@@ -13,7 +14,9 @@ import { useDashboardController } from './useDashboardController';
 
 const SKELETON_ROWS = Array.from({ length: 6 }, (_, index) => index);
 
-export function Dashboard() {
+// Memoised: the shell around the screens redraws for its own reasons (the
+// tab, a toggle in the bar), and none of them is this screen's business.
+export const Dashboard = memo(function Dashboard() {
   const t = useT();
   const {
     hasLoaded,
@@ -107,4 +110,4 @@ export function Dashboard() {
       )}
     </section>
   );
-}
+});

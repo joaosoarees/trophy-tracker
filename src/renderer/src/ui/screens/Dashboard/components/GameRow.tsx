@@ -1,4 +1,5 @@
 import { CircleCheck, Gamepad2 } from 'lucide-react';
+import { memo } from 'react';
 
 import { useLocale } from '@app/hooks/useLocale';
 import { useT } from '@app/hooks/useT';
@@ -14,7 +15,9 @@ interface IGameRowProps {
   onPick: (appid: number) => void;
 }
 
-export function GameRow({ game, onPick }: IGameRowProps) {
+// Memoised: the list is redrawn for every game read while it loads, and a
+// row whose game did not change has nothing new to draw.
+export const GameRow = memo(function GameRow({ game, onPick }: IGameRowProps) {
   const t = useT();
   const locale = useLocale();
   const percent = Math.round((game.unlocked / game.total) * 100);
@@ -71,4 +74,4 @@ export function GameRow({ game, onPick }: IGameRowProps) {
       </Pressable>
     </li>
   );
-}
+});

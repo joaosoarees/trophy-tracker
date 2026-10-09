@@ -183,6 +183,7 @@ export const en = {
   },
 
   accounts: {
+    use: (name: string) => `Use ${name}`,
     verified: 'Verified',
     inUse: 'In use',
     addAnother: 'Add another account',
