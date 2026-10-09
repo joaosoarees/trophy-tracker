@@ -27,6 +27,9 @@ jobs:
       # vitest.config.ts.
       - run: pnpm test:coverage
       - run: pnpm build
+      # The catalogue of components has to keep building: a story that no
+      # longer compiles is a component whose documentation is wrong.
+      - run: pnpm build-storybook
 
   # The same tests on the other two systems the app ships for. Twice a release
   # failed on a test that only breaks on Windows (paths, permissions), found
