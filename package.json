@@ -28,6 +28,7 @@
     "format:check": "prettier --check .",
     "audit:ui": "electron-vite build && node scripts/audit-ui.mjs",
     "prepare": "husky",
+    "installer:art": "electron scripts/installer-art.mjs",
     "dist": "electron-vite build && electron-builder --publish never",
     "dist:linux": "electron-vite build && electron-builder --linux --publish never",
     "dist:win": "electron-vite build && electron-builder --win --publish never",

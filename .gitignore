@@ -5,3 +5,4 @@ dist
 coverage
 .audit-ui
 .impeccable
+.installer-art

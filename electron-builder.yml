@@ -25,6 +25,15 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
   artifactName: Trophy-Tracker-Setup-${version}.${ext}
+  # The wizard's pictures are build/installerSidebar.bmp, uninstallerSidebar.bmp
+  # and installerHeader.bmp, found by name and drawn by scripts/installer-art.mjs.
+  # The wizard speaks the languages the app does, picked after the system's;
+  # any other system gets English, as in the app.
+  installerLanguages:
+    - en_US
+    - pt_BR
+    - es_ES
+    - fr_FR
 
 mac:
   category: public.app-category.utilities
@@ -38,6 +47,19 @@ mac:
       arch: [x64, arm64]
 dmg:
   artifactName: Trophy-Tracker-${version}-${arch}.${ext}
+  # build/background.png (and @2x) is the window's picture: a tray with an
+  # arrow from the app, on the left, to Applications, on the right.
+  window:
+    width: 540
+    height: 380
+  iconSize: 96
+  contents:
+    - x: 150
+      y: 190
+    - x: 390
+      y: 190
+      type: link
+      path: /Applications
 
 linux:
   category: Utility
