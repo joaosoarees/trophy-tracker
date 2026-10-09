@@ -104,7 +104,7 @@ Suas chaves, notas e checklists ficam guardadas só no seu computador, em `%APPD
 
 Electron, React e TypeScript, com o cuidado que uma ferramenta pequena raramente recebe:
 
-- **Testado onde decide alguma coisa.** 430 testes cobrem a lógica que lê a Steam, guarda os seus dados e atualiza o app, com 95% das instruções cobertas, e rodam em Windows, macOS e Linux a cada envio.
+- **Testado onde decide alguma coisa.** 430 testes cobrem a lógica que lê a Steam, guarda os seus dados e atualiza o app. Rodam em Windows, macOS e Linux a cada envio, e o selo no topo diz quanto dessa lógica eles cobrem.
 - **A interface é auditada por um script, não de memória.** O `pnpm audit:ui` conduz o app compilado contra um substituto da Steam, uma vez por idioma: passa pela configuração inicial, por todas as telas e pelos fluxos que nenhuma imagem isolada mostra (um jogo iniciando, uma conquista desbloqueada, a Steam fora do ar), conferindo acessibilidade com o axe, foco de teclado, hover e transbordamento. As imagens desta página vêm do mesmo substituto.
 - **Um catálogo de componentes.** O `pnpm storybook` mostra cada peça sozinha, em todos os estados, nos quatro idiomas e nas duas larguras para as quais a janela foi feita.
 - **Seus arquivos não se perdem numa queda.** Cada um é gravado inteiro antes de substituir o anterior, e um arquivo que não pode ser lido é guardado à parte, nunca sobrescrito.

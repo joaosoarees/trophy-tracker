@@ -102,7 +102,7 @@ Your keys, notes and checklists are stored only on your computer, in `%APPDATA%\
 
 Electron, React and TypeScript, with the care a small tool rarely gets:
 
-- **Tested where it decides something.** 430 tests cover the logic that reads Steam, keeps your data and updates the app, at 95% of statements, and run on Windows, macOS and Linux on every push.
+- **Tested where it decides something.** 430 tests cover the logic that reads Steam, keeps your data and updates the app. They run on Windows, macOS and Linux on every push, and the badge above says how much of that logic they cover.
 - **The interface is audited by a script, not by memory.** `pnpm audit:ui` drives the built app against a stand-in for Steam, once per language: it goes through the setup, every screen and the flows no single picture shows (a game starting, an achievement unlocked, Steam going off the air), checking accessibility with axe, keyboard focus, hover and overflow. The pictures on this page come from the same stand-in.
 - **A catalogue of components.** `pnpm storybook` shows each building block alone, in every state, in the four languages and at the two widths the window is built for.
 - **Your files cannot be lost to a crash.** Each one is written whole before it replaces the previous, and a file that cannot be read is kept aside, never overwritten.
