@@ -468,7 +468,13 @@ async function auditOnboarding(page, steam, language) {
 
   const verify = async () => {
     await page.evaluate(advance);
-    await sleep(1800);
+    // The button is disabled while Steam is being asked, however long it takes.
+    await sleep(300);
+    await waitFor(
+      page,
+      `![...document.querySelectorAll('main button')].filter((el) => el.offsetParent !== null).at(-1).disabled`,
+    );
+    await sleep(500);
     return page.evaluate(visibleText('main [role="alert"]'));
   };
   // Each answer of Steam has its own error; the words are checked in the
@@ -481,7 +487,7 @@ async function auditOnboarding(page, steam, language) {
     expectThat(
       FLOW,
       isFirst ? words.test(alert) : alert !== '',
-      `${problem} (shown: "${alert}")`,
+      `${problem} (shown: "${alert}"; on screen: "${(await page.evaluate(`document.querySelector('main').innerText`)).replace(/\s+/g, ' ').slice(0, 260)}")`,
     );
     await audit(page, `${capture}-${language}`);
   };
