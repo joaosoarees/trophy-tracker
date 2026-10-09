@@ -60,7 +60,7 @@ The same code runs on Windows, macOS, Linux and, for development, WSL. What diff
 - `system/browser.ts` hides the WSL detour: links must open in the Windows browser.
 - **The app raises no system notification.** Steam already announces an unlocked achievement; the app says what was unlocked, and how many are left, in the notice at the top of the list. A notification of its own was removed as redundant (and it needed a PowerShell detour on WSL).
 - The Web API only reports the running game when the profile shows it; on macOS and Linux a profile that hides the game status simply never switches games on its own.
-- The data folder is `trophy-tracker` on every system (set in `main/index.ts`); `storage/migrateUserData.ts` moves the files of the old `steam-trophy-tracker` folder once.
+- The data folder is `trophy-tracker` on every system (set in `main/index.ts`).
 - A second launch focuses the open window (`requestSingleInstanceLock`).
 - **Windows and macOS have no title bar** (`system/windowFrame.ts`): the system draws only its own buttons, over the app's tab bar, so snapping and the maximise menu keep working. The interface never asks which system it is on: CSS learns where the buttons are from `env(titlebar-area-*)` (the `window-drag`, `window-buttons-inset`, `window-bar` and `h-below-window-bar` utilities in `ui/styles/index.css`), and the fallbacks leave Linux, which keeps the system's title bar, as it was. The tab bar drags the window; a screen without it (onboarding, update, crash) starts with `ui/components/WindowBar`, the strip the window is dragged by. Whatever is added to the tab bar must fit beside the system's buttons at 480 px in French, the tightest case (138 px of buttons on Windows).
 
@@ -120,7 +120,6 @@ src/main/              main process: the only part that talks to Steam and to th
                          windows.ts (registry and WSL interop), steamFiles.ts and textVdf.ts
                          (Steam folder on macOS and Linux), vdf.ts (binary cache reader)
   storage/               Store.ts (JSON persistence), secureCipher.ts and createCipher.ts (key encryption),
-                         migrateUserData.ts (one-off move from the old data folder)
   system/                browser.ts (links), errorLog.ts (local log), dataFolder.ts, windowBounds.ts,
                          windowFrame.ts (title bar or only the system's buttons, per system),
                          autoUpdate.ts (electron-updater, where the app can replace itself)
@@ -193,7 +192,7 @@ Game/
 
 The app keeps several Steam accounts and follows one at a time. An account is a SteamID, the name and avatar Steam gave for it, and its own Web API key.
 
-- **Everything read or written is per account.** `storage/Store.ts` keeps, by SteamID: the key (`config.json`), the library, game views and summaries (`cache.json`), and the notes, pins and checklists (`userdata.json`). Achievement lists and art describe the game, not the player, and are shared. The files of the single-account versions are taken over as the first account when they are read.
+- **Everything read or written is per account.** `storage/Store.ts` keeps, by SteamID: the key (`config.json`), the library, game views and summaries (`cache.json`), and the notes, pins and checklists (`userdata.json`). Achievement lists and art describe the game, not the player, and are shared.
 - **A read belongs to the account it started for.** `Tracker` hands each result to the store with the SteamID it was read with, and shares in-flight reads per account, so a switch in the middle of a read never files one account's data under another. A result for an account that was removed lands nowhere.
 - **The key never reaches the interface.** `IAccount` carries its last four characters (`keyEnding`) and nothing else; `ui/components/MaskedKey` is the only way a saved key is shown. There is no reveal and no copy. A key goes in through `KeyField` and is forgotten by the interface as soon as it is saved.
 - **Status of a key** (`AccountStatus`): `valid`, `rejected`, `rateLimited`, `unchecked`. Steam answers a revoked key and a mistyped one the same way (403 as HTML), so there is one "rejected". `SetupService.attempt` records what each read says about the key in use and tells the interface (`state-changed`) only when it is news. **A rejected key no longer sends the user back to the setup:** the app stays open with what it had, `AppShell` shows `KeyTroubleNotice` over the Game and the Dashboard, and "Replace key" in Settings fixes it. The onboarding only shows when there is no account at all.
@@ -353,7 +352,8 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 `~/.config/trophy-tracker/` (`%APPDATA%\trophy-tracker` on Windows, `~/Library/Application Support/trophy-tracker` on macOS): `config.json` (the accounts, each with its SteamID and key, permission 600; keys encrypted only if there is a keyring), `cache.json` (per account, plus what is common to all), `userdata.json` (notes, pins, checklists, per account), `settings.json` (language, always on top, list orders, the window's size and position). Never copy the key out of that folder or print it.
 
 - **A file is never lost to a bad write or a bad read** (`storage/Store.ts`). Writing goes to a temporary name and is then put in place, so a crash in the middle leaves the previous file. A file that cannot be parsed, or that says it is in a later version of the format than this app knows (`FILE_VERSION`), is copied to `<name>.damaged.bak` or `<name>.v<N>.bak` before the app starts from nothing, and the error log says so. Treating such a file as empty would let the next write erase it for good.
-- **Every file carries the version of its format.** Changing the shape of a file means raising `FILE_VERSION` and reading the old shape in `Store`; the single-account files (version 1) carried no number and are recognised by their fields.
+- **Every file carries the version of its format** (`FILE_VERSION`), and a file in any other version is not read: `config.json` and `userdata.json` are copied aside (`<name>.v<N>.bak`) and the app starts from nothing; an older `cache.json` is simply dropped, since Steam gives it all back. `settings.json` never changed shape and is read whatever it says.
+- **Migrations: only for a format a published version wrote, and with their way out written beside them.** Code that converts old data is worth writing when installed copies of the app have that data. It is not for a format that only ever existed on the developer's machine. When one is written, the comment says when it can go ("remove once nothing below version X is in use"), and it goes then. There is none today: the folder move from the app's first name and the reading of the single-account files (0.1.0 to 0.6.0) were removed while the owner was the only user.
 - **The cache is written a second after it changes, once** (`cacheDelay`), and when the app closes (`Store.flush` on `before-quit`): reading a library changes it once per game, and each write is the whole file. Tests build the store with no delay.
 
 ## Tests

@@ -2,6 +2,12 @@
 
 Why things are the way they are, for the choices that are not obvious from the code. `CLAUDE.md` holds the rules; this file holds the reasons and what was tried before. Newest first. Add an entry when a choice is made that someone could reasonably want to undo.
 
+## No migration code
+
+Two pieces of code converted old data: one copied the files out of the folder of the app's first name (`steam-trophy-tracker`), and one read the files of the single-account versions (0.1.0 to 0.6.0) as the first account. The first was written for a folder that only ever existed on the developer's machine, before anything was published, and ran on every start of every install with nothing to do. The second served published versions, but the only person who had installed them was the owner, who had already moved on. Both were removed.
+
+What stayed is the check, not the conversion: a file whose format has another version number (or none, as before 0.7.0) is kept aside and not read, so it is never mangled or erased.
+
 ## Unsigned for now
 
 SignPath Foundation refused the application for free signing in October 2026. The reason was the project's visibility, not its quality: they look for stars, forks, contributors and mentions elsewhere, and invite a new application once there are some.
