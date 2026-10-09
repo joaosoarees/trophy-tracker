@@ -9,7 +9,17 @@ export function makeAppState(props: Partial<IAppState> = {}): IAppState {
     configured: true,
     language: 'en',
     profile: { steamId: STEAM_ID, name: 'player', avatar: '' },
-    configError: null,
+    accounts: [
+      {
+        steamId: STEAM_ID,
+        name: 'player',
+        avatar: '',
+        keyEnding: 'CDEF',
+        status: 'valid',
+        checkedAt: null,
+      },
+    ],
+    activeSteamId: STEAM_ID,
     achievementSort: DEFAULT_ACHIEVEMENT_SORT,
     dashboardSort: DEFAULT_DASHBOARD_SORT,
     ...props,

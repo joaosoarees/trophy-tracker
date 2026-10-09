@@ -31,13 +31,18 @@ export function createRunningGameSource({
 
   let last: number | null = null;
   let askedAt = -Infinity;
+  let askedFor: string | null = null;
 
   return async () => {
     const credentials = store.getCredentials();
     if (!credentials) return null;
-    if (now() - askedAt < interval) return last;
+    const isSameAccount = credentials.steamId === askedFor;
+    if (isSameAccount && now() - askedAt < interval) return last;
+    // Another account's game says nothing about this one.
+    if (!isSameAccount) last = null;
 
     askedAt = now();
+    askedFor = credentials.steamId;
     try {
       const { gameid } = await client.getPlayerSummary(credentials);
       const appid = Number(gameid);

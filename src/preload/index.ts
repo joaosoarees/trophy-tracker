@@ -24,6 +24,10 @@ const calls = [
   'checkPrivacy',
   'saveConfig',
   'resetConfig',
+  'setActiveAccount',
+  'removeAccount',
+  'replaceKey',
+  'recheckAccount',
   'getCurrentAppId',
   'getGame',
   'getDashboard',
@@ -48,6 +52,7 @@ const calls = [
 
 const api = {
   ...Object.fromEntries(calls.map((c) => [c, invoke(c)])),
+  onStateChanged: listen(IpcEvent.stateChanged),
   onGameChanged: listen(IpcEvent.gameChanged),
   onGameUpdated: listen(IpcEvent.gameUpdated),
   onDashboardProgress: listen(IpcEvent.dashboardProgress),

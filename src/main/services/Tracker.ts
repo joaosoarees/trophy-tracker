@@ -45,7 +45,9 @@ export class Tracker {
   }
 
   /** Identical simultaneous requests share the same read. */
-  private once<T>(key: string, run: () => Promise<T>): Promise<T> {
+  /** Identical reads for the same account share one request. */
+  private once<T>(name: string, run: () => Promise<T>): Promise<T> {
+    const key = `${this.store.getActiveSteamId() ?? ''}:${name}`;
     const running = this.inflight.get(key) as Promise<T> | undefined;
     if (running) return running;
     const promise = run().finally(() => this.inflight.delete(key));
@@ -64,9 +66,10 @@ export class Tracker {
     if (cached && !force && this.now() - cached.fetchedAt < LIBRARY_TTL)
       return cached.games;
     return this.once('library', async () => {
-      const games = await this.client.getOwnedGames(this.credentials());
+      const creds = this.credentials();
+      const games = await this.client.getOwnedGames(creds);
       if (games === null) throw new SteamError('private');
-      this.store.setLibrary(games, this.now());
+      this.store.setLibrary(games, this.now(), creds.steamId);
       return games;
     });
   }
@@ -210,21 +213,24 @@ export class Tracker {
     const view = mergeView(cached, read);
     if (view === cached) {
       cached.fetchedAt = read.fetchedAt;
-      this.store.setGame(cached);
+      this.store.setGame(cached, creds.steamId);
       return cached;
     }
-    this.store.setGame(view);
-    this.store.setSummaries({
-      [appid]: {
-        ...this.summaryPlaytime(appid),
-        total: view.total,
-        unlocked: view.unlockedCount,
-        lastUnlockAt: Math.max(
-          0,
-          ...view.achievements.map((a) => a.unlockedAt ?? 0),
-        ),
+    this.store.setGame(view, creds.steamId);
+    this.store.setSummaries(
+      {
+        [appid]: {
+          ...this.summaryPlaytime(appid),
+          total: view.total,
+          unlocked: view.unlockedCount,
+          lastUnlockAt: Math.max(
+            0,
+            ...view.achievements.map((a) => a.unlockedAt ?? 0),
+          ),
+        },
       },
-    });
+      creds.steamId,
+    );
     return view;
   }
 
@@ -314,7 +320,7 @@ export class Tracker {
         Array.from({ length: Math.min(CONCURRENCY, total) }, worker),
       );
     } finally {
-      this.store.setSummaries(fresh);
+      this.store.setSummaries(fresh, creds.steamId);
     }
 
     const withAchievements = played.filter(

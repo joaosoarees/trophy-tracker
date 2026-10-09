@@ -6,6 +6,7 @@ import { DEFAULT_LANGUAGE } from '@shared/i18n';
 import { IpcEvent } from '@shared/ipcEvents';
 
 import { registerIpc } from './ipc/registerIpc';
+import { createAccountFollower } from './services/accountFollower';
 import { AppUpdates } from './services/AppUpdates';
 import { GameWatcher } from './services/GameWatcher';
 import { RELEASES_REPOSITORY } from './services/releases';
@@ -54,7 +55,7 @@ process.on('unhandledRejection', (reason) =>
 if (!app.requestSingleInstanceLock()) app.quit();
 
 // Composition root: builds each piece once and hands it what it depends on.
-void app.whenReady().then(() => {
+void app.whenReady().then(async () => {
   // Only into the app's own folder: a throwaway folder named on the command
   // line must stay as it was given, not receive a copy of the user's data.
   if (usesOwnDataFolder) {
@@ -72,7 +73,10 @@ void app.whenReady().then(() => {
     ? undefined
     : process.env.TROPHY_TRACKER_FAKE_STEAM;
   const client = new SteamClient(fetch, DEFAULT_LANGUAGE, fakeSteam);
-  const setup = new SetupService(store, client);
+  const window = new MainWindow();
+  const setup = new SetupService(store, client, (state) =>
+    window.send(IpcEvent.stateChanged, state, false),
+  );
   // With a fake Steam the local client is fake too: a folder the audit fills
   // in, read the way a Linux install is, or no client at all.
   const fakeSteamHome = process.env.TROPHY_TRACKER_FAKE_STEAM_HOME;
@@ -88,7 +92,6 @@ void app.whenReady().then(() => {
     client,
     readStatMap: local.readStatMap,
   });
-  const window = new MainWindow();
   const updates = new AppUpdates({
     currentVersion: app.getVersion(),
     auto: createAutoUpdater(),
@@ -133,6 +136,22 @@ void app.whenReady().then(() => {
     dataFolder: createDataFolderAccess(app.getPath('userData')),
     logError: log,
   });
+  // Where the Steam client says who is signed in without being asked twice
+  // (the registry), the app follows that account; the audit's fake client
+  // counts too, so the switch can be audited.
+  const followAccount =
+    local.tracksRunningGame || fakeSteam
+      ? createAccountFollower({
+          getSignedInSteamId: local.getActiveSteamId,
+          store,
+          onFollow: () => {
+            watcher.forget({ current: true });
+            window.send(IpcEvent.stateChanged, setup.getState(), true);
+          },
+        })
+      : null;
+  // Before the window opens, so it opens on the right account.
+  await followAccount?.();
   app.on('second-instance', () => window.focus());
   window.open({
     title: setup.messages.appTitle,
@@ -149,6 +168,9 @@ void app.whenReady().then(() => {
     },
   });
   watcher.start();
+  if (followAccount) {
+    setInterval(() => void followAccount(), fakeSteam ? 2_000 : 30_000);
+  }
   // The app can stay open for days: ask every hour whether the six hours
   // since the last check have passed, and tell the interface what was found.
   setInterval(

@@ -8,7 +8,7 @@ import { createRunningGameSource } from '@main/services/runningGame';
 import { SteamClient } from '@main/steam/client';
 import { type ISteamLocal } from '@main/steam/local';
 import { Store } from '@main/storage/Store';
-import { fakeFetch, KEY, STEAM_ID } from '@test/helpers';
+import { fakeFetch, KEY, OTHER_STEAM_ID, STEAM_ID } from '@test/helpers';
 
 describe('createRunningGameSource', () => {
   const localWithoutTracking: ISteamLocal = {
@@ -37,6 +37,7 @@ describe('createRunningGameSource', () => {
         { steamId: STEAM_ID, name: 'player', avatar: '' },
       );
     return {
+      store,
       source,
       fetchImpl,
       configure,
@@ -98,6 +99,22 @@ describe('createRunningGameSource', () => {
     await source();
 
     advance(1_500);
+    await source();
+
+    expect(fetchImpl.calls).toHaveLength(2);
+  });
+
+  it("does not take one account's game for another's", async () => {
+    const { source, fetchImpl, configure, store } = setup(() =>
+      playing('105600'),
+    );
+    configure();
+    await source();
+
+    store.setCredentials(
+      { steamId: OTHER_STEAM_ID, apiKey: KEY },
+      { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' },
+    );
     await source();
 
     expect(fetchImpl.calls).toHaveLength(2);

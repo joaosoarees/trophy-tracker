@@ -1,11 +1,11 @@
-import { mkdtempSync, statSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import { Store } from '@main/storage/Store';
-import { KEY, STEAM_ID } from '@test/helpers';
+import { KEY, OTHER_KEY, OTHER_STEAM_ID, STEAM_ID } from '@test/helpers';
 
 const tempDir = (): string => mkdtempSync(join(tmpdir(), 'stt-'));
 const profile = { steamId: STEAM_ID, name: 'player', avatar: '' };
@@ -224,5 +224,234 @@ describe('Store', () => {
     store.setPreference('rememberWindow', false);
 
     expect(new Store(dir).getWindowBounds()).toBeNull();
+  });
+});
+
+describe('Store: several accounts', () => {
+  const other = { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' };
+  const note = { note: 'mine', pinned: false };
+
+  /** Two accounts; the second one added is the one in use. */
+  function withTwoAccounts(dir = tempDir()) {
+    const store = new Store(dir);
+    store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile, 1000);
+    store.setCredentials(
+      { steamId: OTHER_STEAM_ID, apiKey: OTHER_KEY },
+      other,
+      2000,
+    );
+    return { store, dir };
+  }
+
+  it('lists the accounts without their keys', () => {
+    const { store } = withTwoAccounts();
+
+    expect(store.getAccounts()).toEqual([
+      {
+        ...profile,
+        keyEnding: KEY.slice(-4),
+        status: 'valid',
+        checkedAt: 1000,
+      },
+      {
+        ...other,
+        keyEnding: OTHER_KEY.slice(-4),
+        status: 'valid',
+        checkedAt: 2000,
+      },
+    ]);
+  });
+
+  it('remembers which account is in use', () => {
+    const { store, dir } = withTwoAccounts();
+
+    store.setActiveAccount(STEAM_ID);
+
+    expect(new Store(dir).getCredentials()).toEqual({
+      steamId: STEAM_ID,
+      apiKey: KEY,
+    });
+  });
+
+  it('does not follow an account it has no key for', () => {
+    const { store } = withTwoAccounts();
+
+    expect(store.setActiveAccount('76561198000000099')).toBe(false);
+    expect(store.getActiveSteamId()).toBe(OTHER_STEAM_ID);
+  });
+
+  it('keeps what was read from Steam apart for each account', () => {
+    const { store } = withTwoAccounts();
+    store.setSummaries({ 10: { total: 4, unlocked: 1, playtime: 10 } });
+
+    store.setActiveAccount(STEAM_ID);
+
+    expect(store.getSummary(10)).toBeNull();
+    store.setActiveAccount(OTHER_STEAM_ID);
+    expect(store.getSummary(10)?.unlocked).toBe(1);
+  });
+
+  it('hands a late read to the account it was made for', () => {
+    const { store } = withTwoAccounts();
+
+    store.setSummaries(
+      { 10: { total: 4, unlocked: 3, playtime: 10 } },
+      STEAM_ID,
+    );
+
+    expect(store.getSummary(10)).toBeNull();
+    store.setActiveAccount(STEAM_ID);
+    expect(store.getSummary(10)?.unlocked).toBe(3);
+  });
+
+  it('drops a late read for an account that was removed', () => {
+    const { store, dir } = withTwoAccounts();
+    store.removeAccount(STEAM_ID);
+
+    store.setSummaries(
+      { 10: { total: 4, unlocked: 3, playtime: 10 } },
+      STEAM_ID,
+    );
+
+    expect(readFileSync(join(dir, 'cache.json'), 'utf8')).not.toContain(
+      STEAM_ID,
+    );
+  });
+
+  it('keeps notes apart for each account', () => {
+    const { store } = withTwoAccounts();
+    store.setUserData(10, 'A', note);
+
+    store.setActiveAccount(STEAM_ID);
+
+    expect(store.getUserData(10)).toEqual({});
+    store.setActiveAccount(OTHER_STEAM_ID);
+    expect(store.getUserData(10)).toEqual({ A: note });
+  });
+
+  it('removing an account deletes its key, what was read and its notes', () => {
+    const { store, dir } = withTwoAccounts();
+    store.setUserData(10, 'A', note);
+    store.setSummaries({ 10: { total: 4, unlocked: 1, playtime: 10 } });
+
+    store.removeAccount(OTHER_STEAM_ID);
+
+    for (const file of ['config.json', 'cache.json', 'userdata.json']) {
+      expect(readFileSync(join(dir, file), 'utf8')).not.toContain(
+        OTHER_STEAM_ID,
+      );
+    }
+    expect(store.getActiveSteamId()).toBe(STEAM_ID);
+  });
+
+  it('erasing every account keeps the notes for when one comes back', () => {
+    const { store } = withTwoAccounts();
+    store.setUserData(10, 'A', note);
+
+    store.clearCredentials();
+    store.setCredentials({ steamId: OTHER_STEAM_ID, apiKey: OTHER_KEY }, other);
+
+    expect(store.getUserData(10)).toEqual({ A: note });
+  });
+
+  it('gives a new key to an account that is already there, keeping the rest', () => {
+    const { store } = withTwoAccounts();
+    store.setUserData(10, 'A', note);
+
+    store.setCredentials({ steamId: OTHER_STEAM_ID, apiKey: KEY }, other);
+
+    expect(store.getAccounts()).toHaveLength(2);
+    expect(store.getCredentials()?.apiKey).toBe(KEY);
+    expect(store.getUserData(10)).toEqual({ A: note });
+  });
+
+  it('records what Steam last said about a key', () => {
+    const { store, dir } = withTwoAccounts();
+
+    store.setAccountStatus(STEAM_ID, 'rejected', 3000);
+
+    expect(new Store(dir).getAccounts()[0]).toMatchObject({
+      status: 'rejected',
+      checkedAt: 3000,
+    });
+  });
+});
+
+describe('Store: files of the versions with a single account', () => {
+  const note = { note: 'mine', pinned: false };
+
+  function legacy() {
+    const dir = tempDir();
+    writeFileSync(
+      join(dir, 'config.json'),
+      JSON.stringify({ steamId: STEAM_ID, apiKey: KEY, profile }),
+    );
+    writeFileSync(
+      join(dir, 'cache.json'),
+      JSON.stringify({
+        language: 'en',
+        games: {},
+        summaries: { 10: { total: 4, unlocked: 1, playtime: 10 } },
+        art: {},
+        schemas: {},
+      }),
+    );
+    writeFileSync(
+      join(dir, 'userdata.json'),
+      JSON.stringify({ 10: { A: note } }),
+    );
+    return dir;
+  }
+
+  it('turns the saved key into the first account, still in use', () => {
+    const store = new Store(legacy());
+
+    expect(store.getCredentials()).toEqual({ steamId: STEAM_ID, apiKey: KEY });
+    expect(store.getAccounts()).toEqual([
+      {
+        ...profile,
+        keyEnding: KEY.slice(-4),
+        status: 'unchecked',
+        checkedAt: null,
+      },
+    ]);
+  });
+
+  it('keeps what had been read from Steam', () => {
+    expect(new Store(legacy()).getSummary(10)?.unlocked).toBe(1);
+  });
+
+  it("keeps the notes, as that account's", () => {
+    const store = new Store(legacy());
+
+    expect(store.getUserData(10)).toEqual({ A: note });
+    store.setCredentials(
+      { steamId: OTHER_STEAM_ID, apiKey: OTHER_KEY },
+      { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' },
+    );
+    expect(store.getUserData(10)).toEqual({});
+  });
+
+  it('reads the same after the files were rewritten in the new shape', () => {
+    const dir = legacy();
+    new Store(dir).setUserData(10, 'B', note);
+
+    const again = new Store(dir);
+
+    expect(again.getCredentials()?.apiKey).toBe(KEY);
+    expect(again.getUserData(10)).toEqual({ A: note, B: note });
+  });
+
+  it('gives notes written with no account to the first account added', () => {
+    const dir = tempDir();
+    writeFileSync(
+      join(dir, 'userdata.json'),
+      JSON.stringify({ 10: { A: note } }),
+    );
+    const store = new Store(dir);
+
+    store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
+
+    expect(store.getUserData(10)).toEqual({ A: note });
   });
 });

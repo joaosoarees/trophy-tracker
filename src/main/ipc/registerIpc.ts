@@ -17,7 +17,11 @@ import { type MainWindow } from '../window';
 
 type Invokable = Omit<
   IApi,
-  'onGameChanged' | 'onGameUpdated' | 'onDashboardProgress' | 'onAppInfoChanged'
+  | 'onStateChanged'
+  | 'onGameChanged'
+  | 'onGameUpdated'
+  | 'onDashboardProgress'
+  | 'onAppInfoChanged'
 >;
 
 /** A handler may answer right away; Electron wraps the value in a promise for the interface. */
@@ -65,6 +69,17 @@ export function registerIpc({
       watcher.forget({ current: true });
       return setup.resetConfig();
     },
+    // The game on screen belongs to the account that is being left.
+    setActiveAccount: (steamId) => {
+      watcher.forget({ current: true });
+      return setup.setActiveAccount(steamId);
+    },
+    removeAccount: (steamId) => {
+      watcher.forget({ current: true });
+      return setup.removeAccount(steamId);
+    },
+    replaceKey: (steamId, apiKey) => setup.replaceKey(steamId, apiKey),
+    recheckAccount: (steamId) => setup.recheckAccount(steamId),
 
     getCurrentAppId: () => watcher.refreshCurrent(),
     getGame: (appid, force) =>

@@ -13,6 +13,7 @@ export type SteamErrorKind =
   | 'no-stats'
   | 'not-found'
   | 'network'
+  | 'rate-limited'
   | 'not-configured'
   | 'unknown';
 
@@ -40,6 +41,8 @@ export function steamErrorMessage(m: Messages, e: SteamError): string {
       return m.errors.notFound;
     case 'network':
       return m.errors.network;
+    case 'rate-limited':
+      return m.errors.rateLimited;
     case 'not-configured':
       return m.errors.notConfigured;
     case 'unknown':
@@ -155,6 +158,7 @@ export class SteamClient {
       throw new SteamError('invalid-key');
     }
     if (res.status === 403) throw new SteamError('private');
+    if (res.status === 429) throw new SteamError('rate-limited');
     throw new SteamError('unknown', res.status, apiError);
   }
 

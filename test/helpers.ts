@@ -33,6 +33,9 @@ export const clientWith = (
 export const KEY = '0123456789ABCDEF0123456789ABCDEF';
 /** A made-up account: nobody's real SteamID belongs in the repository. */
 export const STEAM_ID = '76561198000000042';
+/** A second made-up account, for what happens between two. */
+export const OTHER_STEAM_ID = '76561198000000043';
+export const OTHER_KEY = 'FEDCBA9876543210FEDCBA9876540000';
 
 export const FORBIDDEN_HTML: IRoute = {
   status: 403,

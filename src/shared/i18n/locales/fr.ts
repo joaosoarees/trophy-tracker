@@ -18,6 +18,8 @@ export const fr: Messages = {
     notFound: 'Aucun profil Steam n’a été trouvé avec ce SteamID.',
     network: 'Impossible de joindre Steam. Vérifiez votre connexion.',
     notConfigured: 'L’application n’est pas encore configurée.',
+    rateLimited:
+      'Steam limite cette clé pour le moment. La lecture reprend d’elle-même.',
     steamStatus: (status) => `Steam a répondu avec l’erreur ${status}.`,
     unexpected: 'Erreur inattendue. Réessayez.',
     changeNotSaved:

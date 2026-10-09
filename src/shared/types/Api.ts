@@ -28,8 +28,17 @@ export interface IApi {
     steamId: string,
     apiKey: string,
   ) => Promise<CheckResult<{ gamesWithPlaytime: number }>>;
+  /** Adds an account and starts following it. */
   saveConfig: (steamId: string, apiKey: string) => Promise<IAppState>;
+  /** Forgets every account. */
   resetConfig: () => Promise<IAppState>;
+  setActiveAccount: (steamId: string) => Promise<IAppState>;
+  removeAccount: (steamId: string) => Promise<IAppState>;
+  replaceKey: (
+    steamId: string,
+    apiKey: string,
+  ) => Promise<CheckResult<IAppState>>;
+  recheckAccount: (steamId: string) => Promise<IAppState>;
 
   getCurrentAppId: () => Promise<CurrentGame>;
   getGame: (appid: number, force?: boolean) => Promise<CheckResult<IGameView>>;
@@ -76,6 +85,13 @@ export interface IApi {
   /** Records an interface error in the local log file. */
   logError: (source: string, detail: string) => Promise<void>;
 
+  /**
+   * The state changed without the interface asking: a key was refused, or the
+   * app started following the account signed in to Steam (`followed`).
+   */
+  onStateChanged: (
+    cb: (state: IAppState, followed: boolean) => void,
+  ) => () => void;
   onGameChanged: (cb: (current: CurrentGame) => void) => () => void;
   onGameUpdated: (cb: (view: IGameView) => void) => () => void;
   onAppInfoChanged: (cb: (info: IAppInfo) => void) => () => void;

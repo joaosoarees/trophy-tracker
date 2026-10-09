@@ -1,5 +1,6 @@
 /** Channels the main process uses to push events to the interface. */
 export const IpcEvent = {
+  stateChanged: 'state-changed',
   gameChanged: 'game-changed',
   gameUpdated: 'game-updated',
   dashboardProgress: 'dashboard-progress',

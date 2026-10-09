@@ -17,6 +17,7 @@ export const en = {
     notFound: 'No Steam profile was found with that SteamID.',
     network: 'Could not reach Steam. Check your connection.',
     notConfigured: 'The app has not been set up yet.',
+    rateLimited: 'Steam is limiting this key for now. It resumes by itself.',
     steamStatus: (status: number) => `Steam responded with error ${status}.`,
     unexpected: 'Unexpected error. Try again.',
     changeNotSaved: 'Could not save your change, so it was undone.',

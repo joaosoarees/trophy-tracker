@@ -13,6 +13,7 @@ import {
 } from '@shared/achievementSort';
 import { type IDashboardSort, parseDashboardSort } from '@shared/dashboardSort';
 import { DEFAULT_LANGUAGE, isLanguage, type Language } from '@shared/i18n';
+import { type AccountStatus, type IAccount } from '@shared/types/Account';
 import { type IGameView } from '@shared/types/Game';
 import {
   DEFAULT_PREFERENCES,
@@ -38,7 +39,26 @@ export interface ICipher {
   decrypt: (encoded: string) => string;
 }
 
+/** One account as it is kept: the key, plain or encrypted, never leaves this file. */
+interface IStoredAccount {
+  steamId: string;
+  apiKey?: string;
+  apiKeyEncrypted?: string;
+  /** The last four characters of the key: what the interface shows of it. */
+  keyEnding: string;
+  profile: IProfile;
+  status: AccountStatus;
+  checkedAt: number | null;
+}
+
 interface IConfigFile {
+  accounts: IStoredAccount[];
+  /** The account being followed. */
+  activeSteamId?: string;
+}
+
+/** The file of the versions that knew a single account. */
+interface ILegacyConfigFile {
   steamId?: string;
   apiKey?: string;
   apiKeyEncrypted?: string;
@@ -54,12 +74,19 @@ export interface ISummaryEntry {
   lastUnlockAt?: number;
 }
 
-interface ICacheFile {
-  /** Language the Steam content was read in. */
-  language?: string;
+/** What was read from Steam about one account. */
+interface IAccountCache {
   library?: { fetchedAt: number; games: IRawOwnedGame[] };
   games: Record<string, IGameView>;
   summaries: Record<string, ISummaryEntry>;
+}
+
+interface ICacheFile {
+  /** Language the Steam content was read in. */
+  language?: string;
+  /** By SteamID. */
+  accounts: Record<string, IAccountCache>;
+  // The same for every account: they describe the game, not the player.
   art: Record<string, IStoreArt>;
   schemas: Record<
     string,
@@ -79,12 +106,23 @@ interface ISettingsFile {
   windowBounds?: unknown;
 }
 
-type UserDataFile = Record<string, GameUserData>;
+/** Notes, pins and checklists of one account, by appid. */
+type AccountUserData = Record<string, GameUserData>;
+
+interface IUserDataFile {
+  /** By SteamID. An account that is erased and added again finds its notes here. */
+  accounts: Record<string, AccountUserData>;
+  /** Written before any account existed; the first account takes them. */
+  unassigned?: AccountUserData;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export class Store {
   private config: IConfigFile;
   private cache: ICacheFile;
-  private userData: UserDataFile;
+  private userData: IUserDataFile;
   private settings: ISettingsFile;
 
   constructor(
@@ -92,14 +130,9 @@ export class Store {
     private cipher: ICipher | null = null,
   ) {
     mkdirSync(dir, { recursive: true });
-    this.config = this.read('config.json', {});
-    this.cache = this.read('cache.json', {
-      games: {},
-      summaries: {},
-      art: {},
-      schemas: {},
-    });
-    this.userData = this.read('userdata.json', {});
+    this.config = this.readConfig();
+    this.cache = this.readCache();
+    this.userData = this.readUserData();
     this.settings = this.read('settings.json', { alwaysOnTop: false });
     if (this.cache.language !== this.getLanguage()) this.dropTranslatedCache();
   }
@@ -123,72 +156,250 @@ export class Store {
     if (mode !== undefined) chmodSync(file, mode);
   }
 
-  getCredentials(): ICredentials | null {
-    const { steamId, apiKey, apiKeyEncrypted } = this.config;
-    if (!steamId) return null;
+  /** `config.json`, or what the single-account versions left in it. */
+  private readConfig(): IConfigFile {
+    const file = this.read<IConfigFile & ILegacyConfigFile>('config.json', {
+      accounts: [],
+    });
+    if (!file.steamId) {
+      return { accounts: file.accounts, activeSteamId: file.activeSteamId };
+    }
+
+    const { steamId, apiKey, apiKeyEncrypted } = file;
+    const key = this.keyOf({ apiKey, apiKeyEncrypted });
+    const migrated: IConfigFile = {
+      accounts: [
+        {
+          steamId,
+          apiKey,
+          apiKeyEncrypted,
+          keyEnding: key?.slice(-4) ?? '',
+          profile: file.profile ?? { steamId, name: '', avatar: '' },
+          status: 'unchecked',
+          checkedAt: null,
+        },
+      ],
+      activeSteamId: steamId,
+    };
+    this.write('config.json', migrated, 0o600);
+    return migrated;
+  }
+
+  /** `cache.json`; what a single-account version read goes to the account in use. */
+  private readCache(): ICacheFile {
+    const file = this.read<ICacheFile & Partial<IAccountCache>>('cache.json', {
+      accounts: {},
+      art: {},
+      schemas: {},
+    });
+    const { library, games, summaries, ...cache } = file;
+    const owner = this.config.activeSteamId;
+    if (owner && (library || games || summaries)) {
+      cache.accounts[owner] ??= {
+        library,
+        games: games ?? {},
+        summaries: summaries ?? {},
+      };
+    }
+    return cache;
+  }
+
+  /** `userdata.json`; the notes of a single-account version go to the account in use. */
+  private readUserData(): IUserDataFile {
+    const file = this.read<Record<string, unknown>>('userdata.json', {});
+    if (isRecord(file.accounts)) return file as unknown as IUserDataFile;
+
+    const legacy = file as AccountUserData;
+    const owner = this.config.activeSteamId;
+    if (Object.keys(legacy).length === 0) return { accounts: {} };
+    return owner
+      ? { accounts: { [owner]: legacy } }
+      : { accounts: {}, unassigned: legacy };
+  }
+
+  private keyOf({
+    apiKey,
+    apiKeyEncrypted,
+  }: Pick<IStoredAccount, 'apiKey' | 'apiKeyEncrypted'>): string | null {
     try {
       const key =
         apiKeyEncrypted && this.cipher
           ? this.cipher.decrypt(apiKeyEncrypted)
           : apiKey;
-      return key ? { steamId, apiKey: key } : null;
+      return key ?? null;
     } catch {
       return null;
     }
   }
 
+  private get active(): IStoredAccount | null {
+    const { accounts, activeSteamId } = this.config;
+    return accounts.find((a) => a.steamId === activeSteamId) ?? null;
+  }
+
+  private saveConfig(): void {
+    this.write('config.json', this.config, 0o600);
+  }
+
+  /** Credentials of the account in use. */
+  getCredentials(): ICredentials | null {
+    const account = this.active;
+    if (!account) return null;
+    const key = this.keyOf(account);
+    return key ? { steamId: account.steamId, apiKey: key } : null;
+  }
+
+  /** Credentials of a saved account; `null` when it is unknown or its key cannot be read. */
+  getCredentialsOf(steamId: string): ICredentials | null {
+    const account = this.config.accounts.find((a) => a.steamId === steamId);
+    const key = account ? this.keyOf(account) : null;
+    return key ? { steamId, apiKey: key } : null;
+  }
+
+  /** Profile of the account in use. */
   getProfile(): IProfile | null {
-    return this.config.profile ?? null;
+    return this.active?.profile ?? null;
   }
 
-  setCredentials({ steamId, apiKey }: ICredentials, profile: IProfile): void {
-    this.config = this.cipher
-      ? { steamId, apiKeyEncrypted: this.cipher.encrypt(apiKey), profile }
-      : { steamId, apiKey, profile };
-    this.write('config.json', this.config, 0o600);
+  getActiveSteamId(): string | null {
+    return this.active?.steamId ?? null;
   }
 
-  clearCredentials(): void {
-    this.config = {};
-    this.write('config.json', this.config, 0o600);
-    this.cache = {
-      games: {},
-      summaries: {},
-      art: this.cache.art,
-      schemas: this.cache.schemas,
-      language: this.cache.language,
+  /** Every account, as the interface may see it: without the key. */
+  getAccounts(): IAccount[] {
+    return this.config.accounts.map(
+      ({ profile, keyEnding, status, checkedAt }) => ({
+        ...profile,
+        keyEnding,
+        status,
+        checkedAt,
+      }),
+    );
+  }
+
+  hasAccount(steamId: string): boolean {
+    return this.config.accounts.some((a) => a.steamId === steamId);
+  }
+
+  /**
+   * Saves an account whose key Steam has just accepted and starts following
+   * it. An account that was already there gets the new key and keeps the rest.
+   */
+  setCredentials(
+    { steamId, apiKey }: ICredentials,
+    profile: IProfile,
+    now = Date.now(),
+  ): void {
+    const account: IStoredAccount = {
+      steamId,
+      ...(this.cipher
+        ? { apiKeyEncrypted: this.cipher.encrypt(apiKey) }
+        : { apiKey }),
+      keyEnding: apiKey.slice(-4),
+      profile,
+      status: 'valid',
+      checkedAt: now,
     };
+    const index = this.config.accounts.findIndex((a) => a.steamId === steamId);
+    if (index === -1) this.config.accounts.push(account);
+    else this.config.accounts[index] = account;
+    this.config.activeSteamId = steamId;
+    this.saveConfig();
+
+    // Notes written before any account existed belong to the first one.
+    if (this.userData.unassigned) {
+      this.userData.accounts[steamId] ??= this.userData.unassigned;
+      delete this.userData.unassigned;
+      this.saveUserData();
+    }
+  }
+
+  /** Starts following another saved account; answers whether there is one. */
+  setActiveAccount(steamId: string): boolean {
+    if (!this.hasAccount(steamId)) return false;
+    this.config.activeSteamId = steamId;
+    this.saveConfig();
+    return true;
+  }
+
+  /** Records what Steam last said about an account's key. */
+  setAccountStatus(
+    steamId: string,
+    status: AccountStatus,
+    now = Date.now(),
+  ): void {
+    const account = this.config.accounts.find((a) => a.steamId === steamId);
+    if (!account) return;
+    account.status = status;
+    account.checkedAt = now;
+    this.saveConfig();
+  }
+
+  /**
+   * Forgets an account for good: its key, what was read from Steam and what
+   * the user wrote for it. If it was the one in use, another takes its place.
+   */
+  removeAccount(steamId: string): void {
+    this.config.accounts = this.config.accounts.filter(
+      (a) => a.steamId !== steamId,
+    );
+    if (this.config.activeSteamId === steamId) {
+      this.config.activeSteamId = this.config.accounts[0]?.steamId;
+    }
+    this.saveConfig();
+    delete this.cache.accounts[steamId];
     this.saveCache();
+    delete this.userData.accounts[steamId];
+    this.saveUserData();
+  }
+
+  /** Forgets every account and what was read for them. What the user wrote is kept. */
+  clearCredentials(): void {
+    this.config = { accounts: [] };
+    this.saveConfig();
+    this.cache.accounts = {};
+    this.saveCache();
+  }
+
+  /**
+   * What was read for an account: the one in use, unless a read that started
+   * for another one is only now handing in its result. A result for an
+   * account that is gone lands nowhere.
+   */
+  private cacheOf(steamId = this.getActiveSteamId() ?? ''): IAccountCache {
+    const blank = (): IAccountCache => ({ games: {}, summaries: {} });
+    if (steamId !== '' && !this.hasAccount(steamId)) return blank();
+    return (this.cache.accounts[steamId] ??= blank());
   }
 
   private saveCache(): void {
     this.write('cache.json', this.cache);
   }
 
-  getLibrary(): ICacheFile['library'] {
-    return this.cache.library;
+  getLibrary(): IAccountCache['library'] {
+    return this.cacheOf().library;
   }
 
-  setLibrary(games: IRawOwnedGame[], now = Date.now()): void {
-    this.cache.library = { fetchedAt: now, games };
+  setLibrary(games: IRawOwnedGame[], now = Date.now(), owner?: string): void {
+    this.cacheOf(owner).library = { fetchedAt: now, games };
     this.saveCache();
   }
 
   getGame(appid: number): IGameView | null {
-    return this.cache.games[appid] ?? null;
+    return this.cacheOf().games[appid] ?? null;
   }
 
-  setGame(view: IGameView): void {
-    this.cache.games[view.appid] = view;
+  setGame(view: IGameView, owner?: string): void {
+    this.cacheOf(owner).games[view.appid] = view;
     this.saveCache();
   }
 
   getSummary(appid: number): ISummaryEntry | null {
-    return this.cache.summaries[appid] ?? null;
+    return this.cacheOf().summaries[appid] ?? null;
   }
 
-  setSummaries(entries: Record<string, ISummaryEntry>): void {
-    Object.assign(this.cache.summaries, entries);
+  setSummaries(entries: Record<string, ISummaryEntry>, owner?: string): void {
+    Object.assign(this.cacheOf(owner).summaries, entries);
     this.saveCache();
   }
 
@@ -230,7 +441,9 @@ export class Store {
 
   /** Achievements and art come from Steam already translated; a cache in another language is useless. */
   private dropTranslatedCache(): void {
-    this.cache.games = {};
+    for (const account of Object.values(this.cache.accounts)) {
+      account.games = {};
+    }
     this.cache.schemas = {};
     this.cache.art = {};
     this.cache.language = this.getLanguage();
@@ -302,8 +515,20 @@ export class Store {
     this.write('settings.json', this.settings);
   }
 
+  private saveUserData(): void {
+    this.write('userdata.json', this.userData);
+  }
+
+  /** What the user wrote for the account in use. */
+  private get notes(): AccountUserData {
+    const steamId = this.getActiveSteamId();
+    return steamId
+      ? (this.userData.accounts[steamId] ??= {})
+      : (this.userData.unassigned ??= {});
+  }
+
   getUserData(appid: number): GameUserData {
-    return this.userData[appid] ?? {};
+    return this.notes[appid] ?? {};
   }
 
   setUserData(
@@ -311,13 +536,13 @@ export class Store {
     achievementId: string,
     data: IAchievementUserData,
   ): void {
-    const game = (this.userData[appid] ??= {});
+    const game = (this.notes[appid] ??= {});
     const empty =
       data.note.trim() === '' &&
       !data.pinned &&
       (data.checklist?.length ?? 0) === 0;
     if (empty) delete game[achievementId];
     else game[achievementId] = data;
-    this.write('userdata.json', this.userData);
+    this.saveUserData();
   }
 }

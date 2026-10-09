@@ -18,6 +18,8 @@ export const ptBR: Messages = {
     notFound: 'Nenhum perfil da Steam encontrado com esse SteamID.',
     network: 'Não foi possível falar com a Steam. Verifique sua conexão.',
     notConfigured: 'O app ainda não foi configurado.',
+    rateLimited:
+      'A Steam está limitando esta chave por enquanto. A leitura volta sozinha.',
     steamStatus: (status) => `A Steam respondeu com erro ${status}.`,
     unexpected: 'Erro inesperado. Tente de novo.',
     changeNotSaved:
