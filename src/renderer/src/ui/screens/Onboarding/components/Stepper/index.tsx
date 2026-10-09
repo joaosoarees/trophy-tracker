@@ -30,6 +30,10 @@ interface IStepperContextValue {
 
 export const StepperContext = createContext({} as IStepperContextValue);
 
+/** A step's name under its bar, whether it can be clicked or not. */
+const STEP =
+  'text-muted-foreground block w-full border-t-[3px] pt-1.5 text-left text-xs transition-colors duration-200';
+
 interface IStepperProps {
   initialStep?: number;
   steps: {
@@ -78,28 +82,35 @@ export function Stepper({
 
             return (
               <li key={step.label} className="flex-1">
-                {/* Reached steps can be revisited; the ones ahead stay locked. */}
-                <Pressable
-                  aria-current={isCurrent ? 'step' : undefined}
-                  aria-label={
-                    isCurrent ? undefined : t.onboarding.goToStep(step.label)
-                  }
-                  disabled={!isReached}
-                  onClick={() => dispatch({ type: 'goTo', step: index })}
-                  className={cn(
-                    'text-muted-foreground w-full rounded-none border-t-[3px] pt-1.5 text-left text-xs duration-200 active:scale-100',
-                    isReached &&
-                      !isCurrent &&
-                      'hover:text-foreground active:text-primary',
-                    isCurrent &&
-                      'border-primary text-foreground hover:bg-accent/30',
-                    index < current && 'border-success',
-                    // Reached but ahead of the current one: the way back forward.
-                    index > current && isReached && 'border-success/50',
-                  )}
-                >
-                  {step.label}
-                </Pressable>
+                {isCurrent ? (
+                  // Where the user already is leads nowhere: it is not a button.
+                  <span
+                    aria-current="step"
+                    className={cn(STEP, 'border-primary text-foreground')}
+                  >
+                    {step.label}
+                  </span>
+                ) : (
+                  // Reached steps can be revisited; the ones ahead stay locked.
+                  // The bar and the label change colour and nothing else: no
+                  // wash and no push, which read as a box around the label.
+                  <Pressable
+                    aria-label={t.onboarding.goToStep(step.label)}
+                    disabled={!isReached}
+                    onClick={() => dispatch({ type: 'goTo', step: index })}
+                    className={cn(
+                      STEP,
+                      'rounded-none active:scale-100',
+                      isReached &&
+                        'hover:text-foreground hover:border-primary/60',
+                      index < current && 'border-success',
+                      // Reached but ahead of the current one: the way back forward.
+                      index > current && isReached && 'border-success/50',
+                    )}
+                  >
+                    {step.label}
+                  </Pressable>
+                )}
               </li>
             );
           })}
