@@ -2,7 +2,7 @@
 
 Desktop app (Electron + React + TypeScript) that shows, for the game open on Steam, which achievements are missing, what the hidden ones are, progress counters, user checklists and shortcuts to guides. It runs natively on Windows, macOS and Linux, and is developed on WSL.
 
-**Language rules:** everything in the repository is written in English: code, comments, test names, docs and commit messages. The interface ships in four languages, **English (default), Brazilian Portuguese, Spanish and French**; text in another language belongs only in its file under `src/shared/i18n/locales/` (`pt-BR.ts`, `es.ts`, `fr.ts`) and in test data that checks that locale. The user talks to you in Portuguese; answer in Portuguese.
+**Language rules:** everything in the repository is written in English: code, comments, test names, docs and commit messages. The interface ships in four languages, **English (default), Brazilian Portuguese, Spanish and French**; text in another language belongs only in its file under `src/shared/i18n/locales/` (`pt-BR.ts`, `es.ts`, `fr.ts`), in test data that checks that locale, and in `README.pt-BR.md`, the Portuguese copy of the README: **a change to one README goes into both**. The user talks to you in Portuguese; answer in Portuguese.
 
 This file holds the rules. The reasons behind the choices that are not obvious, and what was tried before, are in `docs/DECISIONS.md`: read the entry before undoing one, and add an entry when a choice is made that someone could reasonably want to undo. The longer accounts of how a part works are in `docs/` (`releases.md`, `audit.md`, `onboarding-form.md`, `store.md`, `storybook.md`); each section here says when to read which.
 
@@ -18,6 +18,7 @@ pnpm test:verbose    # lists every test by name, grouped by file
 pnpm typecheck   # tsc on both projects (main process and interface)
 pnpm lint        # ESLint (lint:fix to auto-fix)
 pnpm format      # Prettier (format:check to only verify)
+pnpm screenshots # retakes the pictures of the README (docs/screenshots/), from the app on demonstration data
 pnpm audit:ui    # builds the app, runs it against a fake Steam and audits every screen and flow
 pnpm storybook   # the catalogue of components, on http://localhost:6006 (build-storybook builds it into storybook-static/)
 
