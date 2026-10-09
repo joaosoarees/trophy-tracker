@@ -18,7 +18,7 @@ describe('createRunningGameSource', () => {
     readStatMap: () => Promise.resolve(new Map()),
   };
 
-  function setup(summary: () => object) {
+  function setup(summary: () => object, interval?: number) {
     const store = new Store(mkdtempSync(join(tmpdir(), 'tt-')));
     const fetchImpl = fakeFetch({
       GetPlayerSummaries: () => summary(),
@@ -29,6 +29,7 @@ describe('createRunningGameSource', () => {
       client: new SteamClient(fetchImpl),
       store,
       now: () => now,
+      interval,
     });
     const configure = () =>
       store.setCredentials(
@@ -85,6 +86,20 @@ describe('createRunningGameSource', () => {
 
     advance(25_000);
     expect(await source()).toBeNull();
+    expect(fetchImpl.calls).toHaveLength(2);
+  });
+
+  it('asks the API again as soon as the interval it was given has passed', async () => {
+    const { source, fetchImpl, configure, advance } = setup(
+      () => playing('105600'),
+      1_000,
+    );
+    configure();
+    await source();
+
+    advance(1_500);
+    await source();
+
     expect(fetchImpl.calls).toHaveLength(2);
   });
 

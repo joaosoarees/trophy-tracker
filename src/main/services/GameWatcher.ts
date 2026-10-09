@@ -13,6 +13,8 @@ export interface IGameWatcherDeps {
   isConfigured: () => boolean;
   onCurrentChanged: (current: CurrentGame) => void;
   onGameUpdated: (view: IGameView) => void;
+  /** How often each check runs, in milliseconds; the defaults are what users get. */
+  intervals?: { running: number; unlocks: number };
 }
 
 /**
@@ -29,8 +31,12 @@ export class GameWatcher {
   constructor(private deps: IGameWatcherDeps) {}
 
   start(): void {
-    setInterval(() => void this.checkRunningGame(), RUNNING_CHECK_MS);
-    setInterval(() => void this.checkUnlocks(), UNLOCK_CHECK_MS);
+    const { running, unlocks } = this.deps.intervals ?? {
+      running: RUNNING_CHECK_MS,
+      unlocks: UNLOCK_CHECK_MS,
+    };
+    setInterval(() => void this.checkRunningGame(), running);
+    setInterval(() => void this.checkUnlocks(), unlocks);
   }
 
   /** Game open on Steam or, with no game open, the last one played. */

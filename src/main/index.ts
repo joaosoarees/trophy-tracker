@@ -73,11 +73,16 @@ void app.whenReady().then(() => {
     : process.env.TROPHY_TRACKER_FAKE_STEAM;
   const client = new SteamClient(fetch, DEFAULT_LANGUAGE, fakeSteam);
   const setup = new SetupService(store, client);
-  // With a fake Steam there is no local client either: the account is typed
-  // in and the running game comes from the (fake) Web API.
-  const local = fakeSteam
-    ? createSteamLocal({ hasWindows: false, exists: () => false })
-    : createSteamLocal();
+  // With a fake Steam the local client is fake too: a folder the audit fills
+  // in, read the way a Linux install is, or no client at all.
+  const fakeSteamHome = process.env.TROPHY_TRACKER_FAKE_STEAM_HOME;
+  const local = !fakeSteam
+    ? createSteamLocal()
+    : createSteamLocal({
+        hasWindows: false,
+        platform: 'linux',
+        ...(fakeSteamHome ? { home: fakeSteamHome } : { exists: () => false }),
+      });
   const tracker = new Tracker({
     store,
     client,
@@ -102,7 +107,14 @@ void app.whenReady().then(() => {
   });
 
   const watcher = new GameWatcher({
-    getRunningAppId: createRunningGameSource({ local, client, store }),
+    getRunningAppId: createRunningGameSource({
+      local,
+      client,
+      store,
+      interval: fakeSteam ? 1_000 : undefined,
+    }),
+    // The audit cannot wait a minute for each check; a user's app always can.
+    intervals: fakeSteam ? { running: 2_000, unlocks: 3_000 } : undefined,
     lastPlayedAppId: () => tracker.lastPlayedAppId(),
     pollGame: (appid) => setup.attempt(() => tracker.getGame(appid, 'poll')),
     isConfigured: () => setup.isConfigured,

@@ -222,4 +222,18 @@ describe('GameWatcher: the periodic checks', () => {
 
     expect(deps.pollGame).toHaveBeenCalledTimes(2);
   });
+
+  it('checks as often as it is told to', async () => {
+    const { watcher, deps, run } = setup({
+      intervals: { running: 2_000, unlocks: 3_000 },
+    });
+    run(42);
+    await watcher.refreshCurrent();
+    watcher.start();
+
+    await vi.advanceTimersByTimeAsync(6_000);
+
+    expect(deps.getRunningAppId).toHaveBeenCalledTimes(4);
+    expect(deps.pollGame).toHaveBeenCalledTimes(2);
+  });
 });

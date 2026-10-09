@@ -10,6 +10,8 @@ interface IRunningGameDeps {
   client: SteamClient;
   store: Store;
   now?: () => number;
+  /** How long an answer from the Web API is reused, in milliseconds. */
+  interval?: number;
 }
 
 /**
@@ -23,6 +25,7 @@ export function createRunningGameSource({
   client,
   store,
   now = () => Date.now(),
+  interval = API_INTERVAL,
 }: IRunningGameDeps): () => Promise<number | null> {
   if (local.tracksRunningGame) return local.getRunningAppId;
 
@@ -32,7 +35,7 @@ export function createRunningGameSource({
   return async () => {
     const credentials = store.getCredentials();
     if (!credentials) return null;
-    if (now() - askedAt < API_INTERVAL) return last;
+    if (now() - askedAt < interval) return last;
 
     askedAt = now();
     try {
