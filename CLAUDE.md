@@ -4,7 +4,7 @@ Desktop app (Electron + React + TypeScript) that shows, for the game open on Ste
 
 **Language rules:** everything in the repository is written in English: code, comments, test names, docs and commit messages. The interface ships in four languages, **English (default), Brazilian Portuguese, Spanish and French**; text in another language belongs only in its file under `src/shared/i18n/locales/` (`pt-BR.ts`, `es.ts`, `fr.ts`) and in test data that checks that locale. The user talks to you in Portuguese; answer in Portuguese.
 
-This file holds the rules. The reasons behind the choices that are not obvious, and what was tried before, are in `docs/DECISIONS.md`: read the entry before undoing one, and add an entry when a choice is made that someone could reasonably want to undo. How releases and the audit work in detail is in `docs/releases.md` and `docs/audit.md`.
+This file holds the rules. The reasons behind the choices that are not obvious, and what was tried before, are in `docs/DECISIONS.md`: read the entry before undoing one, and add an entry when a choice is made that someone could reasonably want to undo. The longer accounts of how a part works are in `docs/` (`releases.md`, `audit.md`, `onboarding-form.md`, `store.md`, `storybook.md`); each section here says when to read which.
 
 ## Commands
 
@@ -68,7 +68,7 @@ The same code runs on Windows, macOS, Linux and, for development, WSL. What diff
 How it all works, and why, is in `docs/releases.md`: **read it before touching** `electron-builder.yml`, the workflows, `scripts/publish-release.sh` or anything about updates. The rules:
 
 - **Nothing is pushed, tagged or published without an explicit request.** A `v*.*.*` tag publishes a release by itself (`release.yml`), and installed apps update from it.
-- To release: bump `version` in `package.json`, commit, push, wait for CI, then tag `vX.Y.Z` (it must match `version`) and push the tag.
+- To release: write the version's section in `CHANGELOG.md` (what changed for whoever uses the app, not what changed in the code; the release shows it, and a version with no section is not published), bump `version` in `package.json`, commit, push, wait for CI, then tag `vX.Y.Z` (it must match `version`) and push the tag.
 - **No `node_modules` go into the package**: everything is bundled into `out/`. A package imported by `src/` goes into `dependencies`, tooling into `devDependencies`.
 - **Installer names say the system** and are set in three places that change together: `electron-builder.yml`, `scripts/publish-release.sh` and `downloadUrl` in `services/releases.ts`.
 - **The app never restarts by itself while in use**: only as it opens, before anything was shown; otherwise it asks. An install that failed is never tried automatically again (`updateAttempt`).
@@ -236,30 +236,14 @@ Things that have already cost time:
 
 ## Forms (react-hook-form + zod)
 
-The onboarding (`ui/screens/Onboarding/`) is a single multi-step form with three steps: Language, Account, Done. Opened from Settings to add an account, it leaves the language step out and keeps no draft.
+The setup (`ui/screens/Onboarding/`) is one multi-step form: Language, Account, Done. How it is built is in `docs/onboarding-form.md`: **read it before changing the form.** The rules:
 
-```
-Onboarding/
-  index.tsx                  FormProvider + Stepper with the steps
-  useOnboardingController.ts useForm, the watch subscription, the submit
-  schema.ts                  onboardingSchema: one schema per step, and OnboardingFormData
-  draft.ts                   what survives a reload (sessionStorage)
-  components/                Stepper/ (index, stepperState, useStepper), StepHeader, FieldError,
-                             ControlledLanguageSelect, HelpList
-  steps/<Name>Step/          index.tsx + schema.ts (+ use<Name>StepController.ts when it has state)
-```
-
-- The controller owns the form: `useForm` with `zodResolver(onboardingSchema)`. `DoneStep` has no schema: it is the summary and the way into the app, and decides nothing.
-- Each step reads the form with `useFormContext<OnboardingFormData>()` and only advances after validating its own fields.
-- **Stepper.** `stepperState.ts` is a pure, tested reducer holding the current step and the furthest one reached. It is local to the component on purpose (React's `useReducer`, not a store slice): the state is born and dies with the onboarding, and the `Stepper` stays a self-contained component. Do not move it to Zustand for uniformity. The step names at the top are buttons: any step already reached can be revisited in either direction, steps ahead stay locked. A step that changes something later steps depend on calls `lockFollowingSteps()` (through `useStepper`) so they must be reached again. Changing the language locks nothing.
-- **The account step checks the SteamID and the key together.** A Web API key does not say whose it is, so the SteamID is still an input: detected from the Steam client and shown locked, with "Use another account" as the way out; a SteamID the user typed is never locked, and an account the app already has is not offered again. One "Verify" calls `checkApiKey` (key + SteamID against the official API, which returns name and avatar) and then `checkPrivacy`. There is no lookup of the public community profile any more: it was rate-limited and unreliable.
-- **A verified account leaves the form.** When both checks pass the account is saved (`saveConfig`) and shown as a card above the form, which is emptied; the step moves on only with at least one account, and removing the last one locks the following steps. The form of the first account is verified by the step's forward button; one opened with "Add another account" sits in a panel with its own "Verify" and "Cancel".
-- Errors from Steam about the pair (rejected key, unknown SteamID, private profile) are shown in the step, not under one field, because they are not about one field. Format errors stay under their field.
-- Schemas hold the message **key** (`'steamIdFormat'`), not the text; `FieldError` translates it when rendering, so the error follows a language change. Every key used in a schema must exist under `validation` in the locales (there is a test for it).
-- A field that is not a plain `<input>` becomes a controlled component with `useController` (e.g. `ControlledLanguageSelect`).
-- Field side effects use the `form.watch` subscription (e.g. switching the screen language), always with `unsubscribe` on cleanup.
-- The draft (language, SteamID and step) goes to `sessionStorage` to survive a reload. **The Web API key never goes into the draft**; after a reload the form resumes at the account step at most.
-- Enter in a field does not submit the whole form: the step treats Enter as its own "advance".
+- The controller owns the form (`useForm` with `zodResolver`); each step reads it with `useFormContext` and only advances after validating its own fields.
+- Schemas hold the message **key**, not the text, so an error follows a language change. Every key used in a schema exists under `validation` in the locales (there is a test).
+- **Everything about accounts happens in the account step.** An account Steam accepts is saved at once and leaves the form for the list above it; the last step is only the summary.
+- **The Web API key never goes into the draft** kept in `sessionStorage`, and is never put back on screen.
+- The `Stepper`'s state is local to the component (`useReducer`), on purpose: do not move it to the store.
+- Enter in a field is that step's own "advance", never the submit of the whole form.
 
 ## Optimistic UI
 
@@ -295,40 +279,14 @@ Measured on the built app with a React commit hook (the way React DevTools count
 
 ## Interface state (Zustand)
 
-A single store in `src/renderer/src/app/store/`, split into namespaced slices:
+One store in `app/store/`, split into namespaced slices; how it is organised is in `docs/store.md`: **read it before adding a slice or deciding where a piece of state lives.** The rules:
 
-```
-store/
-  Store.ts              the Store type (one field per slice) and the StoreSlice<T> type
-  index.ts              create() with the devtools (dev only) and immer middlewares
-  connect.ts            wires the store to the main process events once the app is set up
-  slices/
-    sessionSlice.ts       language, current game and failure counter
-    settingsSlice.ts      app state from the main process, always on top, preferences, data folder,
-                          list order, language change, switching and removing accounts
-    navigationSlice.ts    current tab, Pending/Unlocked list, game picked in the dashboard, adding an account
-    gamesSlice.ts         game views already read, by appid
-    userDataSlice.ts      notes, pins and checklists
-    dashboardSlice.ts     dashboard
-    updatesSlice.ts       new versions: the check as the app opens, download progress, the restart
-```
-
-Conventions:
-
-- Each slice declares `XStore` (data), `XActions` (actions) and `XSlice = XStore & XActions`, and exports `createXSlice: StoreSlice<XSlice>`.
-- State is namespaced: `state.games.entries`, `state.dashboard.load`. A slice can read and change another one through the whole-store `get()`/`set()`.
-- Actions mutate the Immer draft directly (`prevState.games.entries[appid].loading = true`) and pass a name for the devtools: `set(fn, false, 'games/load')`.
-- Slices reach the main process through `@app/services`, never through `window.api`.
-- Controllers read state and actions together with `useStore(useShallow(state => ({ ... })))`. Default values inside the selector must be stable constants (e.g. `NONE_UNLOCKED`), otherwise the component re-renders every time.
-- **A preference the main process acts on** (remembering the window) is an `IPreferences` field: add it to `shared/types/Preferences.ts` with its default, and `Store.getPreferences` / `setPreference` and `settings.setPreference` carry it with no further wiring. It gets a `Switch` row in Settings.
-- Do not use `persist`: what must survive closing the app is written by the main process (`main/storage/Store.ts`). The navigation slice keeps the tab and the picked game in `sessionStorage` only so they survive the window reload of a language change.
-- Where a piece of screen state lives depends on how long it should last:
-  - only while the screen is mounted (search text, an open field) → `useState` in the controller;
-  - across games and the reload of a language change (current tab, Pending/Unlocked list and hidden-only filter of a game, In progress/Complete list of the dashboard, picked game) → `navigationSlice`, mirrored in `sessionStorage`;
-  - across restarts, because it is a preference (order of each list, always on top, language) → `settingsSlice`, saved by the main process in `settings.json`.
-- There is no router: `navigationSlice` holds the tab and `AppShell` draws it. The Game and Dashboard tabs stay mounted; switching tabs only hides the other one.
-- Edits to notes and checklists update the screen right away and are written half a second later (`app/lib/saver.ts`), with a flush when the window closes.
-- `connectStore` wires the store for the account in use and, when that account changes or the app leaves the configured state, drops what was read from Steam for it (and the game picked in the dashboard); language and settings are kept.
+- Slices reach the main process through `@app/services`, never through `window.api`; screens read the store or call an action.
+- Actions mutate the Immer draft and name themselves for the devtools: `set(fn, false, 'games/load')`.
+- Controllers select with `useStore(useShallow(...))`; a default value inside a selector must be a stable constant, or the component redraws every time.
+- **No `persist`.** What survives closing the app is written by the main process. Where state lives depends on how long it should last: only while a screen is mounted → `useState`; across a window reload → `navigationSlice` (mirrored in `sessionStorage`); across restarts → a preference saved by the main process.
+- A write is optimistic: apply, save, and on failure put back what is saved and tell the user.
+- `connectStore` wires the store for the account in use; what was read from Steam for one account is dropped when another is followed.
 
 ## Interface
 
@@ -339,29 +297,12 @@ Conventions:
 
 ## Storybook
 
-`pnpm storybook` opens the catalogue of the interface's building blocks: each one alone, in every state, outside the app. It is where a component is looked at before it is put on a screen, and where a state that is hard to reach in the app (a refused key, a finished game, a name too long) is one click away.
+`pnpm storybook` opens the catalogue of the interface's building blocks, each one alone and in every state. How it is set up and how a story is written is in `docs/storybook.md`: **read it before writing a story.** The rules:
 
-```
-.storybook/
-  main.ts        what is built: where the stories are, the add-ons, the aliases and Tailwind
-  preview.tsx    what every story runs inside: the app's styles, a stand-in for the main process,
-                 and the language and window width picked in the toolbar
-  manager.ts     the panel around the stories
-  theme.ts       Storybook in the app's palette, for the panel and the documentation pages
-src/renderer/src/stories/
-  primitives/    Button, Badge, Checkbox, Input, Textarea, Skeleton, Dialog
-  components/    everything in ui/components that is drawn
-  screens/       the signature pieces of the screens: AchievementCard, GameHeader, GameComplete, GameRow
-```
-
-- **Stories live apart from the components**, in `src/renderer/src/stories/`, one `<Name>.stories.tsx` per component, titled `Primitives/…`, `Components/…` or `Screens/<Screen>/…`. The folders of `ui/` hold only what ships.
-- **A story file** has a `meta` (`satisfies Meta<typeof X>`) with the default `args`, and `argTypes` that sort the props into categories (`Appearance`, `State`, `Accessibility`, `Event Listeners`, `Slots`) and give enums their options. Handlers are `fn()` from `storybook/test`, so each call shows in the Actions panel. Each story is one state, named for what it shows (`KeyRefused`, `WithAChecklist`), with a comment when the reason for the state is not obvious. A component that needs state to be seen working gets a `render` named `Render` with `useState`.
-- **Every component gets a page**: generated from the stories and the props by default (`tags: ['autodocs']` in the preview), with what it is for in `parameters.docs.description.component`. A component with real guidance (when to use, anatomy, do and don't) has a hand-written `<Name>.mdx` beside its stories instead, and its meta carries `tags: ['!autodocs']` so there is one page, not two. The text comes from `DESIGN.md`, which stays the source: change the rule there and bring the page along.
-- **Data comes from the test factories** (`makeAchievement`, `makeGameView`, `makeGameSummary`, through `@test`), as in the tests. Only those three are compiled for the interface; a factory that pulls in main-process code cannot be used in a story.
-- **There is no main process in Storybook.** `preview.tsx` puts a stand-in at `window.api` that shows each call in the Actions panel and answers with nothing; events never arrive. A component that reads the store sees its initial state, plus the language of the toolbar. Screens that only make sense with a loaded store are not in the catalogue: the audit covers them.
-- **The toolbar has what breaks layouts here:** the language (the four of the app) and the window width (480 and 600). There is no light theme to switch to. The accessibility panel runs axe on the story on screen.
-- **Versions:** Storybook 10, where `addon-essentials` and `@storybook/blocks` no longer exist: controls, actions and viewport are part of `storybook` itself, and the documentation blocks come from `@storybook/addon-docs/blocks`. Its telemetry is turned off (`core.disableTelemetry`).
-- **A new component in `ui/components`, or a new state of one, comes with its story.** Lint covers the stories (`eslint-plugin-storybook`), `pnpm typecheck` compiles them, and CI builds the catalogue (`pnpm build-storybook`), so a story that stops compiling fails the build. Storybook does not replace `pnpm audit:ui`: a story shows a component alone, the audit shows the app.
+- **A new component in `ui/components`, or a new state of one, comes with its story**, in `src/renderer/src/stories/` (apart from the components), one state per story.
+- A component with real guidance gets a hand-written `.mdx` page whose text comes from `DESIGN.md`, and `tags: ['!autodocs']` on its meta so there is one page, not two.
+- Data comes from the test factories; there is no main process (a stand-in answers with nothing).
+- Lint and `pnpm typecheck` cover the stories, and CI builds the catalogue. **Storybook does not replace `pnpm audit:ui`**: a story shows a component alone, the audit shows the app.
 
 ## Accessibility
 
