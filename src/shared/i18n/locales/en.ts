@@ -23,7 +23,7 @@ export const en = {
   },
 
   validation: {
-    steamIdFormat: 'A SteamID has 17 digits and starts with 7656119.',
+    steamIdFormat: 'A SteamID is a 17-digit number that starts with 7656.',
     apiKeyFormat:
       'A Web API key has 32 characters (letters A to F and digits).',
     languageRequired: 'Choose a language.',

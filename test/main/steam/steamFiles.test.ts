@@ -5,7 +5,7 @@ import { STEAM_ID } from '@test/helpers';
 
 const LOGIN_USERS = `"users"
 {
-	"76561190000000001"
+	"76561198000000001"
 	{
 		"AccountName"		"old \\"quoted\\" account"
 		"PersonaName"		"Old"
@@ -27,7 +27,7 @@ describe('mostRecentSteamId', () => {
 
   it('falls back to the first account when none is marked', () => {
     expect(mostRecentSteamId(LOGIN_USERS.replace('"MostRecent"		"1"', ''))).toBe(
-      '76561190000000001',
+      '76561198000000001',
     );
   });
 

@@ -12,7 +12,7 @@ import { fakeFetch, FORBIDDEN_HTML, KEY, STEAM_ID } from '@test/helpers';
 const summary = {
   json: {
     response: {
-      players: [{ steamid: STEAM_ID, personaname: 'joao', avatarfull: 'x' }],
+      players: [{ steamid: STEAM_ID, personaname: 'player', avatarfull: 'x' }],
     },
   },
 };
@@ -51,7 +51,7 @@ describe('SetupService', () => {
 
     expect(state).toMatchObject({
       configured: true,
-      profile: { steamId: STEAM_ID, name: 'joao' },
+      profile: { steamId: STEAM_ID, name: 'player' },
     });
     expect(store.getCredentials()).toEqual({
       steamId: STEAM_ID,

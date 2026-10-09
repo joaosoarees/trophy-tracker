@@ -19,7 +19,7 @@ import {
 } from '@test/helpers';
 
 const tempDir = (): string => mkdtempSync(join(tmpdir(), 'stt-'));
-const profile = { steamId: STEAM_ID, name: 'joao', avatar: '' };
+const profile = { steamId: STEAM_ID, name: 'player', avatar: '' };
 
 const game = (appid: number, name: string, playtime: number, last = 0) => ({
   appid,

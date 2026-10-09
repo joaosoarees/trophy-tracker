@@ -1,5 +1,7 @@
 import { posix } from 'node:path';
 
+import { isSteamId } from '@shared/validation';
+
 import { type ITextVdf, parseTextVdf } from './textVdf';
 
 /** Where the Steam client may be installed, most likely first. */
@@ -42,7 +44,7 @@ export function mostRecentSteamId(loginUsers: string): string | null {
 
   const accounts = Object.entries(users).filter(
     (entry): entry is [string, ITextVdf] =>
-      /^7656119\d{10}$/.test(entry[0]) && isBlock(entry[1]),
+      isSteamId(entry[0]) && isBlock(entry[1]),
   );
   const recent = accounts.find(
     ([, account]) => (account.MostRecent ?? account.mostrecent) === '1',

@@ -6,7 +6,7 @@ import { onboardingSchema } from '@ui/screens/Onboarding/schema';
 import { accountStepSchema } from '@ui/screens/Onboarding/steps/AccountStep/schema';
 import { languageStepSchema } from '@ui/screens/Onboarding/steps/LanguageStep/schema';
 
-const verified = { name: 'joao', avatar: '', gamesWithPlaytime: 3 };
+const verified = { name: 'player', avatar: '', gamesWithPlaytime: 3 };
 
 describe('onboarding schemas', () => {
   it('accept valid values, trimming surrounding whitespace', () => {

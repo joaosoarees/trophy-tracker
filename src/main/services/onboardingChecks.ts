@@ -1,7 +1,7 @@
 import type { Messages } from '@shared/i18n';
 import { type CheckResult } from '@shared/types/Check';
 import { type IProfile } from '@shared/types/Profile';
-import { API_KEY_PATTERN, STEAM_ID_PATTERN } from '@shared/validation';
+import { API_KEY_PATTERN, isSteamId } from '@shared/validation';
 
 import {
   type SteamClient,
@@ -29,7 +29,7 @@ export async function checkApiKey(
 ): Promise<CheckResult<IProfile>> {
   const id = steamId.trim();
   const key = apiKey.trim();
-  if (!STEAM_ID_PATTERN.test(id)) return fail(m.validation.steamIdFormat);
+  if (!isSteamId(id)) return fail(m.validation.steamIdFormat);
   if (!API_KEY_PATTERN.test(key)) return fail(m.validation.apiKeyFormat);
   try {
     const p = await client.getPlayerSummary({ steamId: id, apiKey: key });

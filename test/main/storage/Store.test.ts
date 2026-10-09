@@ -8,7 +8,7 @@ import { Store } from '@main/storage/Store';
 import { KEY, STEAM_ID } from '@test/helpers';
 
 const tempDir = (): string => mkdtempSync(join(tmpdir(), 'stt-'));
-const profile = { steamId: STEAM_ID, name: 'joao', avatar: '' };
+const profile = { steamId: STEAM_ID, name: 'player', avatar: '' };
 
 describe('Store', () => {
   it('stores the key in a user-only file and reads it back', () => {

@@ -39,7 +39,7 @@ describe('Windows interop', () => {
   });
 
   it('converts the signed-in account to a SteamID64', () => {
-    expect(accountIdToSteamId(0xeb738e9)).toBe(STEAM_ID);
+    expect(accountIdToSteamId(0x25e4c2a)).toBe(STEAM_ID);
   });
 
   it.each([
@@ -101,7 +101,7 @@ describe('the Steam registry', () => {
   });
 
   it('reads the signed-in account as a SteamID64', async () => {
-    const system = windows(regOutput('ActiveUser', 'REG_DWORD', '0xeb738e9'));
+    const system = windows(regOutput('ActiveUser', 'REG_DWORD', '0x25e4c2a'));
 
     expect(await getActiveSteamId(system)).toBe(STEAM_ID);
   });

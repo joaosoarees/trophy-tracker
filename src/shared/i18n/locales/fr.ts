@@ -25,7 +25,8 @@ export const fr: Messages = {
   },
 
   validation: {
-    steamIdFormat: 'Un SteamID comporte 17 chiffres et commence par 7656119.',
+    steamIdFormat:
+      'Un SteamID est un nombre de 17 chiffres qui commence par 7656.',
     apiKeyFormat:
       'Une clé de l’API Web comporte 32 caractères (lettres de A à F et chiffres).',
     languageRequired: 'Choisissez une langue.',

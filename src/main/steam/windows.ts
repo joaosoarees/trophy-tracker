@@ -2,6 +2,8 @@ import { execFile } from 'node:child_process';
 import { release } from 'node:os';
 import { promisify } from 'node:util';
 
+import { STEAM_ID_BASE } from '@shared/validation';
+
 // The Windows side of the Steam client: its registry, the browser and the notification area.
 // Works natively on Windows and, from WSL, by calling the same .exe files through interop.
 
@@ -14,7 +16,6 @@ export const isWsl =
 export const hasWindows = isWsl || process.platform === 'win32';
 
 const STEAM_KEY = 'HKCU\\Software\\Valve\\Steam';
-const STEAM_ID64_BASE = 76561197960265728n;
 
 const execFileAsync = promisify(execFile);
 
@@ -71,7 +72,7 @@ export async function getRunningAppId(
 }
 
 export const accountIdToSteamId = (accountId: number): string =>
-  (STEAM_ID64_BASE + BigInt(accountId)).toString();
+  (STEAM_ID_BASE + BigInt(accountId)).toString();
 
 /** SteamID64 of the account signed in to the Steam client. */
 export async function getActiveSteamId(

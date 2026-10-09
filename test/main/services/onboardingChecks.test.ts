@@ -49,7 +49,7 @@ describe('onboarding: key', () => {
     const f = fakeFetch({});
     expect(await checkApiKey(en, new SteamClient(f), '12345', KEY)).toEqual({
       ok: false,
-      error: 'A SteamID has 17 digits and starts with 7656119.',
+      error: 'A SteamID is a 17-digit number that starts with 7656.',
     });
     expect(f.calls).toHaveLength(0);
   });
@@ -93,7 +93,7 @@ describe('onboarding: key', () => {
         json: {
           response: {
             players: [
-              { steamid: STEAM_ID, personaname: 'joao', avatarfull: 'x' },
+              { steamid: STEAM_ID, personaname: 'player', avatarfull: 'x' },
             ],
           },
         },

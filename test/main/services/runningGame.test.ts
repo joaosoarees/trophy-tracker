@@ -34,7 +34,7 @@ describe('createRunningGameSource', () => {
     const configure = () =>
       store.setCredentials(
         { steamId: STEAM_ID, apiKey: KEY },
-        { steamId: STEAM_ID, name: 'joao', avatar: '' },
+        { steamId: STEAM_ID, name: 'player', avatar: '' },
       );
     return {
       source,

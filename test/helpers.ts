@@ -31,7 +31,8 @@ export const clientWith = (
 ): SteamClient => new SteamClient(fakeFetch(routes));
 
 export const KEY = '0123456789ABCDEF0123456789ABCDEF';
-export const STEAM_ID = '76561198207154409';
+/** A made-up account: nobody's real SteamID belongs in the repository. */
+export const STEAM_ID = '76561198000000042';
 
 export const FORBIDDEN_HTML: IRoute = {
   status: 403,

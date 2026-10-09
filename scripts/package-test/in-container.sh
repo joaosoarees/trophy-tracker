@@ -9,7 +9,7 @@ echo "RESULT installed: $(dpkg -s trophy-tracker | grep -E '^Version') | launche
 
 # A stand-in for a Steam client that has two accounts, the second one signed in.
 mkdir -p ~/.local/share/Steam/config
-printf '"users"\n{\n\t"76561190000000001"\n\t{\n\t\t"MostRecent"\t\t"0"\n\t}\n\t"76561198000000042"\n\t{\n\t\t"MostRecent"\t\t"1"\n\t}\n}\n' \
+printf '"users"\n{\n\t"76561198000000001"\n\t{\n\t\t"MostRecent"\t\t"0"\n\t}\n\t"76561198000000042"\n\t{\n\t\t"MostRecent"\t\t"1"\n\t}\n}\n' \
   > ~/.local/share/Steam/config/loginusers.vdf
 
 (xvfb-run -a trophy-tracker --no-sandbox --disable-gpu --remote-debugging-port=9333 >/tmp/app.log 2>&1 &)

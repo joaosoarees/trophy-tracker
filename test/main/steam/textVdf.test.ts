@@ -5,7 +5,7 @@ import { STEAM_ID } from '@test/helpers';
 
 const LOGIN_USERS = `"users"
 {
-	"76561190000000001"
+	"76561198000000001"
 	{
 		"AccountName"		"old \\"quoted\\" account"
 		"PersonaName"		"Old"
@@ -23,8 +23,8 @@ const LOGIN_USERS = `"users"
 describe('parseTextVdf', () => {
   it('reads nested blocks, pairs and escaped quotes', () => {
     const parsed = parseTextVdf(LOGIN_USERS) as Record<string, any>;
-    expect(Object.keys(parsed.users)).toEqual(['76561190000000001', STEAM_ID]);
-    expect(parsed.users['76561190000000001'].AccountName).toBe(
+    expect(Object.keys(parsed.users)).toEqual(['76561198000000001', STEAM_ID]);
+    expect(parsed.users['76561198000000001'].AccountName).toBe(
       'old "quoted" account',
     );
     expect(parsed.users[STEAM_ID].Timestamp).toBe('1790000000');
