@@ -16,6 +16,7 @@ export function useAppShellController() {
     isCheckingForUpdates,
     libraryError,
     isLibraryLoading,
+    activeAccount,
     goTo,
     loadCurrent,
     loadDashboard,
@@ -32,6 +33,11 @@ export function useAppShellController() {
       libraryError: state.dashboard.error,
       isLibraryLoading:
         state.dashboard.games === null && state.dashboard.error === null,
+      activeAccount:
+        state.settings.appState?.accounts.find(
+          (account) =>
+            account.steamId === state.settings.appState?.activeSteamId,
+        ) ?? null,
       goTo: state.navigation.goTo,
       loadCurrent: state.session.loadCurrent,
       loadDashboard: state.dashboard.load,
@@ -76,6 +82,12 @@ export function useAppShellController() {
     libraryError,
     isLibraryLoading,
     handleRetryLibrary,
+    // Only a key that stopped working is worth a notice over every screen.
+    troubledAccount:
+      activeAccount?.status === 'rejected' ||
+      activeAccount?.status === 'rateLimited'
+        ? activeAccount
+        : null,
     alwaysOnTop,
     newVersion,
     isCheckingForUpdates,

@@ -2,31 +2,30 @@ import { ExternalLink } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { LANGUAGE_CODES, LANGUAGES } from '@shared/i18n';
-import { ConfirmDialog } from '@ui/components/ConfirmDialog';
+import { AccountGrid } from '@ui/components/AccountGrid';
 import { DetailGroup, DetailRow } from '@ui/components/DetailList';
 import { OptionSelect } from '@ui/components/OptionSelect';
 import { Switch } from '@ui/components/Switch';
 import { Button } from '@ui/primitives/button';
 
-import { ProfileRow } from './components/ProfileRow';
+import { AccountDetails } from './components/AccountDetails';
 import { UpdateNotice } from './components/UpdateNotice';
 import { useSettingsController } from './useSettingsController';
 
 export function Settings() {
   const t = useT();
   const {
-    profile,
+    accounts,
+    activeAccount,
     language,
     appInfo,
     checkState,
     alwaysOnTop,
     preferences,
     dataFolder,
-    isConfirmingErase,
-    setIsConfirmingErase,
     handleChangeLanguage,
-    handleErase,
-    handleRedoSetup,
+    handleSwitchAccount,
+    handleAddAccount,
     handleToggleAlwaysOnTop,
     handleRememberWindowChange,
     handleOpenDataFolder,
@@ -59,22 +58,20 @@ export function Settings() {
         />
       )}
 
-      <DetailGroup title={t.settings.groups.account}>
-        {profile && <ProfileRow profile={profile} />}
-        <DetailRow label={t.settings.redo} description={t.settings.redoHint}>
-          <Button size="sm" variant="secondary" onClick={handleRedoSetup}>
-            {t.settings.redoAction}
-          </Button>
-        </DetailRow>
-        <DetailRow label={t.settings.erase} description={t.settings.eraseHint}>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => setIsConfirmingErase(true)}
-          >
-            {t.settings.eraseConfirm}
-          </Button>
-        </DetailRow>
+      <DetailGroup title={t.accounts.title}>
+        <li className="px-1 pb-1">
+          <AccountGrid
+            label={t.accounts.title}
+            accounts={accounts}
+            activeId={activeAccount?.steamId ?? null}
+            onSelect={handleSwitchAccount}
+            onAdd={handleAddAccount}
+          />
+        </li>
+        {/* Keyed: what is typed for one account is never carried to another. */}
+        {activeAccount && (
+          <AccountDetails key={activeAccount.steamId} account={activeAccount} />
+        )}
       </DetailGroup>
 
       <DetailGroup title={t.settings.groups.window}>
@@ -174,15 +171,6 @@ export function Settings() {
           <ExternalLink className="size-4" />
         </DetailRow>
       </DetailGroup>
-
-      <ConfirmDialog
-        open={isConfirmingErase}
-        onOpenChange={setIsConfirmingErase}
-        title={t.settings.eraseTitle}
-        description={t.settings.eraseDescription}
-        confirmLabel={t.settings.eraseConfirm}
-        onConfirm={handleErase}
-      />
 
       <footer className="text-muted-foreground mt-auto pt-2 text-center text-xs">
         {t.appTitle}

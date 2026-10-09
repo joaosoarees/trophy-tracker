@@ -12,14 +12,49 @@ import { useOnboardingController } from './useOnboardingController';
 
 interface IOnboardingProps {
   state: IAppState;
+  /** Opened from the app, only to add an account: the language step is left out. */
+  isAddingAccount: boolean;
   onDone: (state: IAppState) => void;
   onCancel?: () => void;
 }
 
-export function Onboarding({ state, onDone, onCancel }: IOnboardingProps) {
+export function Onboarding({
+  state,
+  isAddingAccount,
+  onDone,
+  onCancel,
+}: IOnboardingProps) {
   const t = useT();
-  const { form, initialStep, handleSubmit, handleStepChange } =
-    useOnboardingController(state, onDone);
+  const {
+    form,
+    initialStep,
+    accounts,
+    knownSteamIds,
+    isFinishing,
+    handleSubmit,
+    handleAddAnother,
+    handleStepChange,
+  } = useOnboardingController({ state, isAddingAccount, onDone });
+
+  const accountSteps = [
+    {
+      label: t.onboarding.steps.account,
+      content: (
+        <AccountStep knownSteamIds={knownSteamIds} onCancel={onCancel} />
+      ),
+    },
+    {
+      label: t.onboarding.steps.done,
+      content: (
+        <DoneStep
+          accounts={accounts}
+          showLanguage={!isAddingAccount}
+          isFinishing={isFinishing}
+          onAddAnother={handleAddAnother}
+        />
+      ),
+    },
+  ];
 
   return (
     <>
@@ -30,29 +65,17 @@ export function Onboarding({ state, onDone, onCancel }: IOnboardingProps) {
             <Stepper
               initialStep={initialStep}
               onStepChange={handleStepChange}
-              steps={[
-                {
-                  label: t.onboarding.steps.language,
-                  content: (
-                    <LanguageStep
-                      notice={state.configError}
-                      onCancel={onCancel}
-                    />
-                  ),
-                },
-                {
-                  label: t.onboarding.steps.account,
-                  content: (
-                    <AccountStep
-                      savedSteamId={state.profile?.steamId ?? null}
-                    />
-                  ),
-                },
-                {
-                  label: t.onboarding.steps.done,
-                  content: <DoneStep />,
-                },
-              ]}
+              steps={
+                isAddingAccount
+                  ? accountSteps
+                  : [
+                      {
+                        label: t.onboarding.steps.language,
+                        content: <LanguageStep />,
+                      },
+                      ...accountSteps,
+                    ]
+              }
             />
           </form>
         </FormProvider>

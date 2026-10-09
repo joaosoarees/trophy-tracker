@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 
+import { AccountsService } from '@app/services/AccountsService';
 import { SettingsService } from '@app/services/SettingsService';
 import type { StoreSlice } from '@app/store/Store';
 import {
@@ -60,8 +61,15 @@ type SettingsActions = {
    * window is reloaded to guarantee nothing in the old language stays on screen.
    */
   changeLanguage: (language: Language) => Promise<void>;
-  /** Erases the key and the SteamID; the app goes back to the onboarding. */
-  eraseCredentials: () => Promise<void>;
+  /**
+   * Follows another saved account. What was read for the one being left goes
+   * off the screen as the state changes (see `connectStore`).
+   */
+  switchAccount: (steamId: string) => Promise<void>;
+  /** Forgets an account; removing the last one leads back to the onboarding. */
+  removeAccount: (steamId: string) => Promise<void>;
+  /** A state the main process sent by itself; `followed` when it switched accounts to match Steam. */
+  accept: (appState: IAppState, followed: boolean) => void;
 };
 
 export type SettingsSlice = SettingsStore & SettingsActions;
@@ -215,7 +223,22 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
     window.location.reload();
   },
 
-  eraseCredentials: async () => {
-    get().settings.apply(await SettingsService.resetConfig());
+  switchAccount: async (steamId) => {
+    if (steamId === get().settings.appState?.activeSteamId) return;
+    // Edits still waiting to be written belong to the account being left.
+    get().userData.flush();
+    get().settings.apply(await AccountsService.setActive(steamId));
+  },
+
+  removeAccount: async (steamId) => {
+    get().userData.flush();
+    get().settings.apply(await AccountsService.remove(steamId));
+  },
+
+  accept: (appState, followed) => {
+    get().settings.apply(appState);
+    if (!followed) return;
+    const name = appState.profile?.name || appState.activeSteamId || '';
+    toast(messagesFor(appState.language).accounts.switched(name));
   },
 });

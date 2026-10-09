@@ -1,20 +1,23 @@
+import { AccountsService } from '@app/services/AccountsService';
 import { DashboardService } from '@app/services/DashboardService';
 import { GamesService } from '@app/services/GamesService';
 
 import { useStore } from '.';
 
 /**
- * Wires the store to the main process events once the app is set up.
- * Returns the function that unwires it and drops what was read from Steam;
- * language, settings and navigation are kept.
+ * Wires the store to the main process events once the app is set up, for the
+ * account being followed. Returns the function that unwires it and drops
+ * what was read from Steam for that account; language and settings are kept.
  */
 export function connectStore(): () => void {
-  const { session, games, dashboard, userData } = useStore.getState();
+  const { session, games, dashboard, userData, settings, navigation } =
+    useStore.getState();
 
   void session.loadCurrent();
   void dashboard.load();
 
   const offs = [
+    AccountsService.onStateChanged(settings.accept),
     GamesService.onCurrentChanged(session.setCurrent),
     GamesService.onGameUpdated(games.accept),
     DashboardService.onProgress(dashboard.setProgress),
@@ -25,6 +28,7 @@ export function connectStore(): () => void {
     offs.forEach((off) => off());
     window.removeEventListener('beforeunload', userData.flush);
     userData.flush();
+    navigation.forgetPickedGame();
 
     const initial = useStore.getInitialState();
     useStore.setState((state) => {

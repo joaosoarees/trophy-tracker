@@ -14,6 +14,7 @@ import { Game } from '@ui/screens/Game';
 import { Settings } from '@ui/screens/Settings';
 import { cn } from '@ui/utils/cn';
 
+import { KeyTroubleNotice } from './KeyTroubleNotice';
 import { NoGame } from './NoGame';
 import { TabButton } from './TabButton';
 import { useAppShellController } from './useAppShellController';
@@ -27,6 +28,7 @@ export function AppShell() {
     libraryError,
     isLibraryLoading,
     handleRetryLibrary,
+    troubledAccount,
     alwaysOnTop,
     newVersion,
     isCheckingForUpdates,
@@ -97,6 +99,13 @@ export function AppShell() {
           <SettingsIcon />
         </IconButton>
       </nav>
+
+      {troubledAccount && tab !== 'settings' && (
+        <KeyTroubleNotice
+          account={troubledAccount}
+          onFix={() => goTo('settings')}
+        />
+      )}
 
       {/* Clipped: a screen sliding in must not make the window itself scroll. */}
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">

@@ -6,9 +6,10 @@ import { useStepper } from '@ui/screens/Onboarding/components/Stepper/useStepper
 import { type OnboardingFormData } from '@ui/screens/Onboarding/schema';
 
 /** Where the SteamID in the field came from, which decides how it is presented. */
-type SteamIdSource = 'detected' | 'saved' | 'typed';
+type SteamIdSource = 'detected' | 'typed';
 
-export function useAccountStepController(savedSteamId: string | null) {
+/** `knownSteamIds`: the accounts the app already has, which are not offered again. */
+export function useAccountStepController(knownSteamIds: string[]) {
   const { nextStep, lockFollowingSteps } = useStepper();
   const form = useFormContext<OnboardingFormData>();
   const verified = useWatch({
@@ -16,15 +17,9 @@ export function useAccountStepController(savedSteamId: string | null) {
     name: 'accountStep.verified',
   });
 
-  // Only the account the app is already set up with starts locked, like a
-  // detected one. Anything else in the field was typed by the user (and kept
-  // by the draft), and stays theirs to edit.
-  const [source, setSource] = useState<SteamIdSource>(() =>
-    savedSteamId !== null &&
-    form.getValues('accountStep.steamId') === savedSteamId
-      ? 'saved'
-      : 'typed',
-  );
+  // Only a SteamID found in the Steam client is locked. Anything else in the
+  // field was typed by the user (and kept by the draft), and stays theirs.
+  const [source, setSource] = useState<SteamIdSource>('typed');
   const [isEditingSteamId, setIsEditingSteamId] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   /** Steam refused the key or the SteamID. */
@@ -37,7 +32,7 @@ export function useAccountStepController(savedSteamId: string | null) {
     let active = true;
 
     void OnboardingService.detectSteamId().then((steamId) => {
-      if (!active || !steamId) return;
+      if (!active || !steamId || knownSteamIds.includes(steamId)) return;
 
       const current = form.getValues('accountStep.steamId');
       if (!current) form.setValue('accountStep.steamId', steamId);
@@ -47,6 +42,8 @@ export function useAccountStepController(savedSteamId: string | null) {
     return () => {
       active = false;
     };
+    // The list is read once, as the step opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form]);
 
   /** The key alone does not say whose it is, so both are checked together. */

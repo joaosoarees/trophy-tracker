@@ -11,7 +11,8 @@ interface IAccountGridProps {
   accounts: IAccount[];
   /** SteamID of the account in use; `null` when none is yet. */
   activeId: string | null;
-  onSelect: (steamId: string) => void;
+  /** Leave out where the accounts are only shown, not switched between. */
+  onSelect?: (steamId: string) => void;
   /** Leave out where an account cannot be added. */
   onAdd?: () => void;
   /** Name of the list for assistive technology. */
@@ -42,6 +43,40 @@ export function AccountGrid({
         const isActive = account.steamId === activeId;
         const name = account.name || account.steamId;
 
+        const face = (
+          <>
+            <span className="relative">
+              <RemoteImage
+                src={account.avatar}
+                fallback={<User className="size-5" />}
+                className={cn(
+                  'size-12',
+                  isActive &&
+                    'ring-primary ring-offset-background ring-2 ring-offset-2',
+                )}
+              />
+              {account.status === 'rejected' && (
+                <CircleX
+                  aria-hidden
+                  className="text-destructive bg-background absolute -right-1.5 -bottom-1.5 size-4 rounded-full"
+                />
+              )}
+            </span>
+            <span className="w-full truncate text-center">{name}</span>
+          </>
+        );
+
+        if (!onSelect) {
+          return (
+            <li
+              key={account.steamId}
+              className="text-foreground flex w-22 flex-col items-center gap-1.5 px-1 py-2 text-xs"
+            >
+              {face}
+            </li>
+          );
+        }
+
         return (
           <li key={account.steamId}>
             <Pressable
@@ -59,24 +94,7 @@ export function AccountGrid({
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <span className="relative">
-                <RemoteImage
-                  src={account.avatar}
-                  fallback={<User className="size-5" />}
-                  className={cn(
-                    'size-12',
-                    isActive &&
-                      'ring-primary ring-offset-background ring-2 ring-offset-2',
-                  )}
-                />
-                {account.status === 'rejected' && (
-                  <CircleX
-                    aria-hidden
-                    className="text-destructive bg-background absolute -right-1.5 -bottom-1.5 size-4 rounded-full"
-                  />
-                )}
-              </span>
-              <span className="w-full truncate text-center">{name}</span>
+              {face}
             </Pressable>
           </li>
         );

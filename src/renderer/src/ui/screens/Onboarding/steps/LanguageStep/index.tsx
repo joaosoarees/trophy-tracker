@@ -1,7 +1,6 @@
 import { useFormContext } from 'react-hook-form';
 
 import { useT } from '@app/hooks/useT';
-import { Button } from '@ui/primitives/button';
 import { Label } from '@ui/primitives/label';
 import { ControlledLanguageSelect } from '@ui/screens/Onboarding/components/ControlledLanguageSelect';
 import { FieldError } from '@ui/screens/Onboarding/components/FieldError';
@@ -13,13 +12,7 @@ import {
 import { useStepper } from '@ui/screens/Onboarding/components/Stepper/useStepper';
 import type { OnboardingFormData } from '@ui/screens/Onboarding/schema';
 
-interface ILanguageStepProps {
-  /** Why the onboarding showed up again (e.g. the key stopped working). */
-  notice: string | null;
-  onCancel?: () => void;
-}
-
-export function LanguageStep({ notice, onCancel }: ILanguageStepProps) {
+export function LanguageStep() {
   const t = useT();
   const { nextStep } = useStepper();
   const form = useFormContext<OnboardingFormData>();
@@ -38,12 +31,6 @@ export function LanguageStep({ notice, onCancel }: ILanguageStepProps) {
         title={t.onboarding.language.title}
         description={t.onboarding.language.description}
       />
-
-      {notice && (
-        <p className="text-destructive mb-4">
-          {t.onboarding.redoNotice(notice)}
-        </p>
-      )}
 
       <div className="space-y-2">
         <Label>{t.onboarding.language.label}</Label>
@@ -69,11 +56,6 @@ export function LanguageStep({ notice, onCancel }: ILanguageStepProps) {
       </div>
 
       <StepperFooter>
-        {onCancel && (
-          <Button type="button" variant="ghost" onClick={onCancel}>
-            {t.common.cancel}
-          </Button>
-        )}
         <StepperNextButton onClick={handleNextStep}>
           {t.onboarding.language.start}
         </StepperNextButton>

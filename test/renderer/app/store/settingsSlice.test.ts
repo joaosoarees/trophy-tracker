@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { type IApi } from '@shared/types/Api';
 import { makeAppState } from '@test/factories/makeAppState';
+import { OTHER_STEAM_ID, STEAM_ID } from '@test/helpers';
 
 import { deferred, makeStore } from './makeStore';
 
@@ -173,20 +174,81 @@ describe('settings: language', () => {
   });
 });
 
-describe('settings: erasing the setup', () => {
-  it('goes back to an app that is not set up', async () => {
+describe('settings: accounts', () => {
+  const other = makeAppState({
+    activeSteamId: OTHER_STEAM_ID,
+    profile: { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' },
+  });
+
+  it('follows another account, writing first what was still waiting to be saved', async () => {
+    const order: string[] = [];
+    const { settings, store } = await setup({
+      setActiveAccount: () => {
+        order.push('switched');
+        return Promise.resolve(other);
+      },
+    });
+    settings().apply(makeAppState());
+    store.setState((state) => {
+      state.userData.flush = () => void order.push('flushed');
+    });
+
+    await settings().switchAccount(OTHER_STEAM_ID);
+
+    expect(order).toEqual(['flushed', 'switched']);
+    expect(settings().appState?.activeSteamId).toBe(OTHER_STEAM_ID);
+  });
+
+  it('asks for nothing when the account is already the one in use', async () => {
+    const { settings } = await setup();
+    settings().apply(makeAppState());
+
+    await settings().switchAccount(STEAM_ID);
+
+    expect(settings().appState?.activeSteamId).toBe(STEAM_ID);
+  });
+
+  it('goes back to an app that is not set up when the last account is removed', async () => {
     const { settings } = await setup({
-      resetConfig: () =>
-        Promise.resolve(makeAppState({ configured: false, profile: null })),
+      removeAccount: () =>
+        Promise.resolve(
+          makeAppState({
+            configured: false,
+            profile: null,
+            accounts: [],
+            activeSteamId: null,
+          }),
+        ),
     });
     settings().apply(makeAppState());
 
-    await settings().eraseCredentials();
+    await settings().removeAccount(STEAM_ID);
 
     expect(settings().appState).toMatchObject({
       configured: false,
-      profile: null,
+      accounts: [],
     });
+  });
+
+  it('tells the user when the app followed the account signed in to Steam', async () => {
+    const { settings, toast } = await setup();
+    settings().apply(makeAppState());
+
+    settings().accept(other, true);
+
+    expect(toast).toHaveBeenCalledWith(
+      'Now following other, the account signed in to Steam.',
+    );
+  });
+
+  it('takes a state the main process sent without announcing anything', async () => {
+    const { settings, toast } = await setup();
+    settings().apply(makeAppState());
+
+    settings().accept(other, false);
+
+    expect(settings().appState?.activeSteamId).toBe(OTHER_STEAM_ID);
+    expect(toast).not.toHaveBeenCalled();
   });
 });
 

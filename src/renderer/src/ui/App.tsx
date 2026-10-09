@@ -34,7 +34,7 @@ function Content() {
   const {
     appState,
     showOnboarding,
-    canCancelOnboarding,
+    isAddingAccount,
     handleOnboardingDone,
     handleOnboardingCancel,
     isStartingUp,
@@ -69,8 +69,9 @@ function Content() {
         <Suspense fallback={<OnboardingFallback />}>
           <Onboarding
             state={appState}
+            isAddingAccount={isAddingAccount}
             onDone={handleOnboardingDone}
-            onCancel={canCancelOnboarding ? handleOnboardingCancel : undefined}
+            onCancel={isAddingAccount ? handleOnboardingCancel : undefined}
           />
         </Suspense>
         {updateReadyDialog}

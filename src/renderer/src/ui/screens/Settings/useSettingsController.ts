@@ -1,15 +1,18 @@
-import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { SystemService } from '@app/services/SystemService';
 import { useStore } from '@app/store';
 import { isLanguage } from '@shared/i18n';
+import { type IAccount } from '@shared/types/Account';
 import { type ExternalPage } from '@shared/types/Guide';
 
+/** A stable value for the selector while the state is still unknown. */
+const NO_ACCOUNTS: IAccount[] = [];
+
 export function useSettingsController() {
-  const [isConfirmingErase, setIsConfirmingErase] = useState(false);
   const {
-    profile,
+    accounts,
+    activeAccount,
     language,
     appInfo,
     checkState,
@@ -17,8 +20,8 @@ export function useSettingsController() {
     preferences,
     dataFolder,
     changeLanguage,
-    eraseCredentials,
-    startReconfiguring,
+    switchAccount,
+    startAddingAccount,
     checkForUpdates,
     restartToUpdate,
     toggleAlwaysOnTop,
@@ -26,7 +29,12 @@ export function useSettingsController() {
     openDataFolder,
   } = useStore(
     useShallow((state) => ({
-      profile: state.settings.appState?.profile ?? null,
+      accounts: state.settings.appState?.accounts ?? NO_ACCOUNTS,
+      activeAccount:
+        state.settings.appState?.accounts.find(
+          (account) =>
+            account.steamId === state.settings.appState?.activeSteamId,
+        ) ?? null,
       language: state.session.language,
       appInfo: state.updates.appInfo,
       checkState: state.updates.checkState,
@@ -34,8 +42,8 @@ export function useSettingsController() {
       preferences: state.settings.preferences,
       dataFolder: state.settings.dataFolder,
       changeLanguage: state.settings.changeLanguage,
-      eraseCredentials: state.settings.eraseCredentials,
-      startReconfiguring: state.navigation.startReconfiguring,
+      switchAccount: state.settings.switchAccount,
+      startAddingAccount: state.navigation.startAddingAccount,
       checkForUpdates: state.updates.check,
       restartToUpdate: state.updates.restart,
       toggleAlwaysOnTop: state.settings.toggleAlwaysOnTop,
@@ -48,24 +56,18 @@ export function useSettingsController() {
     if (isLanguage(value)) void changeLanguage(value);
   }
 
-  function handleErase() {
-    setIsConfirmingErase(false);
-    void eraseCredentials();
-  }
-
   return {
-    profile,
+    accounts,
+    activeAccount,
     language,
     appInfo,
     checkState,
     alwaysOnTop,
     preferences,
     dataFolder,
-    isConfirmingErase,
-    setIsConfirmingErase,
     handleChangeLanguage,
-    handleErase,
-    handleRedoSetup: startReconfiguring,
+    handleSwitchAccount: (steamId: string) => void switchAccount(steamId),
+    handleAddAccount: startAddingAccount,
     handleToggleAlwaysOnTop: () => void toggleAlwaysOnTop(),
     handleRememberWindowChange: (value: boolean) =>
       void setPreference('rememberWindow', value),

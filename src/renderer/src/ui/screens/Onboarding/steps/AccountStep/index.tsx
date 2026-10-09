@@ -2,6 +2,7 @@ import { CircleCheck, Lock, User } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { SystemService } from '@app/services/SystemService';
+import { KeyField } from '@ui/components/KeyField';
 import { RemoteImage } from '@ui/components/RemoteImage';
 import { Button } from '@ui/primitives/button';
 import { Input } from '@ui/primitives/input';
@@ -18,11 +19,13 @@ import {
 import { useAccountStepController } from './useAccountStepController';
 
 interface IAccountStepProps {
-  /** SteamID of the account the app is already set up with, when redoing the setup. */
-  savedSteamId: string | null;
+  /** The accounts the app already has: the one signed in to Steam is not offered twice. */
+  knownSteamIds: string[];
+  /** The way out when the step was opened only to add an account. */
+  onCancel?: () => void;
 }
 
-export function AccountStep({ savedSteamId }: IAccountStepProps) {
+export function AccountStep({ knownSteamIds, onCancel }: IAccountStepProps) {
   const t = useT();
   const {
     form,
@@ -37,7 +40,7 @@ export function AccountStep({ savedSteamId }: IAccountStepProps) {
     handleChange,
     handleEditSteamId,
     handleNext,
-  } = useAccountStepController(savedSteamId);
+  } = useAccountStepController(knownSteamIds);
   const text = t.onboarding.account;
 
   // Enter in a field checks the account instead of submitting the whole form.
@@ -73,9 +76,7 @@ export function AccountStep({ savedSteamId }: IAccountStepProps) {
 
           {isSteamIdLocked && !isVerified && (
             <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-xs">
-              {steamIdSource === 'detected'
-                ? text.steamId.detected
-                : text.steamId.saved}
+              {text.steamId.detected}
               <Button
                 type="button"
                 variant="link"
@@ -106,13 +107,10 @@ export function AccountStep({ savedSteamId }: IAccountStepProps) {
 
         <div className="space-y-2">
           <Label htmlFor="apiKey">{text.key.label}</Label>
-          <Input
+          <KeyField
             id="apiKey"
-            type="password"
-            autoComplete="off"
             placeholder={text.key.placeholder}
             readOnly={isVerified}
-            className={isVerified ? 'bg-muted' : undefined}
             {...form.register('accountStep.apiKey')}
             onKeyDown={handleEnter}
           />
@@ -176,7 +174,13 @@ export function AccountStep({ savedSteamId }: IAccountStepProps) {
       <FieldError name="accountStep.verified" />
 
       <StepperFooter>
-        <StepperPreviousButton disabled={isVerifying} />
+        {onCancel ? (
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            {t.common.cancel}
+          </Button>
+        ) : (
+          <StepperPreviousButton disabled={isVerifying} />
+        )}
         {isVerified ? (
           <StepperNextButton />
         ) : (

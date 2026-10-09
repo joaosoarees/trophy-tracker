@@ -5,7 +5,6 @@ import {
   isAchievementFilter,
 } from '@shared/achievementSort';
 import { type DashboardFilter, isDashboardFilter } from '@shared/dashboardSort';
-import { type Language } from '@shared/i18n';
 
 export type Tab = 'game' | 'dashboard' | 'settings';
 
@@ -23,8 +22,8 @@ type NavigationStore = {
   pickedAppId: number | null;
   /** Running game the app has already jumped to, so a reload does not jump again. */
   seenRunningAppId: number | null;
-  /** Language in use when the user started redoing the setup, or `null` outside of it. */
-  reconfiguringFrom: Language | null;
+  /** The user asked to add an account: the account step shows over the app. */
+  isAddingAccount: boolean;
 };
 
 type NavigationActions = {
@@ -36,8 +35,10 @@ type NavigationActions = {
   pickGame: (appid: number) => void;
   /** Opening a game on Steam brings the app to it, once per opened game. */
   followRunningGame: (appid: number | null) => void;
-  startReconfiguring: () => void;
-  stopReconfiguring: () => void;
+  startAddingAccount: () => void;
+  stopAddingAccount: () => void;
+  /** The game picked in the dashboard belongs to an account; another one starts without it. */
+  forgetPickedGame: () => void;
 };
 
 export type NavigationSlice = NavigationStore & NavigationActions;
@@ -80,7 +81,7 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
     safeSessionStorageGetItem<unknown>(KEYS.gameDetailsOpen) === true,
   pickedAppId: safeSessionStorageGetItem<number>(KEYS.pickedAppId),
   seenRunningAppId: safeSessionStorageGetItem<number>(KEYS.seenRunningAppId),
-  reconfiguringFrom: null,
+  isAddingAccount: false,
 
   goTo: (tab) => {
     remember('tab', tab);
@@ -178,21 +179,34 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
     );
   },
 
-  startReconfiguring: () =>
+  startAddingAccount: () =>
     set(
       (prevState) => {
-        prevState.navigation.reconfiguringFrom = prevState.session.language;
+        prevState.navigation.isAddingAccount = true;
       },
       false,
-      'navigation/startReconfiguring',
+      'navigation/startAddingAccount',
     ),
 
-  stopReconfiguring: () =>
+  stopAddingAccount: () =>
     set(
       (prevState) => {
-        prevState.navigation.reconfiguringFrom = null;
+        prevState.navigation.isAddingAccount = false;
       },
       false,
-      'navigation/stopReconfiguring',
+      'navigation/stopAddingAccount',
     ),
+
+  forgetPickedGame: () => {
+    remember('pickedAppId', null);
+    remember('seenRunningAppId', null);
+    set(
+      (prevState) => {
+        prevState.navigation.pickedAppId = null;
+        prevState.navigation.seenRunningAppId = null;
+      },
+      false,
+      'navigation/forgetPickedGame',
+    );
+  },
 });

@@ -12,11 +12,11 @@ export function useAppController() {
     language,
     failures,
     current,
-    reconfiguringFrom,
+    isAddingAccount,
     load,
     apply,
     followRunningGame,
-    stopReconfiguring,
+    stopAddingAccount,
     startUpdates,
     updateStartup,
     updateInfo,
@@ -29,11 +29,11 @@ export function useAppController() {
       language: state.session.language,
       failures: state.session.failures,
       current: state.session.current,
-      reconfiguringFrom: state.navigation.reconfiguringFrom,
+      isAddingAccount: state.navigation.isAddingAccount,
       load: state.settings.load,
       apply: state.settings.apply,
       followRunningGame: state.navigation.followRunningGame,
-      stopReconfiguring: state.navigation.stopReconfiguring,
+      stopAddingAccount: state.navigation.stopAddingAccount,
       startUpdates: state.updates.start,
       updateStartup: state.updates.startup,
       updateInfo: state.updates.appInfo,
@@ -44,6 +44,7 @@ export function useAppController() {
   );
 
   const configured = appState?.configured === true;
+  const activeSteamId = appState?.activeSteamId ?? null;
 
   useEffect(() => {
     void load();
@@ -57,11 +58,12 @@ export function useAppController() {
     document.documentElement.lang = language;
   }, [t, language]);
 
+  // Again for each account: what was read for one says nothing about another.
   useEffect(() => {
     if (configured) return connectStore();
-  }, [configured]);
+  }, [configured, activeSteamId]);
 
-  // A read failed: check whether the key stopped being valid.
+  // A read failed: see what the main process now says about the key.
   useEffect(() => {
     if (failures > 0) void load();
   }, [failures, load]);
@@ -73,37 +75,19 @@ export function useAppController() {
     if (runningAppId !== undefined) followRunningGame(runningAppId);
   }, [runningAppId, followRunningGame]);
 
-  /**
-   * Leaves the onboarding. When the setup was redone with the app already in
-   * use and the language changed along the way, what is loaded came from Steam
-   * in the old language, and only a reload guarantees none of it is left.
-   */
+  /** Leaves the account step, with the state it produced when it produced one. */
   function leaveOnboarding(next?: IAppState) {
-    if (reconfiguringFrom !== null && language !== reconfiguringFrom) {
-      window.location.reload();
-      return;
-    }
-
-    stopReconfiguring();
+    stopAddingAccount();
     if (next) apply(next);
   }
 
-  function handleOnboardingDone(next: IAppState) {
-    leaveOnboarding(next);
-  }
-
-  function handleOnboardingCancel() {
-    leaveOnboarding();
-  }
-
-  const reconfiguring = reconfiguringFrom !== null;
-
   return {
     appState,
-    showOnboarding: !configured || reconfiguring,
-    canCancelOnboarding: configured && reconfiguring,
-    handleOnboardingDone,
-    handleOnboardingCancel,
+    showOnboarding: !configured || isAddingAccount,
+    // With the app already set up, the step is only there to add an account.
+    isAddingAccount: configured && isAddingAccount,
+    handleOnboardingDone: (next: IAppState) => leaveOnboarding(next),
+    handleOnboardingCancel: () => leaveOnboarding(),
     isStartingUp: updateStartup !== 'done',
     // While only checking there is no version to show yet.
     updateVersion:
