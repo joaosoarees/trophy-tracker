@@ -6,6 +6,12 @@ import { STEAM_ID } from '@test/helpers';
 
 const LOGIN_USERS = `"users"\n{\n\t"${STEAM_ID}"\n\t{\n\t\t"MostRecent"\t\t"1"\n\t}\n}\n`;
 
+/**
+ * The code joins paths with the separator of the system the tests run on;
+ * the disk below is written with forward slashes on every system.
+ */
+const portable = (path: string) => path.replaceAll('\\', '/');
+
 /** A computer whose disk holds exactly the given files. */
 function setup(
   files: Record<string, string | Buffer> = {},
@@ -22,8 +28,9 @@ function setup(
     platform: 'linux',
     hasWindows: false,
     home: '/home/me',
-    exists: (path) => folders.has(path),
-    readFile: (path) => {
+    exists: (path) => folders.has(portable(path)),
+    readFile: (systemPath) => {
+      const path = portable(systemPath);
       read.push(path);
       return path in files
         ? Promise.resolve(Buffer.from(files[path]))
