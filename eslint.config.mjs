@@ -6,6 +6,7 @@ import importX from 'eslint-plugin-import-x';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import storybook from 'eslint-plugin-storybook';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
@@ -18,6 +19,9 @@ export default defineConfig(
     'dist',
     'node_modules',
     'src/renderer/src/ui/primitives',
+    'storybook-static',
+    // ESLint skips folders that start with a dot unless told otherwise.
+    '!.storybook',
   ]),
 
   js.configs.recommended,
@@ -198,6 +202,16 @@ export default defineConfig(
       'import-x/no-named-as-default': 'off',
       'import-x/no-named-as-default-member': 'off',
     },
+  },
+
+  // What makes a story file well formed (a default export with a component,
+  // stories named in PascalCase...), and the Storybook configuration.
+  ...storybook.configs['flat/recommended'],
+  {
+    // A story's `render` is a component: hooks are allowed in it, and it is
+    // named `Render` so the hooks rule sees that.
+    files: ['src/renderer/src/stories/**/*.tsx'],
+    rules: { 'react/prop-types': 'off' },
   },
 
   prettier,

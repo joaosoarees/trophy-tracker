@@ -7,8 +7,18 @@
     "paths": {
       "@app/*": ["./src/renderer/src/app/*"],
       "@ui/*": ["./src/renderer/src/ui/*"],
-      "@shared/*": ["./src/shared/*"]
+      "@shared/*": ["./src/shared/*"],
+      "@test/*": ["./test/*"]
     }
   },
-  "include": ["src/renderer", "src/shared"]
+  "include": [
+    "src/renderer",
+    "src/shared",
+    ".storybook/preview.tsx",
+    ".storybook/manager.ts",
+    ".storybook/theme.ts",
+    "test/factories/makeAchievement.ts",
+    "test/factories/makeGameView.ts",
+    "test/factories/makeGameSummary.ts"
+  ]
 }

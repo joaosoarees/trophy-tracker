@@ -6,3 +6,4 @@ coverage
 .audit-ui
 .impeccable
 .installer-art
+storybook-static

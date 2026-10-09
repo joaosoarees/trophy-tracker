@@ -17,6 +17,7 @@
     "src/shared",
     "test",
     "*.config.ts",
+    ".storybook/main.ts",
     "*.config.mjs"
   ],
   "exclude": ["test/renderer/app/store"]
