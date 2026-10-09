@@ -5,6 +5,7 @@ import { type IApi } from '@shared/types/Api';
 
 import { type AppUpdates } from '../services/AppUpdates';
 import { type GameWatcher } from '../services/GameWatcher';
+import { downloadUrl } from '../services/releases';
 import { type SetupService } from '../services/SetupService';
 import { type Tracker } from '../services/Tracker';
 import { guideUrl } from '../steam/achievements';
@@ -119,7 +120,12 @@ export function registerIpc({
       openUrl(
         guideUrl(site, appid, game, achievement, setup.messages.guides.query),
       ),
-    openExternal: (page) => openExternalPage(page),
+    openExternal: async (page) =>
+      page === 'download'
+        ? openUrl(
+            downloadUrl({ version: (await updates.getAppInfo()).newVersion }),
+          )
+        : openExternalPage(page),
     getAppInfo: () => updates.getAppInfo(),
     checkForUpdates: () => updates.checkNow(),
     installUpdate: () => updates.install(),
