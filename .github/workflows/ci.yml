@@ -27,3 +27,21 @@ jobs:
       # vitest.config.ts.
       - run: pnpm test:coverage
       - run: pnpm build
+
+  # The same tests on the other two systems the app ships for. Twice a release
+  # failed on a test that only breaks on Windows (paths, permissions), found
+  # when the tag was already pushed; this finds it on the push to main.
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
