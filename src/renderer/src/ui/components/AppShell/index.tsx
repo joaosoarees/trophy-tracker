@@ -8,13 +8,13 @@ import {
 } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
-import { Empty } from '@ui/components/Empty';
 import { IconButton } from '@ui/components/IconButton';
 import { Dashboard } from '@ui/screens/Dashboard';
 import { Game } from '@ui/screens/Game';
 import { Settings } from '@ui/screens/Settings';
 import { cn } from '@ui/utils/cn';
 
+import { NoGame } from './NoGame';
 import { TabButton } from './TabButton';
 import { useAppShellController } from './useAppShellController';
 
@@ -24,6 +24,9 @@ export function AppShell() {
   const {
     tab,
     game,
+    libraryError,
+    isLibraryLoading,
+    handleRetryLibrary,
     alwaysOnTop,
     newVersion,
     isCheckingForUpdates,
@@ -105,7 +108,11 @@ export function AppShell() {
           )}
         >
           {game.appid === null ? (
-            <Empty>{t.game.none}</Empty>
+            <NoGame
+              error={libraryError}
+              isLoading={isLibraryLoading}
+              onRetry={handleRetryLibrary}
+            />
           ) : (
             <Game key={game.appid} appid={game.appid} running={game.running} />
           )}

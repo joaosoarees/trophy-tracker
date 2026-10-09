@@ -14,7 +14,11 @@ export function useAppShellController() {
     newVersion,
     isUpdateReady,
     isCheckingForUpdates,
+    libraryError,
+    isLibraryLoading,
     goTo,
+    loadCurrent,
+    loadDashboard,
     toggleAlwaysOnTop,
     checkForUpdates,
     showUpdateReady,
@@ -25,7 +29,12 @@ export function useAppShellController() {
       newVersion: state.updates.appInfo?.newVersion ?? null,
       isUpdateReady: state.updates.appInfo?.updateStatus === 'ready',
       isCheckingForUpdates: state.updates.checkState === 'checking',
+      libraryError: state.dashboard.error,
+      isLibraryLoading:
+        state.dashboard.games === null && state.dashboard.error === null,
       goTo: state.navigation.goTo,
+      loadCurrent: state.session.loadCurrent,
+      loadDashboard: state.dashboard.load,
       toggleAlwaysOnTop: state.settings.toggleAlwaysOnTop,
       checkForUpdates: state.updates.check,
       showUpdateReady: state.updates.showReady,
@@ -55,9 +64,18 @@ export function useAppShellController() {
     }
   }
 
+  /** The library could not be read as the app opened: ask for both again. */
+  function handleRetryLibrary() {
+    void loadCurrent();
+    void loadDashboard();
+  }
+
   return {
     tab,
     game,
+    libraryError,
+    isLibraryLoading,
+    handleRetryLibrary,
     alwaysOnTop,
     newVersion,
     isCheckingForUpdates,
