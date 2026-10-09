@@ -54,7 +54,9 @@ export default defineConfig({
         'src/main/storage/createCipher.ts',
         'src/main/system/dataFolder.ts',
       ],
-      reporter: ['text-summary', 'text'],
+      // `lcov` is what the coverage badge of the README is made from (CI sends
+      // the report to Codecov).
+      reporter: ['text-summary', 'text', 'lcov'],
       // A little under what is covered today (95 / 89 / 95 / 96), so coverage
       // cannot drop unnoticed. Raise them as coverage grows; never lower them
       // to make a change pass. The aim is not 100%: see Tests in CLAUDE.md.

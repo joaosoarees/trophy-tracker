@@ -12,6 +12,10 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Lets the coverage upload identify this repository without a secret.
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,6 +30,13 @@ jobs:
       # Runs the tests and fails if coverage falls under the thresholds in
       # vitest.config.ts.
       - run: pnpm test:coverage
+      # Only the coverage numbers leave, for the badge of the README. A
+      # failure to send them does not fail the build.
+      - uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: coverage/lcov.info
+          fail_ci_if_error: false
       - run: pnpm build
       # The catalogue of components has to keep building: a story that no
       # longer compiles is a component whose documentation is wrong.
