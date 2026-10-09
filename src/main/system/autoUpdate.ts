@@ -38,7 +38,9 @@ export function createAutoUpdater(): IAutoUpdater | null {
     check: async () =>
       (await autoUpdater.checkForUpdates())?.updateInfo.version ?? null,
     download: () => autoUpdater.downloadUpdate(),
-    install: () => autoUpdater.quitAndInstall(),
+    // Silently, and opening the app again afterwards: on Windows the wizard
+    // would otherwise come up and ask everything the first install already did.
+    install: () => autoUpdater.quitAndInstall(true, true),
   };
 }
 
