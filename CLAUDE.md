@@ -97,7 +97,7 @@ Three processes' worth of code, each with its own layers:
 
 ```
 src/shared/            the contract between the two sides: types and pure logic
-  types/                 one file per entity: Achievement, Game, Profile, Check, AppState,
+  types/                 one file per entity: Achievement, Game, Profile, Account, Check, AppState,
                          UserData, Guide, and Api (IApi: everything the interface can ask)
   ipcEvents.ts           names of the events the main process pushes to the interface
   checklist.ts           parseChecklist, createChecklistItem, shownProgress
@@ -115,7 +115,8 @@ src/main/              main process: the only part that talks to Steam and to th
   ipc/registerIpc.ts     answers IApi; handlers only route, the work lives in the services
   services/
     Tracker.ts             reads games and the dashboard: cache, deduplication, art
-    SetupService.ts        setup state, language, and the checks that get the app set up
+    SetupService.ts        setup state, language, the accounts and the checks that get one in
+    accountFollower.ts     keeps the app on the account signed in to the Steam client
     GameWatcher.ts         follows the running game and keeps its view fresh while it is played
     runningGame.ts         which game is running: registry, or the Web API where there is none
     UpdateChecker.ts       asks GitHub whether a newer version was released
@@ -145,7 +146,8 @@ src/renderer/src/      the interface, in two layers
     screens/             one folder per screen: Game, Dashboard, Settings, Onboarding, Update
     components/          shared between screens: AppShell, Pressable, IconButton, Hint, OptionSelect,
                          RemoteImage, ProgressBar, Segmented, SearchBox, Empty, ErrorBoundary, CrashScreen,
-                         UpdateReadyDialog, DetailList (DetailGroup and DetailRow), Switch, Collapsible, WindowBar
+                         UpdateReadyDialog, DetailList (DetailGroup and DetailRow), Switch, Collapsible, WindowBar,
+                         AccountGrid, AccountStatus, MaskedKey, KeyField, ConfirmDialog, Notice
     primitives/          shadcn/ui components (generated; do not hand-edit without a reason)
     styles/index.css     Tailwind and the theme tokens
     utils/               cn, text (accent-free search), format (dates and numbers)
@@ -194,6 +196,18 @@ Game/
 - Logic that needs no React goes into a plain function next to the screen (or into `shared/` when the main process needs it too) and gets a test.
 - Forms add `schema.ts` to the folder (see Forms).
 
+## Accounts
+
+The app keeps several Steam accounts and follows one at a time. An account is a SteamID, the name and avatar Steam gave for it, and its own Web API key.
+
+- **Everything read or written is per account.** `storage/Store.ts` keeps, by SteamID: the key (`config.json`), the library, game views and summaries (`cache.json`), and the notes, pins and checklists (`userdata.json`). Achievement lists and art describe the game, not the player, and are shared. The files of the single-account versions are taken over as the first account when they are read.
+- **A read belongs to the account it started for.** `Tracker` hands each result to the store with the SteamID it was read with, and shares in-flight reads per account, so a switch in the middle of a read never files one account's data under another. A result for an account that was removed lands nowhere.
+- **The key never reaches the interface.** `IAccount` carries its last four characters (`keyEnding`) and nothing else; `ui/components/MaskedKey` is the only way a saved key is shown. There is no reveal and no copy. A key goes in through `KeyField` and is forgotten by the interface as soon as it is saved.
+- **Status of a key** (`AccountStatus`): `valid`, `rejected`, `rateLimited`, `unchecked`. Steam answers a revoked key and a mistyped one the same way (403 as HTML), so there is one "rejected". `SetupService.attempt` records what each read says about the key in use and tells the interface (`state-changed`) only when it is news. **A rejected key no longer sends the user back to the setup:** the app stays open with what it had, `AppShell` shows `KeyTroubleNotice` over the Game and the Dashboard, and "Replace key" in Settings fixes it. The onboarding only shows when there is no account at all.
+- **Switching** (`settings.switchAccount`) flushes pending note edits first, since they belong to the account being left. `useAppController` runs `connectStore` again for each account: what was read for one goes off the screen and the other is loaded, instantly when it has a cache.
+- **The app follows the account signed in to Steam** where the client says who that is without being asked (the registry, so Windows and WSL): `services/accountFollower.ts` switches when the client's account changes, and once as the app opens, and a toast says so. It acts on a change only, so an account picked by hand is not taken back. On macOS and Linux the switch is manual.
+- **Adding and removing.** The tile at the end of `AccountGrid` opens the onboarding with only its account and final steps (`navigation.isAddingAccount`); the account just added becomes the one in use. A SteamID that is already saved is refused. Removing an account deletes its key, its cache and its notes, and the dialog says so by name; removing the last one leads back to the onboarding. The first setup can add several accounts from its last step and ends on the one signed in to Steam, or the first added.
+
 ## Data sources
 
 | Data                                                          | Source                                                      | Key? |
@@ -227,7 +241,7 @@ Things that have already cost time:
 
 ## Forms (react-hook-form + zod)
 
-The onboarding (`ui/screens/Onboarding/`) is a single multi-step form with three steps: Language, Account, Done.
+The onboarding (`ui/screens/Onboarding/`) is a single multi-step form with three steps: Language, Account, Done. Opened from Settings to add an account, it leaves the language step out and keeps no draft.
 
 ```
 Onboarding/
@@ -240,10 +254,10 @@ Onboarding/
   steps/<Name>Step/          index.tsx + schema.ts (+ use<Name>StepController.ts when it has state)
 ```
 
-- The controller owns the form: `useForm` with `zodResolver(onboardingSchema)`. `DoneStep` has no schema: it is the summary and the submit.
+- The controller owns the form: `useForm` with `zodResolver(onboardingSchema)`. `DoneStep` has no schema: it is the summary and the submit. It shows the accounts in an `AccountGrid`; its add tile saves the verified account, empties the form and goes back to the account step for the next one.
 - Each step reads the form with `useFormContext<OnboardingFormData>()` and only advances after validating its own fields.
 - **Stepper.** `stepperState.ts` is a pure, tested reducer holding the current step and the furthest one reached. It is local to the component on purpose (React's `useReducer`, not a store slice): the state is born and dies with the onboarding, and the `Stepper` stays a self-contained component. Do not move it to Zustand for uniformity. The step names at the top are buttons: any step already reached can be revisited in either direction, steps ahead stay locked. A step that changes something later steps depend on calls `lockFollowingSteps()` (through `useStepper`) so they must be reached again. Changing the language locks nothing.
-- **The account step checks the SteamID and the key together.** A Web API key does not say whose it is, so the SteamID is still an input: detected from the Steam client (or taken from the saved setup) and shown locked, with "Use another account" as the way out. One "Verify" calls `checkApiKey` (key + SteamID against the official API, which returns name and avatar) and then `checkPrivacy`. There is no lookup of the public community profile any more: it was rate-limited and unreliable.
+- **The account step checks the SteamID and the key together.** A Web API key does not say whose it is, so the SteamID is still an input: detected from the Steam client and shown locked, with "Use another account" as the way out; a SteamID the user typed is never locked, and an account the app already has is not offered again. One "Verify" calls `checkApiKey` (key + SteamID against the official API, which returns name and avatar) and then `checkPrivacy`. There is no lookup of the public community profile any more: it was rate-limited and unreliable.
 - **Verification is a form value.** `accountStep.verified` has no input: it is set when both checks pass and the schema requires it, so the form cannot be finished with a well-formed key that was never verified. Once verified, both fields are read-only; "Change" removes the value and locks the following steps.
 - Errors from Steam about the pair (rejected key, unknown SteamID, private profile) are shown in the step, not under one field, because they are not about one field. Format errors stay under their field.
 - Schemas hold the message **key** (`'steamIdFormat'`), not the text; `FieldError` translates it when rendering, so the error follows a language change. Every key used in a schema must exist under `validation` in the locales (there is a test for it).
@@ -287,8 +301,8 @@ store/
   slices/
     sessionSlice.ts       language, current game and failure counter
     settingsSlice.ts      app state from the main process, always on top, preferences, data folder,
-                          list order, language change, erase
-    navigationSlice.ts    current tab, Pending/Unlocked list, game picked in the dashboard, redoing the setup
+                          list order, language change, switching and removing accounts
+    navigationSlice.ts    current tab, Pending/Unlocked list, game picked in the dashboard, adding an account
     gamesSlice.ts         game views already read, by appid
     userDataSlice.ts      notes, pins and checklists
     dashboardSlice.ts     dashboard
@@ -310,7 +324,7 @@ Conventions:
   - across restarts, because it is a preference (order of each list, always on top, language) → `settingsSlice`, saved by the main process in `settings.json`.
 - There is no router: `navigationSlice` holds the tab and `AppShell` draws it. The Game and Dashboard tabs stay mounted; switching tabs only hides the other one.
 - Edits to notes and checklists update the screen right away and are written half a second later (`app/lib/saver.ts`), with a flush when the window closes.
-- `connectStore` drops what was read from Steam when the app leaves the configured state; language, settings and navigation are kept.
+- `connectStore` wires the store for the account in use and, when that account changes or the app leaves the configured state, drops what was read from Steam for it (and the game picked in the dashboard); language and settings are kept.
 
 ## Interface
 
@@ -332,7 +346,7 @@ Tests passing is not the end of a change that touches the interface. Every new o
    - **checks every screen** (Game, the open game details, Dashboard, Settings top and end): accessibility with axe; no scrollbar on the window itself and nothing overflowing sideways; a visible change on hover and on keyboard focus for every kind of clickable element (both states are forced and the computed styles compared); and no clickable element wider than what contains it, which is how a hover wash spills out of its row;
    - **makes the interface fail to draw** and checks the crash screen like any other, that the error reached `logs/errors.log`, and that "Reload" brings the app back.
 
-   Then, in the first language only, **the flows no single capture shows**: "Use another account" opening the SteamID for typing; the game details animating open and closed (the height is sampled on every frame) and leading to each achievement they name with the hidden-only filter on; a game starting (the app switches to it by itself, from another tab); an achievement unlocked while playing, which the app has to notice with nobody touching it (it leaves the pending list, the notice names it, the header counts one less); the last one being unlocked (the completion state); the game closing (it stays on screen as the last one played); and Steam going off the air with the app open (what is on screen stays, with an error), before it opens (the app comes up with what it had), and before it opens with nothing cached (both tabs say Steam could not be reached, never that nothing was played, and the app recovers when Steam is back). `AUDIT_LANGUAGES=fr pnpm audit:ui` runs one language while working on it; the full run is what counts.
+   Then, in the first language only, **the flows no single capture shows**: "Use another account" opening the SteamID for typing; the game details animating open and closed (the height is sampled on every frame) and leading to each achievement they name with the hidden-only filter on; a game starting (the app switches to it by itself, from another tab); an achievement unlocked while playing, which the app has to notice with nobody touching it (it leaves the pending list, the notice names it, the header counts one less); the last one being unlocked (the completion state); the game closing (it stays on screen as the last one played); two accounts (the second added from the last step of the setup; switching by hand; the app following the account that signs in to Steam, with its toast; a key Steam starts refusing, its notice, a wrongly formatted replacement and a good one, and the key never on screen in full; adding from Settings without the language step, and cancelling; the removal dialog naming the account, backed out of and then confirmed); and Steam going off the air with the app open (what is on screen stays, with an error), before it opens (the app comes up with what it had), and before it opens with nothing cached (both tabs say Steam could not be reached, never that nothing was played, and the app recovers when Steam is back). `AUDIT_LANGUAGES=fr pnpm audit:ui` runs one language while working on it; the full run is what counts.
 
 2. **Add the new thing to the script** when the audit cannot reach it as it is: a new screen, a section that has to be opened, a state behind a click. A feature the audit never opens has not been audited. Two kinds of thing always get a flow check of their own: **a control that opens something is audited in both directions**, and **a shortcut that leads to an item is audited with every filter that could hide the item turned on**.
 3. **Prove a new check can fail**: undo the fix it is meant to guard, run the audit, see it fail, restore. A check that was only ever seen passing may be checking nothing.
@@ -371,7 +385,7 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 
 ## Local data
 
-`~/.config/trophy-tracker/` (`%APPDATA%\trophy-tracker` on Windows, `~/Library/Application Support/trophy-tracker` on macOS): `config.json` (SteamID and key, permission 600; encrypted only if there is a keyring), `cache.json`, `userdata.json` (notes, pins, checklists), `settings.json` (language, always on top, list orders, the window's size and position). Never copy the key out of that folder or print it.
+`~/.config/trophy-tracker/` (`%APPDATA%\trophy-tracker` on Windows, `~/Library/Application Support/trophy-tracker` on macOS): `config.json` (the accounts, each with its SteamID and key, permission 600; keys encrypted only if there is a keyring), `cache.json` (per account, plus what is common to all), `userdata.json` (notes, pins, checklists, per account), `settings.json` (language, always on top, list orders, the window's size and position). Never copy the key out of that folder or print it.
 
 ## Tests
 
