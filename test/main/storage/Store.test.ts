@@ -388,86 +388,6 @@ describe('Store: several accounts', () => {
   });
 });
 
-describe('Store: files of the versions with a single account', () => {
-  const note = { note: 'mine', pinned: false };
-
-  function legacy() {
-    const dir = tempDir();
-    writeFileSync(
-      join(dir, 'config.json'),
-      JSON.stringify({ steamId: STEAM_ID, apiKey: KEY, profile }),
-    );
-    writeFileSync(
-      join(dir, 'cache.json'),
-      JSON.stringify({
-        language: 'en',
-        games: {},
-        summaries: { 10: { total: 4, unlocked: 1, playtime: 10 } },
-        art: {},
-        schemas: {},
-      }),
-    );
-    writeFileSync(
-      join(dir, 'userdata.json'),
-      JSON.stringify({ 10: { A: note } }),
-    );
-    return dir;
-  }
-
-  it('turns the saved key into the first account, still in use', () => {
-    const store = new Store(legacy());
-
-    expect(store.getCredentials()).toEqual({ steamId: STEAM_ID, apiKey: KEY });
-    expect(store.getAccounts()).toEqual([
-      {
-        ...profile,
-        keyEnding: KEY.slice(-4),
-        isKeyEncrypted: false,
-        status: 'unchecked',
-        checkedAt: null,
-      },
-    ]);
-  });
-
-  it('keeps what had been read from Steam', () => {
-    expect(new Store(legacy()).getSummary(10)?.unlocked).toBe(1);
-  });
-
-  it("keeps the notes, as that account's", () => {
-    const store = new Store(legacy());
-
-    expect(store.getUserData(10)).toEqual({ A: note });
-    store.setCredentials(
-      { steamId: OTHER_STEAM_ID, apiKey: OTHER_KEY },
-      { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' },
-    );
-    expect(store.getUserData(10)).toEqual({});
-  });
-
-  it('reads the same after the files were rewritten in the new shape', () => {
-    const dir = legacy();
-    new Store(dir).setUserData(10, 'B', note);
-
-    const again = new Store(dir);
-
-    expect(again.getCredentials()?.apiKey).toBe(KEY);
-    expect(again.getUserData(10)).toEqual({ A: note, B: note });
-  });
-
-  it('gives notes written with no account to the first account added', () => {
-    const dir = tempDir();
-    writeFileSync(
-      join(dir, 'userdata.json'),
-      JSON.stringify({ 10: { A: note } }),
-    );
-    const store = new Store(dir);
-
-    store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
-
-    expect(store.getUserData(10)).toEqual({ A: note });
-  });
-});
-
 describe('Store: files that cannot be used', () => {
   const note = { note: 'mine', pinned: false };
   const summary = { 10: { total: 4, unlocked: 1, playtime: 10 } };
@@ -511,6 +431,47 @@ describe('Store: files that cannot be used', () => {
     expect(readFileSync(join(dir, 'userdata.json.v99.bak'), 'utf8')).toBe(
       later,
     );
+  });
+
+  it('keeps aside a file from before the format had a version, instead of guessing at it', () => {
+    const dir = tempDir();
+    const older = JSON.stringify({ 10: { A: note } });
+    writeFileSync(join(dir, 'userdata.json'), older);
+
+    const store = new Store(dir);
+
+    expect(store.getUserData(10)).toEqual({});
+    expect(readFileSync(join(dir, 'userdata.json.v1.bak'), 'utf8')).toBe(older);
+  });
+
+  it('drops an older cache without keeping it: Steam can give it all back', () => {
+    const dir = tempDir();
+    writeFileSync(join(dir, 'cache.json'), JSON.stringify({ games: {} }));
+
+    new Store(dir).setSummaries(summary);
+
+    expect(readdirSync(dir).filter((file) => file.endsWith('.bak'))).toEqual(
+      [],
+    );
+  });
+
+  it('reads settings written before the format had a version', () => {
+    const dir = tempDir();
+    writeFileSync(
+      join(dir, 'settings.json'),
+      JSON.stringify({ alwaysOnTop: true, language: 'fr' }),
+    );
+
+    expect(new Store(dir).getLanguage()).toBe('fr');
+  });
+
+  it('keeps notes written with no account for the first account added', () => {
+    const store = new Store(tempDir());
+    store.setUserData(10, 'A', note);
+
+    store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
+
+    expect(store.getUserData(10)).toEqual({ A: note });
   });
 
   it('sets nothing aside when the files are fine', () => {
