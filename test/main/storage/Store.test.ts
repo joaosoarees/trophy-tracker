@@ -1,8 +1,15 @@
-import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Store } from '@main/storage/Store';
 import { KEY, OTHER_KEY, OTHER_STEAM_ID, STEAM_ID } from '@test/helpers';
@@ -453,5 +460,118 @@ describe('Store: files of the versions with a single account', () => {
     store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
 
     expect(store.getUserData(10)).toEqual({ A: note });
+  });
+});
+
+describe('Store: files that cannot be used', () => {
+  const note = { note: 'mine', pinned: false };
+  const summary = { 10: { total: 4, unlocked: 1, playtime: 10 } };
+
+  it('leaves no half-written file behind', () => {
+    const dir = tempDir();
+
+    new Store(dir).setUserData(10, 'A', note);
+
+    expect(readdirSync(dir).filter((file) => file.endsWith('.tmp'))).toEqual(
+      [],
+    );
+    expect(new Store(dir).getUserData(10)).toEqual({ A: note });
+  });
+
+  it('keeps a damaged file aside instead of treating it as empty', () => {
+    const dir = tempDir();
+    writeFileSync(join(dir, 'userdata.json'), '{"accounts": {"7656');
+    const reported: string[] = [];
+
+    const store = new Store(dir, null, {
+      report: (message) => reported.push(message),
+    });
+    store.setUserData(10, 'A', note);
+
+    expect(readFileSync(join(dir, 'userdata.json.damaged.bak'), 'utf8')).toBe(
+      '{"accounts": {"7656',
+    );
+    expect(reported).toEqual([
+      'userdata.json could not be used (damaged); kept as userdata.json.damaged.bak',
+    ]);
+  });
+
+  it('keeps aside a file written by a later version of the app', () => {
+    const dir = tempDir();
+    const later = JSON.stringify({ version: 99, accounts: 'another shape' });
+    writeFileSync(join(dir, 'userdata.json'), later);
+
+    new Store(dir).setUserData(10, 'A', note);
+
+    expect(readFileSync(join(dir, 'userdata.json.v99.bak'), 'utf8')).toBe(
+      later,
+    );
+  });
+
+  it('sets nothing aside when the files are fine', () => {
+    const dir = tempDir();
+    new Store(dir).setUserData(10, 'A', note);
+
+    new Store(dir).setUserData(10, 'B', note);
+
+    expect(readdirSync(dir).filter((file) => file.endsWith('.bak'))).toEqual(
+      [],
+    );
+  });
+
+  it('says which version of the format each file is in', () => {
+    const dir = tempDir();
+
+    new Store(dir).setSummaries(summary);
+
+    expect(
+      (
+        JSON.parse(readFileSync(join(dir, 'cache.json'), 'utf8')) as {
+          version: number;
+        }
+      ).version,
+    ).toBe(2);
+  });
+});
+
+describe('Store: writing what was read from Steam', () => {
+  const entry = { total: 4, unlocked: 1, playtime: 10 };
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('writes a burst of reads once, after a moment', () => {
+    vi.useFakeTimers();
+    const dir = tempDir();
+    const store = new Store(dir, null, { cacheDelay: 1000 });
+
+    for (let appid = 1; appid <= 50; appid++) {
+      store.setSummaries({ [appid]: entry });
+    }
+
+    expect(existsSync(join(dir, 'cache.json'))).toBe(false);
+    vi.advanceTimersByTime(1000);
+    expect(new Store(dir).getSummary(50)).toEqual(entry);
+  });
+
+  it('answers with what was read before it is written', () => {
+    vi.useFakeTimers();
+    const store = new Store(tempDir(), null, { cacheDelay: 1000 });
+
+    store.setSummaries({ 1: entry });
+
+    expect(store.getSummary(1)).toEqual(entry);
+  });
+
+  it('writes what is waiting when asked to, as the app closes', () => {
+    vi.useFakeTimers();
+    const dir = tempDir();
+    const store = new Store(dir, null, { cacheDelay: 1000 });
+    store.setSummaries({ 1: entry });
+
+    store.flush();
+
+    expect(new Store(dir).getSummary(1)).toEqual(entry);
   });
 });

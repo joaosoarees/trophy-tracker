@@ -1,8 +1,10 @@
 import {
   chmodSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
+  renameSync,
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
@@ -119,7 +121,27 @@ interface IUserDataFile {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * The shape of the files this version writes. Version 1 is what the
+ * single-account versions wrote, which carried no number.
+ */
+const FILE_VERSION = 2;
+
+export interface IStoreOptions {
+  /**
+   * How long to wait, in milliseconds, before writing what was read from
+   * Steam. Reading a library changes the cache once per game; waiting turns
+   * hundreds of writes of the whole file into one. Zero writes at once.
+   */
+  cacheDelay?: number;
+  /** Told when a file could not be used and was set aside. */
+  report?: (message: string) => void;
+}
+
 export class Store {
+  private cacheDelay: number;
+  private report: (message: string) => void;
+  private cacheTimer: ReturnType<typeof setTimeout> | null = null;
   private config: IConfigFile;
   private cache: ICacheFile;
   private userData: IUserDataFile;
@@ -128,7 +150,10 @@ export class Store {
   constructor(
     private dir: string,
     private cipher: ICipher | null = null,
+    { cacheDelay = 0, report = () => {} }: IStoreOptions = {},
   ) {
+    this.cacheDelay = cacheDelay;
+    this.report = report;
     mkdirSync(dir, { recursive: true });
     this.config = this.readConfig();
     this.cache = this.readCache();
@@ -137,23 +162,66 @@ export class Store {
     if (this.cache.language !== this.getLanguage()) this.dropTranslatedCache();
   }
 
+  /**
+   * Reads a file, or answers the fallback when there is none. A file that
+   * cannot be used is never just treated as empty, because the next write
+   * would then erase it for good: it is copied aside first. That covers a
+   * file cut short by a crash and one written by a later version of the app.
+   */
   private read<T>(name: string, fallback: T): T {
     const file = join(this.dir, name);
     if (!existsSync(file)) return fallback;
+
+    let parsed: unknown;
     try {
-      return {
-        ...fallback,
-        ...(JSON.parse(readFileSync(file, 'utf8')) as Partial<T>),
-      };
+      parsed = JSON.parse(readFileSync(file, 'utf8'));
     } catch {
+      this.setAside(name, 'damaged');
       return fallback;
+    }
+    if (!isRecord(parsed)) {
+      this.setAside(name, 'damaged');
+      return fallback;
+    }
+
+    const { version, ...content } = parsed;
+    if (typeof version === 'number' && version > FILE_VERSION) {
+      this.setAside(name, `v${version}`);
+      return fallback;
+    }
+    return { ...fallback, ...(content as Partial<T>) };
+  }
+
+  private setAside(name: string, reason: string): void {
+    const copy = `${name}.${reason}.bak`;
+    try {
+      copyFileSync(join(this.dir, name), join(this.dir, copy));
+      // The copy may hold a key: as private as the file it came from.
+      chmodSync(join(this.dir, copy), 0o600);
+      this.report(`${name} could not be used (${reason}); kept as ${copy}`);
+    } catch {
+      this.report(`${name} could not be used (${reason}) nor copied aside`);
     }
   }
 
-  private write(name: string, data: unknown, mode?: number): void {
+  /**
+   * Writes a whole file under a temporary name and then puts it in place, so
+   * a crash in the middle leaves the previous file, not half of the new one.
+   */
+  private write(name: string, data: object, mode?: number): void {
     const file = join(this.dir, name);
-    writeFileSync(file, JSON.stringify(data, null, 2), { mode });
-    if (mode !== undefined) chmodSync(file, mode);
+    const temporary = `${file}.tmp`;
+    const content = { version: FILE_VERSION, ...data };
+    writeFileSync(
+      temporary,
+      // The cache is large and only the app reads it; the rest stays readable.
+      name === 'cache.json'
+        ? JSON.stringify(content)
+        : JSON.stringify(content, null, 2),
+      { mode },
+    );
+    if (mode !== undefined) chmodSync(temporary, mode);
+    renameSync(temporary, file);
   }
 
   /** `config.json`, or what the single-account versions left in it. */
@@ -373,6 +441,18 @@ export class Store {
   }
 
   private saveCache(): void {
+    if (this.cacheDelay === 0) {
+      this.write('cache.json', this.cache);
+      return;
+    }
+    this.cacheTimer ??= setTimeout(() => this.flush(), this.cacheDelay);
+  }
+
+  /** Writes what is waiting to be written; called before the app closes. */
+  flush(): void {
+    if (this.cacheTimer === null) return;
+    clearTimeout(this.cacheTimer);
+    this.cacheTimer = null;
     this.write('cache.json', this.cache);
   }
 

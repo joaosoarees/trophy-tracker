@@ -64,7 +64,11 @@ void app.whenReady().then(async () => {
       app.getPath('userData'),
     );
   }
-  const store = new Store(app.getPath('userData'), createCipher());
+  const store = new Store(app.getPath('userData'), createCipher(), {
+    cacheDelay: 1_000,
+    report: (message) => log('storage', message),
+  });
+  app.on('before-quit', () => store.flush());
   // Development only: `pnpm audit:ui` points the app at a fake Steam, so it
   // can be driven through unlocks, errors and outages with no real account.
   // An installed app ignores the variable: the user's key is sent to whatever
