@@ -2,6 +2,19 @@
 
 Why things are the way they are, for the choices that are not obvious from the code. `CLAUDE.md` holds the rules; this file holds the reasons and what was tried before. Newest first. Add an entry when a choice is made that someone could reasonably want to undo.
 
+## Unsigned for now
+
+SignPath Foundation refused the application for free signing in October 2026. The reason was the project's visibility, not its quality: they look for stars, forks, contributors and mentions elsewhere, and invite a new application once there are some.
+
+What else was looked into that month, for when this is taken up again (prices and rules change; check before spending):
+
+- **Microsoft Store.** Free for an individual since September 2025, with an identity check. The app goes as an MSIX package that Microsoft signs, and the Store takes over updates. The likeliest way past Smart App Control at no cost, though no official page was found saying so in those words. It means a second package and a Store listing to keep.
+- **Certum Open Source Code Signing.** About 50 euros a year, in the developer's own name. Signing needs a code from a phone app each time, so releases would stop being automatic, and reports differ on whether Smart App Control accepts it.
+- **Azure Artifact Signing.** Ten dollars a month, but individuals are only accepted in the United States and Canada.
+- **Apple Developer ID**, for macOS: 99 dollars a year, the only way to automatic updates and to opening the app with no warning there.
+
+The owner chose to go on unsigned. The app already copes: where Windows would refuse the installer, it does not download it and says why.
+
 ## Storage that cannot lose a file
 
 A file used to be written straight over the previous one, and a file that could not be parsed was treated as empty. A crash in the middle of a write (or the updater closing the app) left half a file; the next start read it as "no notes", and the first edit erased it for good. Files are now written under a temporary name and renamed into place, and one that cannot be used is copied aside before the app starts from nothing. Each file carries the version of its format, so a later version's file is recognised and kept instead of being guessed at.
@@ -54,7 +67,7 @@ macOS cannot update itself: its updater only replaces an app signed with an Appl
 
 Found the hard way: 0.1.0 and 0.2.0 installed, 0.3.0 was refused by the same machine. With Smart App Control on, Windows runs an unsigned executable only if Microsoft's reputation service accepts it, which cannot be predicted, and there is no per-app exception. So the app does not download or restart there; the notice says the system would block the install. The check looks at the signature of the running app, so it stops applying by itself once the installers are signed.
 
-Signing is to come from SignPath Foundation, free for open source, which is why the project has the MIT license and the "Code signing policy" and "Privacy" sections of the README.
+The MIT license and the "Code signing policy" and "Privacy" sections of the README were written for an application to SignPath Foundation, which signs open-source projects for free. See "Unsigned for now".
 
 ## The audit and the fake Steam
 

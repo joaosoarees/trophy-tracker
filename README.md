@@ -16,7 +16,7 @@ Download the installer for your system from the [latest release](https://github.
 
 The installers are not signed with a paid certificate yet, so the system warns on first run:
 
-- **Windows:** on the SmartScreen warning, choose "More info" and then "Run anyway". If **Smart App Control** is on (Windows Security → App & browser control), Windows may refuse to run the installer altogether, with no way to allow it: an unsigned installer only runs there when Microsoft's reputation service happens to accept it. Signing the installers is being arranged.
+- **Windows:** on the SmartScreen warning, choose "More info" and then "Run anyway". If **Smart App Control** is on (Windows Security → App & browser control), Windows may refuse to run the installer altogether, with no way to allow it: an unsigned installer only runs there when Microsoft's reputation service happens to accept it. There is no date for the installers to be signed.
 - **macOS:** after the first attempt to open the app, go to System Settings → Privacy & Security and choose "Open Anyway".
 - **Linux:** `sudo apt install ./Trophy-Tracker-<version>-Linux-Debian-Ubuntu.deb`, or make the AppImage executable (`chmod +x`) and run it.
 
