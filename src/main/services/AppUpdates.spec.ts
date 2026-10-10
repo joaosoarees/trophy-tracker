@@ -28,7 +28,8 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 interface ISetup {
   hasAuto?: boolean;
-  isBlocked?: boolean;
+  /** Whether the system would refuse the installer; `unknown` when it cannot be asked. */
+  isBlocked?: boolean | 'unknown';
   /** What the automatic check finds. */
   latest?: string | null;
   /** Version a previous run closed itself to install. */
@@ -41,9 +42,19 @@ function setup({
   latest = '1.1.0',
   attempted = null,
 }: ISetup = {}) {
-  const calls = { check: 0, download: 0, install: 0, manual: 0, forced: 0 };
-  /** What the updater finds; a test changes it to publish or withdraw a release. */
-  const net = { online: true, latest };
+  const calls = {
+    check: 0,
+    download: 0,
+    install: 0,
+    manual: 0,
+    forced: 0,
+    blocked: 0,
+  };
+  /**
+   * What the updater finds; a test changes it to publish or withdraw a
+   * release, or to make the download of what was found fail.
+   */
+  const net = { online: true, latest, canDownload: true };
   const changes: IAppInfo[] = [];
   const logged: string[] = [];
   const clock = { now: 0 };
@@ -60,7 +71,9 @@ function setup({
     },
     download: () => {
       calls.download++;
-      return Promise.resolve();
+      return net.canDownload
+        ? Promise.resolve()
+        : Promise.reject(new Error('connection lost'));
     },
     install: () => void calls.install++,
   };
@@ -77,7 +90,12 @@ function setup({
         return Promise.resolve(net.online);
       },
     },
-    isInstallBlocked: () => Promise.resolve(isBlocked),
+    isInstallBlocked: () => {
+      calls.blocked++;
+      return isBlocked === 'unknown'
+        ? Promise.reject(new Error('the system did not say'))
+        : Promise.resolve(isBlocked);
+    },
     attempt: {
       get: () => attempt.version,
       set: (version) => (attempt.version = version),
@@ -347,6 +365,46 @@ describe('AppUpdates', () => {
       },
     );
 
+    it('should download the new version when the system cannot say whether it would refuse to install it', async () => {
+      const { sut } = setup({ isBlocked: 'unknown' });
+
+      const answer = await sut.checkNow();
+
+      expect(answer).toEqual({ ok: true, info: downloading(0) });
+    });
+
+    it('should ask the system once whether it would refuse the install when it is asked for news several times', async () => {
+      const { sut, calls } = setup();
+      await sut.checkNow();
+      await sut.getAppInfo();
+
+      await sut.checkNow();
+
+      expect(calls.blocked).toBe(1);
+    });
+
+    it('should point to the download page when the download of the version found cannot be made', async () => {
+      const { sut, changes, net } = setup();
+      net.canDownload = false;
+
+      await sut.checkNow();
+      await settle();
+
+      expect(changes).toEqual([downloading(0), MANUAL]);
+    });
+
+    it('should start the next download from zero when the one before it failed halfway', async () => {
+      const { sut, emit } = setup();
+      await sut.checkNow();
+      emit().onProgress(50);
+      emit().onError('connection lost');
+      await settle();
+
+      const answer = await sut.checkNow();
+
+      expect(answer).toEqual({ ok: true, info: downloading(0) });
+    });
+
     it('should answer the new version as blocked, downloading nothing, when the system would refuse to install it', async () => {
       const { sut, calls } = setup({ isBlocked: true });
 
@@ -446,6 +504,34 @@ describe('AppUpdates', () => {
     it('should fall back to the download page when the updater reports an error', async () => {
       const { sut, changes, emit } = setup();
       await sut.checkNow();
+
+      emit().onError('checksum mismatch');
+      await settle();
+
+      expect(changes).toEqual([downloading(0), MANUAL]);
+    });
+
+    it.each([
+      { reported: -5, shown: 0 },
+      { reported: 100.4, shown: 100 },
+      { reported: 250, shown: 100 },
+    ])(
+      'should announce $shown percent when the updater reports $reported',
+      async ({ reported, shown }) => {
+        const { sut, changes, emit } = setup();
+        await sut.checkNow();
+        emit().onProgress(50);
+
+        emit().onProgress(reported);
+
+        expect(changes.at(-1)).toEqual(downloading(shown));
+      },
+    );
+
+    it('should point to the download page once when the updater reports a second error', async () => {
+      const { sut, changes, emit } = setup();
+      await sut.checkNow();
+      emit().onError('checksum mismatch');
 
       emit().onError('checksum mismatch');
       await settle();
