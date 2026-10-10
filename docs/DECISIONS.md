@@ -65,6 +65,12 @@ A Web API key can read any public profile, so a second key is not technically ne
 
 A saved key is never revealed or copied: whoever needs it has it on Steam's page, and the interface never receives more than its last four characters.
 
+## A running game decides the account
+
+Found by the owner on 1.0.0: with the second account picked by hand and Steam on the first, starting a game the second account does not own made the Game tab say "your profile's game details are not public". The app was reading the first account's game with the second account's key, and Steam answers an unowned game like a private profile.
+
+The follower only acted when the client's account changed, so a manual pick stood even against a running game. It now also acts when a game starts, and while the game runs the other accounts cannot be switched to: the owner asked for that, since switching back would recreate the same wrong screen. When the game closes the app stays where it is.
+
 ## Following the Steam account on every system
 
 It was Windows only at first, out of caution: there the registry says who is signed in. The Steam client's own files say the same on macOS and Linux, the app already read them to offer the SteamID in the setup, and the audit had been following an account through those files all along. So the restriction was removed. On macOS and Linux it was checked through the audit's fake client folder, not on a real Steam install.

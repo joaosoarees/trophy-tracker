@@ -2,6 +2,13 @@
 
 What changed in each version, for whoever uses the app. The section of a version is what its release shows on GitHub.
 
+## Unreleased
+
+### Fixed
+
+- With more than one account, starting a game that only the account signed in to Steam owns no longer shows "your profile's game details are not public". The app switches to the account that is playing, and stays on it while the game runs.
+- A game running on a Steam account that is not in the app is said to be so, with a way to add that account.
+
 ## 1.0.0
 
 The first version called final. It does what 0.7.0 did, with what had lost its reason taken out.
