@@ -950,9 +950,36 @@ async function auditAccounts(page, steam, home) {
     `the switch made by the app is not announced (toasts: "${toast}")`,
   );
 
-  // Steam starts refusing the key in use: the game stays, with a notice.
+  // Steam starts refusing the key in use with Settings open on its account:
+  // the field that replaces it opens by itself, and closed by hand it stays so.
+  const KEY_FIELD = `document.querySelector('main input[type="password"]')`;
+  await openSettings();
+  expectThat(
+    FLOW,
+    await page.evaluate(`${KEY_FIELD} === null`),
+    'the field that replaces a key is open on an account whose key works',
+  );
   steam.state.mode = 'bad-key';
   await page.evaluate(refreshGame);
+  const refusedInSettings = await waitFor(
+    page,
+    `${ACCOUNT_CARDS}[0].innerText.includes('Key refused by Steam')`,
+  );
+  expectThat(
+    FLOW,
+    refusedInSettings && (await waitFor(page, `${KEY_FIELD} !== null`, 3000)),
+    'the field that replaces a key does not open when the key is refused with Settings open',
+  );
+  await page.evaluate(clickButton('main', 'Replace key'));
+  await sleep(1200);
+  expectThat(
+    FLOW,
+    await page.evaluate(`${KEY_FIELD} === null`),
+    'the field of a refused key, closed by hand, does not stay closed',
+  );
+
+  // On the other tabs the game stays, with a notice.
+  await page.evaluate(navButton(0));
   const noticed = await waitFor(
     page,
     `(${visibleText('[role="alert"]')}).includes('Steam refused the key of Audit Hunter')`,
