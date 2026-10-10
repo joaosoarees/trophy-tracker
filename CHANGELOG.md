@@ -2,11 +2,19 @@
 
 What changed in each version, for whoever uses the app. The section of a version is what its release shows on GitHub.
 
-## Unreleased
+## 1.0.0
 
-- The app follows the account signed in to Steam on macOS and Linux too, not only on Windows.
+The first version called final. It does what 0.7.0 did, with what had lost its reason taken out.
+
+### Changed
+
 - The first setup has two steps instead of three: once an account is verified, the same step enters the app.
-- The app no longer reads the files of versions before 0.7.0. Update to 0.7.0 first if you are on an older version and want to keep your setup and notes; otherwise the app starts from the initial setup, and the old files are kept beside the new ones as `.v1.bak`.
+- The app follows the account signed in to Steam on macOS and Linux too, not only on Windows.
+- The card of an account no longer shows a date beside its key. The date was when the account was added, while reading as when the key was last checked.
+
+### Before you update
+
+Come from 0.7.0. The app no longer reads the files of versions before it: from an older version it starts from the initial setup, and your old files are kept beside the new ones as `.v1.bak`, without being loaded. Opening 0.7.0 once on that computer first carries everything over.
 
 ## 0.7.0
 
