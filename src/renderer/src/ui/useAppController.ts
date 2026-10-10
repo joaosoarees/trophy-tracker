@@ -3,7 +3,6 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { useT } from '@app/hooks/useT';
 import { connectStore, useStore } from '@app/store';
-import { type IAppState } from '@shared/types/AppState';
 
 export function useAppController() {
   const t = useT();
@@ -13,7 +12,6 @@ export function useAppController() {
     current,
     isAddingAccount,
     load,
-    finishSetup,
     followRunningGame,
     stopAddingAccount,
     startUpdates,
@@ -29,7 +27,6 @@ export function useAppController() {
       current: state.session.current,
       isAddingAccount: state.navigation.isAddingAccount,
       load: state.settings.load,
-      finishSetup: state.settings.finishSetup,
       followRunningGame: state.navigation.followRunningGame,
       stopAddingAccount: state.navigation.stopAddingAccount,
       startUpdates: state.updates.start,
@@ -68,21 +65,13 @@ export function useAppController() {
     if (runningAppId !== undefined) followRunningGame(runningAppId);
   }, [runningAppId, followRunningGame]);
 
-  /**
-   * Leaves the account step. The first setup hands over the state it
-   * produced; an account added to the app is in the store already.
-   */
-  function handleOnboardingDone(next: IAppState) {
-    stopAddingAccount();
-    finishSetup(next);
-  }
-
   return {
     appState,
     isOnboardingShown: !isConfigured || isAddingAccount,
     // With the app already set up, the step is only there to add an account.
     isAddingAccount: isConfigured && isAddingAccount,
-    handleOnboardingDone,
+    // The step has told the store what it saved by then (`finishSetup`).
+    handleOnboardingDone: stopAddingAccount,
     handleOnboardingCancel: stopAddingAccount,
     isStartingUp: updateStartup !== 'done',
     // While only checking there is no version to show yet.
