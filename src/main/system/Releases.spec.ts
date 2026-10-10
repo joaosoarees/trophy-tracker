@@ -35,6 +35,33 @@ describe('Releases', () => {
       },
     );
 
+    it('should lead where the system it runs on is led when none is named', () => {
+      const url = Releases.downloadUrl({ version: '1.2.0', arch: 'arm64' });
+
+      expect(url).toBe(
+        Releases.downloadUrl({
+          version: '1.2.0',
+          platform: process.platform,
+          arch: 'arm64',
+        }),
+      );
+    });
+
+    it('should lead to the disk image of the processor it runs on when a Mac names none', () => {
+      const url = Releases.downloadUrl({
+        version: '1.2.0',
+        platform: 'darwin',
+      });
+
+      expect(url).toBe(
+        Releases.downloadUrl({
+          version: '1.2.0',
+          platform: 'darwin',
+          arch: process.arch,
+        }),
+      );
+    });
+
     it('should lead to the page of the latest release when no version is known', () => {
       const url = Releases.downloadUrl({
         version: null,
