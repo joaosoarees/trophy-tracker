@@ -61,6 +61,7 @@ export function AccountStep({
     isSteamIdLocked,
     isSteamIdNotFound,
     handleVerify,
+    handleEnter,
     handleRemove,
     handleOpenForm,
     handleCloseForm,
@@ -73,13 +74,6 @@ export function AccountStep({
     : privacyProblem
       ? text.privacy.testAgain
       : text.verify;
-
-  // Enter in a field checks the account instead of submitting the whole form.
-  function handleEnter(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== 'Enter') return;
-    event.preventDefault();
-    handleVerify();
-  }
 
   return (
     <div>

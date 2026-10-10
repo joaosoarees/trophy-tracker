@@ -30,6 +30,7 @@ export default defineConfig({
         'src/main/**/*.ts',
         'src/shared/**/*.ts',
         'src/renderer/src/app/lib/saver.ts',
+        'src/renderer/src/app/lib/singleFlight.ts',
         // The store slices that hold logic, tested against a fake main
         // process, with what wires them to its events and the rule that
         // drops an answer that arrives after the account changed.

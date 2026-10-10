@@ -25,6 +25,7 @@ What changed in each version, for whoever uses the app. The section of a version
 - In the first setup, changing the language after an account was added no longer leaves the app in the previous language when the setup ends.
 - In the first setup, removing the only account while "Add another account" is open no longer leaves a "Finish" button that does nothing, nor an empty step after "Cancel": the form is the first account's again, empty, and offers the account signed in to Steam once more.
 - After "Use another account", the setup no longer says it could not find an account signed in to the Steam client when it had found one.
+- Holding Enter in the Web API key field, in the setup or when replacing a key in Settings, checks the key with Steam once instead of once per repeat of the key.
 - An account picked by hand in Settings is no longer undone, some time later, when the app fails once to read which account is signed in to Steam.
 - Switching account while the app is still reading from Steam no longer mixes the two accounts: a game on the dashboard keeps its own account's playtime and progress, a game both accounts own is not shown with the other account's achievements, and a key Steam refuses is marked on the account it belongs to.
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { useT } from '@app/hooks/useT';
+import { singleFlight } from '@app/lib/singleFlight';
 import { AccountsService } from '@app/services/AccountsService';
 import { useStore } from '@app/store';
 import { type IAccount } from '@shared/types/Account';
@@ -16,6 +17,9 @@ export function useAccountDetailsController(account: IAccount) {
   const [key, setKey] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  // One save at a time: Enter held down in the field asks again before the
+  // button is drawn disabled.
+  const [saveOnce] = useState(singleFlight);
   const [isChecking, setIsChecking] = useState(false);
   const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
 
@@ -25,7 +29,7 @@ export function useAccountDetailsController(account: IAccount) {
     setProblem(null);
   }
 
-  async function handleSaveKey() {
+  async function saveKey() {
     if (!API_KEY_PATTERN.test(key.trim())) {
       setProblem(t.validation.apiKeyFormat);
       return;
@@ -33,22 +37,29 @@ export function useAccountDetailsController(account: IAccount) {
 
     setIsSaving(true);
     setProblem(null);
-    const result = await AccountsService.replaceKey(account.steamId, key);
-    setIsSaving(false);
-    if (!result.ok) {
-      setProblem(result.error);
-      return;
+    // A call that fails must not leave the button disabled for good.
+    try {
+      const result = await AccountsService.replaceKey(account.steamId, key);
+      if (!result.ok) {
+        setProblem(result.error);
+        return;
+      }
+      // The key is not kept here a moment longer than it takes to save it.
+      setKey('');
+      setIsReplacing(false);
+      apply(result.value);
+    } finally {
+      setIsSaving(false);
     }
-    // The key is not kept here a moment longer than it takes to save it.
-    setKey('');
-    setIsReplacing(false);
-    apply(result.value);
   }
 
   async function handleRecheck() {
     setIsChecking(true);
-    apply(await AccountsService.recheck(account.steamId));
-    setIsChecking(false);
+    try {
+      apply(await AccountsService.recheck(account.steamId));
+    } finally {
+      setIsChecking(false);
+    }
   }
 
   function handleRemove() {
@@ -66,7 +77,7 @@ export function useAccountDetailsController(account: IAccount) {
     setKey,
     setIsConfirmingRemoval,
     handleToggleReplacing,
-    handleSaveKey: () => void handleSaveKey(),
+    handleSaveKey: () => void saveOnce(saveKey),
     handleRecheck: () => void handleRecheck(),
     handleRemove,
   };

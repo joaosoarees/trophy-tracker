@@ -1,6 +1,13 @@
-import { useEffect, useEffectEvent, useReducer, useState } from 'react';
+import {
+  type KeyboardEvent,
+  useEffect,
+  useEffectEvent,
+  useReducer,
+  useState,
+} from 'react';
 import { useFormContext } from 'react-hook-form';
 
+import { singleFlight } from '@app/lib/singleFlight';
 import { AccountsService } from '@app/services/AccountsService';
 import { OnboardingService } from '@app/services/OnboardingService';
 import { type IAccount } from '@shared/types/Account';
@@ -39,6 +46,10 @@ export function useAccountStepController({
     createAccountFormState,
   );
   const [isVerifying, setIsVerifying] = useState(false);
+  // One check at a time. The buttons are disabled by `isVerifying`, but Enter
+  // held down in a field asks again before that is drawn, and nothing in a
+  // render can tell it: the guard is kept outside of them.
+  const [verifyOnce] = useState(singleFlight);
   /** Steam refused the key or the SteamID. */
   const [problem, setProblem] = useState<string | null>(null);
   /** The key works but Steam does not let the achievements be read. */
@@ -84,7 +95,7 @@ export function useAccountStepController({
    * The key alone does not say whose it is, so both are checked together.
    * An account Steam accepts is saved right away and joins the list.
    */
-  async function handleVerify() {
+  async function verify() {
     const isValid = await form.trigger(
       ['accountStep.steamId', 'accountStep.apiKey'],
       { shouldFocus: true },
@@ -96,25 +107,38 @@ export function useAccountStepController({
     setPrivacyProblem(null);
     const { steamId, apiKey } = form.getValues('accountStep');
 
-    const account = await OnboardingService.checkApiKey(steamId, apiKey);
-    if (!account.ok) {
-      setIsVerifying(false);
-      setProblem(account.error);
-      return;
-    }
+    // A call that fails must not leave the buttons disabled for good.
+    try {
+      const account = await OnboardingService.checkApiKey(steamId, apiKey);
+      if (!account.ok) {
+        setProblem(account.error);
+        return;
+      }
 
-    const privacy = await OnboardingService.checkPrivacy(steamId, apiKey);
-    if (!privacy.ok) {
-      setIsVerifying(false);
-      setPrivacyProblem(privacy.error);
-      return;
-    }
+      const privacy = await OnboardingService.checkPrivacy(steamId, apiKey);
+      if (!privacy.ok) {
+        setPrivacyProblem(privacy.error);
+        return;
+      }
 
-    const next = await OnboardingService.addAccount(steamId, apiKey);
-    setIsVerifying(false);
-    onChange(next, steamId.trim());
-    emptyForm();
-    dispatch({ type: 'closed' });
+      const next = await OnboardingService.addAccount(steamId, apiKey);
+      onChange(next, steamId.trim());
+      emptyForm();
+      dispatch({ type: 'closed' });
+    } finally {
+      setIsVerifying(false);
+    }
+  }
+
+  function handleVerify() {
+    void verifyOnce(verify);
+  }
+
+  /** Enter in a field checks the account instead of submitting the whole form. */
+  function handleEnter(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    handleVerify();
   }
 
   async function handleRemove(steamId: string) {
@@ -153,7 +177,8 @@ export function useAccountStepController({
     isSteamIdLocked: formState.detection === 'inField',
     /** Nobody is signed in to the Steam client: the SteamID has to be typed. */
     isSteamIdNotFound: formState.detection === 'none',
-    handleVerify: () => void handleVerify(),
+    handleVerify,
+    handleEnter,
     handleRemove: (steamId: string) => void handleRemove(steamId),
     handleOpenForm,
     handleCloseForm,

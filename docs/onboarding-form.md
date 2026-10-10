@@ -12,6 +12,7 @@ Forms are react-hook-form + zod. The setup (`ui/screens/Onboarding/`) is one for
 - **The Web API key lives only in its field while it is typed.** It is not kept in `sessionStorage` or anywhere else, and a saved key is never put back on screen.
 - The `Stepper`'s state is local to the component (`useReducer`), on purpose: do not move it to the store.
 - Enter in a field is that step's own "advance", never the submit of the whole form.
+- **A submit that asks the main process runs once at a time, and always gives its button back.** The button is disabled by a pending flag in state, but Enter held down in a field asks again before that is drawn: the handler goes through `singleFlight` (`app/lib/singleFlight.ts`, kept with `useState(singleFlight)`), which drops a call made while the previous one runs. The flag is cleared in a `finally`, so a call that fails does not leave the button disabled. `useAccountStepController` ("Verify") and `useAccountDetailsController` ("Verify and save") are the models.
 - A form adds `schema.ts` to its folder.
 
 ## How the form is built
