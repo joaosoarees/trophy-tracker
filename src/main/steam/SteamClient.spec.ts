@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { type Language } from '@shared/i18n';
 import { en } from '@shared/i18n/locales/en';
@@ -169,6 +169,50 @@ describe('SteamClient', () => {
 
       expect(fetchImpl.inits[0]?.signal).toBeInstanceOf(AbortSignal);
     });
+
+    describe('with the limit users get', () => {
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it('should give a request fifteen seconds when it was built with no limit of its own', async () => {
+        const timeoutMock = vi.spyOn(AbortSignal, 'timeout');
+        const sut = new SteamClient(fakeFetch({ GetOwnedGames: owned() }));
+
+        await sut.getOwnedGames(CREDENTIALS);
+
+        expect(timeoutMock).toHaveBeenCalledExactlyOnceWith(15_000);
+      });
+    });
+  });
+
+  describe('an answer that refuses the request', () => {
+    it.each([
+      {
+        what: 'the status 401',
+        route: { status: 401, text: 'Unauthorized' },
+        kind: 'invalid-key',
+      },
+      {
+        what: 'the status 403 and JSON that gives no reason',
+        route: { status: 403, json: {} },
+        kind: 'private',
+      },
+      {
+        what: 'the status 429',
+        route: { status: 429, text: 'Too Many Requests' },
+        kind: 'rate-limited',
+      },
+    ] as const)(
+      'should refuse with $kind when Steam answers $what',
+      async ({ route, kind }) => {
+        const { sut } = setup({ GetOwnedGames: route });
+
+        const gamesPromise = sut.getOwnedGames(CREDENTIALS);
+
+        await expect(gamesPromise).rejects.toThrow(new SteamError(kind));
+      },
+    );
   });
 
   describe('getPlayerSummary', () => {
@@ -401,6 +445,66 @@ describe('SteamClient', () => {
         context: { language: 'brazilian', country_code: 'BR' },
         data_request: { include_assets: true },
       });
+    });
+
+    it('should ask the store about fifty games at a time when it is asked about more', async () => {
+      const { sut, fetchImpl } = setup({ GetItems: STORE_WITH_ART_OF_GAME_1 });
+      const appids = Array.from({ length: 120 }, (_, i) => i + 1);
+
+      await sut.getStoreArt(appids);
+
+      const asked = fetchImpl.calls.map((call) => {
+        const input = new URL(call).searchParams.get('input_json') ?? '';
+        const { ids } = JSON.parse(input) as { ids: { appid: number }[] };
+        return ids.map(({ appid }) => appid);
+      });
+      expect(asked).toEqual([
+        appids.slice(0, 50),
+        appids.slice(50, 100),
+        appids.slice(100),
+      ]);
+    });
+
+    it('should answer the art of the games of every request when it asks the store more than once', async () => {
+      const artOf = (appid: number) => ({
+        appid,
+        assets: {
+          asset_url_format: `steam/apps/${appid}/\${FILENAME}`,
+          header: 'header.jpg',
+          small_capsule: 'capsule.jpg',
+        },
+      });
+      const { sut } = setup({
+        GetItems: (url) => {
+          const input = url.searchParams.get('input_json') ?? '';
+          const { ids } = JSON.parse(input) as { ids: { appid: number }[] };
+          return {
+            json: { response: { store_items: [artOf(ids[0].appid)] } },
+          };
+        },
+      });
+      const appids = Array.from({ length: 51 }, (_, i) => i + 1);
+
+      const art = await sut.getStoreArt(appids);
+
+      expect(art).toEqual(
+        new Map([
+          [
+            1,
+            {
+              header: `${ASSETS}/steam/apps/1/header.jpg`,
+              capsule: `${ASSETS}/steam/apps/1/capsule.jpg`,
+            },
+          ],
+          [
+            51,
+            {
+              header: `${ASSETS}/steam/apps/51/header.jpg`,
+              capsule: `${ASSETS}/steam/apps/51/capsule.jpg`,
+            },
+          ],
+        ]),
+      );
     });
 
     it('should refuse with unknown when the store fails', async () => {
