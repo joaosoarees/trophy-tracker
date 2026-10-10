@@ -74,8 +74,13 @@ void app.whenReady().then(async () => {
   const windows = new Windows();
   const browser = new Browser(windows);
   const window = new MainWindow(browser);
-  const setup = new SetupService(store, client, (state) =>
-    window.send(IpcEvent.stateChanged, state, false),
+  const logError = (source: string, detail: string): void =>
+    errorLog.write(source, detail);
+  const setup = new SetupService(
+    store,
+    client,
+    (state) => window.send(IpcEvent.stateChanged, state, false),
+    logError,
   );
   // With a fake Steam the local client is fake too: a folder the audit fills
   // in, read the way a Linux install is, or no client at all.
@@ -107,7 +112,7 @@ void app.whenReady().then(async () => {
       set: (version) => store.setUpdateAttempt(version),
     },
     onChange: (info) => window.send(IpcEvent.appInfoChanged, info),
-    logError: (source, detail) => errorLog.write(source, detail),
+    logError,
   });
 
   // The game that is running is always the Steam client's account's, so the

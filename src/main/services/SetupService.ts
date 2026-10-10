@@ -8,16 +8,19 @@ import { API_KEY_PATTERN, isSteamId } from '@shared/validation';
 import { type SteamClient, SteamError } from '../steam/SteamClient';
 import { type Store } from '../storage/Store';
 
-const fail = (error: string): { ok: false; error: string } => ({
-  ok: false,
-  error,
-});
-
 /** What a failed read says about the key it was made with, when it says anything. */
 const STATUS_OF: Partial<Record<SteamError['kind'], AccountStatus>> = {
   'invalid-key': 'rejected',
   'rate-limited': 'rateLimited',
 };
+
+/** What a failure means, whichever call met it. */
+interface IFailure {
+  /** What it says about the key the call was made with, when it says anything. */
+  status: AccountStatus | undefined;
+  /** What to show the user for it. */
+  message: string;
+}
 
 /**
  * Whether the app is set up, in which language, which accounts it knows and
@@ -29,6 +32,7 @@ export class SetupService {
     private client: SteamClient,
     /** Told when the state changes without the interface having asked for it. */
     private onChange: (state: IAppState) => void = () => {},
+    private logError: (source: string, detail: string) => void = () => {},
   ) {
     this.client.language = this.store.getLanguage();
   }
@@ -72,27 +76,50 @@ export class SetupService {
    * with what it had, and says which key needs attention.
    */
   noticeFailure(e: unknown, steamId = this.store.getActiveSteamId()): string {
-    if (e instanceof SteamError) {
-      const status = STATUS_OF[e.kind];
-      if (status) this.mark(steamId, status);
-      return e.describe(this.messages);
-    }
-    console.error(e);
-    return this.messages.errors.unexpected;
+    const { status, message } = this.interpret(e);
+    if (status) this.mark(steamId, status);
+    return message;
   }
 
-  /** Records what Steam has just said about an account's key, if it is news. */
+  /**
+   * The one place a failure is described. Steam's own failures are expected
+   * and have their message; anything else is a fault of the app, which goes
+   * to the error log while the user is told only that it happened.
+   */
+  private interpret(e: unknown): IFailure {
+    if (e instanceof SteamError) {
+      return { status: STATUS_OF[e.kind], message: e.describe(this.messages) };
+    }
+    this.logError(
+      'main: steam read',
+      e instanceof Error ? (e.stack ?? e.message) : String(e),
+    );
+    return { status: undefined, message: this.messages.errors.unexpected };
+  }
+
+  /** Records what Steam has just said about an account's key, and tells the interface if it is news. */
   private mark(steamId: string | null, status: AccountStatus): void {
+    if (this.record(steamId, status)) this.onChange(this.getState());
+  }
+
+  /** Writes an account's key status down when it differs; answers whether it did. */
+  private record(steamId: string | null, status: AccountStatus): boolean {
     const account = this.store.getAccounts().find((a) => a.steamId === steamId);
-    if (!account || account.status === status) return;
+    if (!account || account.status === status) return false;
     this.store.setAccountStatus(account.steamId, status);
-    this.onChange(this.getState());
+    return true;
+  }
+
+  private static fail(error: string): { ok: false; error: string } {
+    return { ok: false, error };
   }
 
   /** Checks the pair for an account that is not in the app yet. */
   checkApiKey(steamId: string, apiKey: string): Promise<CheckResult<IProfile>> {
     if (this.store.getCredentialsOf(steamId.trim()) !== null) {
-      return Promise.resolve(fail(this.messages.accounts.alreadyAdded));
+      return Promise.resolve(
+        SetupService.fail(this.messages.accounts.alreadyAdded),
+      );
     }
     return this.checkPair(steamId, apiKey);
   }
@@ -106,7 +133,7 @@ export class SetupService {
     const creds = { steamId: steamId.trim(), apiKey: apiKey.trim() };
     try {
       const games = await this.client.getOwnedGames(creds);
-      if (games === null) return fail(m.check.privacyBlocked);
+      if (games === null) return SetupService.fail(m.check.privacyBlocked);
       const played = games
         .filter((g) => g.playtime_forever > 0)
         .sort(
@@ -121,14 +148,14 @@ export class SetupService {
         } catch (e) {
           if (e instanceof SteamError && e.kind === 'no-stats') continue;
           if (e instanceof SteamError && e.kind === 'private') {
-            return fail(m.check.privacyBlocked);
+            return SetupService.fail(m.check.privacyBlocked);
           }
           throw e;
         }
       }
       return { ok: true, value: { gamesWithPlaytime: played.length } };
     } catch (e) {
-      return fail(this.describe(e));
+      return SetupService.fail(this.interpret(e).message);
     }
   }
 
@@ -144,8 +171,9 @@ export class SetupService {
     const m = this.messages;
     const id = steamId.trim();
     const key = apiKey.trim();
-    if (!isSteamId(id)) return fail(m.validation.steamIdFormat);
-    if (!API_KEY_PATTERN.test(key)) return fail(m.validation.apiKeyFormat);
+    if (!isSteamId(id)) return SetupService.fail(m.validation.steamIdFormat);
+    if (!API_KEY_PATTERN.test(key))
+      return SetupService.fail(m.validation.apiKeyFormat);
     try {
       const p = await this.client.getPlayerSummary({
         steamId: id,
@@ -160,14 +188,8 @@ export class SetupService {
         },
       };
     } catch (e) {
-      return fail(this.describe(e));
+      return SetupService.fail(this.interpret(e).message);
     }
-  }
-
-  private describe(e: unknown): string {
-    return e instanceof SteamError
-      ? e.describe(this.messages)
-      : this.messages.errors.unexpected;
   }
 
   /** Adds an account, and starts following it, only if Steam accepts its key. */
@@ -190,7 +212,7 @@ export class SetupService {
     const check = await this.checkPair(steamId, apiKey);
     if (!check.ok) return check;
     if (!this.store.hasAccount(steamId)) {
-      return fail(this.messages.errors.notConfigured);
+      return SetupService.fail(this.messages.errors.notConfigured);
     }
 
     const following = this.store.getActiveSteamId();
@@ -206,10 +228,10 @@ export class SetupService {
     if (!credentials) return this.getState();
     try {
       await this.client.getPlayerSummary(credentials);
-      this.store.setAccountStatus(steamId, 'valid');
+      this.record(steamId, 'valid');
     } catch (e) {
-      const status = e instanceof SteamError ? STATUS_OF[e.kind] : undefined;
-      if (status) this.store.setAccountStatus(steamId, status);
+      const { status } = this.interpret(e);
+      if (status) this.record(steamId, status);
     }
     return this.getState();
   }
