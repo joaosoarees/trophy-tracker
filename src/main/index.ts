@@ -7,6 +7,7 @@ import { IpcEvent } from '@shared/ipcEvents';
 import { Ipc } from './ipc/Ipc';
 import { MainWindow } from './MainWindow';
 import { AccountFollower } from './services/AccountFollower';
+import { Accounts } from './services/Accounts';
 import { AppUpdates } from './services/AppUpdates';
 import { GameWatcher } from './services/GameWatcher';
 import { RunningGame } from './services/RunningGame';
@@ -140,9 +141,11 @@ void app.whenReady().then(async () => {
     onCurrentChanged: (current) => window.send(IpcEvent.gameChanged, current),
     onGameUpdated: (view) => window.send(IpcEvent.gameUpdated, view),
   });
+  const accounts = new Accounts({ setup, follower, watcher });
 
   new Ipc({
     setup,
+    accounts,
     tracker,
     watcher,
     store,
@@ -158,8 +161,7 @@ void app.whenReady().then(async () => {
     errorLog,
   }).register();
   // Before the window opens, so it opens on the right account.
-  if (await follower.onClientChange())
-    watcher.forget({ isCurrentIncluded: true });
+  await accounts.followClient();
   app.on('second-instance', () => window.focus());
   window.open({
     title: setup.messages.appTitle,
@@ -176,14 +178,7 @@ void app.whenReady().then(async () => {
     },
   });
   watcher.start();
-  setInterval(
-    () =>
-      void follower.onClientChange().then((hasSwitched) => {
-        // The game on screen belonged to the account that was left.
-        if (hasSwitched) watcher.forget({ isCurrentIncluded: true });
-      }),
-    fakeSteam ? 2_000 : 30_000,
-  );
+  setInterval(() => void accounts.followClient(), fakeSteam ? 2_000 : 30_000);
   // The app can stay open for days: ask every hour whether the six hours
   // since the last check have passed, and tell the interface what was found.
   setInterval(

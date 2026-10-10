@@ -5,6 +5,7 @@ import { type IApi } from '@shared/types/Api';
 import { type LocalFolderId } from '@shared/types/Preferences';
 
 import { type MainWindow } from '../MainWindow';
+import { type Accounts } from '../services/Accounts';
 import { type AppUpdates } from '../services/AppUpdates';
 import { type GameWatcher } from '../services/GameWatcher';
 import { type SetupService } from '../services/SetupService';
@@ -35,6 +36,7 @@ type IpcHandlers = {
 
 interface IIpcDeps {
   setup: SetupService;
+  accounts: Accounts;
   tracker: Tracker;
   watcher: GameWatcher;
   store: Store;
@@ -53,6 +55,7 @@ export class Ipc {
   register(): void {
     const {
       setup,
+      accounts,
       tracker,
       watcher,
       store,
@@ -69,22 +72,9 @@ export class Ipc {
       detectSteamId: () => local.getActiveSteamId(),
       checkApiKey: (steamId, apiKey) => setup.checkApiKey(steamId, apiKey),
       checkPrivacy: (steamId, apiKey) => setup.checkPrivacy(steamId, apiKey),
-      addAccount: async (steamId, apiKey) => {
-        const state = await setup.addAccount(steamId, apiKey);
-        if (state.isConfigured) void watcher.checkRunningGame();
-        return state;
-      },
-      // The game on screen belongs to the account that is being left.
-      setActiveAccount: (steamId) => {
-        // The account playing a game is not left while the game runs.
-        if (watcher.isPlaying) return setup.getState();
-        watcher.forget({ isCurrentIncluded: true });
-        return setup.setActiveAccount(steamId);
-      },
-      removeAccount: (steamId) => {
-        watcher.forget({ isCurrentIncluded: true });
-        return setup.removeAccount(steamId);
-      },
+      addAccount: (steamId, apiKey) => accounts.add(steamId, apiKey),
+      setActiveAccount: (steamId) => accounts.switchTo(steamId),
+      removeAccount: (steamId) => accounts.remove(steamId),
       replaceKey: (steamId, apiKey) => setup.replaceKey(steamId, apiKey),
       recheckAccount: (steamId) => setup.recheckAccount(steamId),
 
