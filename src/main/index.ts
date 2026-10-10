@@ -131,22 +131,19 @@ void app.whenReady().then(async () => {
     dataFolder: createDataFolderAccess(app.getPath('userData')),
     logError: log,
   });
-  // Where the Steam client says who is signed in without being asked twice
-  // (the registry), the app follows that account; the audit's fake client
-  // counts too, so the switch can be audited.
-  const followAccount =
-    local.tracksRunningGame || fakeSteam
-      ? createAccountFollower({
-          getSignedInSteamId: local.getActiveSteamId,
-          store,
-          onFollow: () => {
-            watcher.forget({ current: true });
-            window.send(IpcEvent.stateChanged, setup.getState(), true);
-          },
-        })
-      : null;
+  // The game that is running is always the Steam client's account's, so the
+  // app follows that account on every system: the registry says who it is on
+  // Windows, the client's own files elsewhere.
+  const followAccount = createAccountFollower({
+    getSignedInSteamId: local.getActiveSteamId,
+    store,
+    onFollow: () => {
+      watcher.forget({ current: true });
+      window.send(IpcEvent.stateChanged, setup.getState(), true);
+    },
+  });
   // Before the window opens, so it opens on the right account.
-  await followAccount?.();
+  await followAccount();
   app.on('second-instance', () => window.focus());
   window.open({
     title: setup.messages.appTitle,
@@ -163,9 +160,7 @@ void app.whenReady().then(async () => {
     },
   });
   watcher.start();
-  if (followAccount) {
-    setInterval(() => void followAccount(), fakeSteam ? 2_000 : 30_000);
-  }
+  setInterval(() => void followAccount(), fakeSteam ? 2_000 : 30_000);
   // The app can stay open for days: ask every hour whether the six hours
   // since the last check have passed, and tell the interface what was found.
   setInterval(
