@@ -91,7 +91,7 @@ function setup(
   const advance = (ms: number): void => {
     now += ms;
   };
-  return { sut, store, fetchImpl, advance };
+  return { sut, fetchImpl, advance };
 }
 
 /** A library with the game 7, which has no achievements. */
@@ -608,31 +608,6 @@ describe('Tracker', () => {
       const list = await sut.getDashboard();
 
       expect(list.find((g) => g.appid === 2)?.completedAt).toBeNull();
-    });
-
-    it('should read once more a complete game saved without its completion date', async () => {
-      const { sut, store, fetchImpl, advance } = setupCompleteGame();
-      await sut.getDashboard();
-      store.setSummaries({ 1: { total: 2, unlocked: 2, playtime: 10 } });
-      advance(11 * 60_000);
-
-      const list = await sut.getDashboard();
-
-      expect(list.find((g) => g.appid === 1)?.completedAt).toBe(900);
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(3);
-    });
-
-    it('should not read a complete game again once its completion date is saved', async () => {
-      const { sut, store, fetchImpl, advance } = setupCompleteGame();
-      await sut.getDashboard();
-      store.setSummaries({ 1: { total: 2, unlocked: 2, playtime: 10 } });
-      advance(11 * 60_000);
-      await sut.getDashboard();
-      advance(11 * 60_000);
-
-      await sut.getDashboard();
-
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(3);
     });
 
     it('should fail with a private profile instead of answering an empty dashboard', async () => {

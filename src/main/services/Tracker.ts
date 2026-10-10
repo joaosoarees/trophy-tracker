@@ -16,6 +16,8 @@ import {
 } from '../steam/SteamClient';
 import type { Store, ISummaryEntry } from '../storage/Store';
 
+import { Dashboard } from './Dashboard';
+
 const LIBRARY_TTL = 10 * 60_000;
 const GAME_TTL = 60_000;
 /** A game's achievement list almost never changes. */
@@ -75,11 +77,8 @@ export class Tracker {
 
   /** Most recently played game, for when no game is open. */
   async lastPlayedAppId(): Promise<number | null> {
-    const played = (await this.library()).filter((g) => g.playtime_forever > 0);
-    if (played.length === 0) return null;
-    return played.reduce((a, b) =>
-      (b.rtime_last_played ?? 0) > (a.rtime_last_played ?? 0) ? b : a,
-    ).appid;
+    const played = Dashboard.played(await this.library());
+    return Dashboard.mostRecentFirst(played)[0]?.appid ?? null;
   }
 
   /** Art is decoration: it comes from the cache, and any store failure just leaves it out. */
@@ -217,25 +216,15 @@ export class Tracker {
     }
     this.store.setGame(view, creds.steamId);
     this.store.setSummaries(
-      {
-        [appid]: {
-          ...this.summaryPlaytime(appid),
-          total: view.total,
-          unlocked: view.unlockedCount,
-          lastUnlockAt: Math.max(
-            0,
-            ...view.achievements.map((a) => a.unlockedAt ?? 0),
-          ),
-        },
-      },
+      { [appid]: Dashboard.entryOfView(view, this.playtimeOf(appid)) },
       creds.steamId,
     );
     return view;
   }
 
-  private summaryPlaytime(appid: number): { playtime: number } {
+  private playtimeOf(appid: number): number {
     const game = this.store.getLibrary()?.games.find((g) => g.appid === appid);
-    return { playtime: game?.playtime_forever ?? 0 };
+    return game?.playtime_forever ?? 0;
   }
 
   /** Played games that have achievements, from closest to 100% to furthest; complete ones last. */
@@ -252,105 +241,84 @@ export class Tracker {
     mode: DashboardMode,
     onProgress?: (done: number, total: number) => void,
   ): Promise<IGameSummary[]> {
-    const isForced = mode === 'all';
     const creds = this.credentials();
-    const played = (await this.library(mode !== 'cached')).filter(
-      (g) => g.playtime_forever > 0,
-    );
+    const played = Dashboard.played(await this.library(mode !== 'cached'));
 
     const entries = new Map<number, ISummaryEntry>();
     const pending: IRawOwnedGame[] = [];
     for (const game of played) {
       const cached = this.store.getSummary(game.appid);
-      const isCurrent =
-        cached &&
-        cached.playtime === game.playtime_forever &&
-        // Entries of complete games written before the completion date existed are read once more.
-        !(
-          cached.unlocked === cached.total && cached.lastUnlockAt === undefined
-        );
-      if (cached && isCurrent && !isForced) entries.set(game.appid, cached);
+      if (cached && mode !== 'all' && Dashboard.isCurrent(cached, game))
+        entries.set(game.appid, cached);
       else pending.push(game);
     }
 
     let done = 0;
     const fresh: Record<string, ISummaryEntry> = {};
-    const worker = async (): Promise<void> => {
-      for (let game = pending.shift(); game; game = pending.shift()) {
-        let entry: ISummaryEntry;
-        try {
-          const list = await this.client.getPlayerAchievements(
-            creds,
-            game.appid,
-          );
-          entry = {
-            total: list.length,
-            unlocked: list.filter((a) => a.achieved === 1).length,
-            playtime: game.playtime_forever,
-            lastUnlockAt: Math.max(0, ...list.map((a) => a.unlocktime)),
-          };
-        } catch (e) {
-          if (
-            !(e instanceof SteamError) ||
-            (e.kind !== 'no-stats' && e.kind !== 'unknown')
-          )
-            throw e;
-          entry = {
-            total: 0,
-            unlocked: 0,
-            playtime: game.playtime_forever,
-            lastUnlockAt: 0,
-          };
-          // A one-off Steam failure must not become "no achievements" in the cache.
-          if (e.kind === 'unknown') {
-            entries.set(game.appid, entry);
-            onProgress?.(++done, total);
-            continue;
-          }
-        }
-        entries.set(game.appid, entry);
-        fresh[game.appid] = entry;
-        onProgress?.(++done, total);
-      }
-    };
-    const total = pending.length;
     try {
-      await Promise.all(
-        Array.from({ length: Math.min(CONCURRENCY, total) }, worker),
-      );
+      await Tracker.pool(pending, CONCURRENCY, async (game) => {
+        const { entry, isLasting } = await this.readSummary(creds, game);
+        entries.set(game.appid, entry);
+        if (isLasting) fresh[game.appid] = entry;
+        onProgress?.(++done, pending.length);
+      });
     } finally {
       this.store.setSummaries(fresh, creds.steamId);
     }
 
-    const withAchievements = played.filter(
-      (g) => (entries.get(g.appid)?.total ?? 0) > 0,
+    const listed = played.filter(
+      (game) => (entries.get(game.appid)?.total ?? 0) > 0,
     );
-    const art = await this.art(withAchievements.map((g) => g.appid));
+    const art = await this.art(listed.map((game) => game.appid));
+    return Dashboard.closestFirst(
+      listed.map((game) =>
+        Dashboard.summary(game, entries.get(game.appid)!, art.get(game.appid)),
+      ),
+    );
+  }
 
-    const ratio = (s: IGameSummary): number => s.unlocked / s.total;
-    return withAchievements
-      .map((g): IGameSummary => {
-        const e = entries.get(g.appid)!;
-        return {
-          appid: g.appid,
-          name: g.name,
-          icon: g.img_icon_url
-            ? `https://media.steampowered.com/steamcommunity/public/images/apps/${g.appid}/${g.img_icon_url}.jpg`
-            : '',
-          capsule: art.get(g.appid)?.capsule ?? '',
-          playtimeMinutes: g.playtime_forever,
-          lastPlayed: g.rtime_last_played ?? 0,
-          total: e.total,
-          unlocked: e.unlocked,
-          completedAt:
-            e.unlocked === e.total && e.lastUnlockAt ? e.lastUnlockAt : null,
-        };
-      })
-      .sort((a, b) => {
-        const isDoneA = a.unlocked === a.total;
-        const isDoneB = b.unlocked === b.total;
-        if (isDoneA !== isDoneB) return isDoneA ? 1 : -1;
-        return ratio(b) - ratio(a) || b.lastPlayed - a.lastPlayed;
-      });
+  /**
+   * What Steam says the player has in a game. A game without achievements
+   * counts as read; any failure but those two ends the whole read.
+   */
+  private async readSummary(
+    creds: ICredentials,
+    game: IRawOwnedGame,
+  ): Promise<{ entry: ISummaryEntry; isLasting: boolean }> {
+    try {
+      const list = await this.client.getPlayerAchievements(creds, game.appid);
+      return {
+        entry: Dashboard.entry(list, game.playtime_forever),
+        isLasting: true,
+      };
+    } catch (e) {
+      if (
+        !(e instanceof SteamError) ||
+        (e.kind !== 'no-stats' && e.kind !== 'unknown')
+      )
+        throw e;
+      return {
+        entry: Dashboard.entry([], game.playtime_forever),
+        // A one-off Steam failure must not become "no achievements" in the cache.
+        isLasting: e.kind !== 'unknown',
+      };
+    }
+  }
+
+  /** Runs the task over every item, at most `limit` of them at a time. */
+  private static async pool<T>(
+    items: T[],
+    limit: number,
+    task: (item: T) => Promise<void>,
+  ): Promise<void> {
+    const queue = [...items];
+    const worker = async (): Promise<void> => {
+      for (let item = queue.shift(); item !== undefined; item = queue.shift()) {
+        await task(item);
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(limit, queue.length) }, worker),
+    );
   }
 }

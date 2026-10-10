@@ -107,6 +107,7 @@ src/main/            main process: the only part that talks to Steam and to the 
   MainWindow.ts        the single window and the events pushed to it
   ipc/Ipc.ts           answers IApi; handlers only route, the work lives in the services
   services/            Tracker (reads games and the dashboard: cache, deduplication, art),
+                       Dashboard (the steps of the dashboard that need neither Steam nor the disk),
                        SetupService (setup state, language, accounts and their checks),
                        AccountFollower, GameWatcher, RunningGame, UpdateChecker, AppUpdates
   steam/               SteamClient (Web API), Achievements (buildGameView, guideUrl), SteamLocal

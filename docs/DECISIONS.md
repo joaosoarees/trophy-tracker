@@ -20,6 +20,8 @@ Two pieces of code converted old data: one copied the files out of the folder of
 
 What stayed is the check, not the conversion: a file whose format has another version number (or none, as before 0.7.0) is kept aside and not read, so it is never mangled or erased.
 
+A third piece went later for the same reason: the dashboard read once more any complete game whose cached summary had no completion date (`lastUnlockAt`). Every release since 0.1.0 writes that date with the summary, so only a cache from the developer's machine, older than the first release, could lack it. The field is now required in a summary.
+
 ## Unsigned for now
 
 SignPath Foundation refused the application for free signing in October 2026. The reason was the project's visibility, not its quality: they look for stars, forks, contributors and mentions elsewhere, and invite a new application once there are some.

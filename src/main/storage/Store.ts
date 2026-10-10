@@ -63,8 +63,8 @@ export interface ISummaryEntry {
   unlocked: number;
   /** Playtime at the time of the read; if it has not changed, neither have the achievements. */
   playtime: number;
-  /** When the last achievement was unlocked (epoch in seconds, 0 if none). Missing in entries written before it existed. */
-  lastUnlockAt?: number;
+  /** When the last achievement was unlocked (epoch in seconds, 0 if none). */
+  lastUnlockAt: number;
 }
 
 /** What was read from Steam about one account. */
