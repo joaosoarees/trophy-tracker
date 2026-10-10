@@ -144,7 +144,12 @@ export class AppUpdates {
     }
 
     if (this.auto) {
-      if (this.status === 'failed') this.status = 'idle';
+      if (this.status === 'failed') {
+        this.status = 'idle';
+        // The version that failed is only known again if this look finds it:
+        // its release may have been withdrawn meanwhile.
+        this.newVersion = null;
+      }
       if (this.status === 'idle') await this.look();
       // A failure may also have arrived as an event while the check ran.
       if (this.currentStatus() !== 'failed') {
