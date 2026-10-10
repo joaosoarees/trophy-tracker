@@ -7,6 +7,8 @@ import {
 } from 'react';
 import { useFormContext } from 'react-hook-form';
 
+import { useT } from '@app/hooks/useT';
+import { explainFailedCall } from '@app/lib/failedCall';
 import { singleFlight } from '@app/lib/singleFlight';
 import { AccountsService } from '@app/services/AccountsService';
 import { OnboardingService } from '@app/services/OnboardingService';
@@ -35,6 +37,7 @@ export function useAccountStepController({
   isInitiallyOpen,
   onChange,
 }: IAccountStepOptions) {
+  const t = useT();
   const { lockFollowingSteps } = useStepper();
   const form = useFormContext<OnboardingFormData>();
 
@@ -132,6 +135,10 @@ export function useAccountStepController({
       onChange(added.value, steamId.trim());
       emptyForm();
       dispatch({ type: 'closed' });
+    } catch (error) {
+      // Not an answer of Steam, which the checks give as a result: a call
+      // itself failed. It is said where a refusal is, with the form as it was.
+      setProblem(explainFailedCall(error, t));
     } finally {
       setIsVerifying(false);
     }

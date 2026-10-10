@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useState } from 'react';
 
 import { useT } from '@app/hooks/useT';
+import { explainFailedCall } from '@app/lib/failedCall';
 import { singleFlight } from '@app/lib/singleFlight';
 import { AccountsService } from '@app/services/AccountsService';
 import { useStore } from '@app/store';
@@ -10,6 +11,7 @@ import { API_KEY_PATTERN } from '@shared/validation';
 export function useAccountDetailsController(account: IAccount) {
   const t = useT();
   const apply = useStore((state) => state.settings.apply);
+  const recheckAccount = useStore((state) => state.settings.recheckAccount);
   const removeAccount = useStore((state) => state.settings.removeAccount);
 
   // `null` until the user decides: a refused key is the one thing here that
@@ -54,6 +56,10 @@ export function useAccountDetailsController(account: IAccount) {
       // Nor is the choice: a key refused again later opens the field again.
       setIsReplacingByChoice(null);
       apply(result.value);
+    } catch (error) {
+      // Not Steam refusing the key, which is an answer: the call itself
+      // failed. It is said where a refusal is, under the field.
+      setProblem(explainFailedCall(error, t));
     } finally {
       setIsSaving(false);
     }
@@ -71,7 +77,7 @@ export function useAccountDetailsController(account: IAccount) {
   async function handleRecheck() {
     setIsChecking(true);
     try {
-      apply(await AccountsService.recheck(account.steamId));
+      await recheckAccount(account.steamId);
     } finally {
       setIsChecking(false);
     }

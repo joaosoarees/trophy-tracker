@@ -125,6 +125,7 @@ src/renderer/src/    the interface
     store/               Zustand store and its slices
     hooks/               useT, useLocale, useActiveGame
     lib/                 saver (debounced writes), singleFlight (one run of a submit at a time),
+                         failedCall (what to show and log when a call to the main process rejects),
                          safeSessionStorageGetItem, namedLazyLoad, reportUnhandledErrors
   ui/                  everything that is drawn
     App.tsx + useAppController.ts   decides between onboarding and the app
@@ -173,7 +174,7 @@ ui (screens, components) → app/store and app/hooks → app/services → window
 
 ## Tests
 
-- **What is tested:** main-process and `shared/` logic, the pure logic of the screens (`achievementList`, `gameList`, `gameDetails`, `format`, `text`, step schemas, `stepperState`, `accountFormState`, `saver`, `singleFlight`, `namedLazyLoad`, `reportUnhandledErrors`) and the store: the slices that hold logic (`navigationSlice`, `updatesSlice`, `settingsSlice`, `userDataSlice`, `gamesSlice`, `dashboardSlice`, `sessionSlice`) and what wires them to the main process for an account (`connect`). Views and controllers are validated by running the app.
+- **What is tested:** main-process and `shared/` logic, the pure logic of the screens (`achievementList`, `gameList`, `gameDetails`, `format`, `text`, step schemas, `stepperState`, `accountFormState`, `saver`, `singleFlight`, `failedCall`, `namedLazyLoad`, `reportUnhandledErrors`) and the store: the slices that hold logic (`navigationSlice`, `updatesSlice`, `settingsSlice`, `userDataSlice`, `gamesSlice`, `dashboardSlice`, `sessionSlice`) and what wires them to the main process for an account (`connect`). Views and controllers are validated by running the app.
 - **A behaviour change in a main-process service, `steam/SteamClient`, `storage/Store` or `shared/` comes with a test.**
 - **One spec per unit, beside it:** `src/main/services/Tracker.ts` is tested by `src/main/services/Tracker.spec.ts`. A new unit gets its own spec; do not append to a neighbour's. A spec that covers a folder's `index.ts` is `index.spec.ts`. `Store` has a second one, `Store.contract.spec.ts` (see the fake of the store, below).
 - `__tests__/` holds only what specs share: helpers, fakes, factories and fixtures.

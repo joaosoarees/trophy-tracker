@@ -13,6 +13,7 @@ Forms are react-hook-form + zod. The setup (`ui/screens/Onboarding/`) is one for
 - The `Stepper`'s state is local to the component (`useReducer`), on purpose: do not move it to the store.
 - Enter in a field is that step's own "advance", never the submit of the whole form.
 - **A submit that asks the main process runs once at a time, and always gives its button back.** The button is disabled by a pending flag in state, but Enter held down in a field asks again before that is drawn: the handler goes through `singleFlight` (`app/lib/singleFlight.ts`, kept with `useState(singleFlight)`), which drops a call made while the previous one runs. The flag is cleared in a `finally`, so a call that fails does not leave the button disabled. `useAccountStepController` ("Verify") and `useAccountDetailsController` ("Verify and save") are the models.
+- **A call that fails is said where a refusal is.** What Steam refuses comes back as an answer (`CheckResult`) with its own words; the call to the main process can still reject (a write the disk refuses, the call itself failing). The submit catches that and puts `explainFailedCall(error, t)` (`app/lib/failedCall.ts`) on the form's own problem line: it writes the error to the log, as one nobody caught would be, and answers `errors.unexpected`. A button with no line of its own ("Check again" on an account) asks through a store action that shows the same text in a toast (`settings.recheckAccount`).
 - A form adds `schema.ts` to its folder.
 
 ## How the form is built

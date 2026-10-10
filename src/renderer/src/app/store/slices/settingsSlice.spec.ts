@@ -428,6 +428,60 @@ describe('settingsSlice', () => {
     });
   });
 
+  describe('recheckAccount', () => {
+    it('should take the state when the main process asked Steam about the key again', async () => {
+      const { sut } = await setup({
+        recheckAccount: () => Promise.resolve(otherAccountState()),
+      });
+
+      await sut.getState().settings.recheckAccount(STEAM_ID);
+
+      expect(sut.getState().settings.appState).toEqual(otherAccountState());
+    });
+
+    it('should tell the user something went wrong when the call to the main process fails', async () => {
+      const { sut, toastMock } = await setup({
+        recheckAccount: () => Promise.reject(new Error('disk full')),
+        logError: () => Promise.resolve(),
+      });
+
+      await sut.getState().settings.recheckAccount(STEAM_ID);
+
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(
+        'Unexpected error. Try again.',
+      );
+    });
+
+    it('should keep the state it had when the call to the main process fails', async () => {
+      const { sut } = await setup({
+        recheckAccount: () => Promise.reject(new Error('disk full')),
+        logError: () => Promise.resolve(),
+      });
+      sut.getState().settings.apply(makeAppState());
+
+      await sut.getState().settings.recheckAccount(STEAM_ID);
+
+      expect(sut.getState().settings.appState).toEqual(makeAppState());
+    });
+
+    it('should write the error to the log when the call to the main process fails', async () => {
+      const logErrorMock = vi.fn<IApi['logError']>(() => Promise.resolve());
+      const failure = new Error('disk full');
+      failure.stack = 'Error: disk full\n    at saveConfig (Store.ts:1:1)';
+      const { sut } = await setup({
+        recheckAccount: () => Promise.reject(failure),
+        logError: logErrorMock,
+      });
+
+      await sut.getState().settings.recheckAccount(STEAM_ID);
+
+      expect(logErrorMock).toHaveBeenCalledExactlyOnceWith(
+        'failed call',
+        'Error: disk full\n    at saveConfig (Store.ts:1:1)',
+      );
+    });
+  });
+
   describe('accept', () => {
     it('should tell the user when the app followed the account signed in to Steam', async () => {
       const { sut, toastMock } = await setup();

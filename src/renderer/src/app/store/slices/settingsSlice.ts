@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 
+import { explainFailedCall } from '@app/lib/failedCall';
 import { AccountsService } from '@app/services/AccountsService';
 import { OnboardingService } from '@app/services/OnboardingService';
 import { SettingsService } from '@app/services/SettingsService';
@@ -71,6 +72,12 @@ type SettingsActions = {
   switchAccount: (steamId: string) => Promise<void>;
   /** Forgets an account; removing the last one leads back to the onboarding. */
   removeAccount: (steamId: string) => Promise<void>;
+  /**
+   * Asks Steam again whether the saved key of an account works, and takes
+   * the state after it. A call that fails tells the user: the button that
+   * asks has no line of its own to say it on.
+   */
+  recheckAccount: (steamId: string) => Promise<void>;
   /** A state the main process sent by itself; `hasFollowed` when it switched accounts to match Steam. */
   accept: (appState: IAppState, hasFollowed: boolean) => void;
   /**
@@ -255,6 +262,15 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
   removeAccount: async (steamId) => {
     get().userData.flush();
     get().settings.apply(await AccountsService.remove(steamId));
+  },
+
+  recheckAccount: async (steamId) => {
+    try {
+      get().settings.apply(await AccountsService.recheck(steamId));
+    } catch (error) {
+      const m = messagesFor(get().session.language);
+      toast.error(explainFailedCall(error, m));
+    }
   },
 
   accept: (appState, hasFollowed) => {
