@@ -1,6 +1,8 @@
 import { type IAppState } from '@shared/types/AppState';
 import { type CheckResult } from '@shared/types/Check';
 
+import { ErrorLog } from '../system/ErrorLog';
+
 import { type AccountFollower } from './AccountFollower';
 import { type GameWatcher } from './GameWatcher';
 import { type SetupService } from './SetupService';
@@ -12,6 +14,7 @@ interface IAccountsDeps {
   >;
   follower: Pick<AccountFollower, 'onClientChange'>;
   watcher: Pick<GameWatcher, 'isPlaying' | 'forget' | 'checkRunningGame'>;
+  logError?: (source: string, detail: string) => void;
 }
 
 /**
@@ -22,6 +25,9 @@ interface IAccountsDeps {
  * is left as it was.
  */
 export class Accounts {
+  /** Whether the last look at the client's account ended in a write the disk refused. */
+  private hasFailedToFollow = false;
+
   constructor(private readonly deps: IAccountsDeps) {}
 
   /**
@@ -61,9 +67,23 @@ export class Accounts {
     return state;
   }
 
-  /** Puts the app on the account signed in to Steam when that one changed. */
+  /**
+   * Puts the app on the account signed in to Steam when that one changed.
+   * Nobody asked for it (the app opening, the timer), so it never rejects: an
+   * account the disk refuses leaves the app where it was, and the next look
+   * tries again. The error log is told once for as long as it goes on, not
+   * at every look.
+   */
   async followClient(): Promise<void> {
-    if (await this.deps.follower.onClientChange()) this.forgetGame();
+    try {
+      if (await this.deps.follower.onClientChange()) this.forgetGame();
+      this.hasFailedToFollow = false;
+    } catch (e) {
+      if (!this.hasFailedToFollow) {
+        this.deps.logError?.('main: follow account', ErrorLog.detailOf(e));
+      }
+      this.hasFailedToFollow = true;
+    }
   }
 
   /** The game on screen belonged to the account that is left. */

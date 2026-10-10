@@ -106,4 +106,29 @@ describe('ErrorLog', () => {
       expect(() => sut.write('source', 'detail')).not.toThrow();
     });
   });
+
+  describe('detailOf', () => {
+    it('should keep where the error happened when it says', () => {
+      const error = new Error('disk full');
+
+      const detail = ErrorLog.detailOf(error);
+
+      expect(detail).toBe(error.stack);
+    });
+
+    it('should keep the message when the error does not say where it happened', () => {
+      const error = new Error('disk full');
+      delete error.stack;
+
+      const detail = ErrorLog.detailOf(error);
+
+      expect(detail).toBe('disk full');
+    });
+
+    it('should keep what was thrown as text when it is not an error', () => {
+      const detail = ErrorLog.detailOf('disk full');
+
+      expect(detail).toBe('disk full');
+    });
+  });
 });

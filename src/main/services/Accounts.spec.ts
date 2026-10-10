@@ -195,6 +195,50 @@ function setupWired(signedIn: string) {
   };
 }
 
+/**
+ * The app with two accounts, following `STEAM_ID`, and a Steam client signed
+ * in to the other one: the real follower over a store in memory, which the
+ * test makes refuse what is written (`store.refuseWrites`). `asked` is what
+ * the watcher was asked and `logged` what reached the error log; `signIn`
+ * changes who is signed in to the client.
+ */
+function setupFollowing() {
+  let signedIn = OTHER_STEAM_ID;
+  const store = new InMemoryStore();
+  for (const steamId of [OTHER_STEAM_ID, STEAM_ID]) {
+    store.setCredentials(
+      { steamId, apiKey: KEY },
+      { steamId, name: 'player', avatar: 'x' },
+    );
+  }
+  const client = fakeSteamClient({ summary });
+  const keys = new KeyStatus(store, client);
+  const asked: string[] = [];
+  const logged: { source: string; detail: string }[] = [];
+  const sut = new Accounts({
+    setup: new SetupService(
+      store,
+      new AccountChecks(store, client, keys),
+      keys,
+    ),
+    follower: new AccountFollower({
+      getSignedInSteamId: () => Promise.resolve(signedIn),
+      store,
+      onFollow: () => {},
+    }),
+    watcher: {
+      isPlaying: false,
+      forget: () => asked.push('forget the game on screen'),
+      checkRunningGame: () => Promise.resolve(),
+    },
+    logError: (source, detail) => logged.push({ source, detail }),
+  });
+  const signIn = (steamId: string): void => {
+    signedIn = steamId;
+  };
+  return { sut, store, asked, logged, signIn };
+}
+
 describe('Accounts', () => {
   describe('add', () => {
     it('should follow the added account when Steam accepts its key', async () => {
@@ -422,6 +466,72 @@ describe('Accounts', () => {
       await sut.followClient();
 
       expect(asked).toEqual([]);
+    });
+  });
+
+  describe("followClient, when the client's account cannot be written", () => {
+    it('should end without failing, on the account it was on, and forget nothing', async () => {
+      const { sut, store, asked } = setupFollowing();
+      store.refuseWrites();
+
+      const outcome = await sut.followClient().then(
+        () => 'ended',
+        (e: unknown) => `rejected: ${String(e)}`,
+      );
+
+      expect(outcome).toBe('ended');
+      expect(store.getActiveSteamId()).toBe(STEAM_ID);
+      expect(asked).toEqual([]);
+    });
+
+    it('should write the refusal to the error log', async () => {
+      const { sut, store, logged } = setupFollowing();
+      store.refuseWrites();
+
+      await sut.followClient();
+
+      expect(logged).toEqual([
+        {
+          source: 'main: follow account',
+          detail: expect.stringContaining(WRITE_REFUSED.message) as string,
+        },
+      ]);
+    });
+
+    it('should log it once when look after look is refused', async () => {
+      const { sut, store, logged } = setupFollowing();
+      store.refuseWrites();
+      await sut.followClient();
+
+      await sut.followClient();
+
+      expect(logged).toHaveLength(1);
+    });
+
+    it("should follow the client's account at the next look when the disk takes it by then", async () => {
+      const { sut, store, asked } = setupFollowing();
+      store.refuseWrites();
+      await sut.followClient();
+      store.refuseWrites(Infinity);
+
+      await sut.followClient();
+
+      expect(store.getActiveSteamId()).toBe(OTHER_STEAM_ID);
+      expect(asked).toEqual(['forget the game on screen']);
+    });
+
+    it('should log a refusal again when it comes after a look that worked', async () => {
+      const { sut, store, logged, signIn } = setupFollowing();
+      store.refuseWrites();
+      await sut.followClient();
+      store.refuseWrites(Infinity);
+      await sut.followClient();
+      signIn(STEAM_ID);
+      store.refuseWrites();
+
+      await sut.followClient();
+
+      expect(logged).toHaveLength(2);
     });
   });
 });

@@ -168,6 +168,24 @@ export class Store {
   }
 
   /**
+   * The language chosen in a data folder, for what has to be said when the
+   * app cannot open on it. Only reads: nothing is created, written or set
+   * aside, and the answer is the default when nothing there can be read.
+   */
+  static languageIn(dir: string): Language {
+    try {
+      const parsed: unknown = JSON.parse(
+        readFileSync(join(dir, 'settings.json'), 'utf8'),
+      );
+      return isRecord(parsed) && isLanguage(parsed.language)
+        ? parsed.language
+        : DEFAULT_LANGUAGE;
+    } catch {
+      return DEFAULT_LANGUAGE;
+    }
+  }
+
+  /**
    * Reads a file, or answers the fallback when there is none. A file that
    * cannot be used is never just treated as empty, because the next write
    * would then erase it for good: it is copied aside first. That covers a

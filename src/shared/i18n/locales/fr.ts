@@ -11,6 +11,13 @@ export const fr: Messages = {
     reload: 'Recharger',
   },
 
+  startup: {
+    cannotWrite: (folder) =>
+      `L’application ne peut pas écrire dans son dossier des données et ne peut donc pas s’ouvrir.\n\n${folder}\n\nVérifiez que le dossier existe et que vous avez le droit d’y écrire, puis rouvrez l’application.`,
+    failed: (log) =>
+      `L’application n’a pas pu s’ouvrir. Les détails ont été enregistrés dans le journal des erreurs.\n\n${log}`,
+  },
+
   errors: {
     invalidKey: 'Steam a refusé la clé de l’API Web.',
     private: 'Les détails des jeux de votre profil ne sont pas publics.',

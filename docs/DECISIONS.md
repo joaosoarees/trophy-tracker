@@ -129,6 +129,12 @@ The main process had grown two styles: classes that receive what they depend on 
 
 File names and boolean names were drifting the same way, and a rule kept in someone's head had already failed, so both are enforced: the boolean prefix by `@typescript-eslint/naming-convention`, unused code by `knip`. The boolean exceptions are the names that are part of a file format or of Steam's answers; renaming those in memory only would have given one thing two names.
 
+## Nothing the app does by itself keeps the window from opening
+
+Since the store throws on a write the disk refuses (the entry below), two writes made before the window opened could end the wiring: the client's account being followed, and the record of a finished update being erased. The process then stayed alive with no window, holding the single-instance lock. Both are things nobody asked for, so both now take the refusal, write it to the error log and are tried again when they naturally would be. The look at the client's account runs every 30 seconds: it is logged once for as long as it keeps failing, because one entry per look would rotate the half-megabyte log within hours and lose everything else in it.
+
+What cannot be worked around ends in a box (`dialog.showErrorBox`), the only thing Electron can show before a window exists. On Linux the single-instance lock is a file in the data folder (seen there; macOS runs the same Chromium code, Windows was not looked at), so a folder that cannot be created or written to looks exactly like "the app is already open": the app used to quit there, silently. A refused lock is therefore checked against the folder (`DataFolder.canWrite`) before it is taken to mean a second launch. Running read-only was considered and left out: without the lock every launch would open another app, and Chromium itself cannot use the folder.
+
 ## The store keeps nothing it could not write
 
 `Store` used to change what it held and then write it. When the disk refused the write, the caller got the error and the store kept the change: the app ran on an account, a language or a note the file did not have, the next write that worked saved the refused change along with its own, and otherwise a restart undid it. It now writes first and takes the change only then (`docs/local-data.md`). The alternative, keeping the change and trying the write again later, was not taken: the interface has already told the user the change failed and put the screen back.

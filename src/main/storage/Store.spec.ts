@@ -508,6 +508,44 @@ describe('Store', () => {
     });
   });
 
+  describe('languageIn', () => {
+    it('should answer the language chosen in the folder', () => {
+      const dir = makeTempDir();
+      new Store(dir).setLanguage('fr');
+
+      const language = Store.languageIn(dir);
+
+      expect(language).toBe('fr');
+    });
+
+    it('should answer the default language when the folder does not exist', () => {
+      const dir = join(makeTempDir(), 'not-there');
+
+      const language = Store.languageIn(dir);
+
+      expect(language).toBe('en');
+    });
+
+    it('should answer the default language when the file names none the app has', () => {
+      const dir = makeTempDir();
+      writeFileSync(join(dir, 'settings.json'), '{"language":"de"}');
+
+      const language = Store.languageIn(dir);
+
+      expect(language).toBe('en');
+    });
+
+    it('should answer the default language and leave the folder as it is when the file is damaged', () => {
+      const dir = makeTempDir();
+      writeFileSync(join(dir, 'settings.json'), '{"language":"fr');
+
+      const language = Store.languageIn(dir);
+
+      expect(language).toBe('en');
+      expect(readdirSync(dir)).toEqual(['settings.json']);
+    });
+  });
+
   describe('list orders', () => {
     it('should answer the default order of the achievements when none was chosen', () => {
       const { sut } = setup();

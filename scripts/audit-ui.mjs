@@ -19,8 +19,9 @@
 // Then, in the first language, the flows no single capture shows: the game
 // details opening and closing, a game starting, an achievement unlocked
 // while playing, the game finished and closed, Steam taking a request and
-// never answering it, and Steam off the air with the app open, before it
-// opens, and before it opens for the first time.
+// never answering it, Steam off the air with the app open, before it opens,
+// and before it opens for the first time, and the app opened on a data
+// folder that refuses what it writes first.
 import { spawn } from 'node:child_process';
 import {
   existsSync,
@@ -1584,6 +1585,118 @@ async function auditFirstStartOffline(page, steam) {
   );
 }
 
+/**
+ * The app is opened on a data folder that refuses what it writes before its
+ * window: the record of a finished update, which it erases, and the account
+ * signed in to Steam, which it follows. The window must open all the same,
+ * the error log must have each refusal once, and the account must be
+ * followed once the disk takes it. A folder sits where each file is first
+ * written, which refuses the write on any system.
+ */
+async function auditRefusedStart(userData, steam, home) {
+  const FLOW = 'the disk refusing as the app opens';
+  const failuresBefore = failures.length;
+  const end = () =>
+    console.log(
+      `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: the app opened on a data folder that refuses what it writes first`,
+    );
+
+  const settingsFile = join(userData, 'settings.json');
+  writeFileSync(
+    settingsFile,
+    JSON.stringify({
+      ...JSON.parse(readFileSync(settingsFile, 'utf8')),
+      // A version older than any: the update "worked", so its record goes.
+      updateAttempt: '0.0.1',
+    }),
+  );
+  // A second saved account, signed in to the Steam client, with the app on
+  // the first: the same entry under the other SteamID, key and all.
+  const configFile = join(userData, 'config.json');
+  const config = JSON.parse(readFileSync(configFile, 'utf8'));
+  const first = config.accounts.find((a) => a.steamId === STEAM_ID);
+  const second = {
+    ...first,
+    steamId: SECOND_STEAM_ID,
+    profile: {
+      ...first.profile,
+      steamId: SECOND_STEAM_ID,
+      name: 'Second Hunter',
+    },
+  };
+  writeFileSync(
+    configFile,
+    JSON.stringify({
+      ...config,
+      accounts: [first, second],
+      activeSteamId: STEAM_ID,
+    }),
+    { mode: 0o600 },
+  );
+  writeFakeSteamFolder(home, SECOND_STEAM_ID);
+  for (const name of ['settings.json', 'config.json']) {
+    mkdirSync(join(userData, `${name}.tmp`));
+  }
+  const logFile = join(userData, 'logs', 'errors.log');
+  rmSync(logFile, { force: true });
+
+  let page;
+  try {
+    page = await launch(userData, steam.url, home);
+  } catch {
+    expectThat(
+      FLOW,
+      false,
+      'the app opened no window when its data folder refused what it writes as it opens',
+    );
+    end();
+    return;
+  }
+  try {
+    expectThat(
+      FLOW,
+      await waitFor(page, `(${gameTitle}) !== ''`),
+      'the window opened, but shows no game',
+    );
+    // Three more looks at the Steam client's account, two seconds apart.
+    await sleep(7000);
+    const log = existsSync(logFile) ? readFileSync(logFile, 'utf8') : '';
+    const logged = (source) => log.split(`] ${source}\n`).length - 1;
+    expectThat(
+      FLOW,
+      logged('main: update attempt') === 1,
+      `the update record that could not be erased is in the error log ${logged('main: update attempt')} times, not once`,
+    );
+    expectThat(
+      FLOW,
+      logged('main: follow account') === 1,
+      `the account that could not be followed is in the error log ${logged('main: follow account')} times, not once`,
+    );
+    expectThat(
+      FLOW,
+      logged('main: unhandledRejection') === 0,
+      'a write refused as the app opened was left to the handler of unhandled rejections',
+    );
+    await page.capture('flow-disk-refusing-at-start');
+
+    // The disk takes the accounts again: the next look follows the account.
+    rmSync(join(userData, 'config.json.tmp'), { recursive: true });
+    const toasts = `[...document.querySelectorAll('[data-sonner-toast]')].map((el) => el.innerText).join(' | ')`;
+    expectThat(
+      FLOW,
+      await waitFor(
+        page,
+        `(${toasts}).includes('Now following Second Hunter')`,
+      ),
+      `the account signed in to Steam is not followed once the disk takes it (toasts: "${await page.evaluate(toasts)}")`,
+    );
+    await page.capture('flow-disk-refusing-followed');
+  } finally {
+    await page.close();
+    end();
+  }
+}
+
 if (!existsSync('out/main/index.js')) {
   console.error('No build found. Run `pnpm build` first.');
   process.exit(1);
@@ -1629,6 +1742,8 @@ for (const language of languages) {
     // And once more with nothing kept from before.
     rmSync(join(userData, 'cache.json'), { force: true });
     await withApp((page) => auditFirstStartOffline(page, steam));
+    // And on a data folder that refuses what the app writes as it opens.
+    await auditRefusedStart(userData, steam, home);
   } finally {
     await steam.stop();
     rmSync(userData, { recursive: true, force: true });

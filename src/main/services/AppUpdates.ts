@@ -1,6 +1,8 @@
 import { type IAppInfo, type IUpdateCheck } from '@shared/types/AppInfo';
 import { isNewerVersion } from '@shared/version';
 
+import { ErrorLog } from '../system/ErrorLog';
+
 import { UpdateChecker } from './UpdateChecker';
 
 export interface IAutoUpdaterListener {
@@ -100,7 +102,16 @@ export class AppUpdates {
         ? attempted
         : null;
     // The attempt worked (or was for a version since left behind): forget it.
-    if (attempted !== null && this.failedInstall === null) attempt?.set(null);
+    // A disk that refuses must not keep the app from opening: the attempt
+    // stays written, means nothing while it is no newer than this version,
+    // and the next start forgets it.
+    if (attempted !== null && this.failedInstall === null) {
+      try {
+        attempt?.set(null);
+      } catch (e) {
+        logError?.('main: update attempt', ErrorLog.detailOf(e));
+      }
+    }
 
     auto?.start({
       onProgress: (percent) => this.progress(percent),

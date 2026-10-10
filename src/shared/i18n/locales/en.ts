@@ -10,6 +10,13 @@ export const en = {
     reload: 'Reload',
   },
 
+  startup: {
+    cannotWrite: (folder: string) =>
+      `The app cannot write to its data folder, so it cannot open.\n\n${folder}\n\nCheck that the folder exists and that you are allowed to write to it, then open the app again.`,
+    failed: (log: string) =>
+      `The app could not open. The details were saved to the error log.\n\n${log}`,
+  },
+
   errors: {
     invalidKey: 'Steam rejected the Web API key.',
     private: 'Your profile’s game details are not public.',
