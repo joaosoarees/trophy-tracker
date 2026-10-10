@@ -1,6 +1,7 @@
 {
-  // Tests of the interface store: they need the browser types the code under
-  // test uses, plus Node for the test helpers.
+  // Tests of the interface (the store, and every spec under `src/renderer`):
+  // they need the browser types the code under test uses, plus Node for the
+  // test helpers.
   "extends": "./tsconfig.web.json",
   "compilerOptions": {
     "types": ["vite/client", "node"],
@@ -9,8 +10,16 @@
       "@ui/*": ["./src/renderer/src/ui/*"],
       "@shared/*": ["./src/shared/*"],
       "@main/*": ["./src/main/*"],
-      "@test/*": ["./test/*"]
+      "@test/*": ["./test/*"],
+      "@tests/*": ["./test/*"]
     }
   },
-  "include": ["test/renderer/app/store", "src/renderer/src/env.d.ts"]
+  "include": [
+    "test/renderer/app/store",
+    "src/renderer/**/*.spec.ts",
+    "src/renderer/src/env.d.ts"
+  ],
+  // Overrides the `exclude` inherited from `tsconfig.web.json`, which leaves
+  // the specs out of that project.
+  "exclude": []
 }
