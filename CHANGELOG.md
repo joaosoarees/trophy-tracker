@@ -14,6 +14,7 @@ What changed in each version, for whoever uses the app. The section of a version
 
 - With more than one account, starting a game that only the account signed in to Steam owns no longer shows "your profile's game details are not public". The app switches to the account that is playing, and stays on it while the game runs.
 - A game running on a Steam account that is not in the app is said to be so, with a way to add that account.
+- Adding an account no longer leaves the Game tab on the game of the account that was in use before: a game running on the added account is shown right away, and otherwise the tab opens on the game that account played last.
 
 ## 1.0.0
 

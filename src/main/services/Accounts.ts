@@ -21,10 +21,19 @@ interface IAccountsDeps {
 export class Accounts {
   constructor(private readonly deps: IAccountsDeps) {}
 
-  /** Adds an account, which the app then follows, if Steam accepts its key. */
+  /**
+   * Adds an account, which the app then follows, if Steam accepts its key.
+   * The game on screen is forgotten only when the added account took over:
+   * the account in use is then one the app did not have before. A refused
+   * add changes nothing, even if the app followed a saved account meanwhile.
+   */
   async add(steamId: string, apiKey: string): Promise<IAppState> {
     const { setup, watcher } = this.deps;
+    const saved = setup.getState().accounts.map((account) => account.steamId);
     const state = await setup.addAccount(steamId, apiKey);
+    const hasTakenOver =
+      state.activeSteamId !== null && !saved.includes(state.activeSteamId);
+    if (hasTakenOver) this.forgetGame();
     if (state.isConfigured) void watcher.checkRunningGame();
     return state;
   }
