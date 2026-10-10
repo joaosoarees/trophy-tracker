@@ -17,6 +17,13 @@ const MAX_BYTES = 512 * 1024;
 export class ErrorLog {
   constructor(private readonly file: string) {}
 
+  /** What the log keeps of something that was thrown: where it happened, when it says. */
+  static detailOf(thrown: unknown): string {
+    return thrown instanceof Error
+      ? (thrown.stack ?? thrown.message)
+      : String(thrown);
+  }
+
   write(source: string, detail: string): void {
     try {
       mkdirSync(dirname(this.file), { recursive: true });

@@ -4,6 +4,7 @@ import { type CheckResult } from '@shared/types/Check';
 
 import { type SteamClient, SteamError } from '../steam/SteamClient';
 import { type Store } from '../storage/Store';
+import { ErrorLog } from '../system/ErrorLog';
 
 /**
  * The part of `Store` that keeps what Steam said about each account's key,
@@ -99,13 +100,8 @@ export class KeyStatus {
     if (e instanceof SteamError) {
       return { status: STATUS_OF[e.kind], message: e.describe(this.messages) };
     }
-    this.logError('main: steam read', KeyStatus.detailOf(e));
+    this.logError('main: steam read', ErrorLog.detailOf(e));
     return { status: undefined, message: this.messages.errors.unexpected };
-  }
-
-  /** What the error log keeps of a fault of the app. */
-  private static detailOf(e: unknown): string {
-    return e instanceof Error ? (e.stack ?? e.message) : String(e);
   }
 
   /** Asks Steam again about a saved account's key. Steam being unreachable changes nothing. */
@@ -139,7 +135,7 @@ export class KeyStatus {
     try {
       this.store.setAccountStatus(account.steamId, status);
     } catch (e) {
-      this.logError('main: key status', KeyStatus.detailOf(e));
+      this.logError('main: key status', ErrorLog.detailOf(e));
       return false;
     }
     return true;

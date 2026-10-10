@@ -42,13 +42,10 @@ const errorLogFile = join(app.getPath('userData'), 'logs', 'errors.log');
 const errorLog = new ErrorLog(errorLogFile);
 
 process.on('uncaughtException', (error) =>
-  errorLog.write('main: uncaughtException', error.stack ?? error.message),
+  errorLog.write('main: uncaughtException', ErrorLog.detailOf(error)),
 );
 process.on('unhandledRejection', (reason) =>
-  errorLog.write(
-    'main: unhandledRejection',
-    reason instanceof Error ? (reason.stack ?? reason.message) : String(reason),
-  ),
+  errorLog.write('main: unhandledRejection', ErrorLog.detailOf(reason)),
 );
 
 // A second launch focuses the window that is already open instead of starting another app.
@@ -153,7 +150,7 @@ void app.whenReady().then(async () => {
     onCurrentChanged: (current) => window.send(IpcEvent.gameChanged, current),
     onGameUpdated: (view) => window.send(IpcEvent.gameUpdated, view),
   });
-  const accounts = new Accounts({ setup, follower, watcher });
+  const accounts = new Accounts({ setup, follower, watcher, logError });
 
   new Ipc({
     setup,
