@@ -22,6 +22,7 @@ What changed in each version, for whoever uses the app. The section of a version
 - A note, pin or checklist edited just before the app switches by itself to the account signed in to Steam is saved in the account it was written in, not in the other one.
 - Switching accounts while Steam is still answering no longer shows the previous account's game, dashboard, progress count or last played game under the new account.
 - Leaving "Add account" no longer puts the app back on the account that was in use when it was opened, if the app switched to the account signed in to Steam meanwhile.
+- In the first setup, changing the language after an account was added no longer leaves the app in the previous language when the setup ends.
 - An account picked by hand in Settings is no longer undone, some time later, when the app fails once to read which account is signed in to Steam.
 - Switching account while the app is still reading from Steam no longer mixes the two accounts: a game on the dashboard keeps its own account's playtime and progress, a game both accounts own is not shown with the other account's achievements, and a key Steam refuses is marked on the account it belongs to.
 

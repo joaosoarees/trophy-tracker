@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 
 import { AccountsService } from '@app/services/AccountsService';
+import { OnboardingService } from '@app/services/OnboardingService';
 import { SettingsService } from '@app/services/SettingsService';
 import type { StoreSlice } from '@app/store/Store';
 import {
@@ -80,11 +81,15 @@ type SettingsActions = {
    */
   acceptAccountStep: (appState: IAppState) => void;
   /**
-   * The first setup ends on the state its account step produced. With the
-   * app already set up there is nothing to take: every answer of the step is
-   * in the store, and so is whatever the main process sent since.
+   * The first setup ends on what the main process holds as it ends, not on
+   * the copy the account step kept: the language may have been changed since
+   * the last account was saved, and the main process may have followed
+   * another account. With several accounts it ends on the one signed in to
+   * Steam, or else on the first one added. With the app already set up there
+   * is nothing to take: every answer of the step is in the store, and so is
+   * whatever the main process sent since.
    */
-  finishSetup: (appState: IAppState) => void;
+  finishSetup: () => Promise<void>;
 };
 
 export type SettingsSlice = SettingsStore & SettingsActions;
@@ -263,7 +268,18 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
     if (get().settings.appState?.isConfigured) get().settings.apply(appState);
   },
 
-  finishSetup: (appState) => {
-    if (!get().settings.appState?.isConfigured) get().settings.apply(appState);
+  finishSetup: async () => {
+    if (get().settings.appState?.isConfigured) return;
+
+    // The state is asked for last: it is the one the setup ends on.
+    const signedIn = await OnboardingService.detectSteamId();
+    let next = await SettingsService.getState();
+    const first =
+      next.accounts.find((account) => account.steamId === signedIn) ??
+      next.accounts.at(0);
+    if (first && first.steamId !== next.activeSteamId) {
+      next = await AccountsService.setActive(first.steamId);
+    }
+    get().settings.apply(next);
   },
 });

@@ -13,7 +13,7 @@ interface IOnboardingProps {
   state: IAppState;
   /** Opened from the app, only to add an account: the language step is left out. */
   isAddingAccount: boolean;
-  onDone: (state: IAppState) => void;
+  onDone: () => void;
   onCancel?: () => void;
 }
 

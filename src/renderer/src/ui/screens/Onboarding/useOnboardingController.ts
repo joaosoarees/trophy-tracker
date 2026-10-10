@@ -2,8 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { type SyntheticEvent, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-import { AccountsService } from '@app/services/AccountsService';
-import { OnboardingService } from '@app/services/OnboardingService';
 import { SettingsService } from '@app/services/SettingsService';
 import { useStore } from '@app/store';
 import { isLanguage } from '@shared/i18n';
@@ -15,7 +13,7 @@ interface IOnboardingOptions {
   state: IAppState;
   /** Opened from the app, only to add an account: no language step. */
   isAddingAccount: boolean;
-  onDone: (state: IAppState) => void;
+  onDone: () => void;
 }
 
 export function useOnboardingController({
@@ -27,9 +25,12 @@ export function useOnboardingController({
   const acceptAccountStep = useStore(
     (store) => store.settings.acceptAccountStep,
   );
+  const finishSetup = useStore((store) => store.settings.finishSetup);
   /**
-   * What the first setup has saved so far: accounts are saved as they are
-   * verified, and the store only hears of them when the setup ends.
+   * The accounts the first setup has saved so far, to list them: they are
+   * saved as they are verified, and the store only hears of them when the
+   * setup ends, from the main process (`settings.finishSetup`). Nothing else
+   * is read from this copy: the rest of it may be out of date by then.
    */
   const [setupState, setSetupState] = useState(state);
   // With the app set up the store is told of each account as it is saved and
@@ -72,20 +73,8 @@ export function useOnboardingController({
   }
 
   async function finish() {
-    let next = saved;
-    // The first setup ends on the account signed in to Steam when it is one
-    // of them, otherwise on the first one added. Adding an account from the
-    // app ends on the account that was just added.
-    if (!isAddingAccount && next.accounts.length > 1) {
-      const signedIn = await OnboardingService.detectSteamId();
-      const first =
-        next.accounts.find((a) => a.steamId === signedIn) ?? next.accounts[0];
-      if (first.steamId !== next.activeSteamId) {
-        next = await AccountsService.setActive(first.steamId);
-      }
-    }
-
-    onDone(next);
+    await finishSetup();
+    onDone();
   }
 
   function handleSubmit(event: SyntheticEvent) {

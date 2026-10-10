@@ -4,7 +4,7 @@ import { type IApi } from '@shared/types/Api';
 import { type IAppState } from '@shared/types/AppState';
 import { type IPreferences } from '@shared/types/Preferences';
 import { makeAppState } from '@tests/factories/makeAppState';
-import { OTHER_STEAM_ID, STEAM_ID } from '@tests/helpers';
+import { OTHER_STEAM_ID, STEAM_ID, UNKNOWN_STEAM_ID } from '@tests/helpers';
 import { deferred, makeAppStore } from '@tests/makeAppStore';
 
 vi.mock('sonner', () => ({
@@ -34,6 +34,18 @@ function otherAccountState(): IAppState {
   return makeAppState({
     activeSteamId: OTHER_STEAM_ID,
     profile: { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' },
+  });
+}
+
+/** The app with both accounts saved, the first one added first, following `activeSteamId`. */
+function twoAccountsState(activeSteamId: string): IAppState {
+  const first = makeAppState().accounts[0];
+  const second = { ...first, steamId: OTHER_STEAM_ID, name: 'other' };
+  const active = activeSteamId === STEAM_ID ? first : second;
+  return makeAppState({
+    accounts: [first, second],
+    activeSteamId,
+    profile: { steamId: active.steamId, name: active.name, avatar: '' },
   });
 }
 
@@ -450,22 +462,102 @@ describe('settingsSlice', () => {
   });
 
   describe('finishSetup', () => {
-    it('should enter the app when the first setup ends', async () => {
-      const { sut } = await setup();
+    it('should enter the app on the state the main process has when the first setup ends', async () => {
+      const { sut } = await setup({
+        detectSteamId: () => Promise.resolve(null),
+        getState: () => Promise.resolve(makeAppState()),
+      });
       sut.getState().settings.apply(notSetUpState());
 
-      sut.getState().settings.finishSetup(makeAppState());
+      await sut.getState().settings.finishSetup();
 
       expect(sut.getState().settings.appState).toEqual(makeAppState());
     });
 
+    it('should end in the language the main process has when it was changed after the account was saved', async () => {
+      const { sut } = await setup({
+        detectSteamId: () => Promise.resolve(null),
+        getState: () => Promise.resolve(makeAppState({ language: 'fr' })),
+      });
+      sut.getState().settings.apply(notSetUpState());
+
+      await sut.getState().settings.finishSetup();
+
+      expect(sut.getState().session.language).toBe('fr');
+    });
+
+    it('should follow the account signed in to Steam when the setup ends on another of its accounts', async () => {
+      const setActiveAccountMock = vi.fn(() =>
+        Promise.resolve(twoAccountsState(OTHER_STEAM_ID)),
+      );
+      const { sut } = await setup({
+        detectSteamId: () => Promise.resolve(OTHER_STEAM_ID),
+        getState: () => Promise.resolve(twoAccountsState(STEAM_ID)),
+        setActiveAccount: setActiveAccountMock,
+      });
+      sut.getState().settings.apply(notSetUpState());
+
+      await sut.getState().settings.finishSetup();
+
+      expect(setActiveAccountMock).toHaveBeenCalledExactlyOnceWith(
+        OTHER_STEAM_ID,
+      );
+    });
+
+    it('should enter the app on the account signed in to Steam when the main process switched to it', async () => {
+      const { sut } = await setup({
+        detectSteamId: () => Promise.resolve(OTHER_STEAM_ID),
+        getState: () => Promise.resolve(twoAccountsState(STEAM_ID)),
+        setActiveAccount: () =>
+          Promise.resolve(twoAccountsState(OTHER_STEAM_ID)),
+      });
+      sut.getState().settings.apply(notSetUpState());
+
+      await sut.getState().settings.finishSetup();
+
+      expect(sut.getState().settings.appState).toEqual(
+        twoAccountsState(OTHER_STEAM_ID),
+      );
+    });
+
+    it('should follow the first account added when the one signed in to Steam is not one of them', async () => {
+      const setActiveAccountMock = vi.fn(() =>
+        Promise.resolve(twoAccountsState(STEAM_ID)),
+      );
+      const { sut } = await setup({
+        detectSteamId: () => Promise.resolve(UNKNOWN_STEAM_ID),
+        getState: () => Promise.resolve(twoAccountsState(OTHER_STEAM_ID)),
+        setActiveAccount: setActiveAccountMock,
+      });
+      sut.getState().settings.apply(notSetUpState());
+
+      await sut.getState().settings.finishSetup();
+
+      expect(setActiveAccountMock).toHaveBeenCalledExactlyOnceWith(STEAM_ID);
+    });
+
+    it('should ask for no other account when the main process is already on the one signed in to Steam', async () => {
+      // No `setActiveAccount` in this main process: asking for one would throw.
+      const { sut } = await setup({
+        detectSteamId: () => Promise.resolve(OTHER_STEAM_ID),
+        getState: () => Promise.resolve(twoAccountsState(OTHER_STEAM_ID)),
+      });
+      sut.getState().settings.apply(notSetUpState());
+
+      await sut.getState().settings.finishSetup();
+
+      expect(sut.getState().settings.appState).toEqual(
+        twoAccountsState(OTHER_STEAM_ID),
+      );
+    });
+
     it('should keep the account the main process followed when an account step that began before it ends', async () => {
+      // Nothing is asked of this main process: the store is already current.
       const { sut } = await setup();
-      const whenTheStepBegan = makeAppState();
-      sut.getState().settings.apply(whenTheStepBegan);
+      sut.getState().settings.apply(makeAppState());
       sut.getState().settings.accept(otherAccountState(), true);
 
-      sut.getState().settings.finishSetup(whenTheStepBegan);
+      await sut.getState().settings.finishSetup();
 
       expect(sut.getState().settings.appState?.activeSteamId).toBe(
         OTHER_STEAM_ID,
