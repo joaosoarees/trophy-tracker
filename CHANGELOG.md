@@ -6,6 +6,10 @@ What changed in each version, for whoever uses the app. The section of a version
 
 ### Fixed
 
+**The dashboard and reading from Steam**
+
+- Achievements unlocked in the last minute of a game are no longer left out when the window is reloaded (the "Reload" button of the error screen) within ten seconds of the game closing. They used to stay out until the game was read again (↻, for one).
+
 **When the app cannot save**
 
 - When a game starts on a saved account the app is not on, and the app cannot save the switch to it, the error log is told once, not every ten seconds for as long as it lasts. Meanwhile the Game tab stays on the game the account in use played last, and the app switches to the account that is playing, and shows its game, as soon as it can save again.

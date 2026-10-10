@@ -129,12 +129,25 @@ export class GameWatcher {
     return this.current?.isRunning === true && !this.current.isOnAnotherAccount;
   }
 
-  /** Resolves the current game and remembers it without announcing a change. */
+  /**
+   * Resolves the current game and remembers it without announcing a change:
+   * whoever asked is told by the answer. A game that closed is the
+   * exception. It is answered as closed at once, but not remembered here:
+   * the check would then see no change, and the close would get neither its
+   * last read nor its announcement, which is what makes the interface read
+   * the playtime again. The close is left to a check, started now, which is
+   * the one in flight when there is one: it is read and announced once,
+   * whoever saw it first.
+   */
   async refreshCurrent(): Promise<CurrentGame> {
     const forgotten = this.forgotten;
     const current = await this.observe();
     // Another account took over meanwhile: its game is the one to answer.
     if (forgotten !== this.forgotten) return this.refreshCurrent();
+    if (GameWatcher.hasStoppedPlaying(this.current, current)) {
+      void this.checkRunningGame();
+      return current;
+    }
     this.current = current;
     return this.current;
   }
