@@ -59,7 +59,7 @@ It is free, open source, and not affiliated with Valve or Steam.
   <tr>
     <td width="50%" valign="top">
       <h3>Several accounts</h3>
-      <p>Add more than one Steam account and switch between them in one click; each keeps its own key, notes and checklists. On Windows the app follows whichever account is signed in to Steam.</p>
+      <p>Add more than one Steam account and switch between them in one click; each keeps its own key, notes and checklists. The app follows whichever account is signed in to Steam.</p>
       <h3>In your language</h3>
       <p>English, Brazilian Portuguese, Spanish and French. The language changes the whole app, including the achievement names Steam sends.</p>
     </td>
