@@ -8,6 +8,11 @@ export interface IGameWatcherDeps {
   /** AppID of the game running on Steam, or `null`. */
   getRunningAppId: () => Promise<number | null>;
   lastPlayedAppId: () => Promise<number | null>;
+  /**
+   * A game has started: puts the app on the account that is playing it.
+   * Answers `other` when that account is not one the app has.
+   */
+  followRunningGame?: () => Promise<'followed' | 'other'>;
   /** Light re-read of a game while it is being played. */
   pollGame: (appid: number) => Promise<CheckResult<IGameView>>;
   isConfigured: () => boolean;
@@ -45,6 +50,16 @@ export class GameWatcher {
   async resolveCurrent(): Promise<CurrentGame> {
     const running = await this.deps.getRunningAppId();
     if (running !== null) {
+      // Whose game it is only has to be asked when the game starts.
+      const isSameGame =
+        this.current?.running === true && this.current.appid === running;
+      const isOnAnotherAccount = isSameGame
+        ? this.current?.otherAccount === true
+        : (await this.deps.followRunningGame?.()) === 'other';
+      // Not this account's game: it is not what was "last played" here.
+      if (isOnAnotherAccount) {
+        return { appid: running, running: true, otherAccount: true };
+      }
       this.lastSeenRunning = running;
       return { appid: running, running: true };
     }
@@ -57,6 +72,14 @@ export class GameWatcher {
 
     const last = await this.deps.lastPlayedAppId().catch(() => null);
     return last === null ? null : { appid: last, running: false };
+  }
+
+  /**
+   * While a game is being played the app stays on the account playing it:
+   * following another one would show the game with the wrong achievements.
+   */
+  get isPlaying(): boolean {
+    return this.current?.running === true && !this.current.otherAccount;
   }
 
   /** Resolves the current game and remembers it without announcing a change. */
@@ -84,7 +107,8 @@ export class GameWatcher {
     const previous = this.current;
     if (
       next?.appid === previous?.appid &&
-      next?.running === previous?.running
+      next?.running === previous?.running &&
+      next?.otherAccount === previous?.otherAccount
     ) {
       return;
     }
@@ -99,7 +123,8 @@ export class GameWatcher {
   }
 
   async checkUnlocks(): Promise<void> {
-    if (!this.current?.running || !this.deps.isConfigured()) return;
+    if (!this.current?.running || this.current.otherAccount) return;
+    if (!this.deps.isConfigured()) return;
 
     const { appid } = this.current;
     const result = await this.deps.pollGame(appid);

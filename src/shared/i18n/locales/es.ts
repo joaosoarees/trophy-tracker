@@ -184,6 +184,10 @@ export const es: Messages = {
   },
 
   accounts: {
+    gameOnAnotherAccount:
+      'Este juego se está ejecutando en una cuenta de Steam que no está en la aplicación.',
+    lockedWhilePlaying:
+      'Mientras se ejecuta un juego, la aplicación permanece en la cuenta que lo juega.',
     keyNotEncrypted:
       'Este sistema no tiene llavero de contraseñas, así que la clave se guarda sin cifrar, en un archivo que solo tu usuario puede leer.',
     use: (name: string) => `Usar ${name}`,

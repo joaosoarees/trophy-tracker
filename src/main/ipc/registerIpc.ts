@@ -67,6 +67,8 @@ export function registerIpc({
     },
     // The game on screen belongs to the account that is being left.
     setActiveAccount: (steamId) => {
+      // The account playing a game is not left while the game runs.
+      if (watcher.isPlaying) return setup.getState();
       watcher.forget({ current: true });
       return setup.setActiveAccount(steamId);
     },

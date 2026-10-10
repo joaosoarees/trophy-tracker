@@ -24,8 +24,12 @@ describe('createRunningGameSource', () => {
       GetPlayerSummaries: () => summary(),
     });
     let now = 0;
+    let signedIn: string | null = null;
     const source = createRunningGameSource({
-      local: localWithoutTracking,
+      local: {
+        ...localWithoutTracking,
+        getActiveSteamId: () => Promise.resolve(signedIn),
+      },
       client: new SteamClient(fetchImpl),
       store,
       now: () => now,
@@ -42,6 +46,7 @@ describe('createRunningGameSource', () => {
       fetchImpl,
       configure,
       advance: (ms: number) => (now += ms),
+      signIn: (steamId: string | null) => (signedIn = steamId),
     };
   }
   const playing = (gameid?: string) => ({
@@ -118,6 +123,34 @@ describe('createRunningGameSource', () => {
     await source();
 
     expect(fetchImpl.calls).toHaveLength(2);
+  });
+
+  it('asks about the account signed in to Steam when the app has it, not the one in use', async () => {
+    const { source, fetchImpl, configure, store, signIn } = setup(() =>
+      playing('105600'),
+    );
+    configure();
+    store.setCredentials(
+      { steamId: OTHER_STEAM_ID, apiKey: KEY },
+      { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' },
+    );
+    signIn(STEAM_ID);
+
+    await source();
+
+    expect(fetchImpl.calls[0]).toContain(`steamids=${STEAM_ID}`);
+  });
+
+  it('asks about the account in use when the one signed in to Steam is not in the app', async () => {
+    const { source, fetchImpl, configure, signIn } = setup(() =>
+      playing('105600'),
+    );
+    configure();
+    signIn('76561198000000099');
+
+    await source();
+
+    expect(fetchImpl.calls[0]).toContain(`steamids=${STEAM_ID}`);
   });
 
   it('keeps the last answer when the API fails', async () => {

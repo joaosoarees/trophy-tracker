@@ -14,6 +14,7 @@ import { Game } from '@ui/screens/Game';
 import { Settings } from '@ui/screens/Settings';
 import { cn } from '@ui/utils/cn';
 
+import { GameOnAnotherAccount } from './GameOnAnotherAccount';
 import { KeyTroubleNotice } from './KeyTroubleNotice';
 import { NoGame } from './NoGame';
 import { TabButton } from './TabButton';
@@ -28,6 +29,7 @@ export function AppShell() {
     libraryError,
     isLibraryLoading,
     handleRetryLibrary,
+    handleAddAccount,
     troubledAccount,
     alwaysOnTop,
     newVersion,
@@ -116,7 +118,9 @@ export function AppShell() {
             tab !== 'game' && 'hidden',
           )}
         >
-          {game.appid === null ? (
+          {game.isOnAnotherAccount ? (
+            <GameOnAnotherAccount onAddAccount={handleAddAccount} />
+          ) : game.appid === null ? (
             <NoGame
               error={libraryError}
               isLoading={isLibraryLoading}

@@ -17,7 +17,9 @@ interface IRunningGameDeps {
 /**
  * Which game is running right now. Windows reads it from the registry; the
  * other systems ask the Web API, which reports the game in the player's
- * profile. The API answer is reused for a while, and when a call fails the
+ * profile: that of the account signed in to the Steam client when the app
+ * has it, since that is the one playing, and otherwise the account in use.
+ * The API answer is reused for a while, and when a call fails the
  * last answer stands, so a network hiccup does not look like the game closing.
  */
 export function createRunningGameSource({
@@ -34,8 +36,12 @@ export function createRunningGameSource({
   let askedFor: string | null = null;
 
   return async () => {
-    const credentials = store.getCredentials();
-    if (!credentials) return null;
+    const inUse = store.getCredentials();
+    if (!inUse) return null;
+
+    const signedIn = await local.getActiveSteamId().catch(() => null);
+    const credentials =
+      (signedIn ? store.getCredentialsOf(signedIn) : null) ?? inUse;
     const isSameAccount = credentials.steamId === askedFor;
     if (isSameAccount && now() - askedAt < interval) return last;
     // Another account's game says nothing about this one.

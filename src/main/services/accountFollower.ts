@@ -8,28 +8,60 @@ interface IAccountFollowerDeps {
   onFollow: (steamId: string) => void;
 }
 
+export interface IAccountFollower {
+  /**
+   * Follows the client's account if it changed since last looked at (and
+   * once as the app opens). Acting only on a change is what lets an account
+   * picked by hand stand. Answers whether the app switched.
+   */
+  onClientChange: () => Promise<boolean>;
+  /**
+   * A game has started. It is always the client's account that is playing,
+   * so that account is followed whatever was picked by hand. Answers `other`
+   * when the game belongs to an account the app does not have, which it
+   * cannot show.
+   */
+  forRunningGame: () => Promise<'followed' | 'other'>;
+}
+
 /**
  * Keeps the app on the account signed in to the Steam client, when that
  * account is one of the saved ones: the running game is always that
  * account's, so showing it with another one's achievements would be wrong.
- *
- * It acts only when the client's account changes (and once as the app
- * opens), so an account the user picked by hand is not taken back from them
- * a few seconds later.
  */
 export function createAccountFollower({
   getSignedInSteamId,
   store,
   onFollow,
-}: IAccountFollowerDeps): () => Promise<void> {
+}: IAccountFollowerDeps): IAccountFollower {
   let lastSeen: string | null | undefined;
+  const signedIn = () => getSignedInSteamId().catch(() => null);
 
-  return async () => {
-    const signedIn = await getSignedInSteamId().catch(() => null);
-    if (signedIn === lastSeen) return;
-    lastSeen = signedIn;
+  /** Answers whether the app is now on that account. */
+  const follow = (steamId: string): boolean => {
+    if (steamId === store.getActiveSteamId()) return true;
+    if (!store.setActiveAccount(steamId)) return false;
+    onFollow(steamId);
+    return true;
+  };
 
-    if (signedIn === null || signedIn === store.getActiveSteamId()) return;
-    if (store.setActiveAccount(signedIn)) onFollow(signedIn);
+  return {
+    onClientChange: async () => {
+      const steamId = await signedIn();
+      if (steamId === lastSeen) return false;
+      lastSeen = steamId;
+
+      if (steamId === null || steamId === store.getActiveSteamId())
+        return false;
+      return follow(steamId);
+    },
+
+    forRunningGame: async () => {
+      const steamId = await signedIn();
+      // With no way to tell who is playing, it is taken to be the account in use.
+      if (steamId === null) return 'followed';
+      lastSeen = steamId;
+      return follow(steamId) ? 'followed' : 'other';
+    },
   };
 }

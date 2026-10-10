@@ -13,6 +13,7 @@ export function useSettingsController() {
   const {
     accounts,
     activeAccount,
+    isPlaying,
     language,
     appInfo,
     checkState,
@@ -35,6 +36,10 @@ export function useSettingsController() {
           (account) =>
             account.steamId === state.settings.appState?.activeSteamId,
         ) ?? null,
+      // The account playing a game is not left while the game runs.
+      isPlaying:
+        state.session.current?.running === true &&
+        state.session.current.otherAccount !== true,
       language: state.session.language,
       appInfo: state.updates.appInfo,
       checkState: state.updates.checkState,
@@ -59,6 +64,7 @@ export function useSettingsController() {
   return {
     accounts,
     activeAccount,
+    isAccountLocked: isPlaying,
     language,
     appInfo,
     checkState,

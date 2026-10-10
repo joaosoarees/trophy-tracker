@@ -18,6 +18,7 @@ export function useAppShellController() {
     isLibraryLoading,
     activeAccount,
     goTo,
+    startAddingAccount,
     loadCurrent,
     loadDashboard,
     toggleAlwaysOnTop,
@@ -39,6 +40,7 @@ export function useAppShellController() {
             account.steamId === state.settings.appState?.activeSteamId,
         ) ?? null,
       goTo: state.navigation.goTo,
+      startAddingAccount: state.navigation.startAddingAccount,
       loadCurrent: state.session.loadCurrent,
       loadDashboard: state.dashboard.load,
       toggleAlwaysOnTop: state.settings.toggleAlwaysOnTop,
@@ -82,6 +84,7 @@ export function useAppShellController() {
     libraryError,
     isLibraryLoading,
     handleRetryLibrary,
+    handleAddAccount: startAddingAccount,
     // Only a key that stopped working is worth a notice over every screen.
     troubledAccount:
       activeAccount?.status === 'rejected' ||

@@ -104,6 +104,15 @@ void app.whenReady().then(async () => {
     logError: log,
   });
 
+  // The game that is running is always the Steam client's account's, so the
+  // app follows that account on every system: the registry says who it is on
+  // Windows, the client's own files elsewhere.
+  const follower = createAccountFollower({
+    getSignedInSteamId: local.getActiveSteamId,
+    store,
+    onFollow: () => window.send(IpcEvent.stateChanged, setup.getState(), true),
+  });
+
   const watcher = new GameWatcher({
     getRunningAppId: createRunningGameSource({
       local,
@@ -114,6 +123,7 @@ void app.whenReady().then(async () => {
     // The audit cannot wait a minute for each check; a user's app always can.
     intervals: fakeSteam ? { running: 2_000, unlocks: 3_000 } : undefined,
     lastPlayedAppId: () => tracker.lastPlayedAppId(),
+    followRunningGame: follower.forRunningGame,
     pollGame: (appid) => setup.attempt(() => tracker.getGame(appid, 'poll')),
     isConfigured: () => setup.isConfigured,
     onCurrentChanged: (current) => window.send(IpcEvent.gameChanged, current),
@@ -131,19 +141,8 @@ void app.whenReady().then(async () => {
     dataFolder: createDataFolderAccess(app.getPath('userData')),
     logError: log,
   });
-  // The game that is running is always the Steam client's account's, so the
-  // app follows that account on every system: the registry says who it is on
-  // Windows, the client's own files elsewhere.
-  const followAccount = createAccountFollower({
-    getSignedInSteamId: local.getActiveSteamId,
-    store,
-    onFollow: () => {
-      watcher.forget({ current: true });
-      window.send(IpcEvent.stateChanged, setup.getState(), true);
-    },
-  });
   // Before the window opens, so it opens on the right account.
-  await followAccount();
+  if (await follower.onClientChange()) watcher.forget({ current: true });
   app.on('second-instance', () => window.focus());
   window.open({
     title: setup.messages.appTitle,
@@ -160,7 +159,14 @@ void app.whenReady().then(async () => {
     },
   });
   watcher.start();
-  setInterval(() => void followAccount(), fakeSteam ? 2_000 : 30_000);
+  setInterval(
+    () =>
+      void follower.onClientChange().then((switched) => {
+        // The game on screen belonged to the account that was left.
+        if (switched) watcher.forget({ current: true });
+      }),
+    fakeSteam ? 2_000 : 30_000,
+  );
   // The app can stay open for days: ask every hour whether the six hours
   // since the last check have passed, and tell the interface what was found.
   setInterval(

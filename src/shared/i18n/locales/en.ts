@@ -182,6 +182,10 @@ export const en = {
   },
 
   accounts: {
+    gameOnAnotherAccount:
+      'This game is running on a Steam account that is not in the app.',
+    lockedWhilePlaying:
+      'While a game is running, the app stays on the account that is playing it.',
     keyNotEncrypted:
       'This system has no password keyring, so the key is saved without encryption, in a file only your user can read.',
     use: (name: string) => `Use ${name}`,

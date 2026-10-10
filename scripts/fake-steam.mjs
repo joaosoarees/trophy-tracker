@@ -172,6 +172,8 @@ export async function startFakeSteam() {
     mode: 'ok',
     /** AppID "being played", as the profile reports it; `null` for none. */
     running: null,
+    /** Whether it is the second account that is playing; the first plays otherwise. */
+    isSecondPlaying: false,
   };
   const game = (appid) => games.find((g) => g.appid === Number(appid));
 
@@ -198,8 +200,8 @@ export async function startFakeSteam() {
                 steamid: query.get('steamids'),
                 personaname: isSecond ? 'Second Hunter' : 'Audit Hunter',
                 avatarfull: '',
-                // Only the first account plays during the audit.
-                ...(state.running && !isSecond
+                // A game is in the profile of whoever is playing it.
+                ...(state.running && isSecond === state.isSecondPlaying
                   ? { gameid: String(state.running) }
                   : {}),
               },
