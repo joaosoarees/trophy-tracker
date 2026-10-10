@@ -1,4 +1,11 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { onTestFinished } from 'vitest';
+
 import { SteamClient } from '../src/main/steam/SteamClient';
+import { Store } from '../src/main/storage/Store';
 
 export interface IRoute {
   status?: number;
@@ -6,7 +13,11 @@ export interface IRoute {
   text?: string;
 }
 
-/** Fake `fetch`: the first route whose fragment appears in the URL answers. */
+/**
+ * Fake `fetch`: the first route whose fragment appears in the URL answers. A
+ * request no route answers throws, so a call the test did not provide for is
+ * never taken for an answer from Steam. `calls` lists every request made.
+ */
 export function fakeFetch(
   routes: Record<string, IRoute | ((url: URL) => IRoute)>,
 ): typeof fetch & { calls: string[] } {
@@ -21,9 +32,21 @@ export function fakeFetch(
         status: r.status ?? 200,
       });
     }
-    return new Response('not found', { status: 404 });
+    throw new Error(`fakeFetch: no route answers ${url.toString()}`);
   };
   return Object.assign(impl, { calls });
+}
+
+/**
+ * The real `Store` over a folder of its own, removed when the test ends. Call
+ * it inside a test (or a function a test calls), not at the top of a file.
+ */
+export function makeDiskStore(): Store {
+  const dir = mkdtempSync(join(tmpdir(), 'tt-'));
+  onTestFinished(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+  return new Store(dir);
 }
 
 export const clientWith = (
@@ -35,6 +58,8 @@ export const KEY = '0123456789ABCDEF0123456789ABCDEF';
 export const STEAM_ID = '76561198000000042';
 /** A second made-up account, for what happens between two. */
 export const OTHER_STEAM_ID = '76561198000000043';
+/** A made-up account nobody saved in the app. */
+export const UNKNOWN_STEAM_ID = '76561198000000099';
 export const OTHER_KEY = 'FEDCBA9876543210FEDCBA9876540000';
 
 export const FORBIDDEN_HTML: IRoute = {
