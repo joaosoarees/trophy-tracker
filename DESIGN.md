@@ -345,7 +345,7 @@ The app can follow more than one Steam account, each with its own Web API key. T
 
 - **Purpose:** says what is known about an account's key.
 - **Anatomy:** a 14px icon and words, in label size.
-- **Variants:** working (a check in a circle), refused by Steam (a cross in a circle), limited by Steam (an hourglass), not checked yet (a dashed circle). Steam answers a revoked key and a mistyped one alike, so there is one "refused".
+- **Variants:** working (a check in a circle), refused by Steam (a cross in a circle), limited by Steam (an hourglass). Steam answers a revoked key and a mistyped one alike, so there is one "refused".
 - **States:** none of its own; it is not a control.
 - **Do:** keep the icon and the words together, always. **Don't:** colour a working key green: green is "done", and a key is never done. Only "refused" takes a colour, Erase Red, because it is a loss, and only on its icon: its words stay in the text colour, since red text does not have enough contrast on a card.
 

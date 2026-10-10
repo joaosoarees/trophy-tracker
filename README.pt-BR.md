@@ -131,15 +131,6 @@ pnpm screenshots   # as imagens desta página
 
 Como o código é organizado e as regras que ele segue estão em [CLAUDE.md](CLAUDE.md); como funcionam as versões e a auditoria, em [docs/](docs). O código, os comentários e a documentação do repositório são em inglês.
 
-## Política de assinatura de código
-
-Os instaladores são gerados a partir deste repositório pelo GitHub Actions (`.github/workflows/release.yml`), a partir de uma tag de versão que só o mantenedor pode criar.
-
-- **Autor, revisor e aprovador:** [Joao Soares](https://github.com/joaosoarees), a única pessoa com acesso de escrita ao repositório.
-- Mudanças de outras pessoas chegam como pull requests e são revisadas antes de entrar.
-
-Os instaladores ainda não são assinados.
-
 ## Licença
 
 [MIT](LICENSE)

@@ -58,8 +58,8 @@ Four things together, each confirmed as essential to what the product is:
 ## Evidence on Hand
 
 - Real Steam API responses used as test fixtures (`test/fixtures`: Nioh 3 and Onimusha: Way of the Sword).
-- Three published releases (v0.1.0 to v0.3.0) at https://github.com/joaosoarees/trophy-tracker/releases.
-- The README's Privacy and Code signing policy sections.
+- The published releases, with what changed in each, at https://github.com/joaosoarees/trophy-tracker/releases.
+- The README's Privacy section.
 
 There are no users beyond the author yet: no testimonials, download figures, reviews or press exist, and none may be implied.
 
