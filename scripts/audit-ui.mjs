@@ -912,10 +912,67 @@ async function auditAccounts(page, steam, home) {
     'hover-add-account',
   );
 
+  // A checklist item removed on the Game tab offers its undo in a toast,
+  // which outlives the list. An undo with nothing to put back goes away at
+  // the click; one still on offer goes with its account, at the switch below.
+  const UNDO = `document.querySelector('[data-sonner-toast]:not([data-removed="true"]) [data-action]')`;
+  const LIST_TOGGLE = `document.querySelector('main li [aria-expanded]')`;
+  const LIST_ITEMS = `document.querySelectorAll('main li button[aria-label="Remove item"]').length`;
+  const addItem = async () => {
+    await type(page, 'main li input[placeholder="New item"]', 'Audit item');
+    await page.evaluate(
+      `document.querySelector('main li button[aria-label="Add item"]').click()`,
+    );
+    await sleep(300);
+  };
+  const removeItem = async () => {
+    await page.evaluate(
+      `document.querySelector('main li button[aria-label="Remove item"]').click()`,
+    );
+    await sleep(300);
+  };
+  await page.evaluate(navButton(0));
+  await sleep(900);
+  await page.evaluate(showList('Pending'));
+  await sleep(600);
+  await page.evaluate(`${LIST_TOGGLE}.click()`);
+  await sleep(500);
+  await addItem();
+  await removeItem();
+  expectThat(
+    FLOW,
+    (await page.evaluate(`${UNDO} !== null`)) &&
+      (await page.evaluate(LIST_ITEMS)) === 0,
+    'removing a checklist item does not offer to undo it',
+  );
+  await page.capture('flow-checklist-undo');
+  // Typed again by hand, the item is back: the undo has nothing to do.
+  await addItem();
+  await page.evaluate(`${UNDO}?.click()`);
+  expectThat(
+    FLOW,
+    (await waitFor(page, `${UNDO} === null`, 1500)) &&
+      (await page.evaluate(LIST_ITEMS)) === 1,
+    'an undo with nothing to put back stays on screen, or puts the item on the list twice',
+  );
+  await removeItem();
+  expectThat(
+    FLOW,
+    await page.evaluate(`${UNDO} !== null`),
+    'removing a checklist item a second time does not offer to undo it',
+  );
+  await page.evaluate(`${LIST_TOGGLE}.click()`);
+  await openSettings();
+
   // By hand: one click on the other card.
   await page.evaluate(clickAccountCard(1));
   const switched = await waitFor(page, `(${activeAccountCard}) === 1`);
   expectThat(FLOW, switched, 'clicking another account does not switch to it');
+  expectThat(
+    FLOW,
+    await waitFor(page, `${UNDO} === null`, 1000),
+    'the undo of a checklist item is still offered after its account was left',
+  );
   expectThat(
     FLOW,
     (await page.evaluate(settingsText)).includes('Second Hunter'),

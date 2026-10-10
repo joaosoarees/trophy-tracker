@@ -10,7 +10,7 @@ import { OTHER_STEAM_ID, STEAM_ID } from '@tests/helpers';
 import { makeAppStore } from '@tests/makeAppStore';
 
 vi.mock('sonner', () => ({
-  toast: Object.assign(vi.fn(), { error: vi.fn() }),
+  toast: Object.assign(vi.fn(), { error: vi.fn(), dismiss: vi.fn() }),
 }));
 
 /** The state of the app following the second account. */
@@ -73,11 +73,15 @@ async function setup() {
       return () => delete listening.onDashboardProgress;
     },
   };
-  const { sut: store, fireWindowEvent } = await makeAppStore({ api });
+  const {
+    sut: store,
+    fireWindowEvent,
+    toastMock,
+  } = await makeAppStore({ api });
   store.getState().settings.apply(makeAppState());
   // Loaded after the store was made, so it is the store this one wires.
   const { connectStore: sut } = await import('./connect');
-  return { sut, store, listening, saved, fireWindowEvent };
+  return { sut, store, listening, saved, fireWindowEvent, toastMock };
 }
 
 describe('connectStore', () => {
@@ -164,6 +168,25 @@ describe('connectStore', () => {
       expect(saved).toEqual([
         [10, 'A', { note: 'typed just now', pinned: false }, STEAM_ID],
       ]);
+    });
+
+    it('should take back the undo offered for a removed checklist item', async () => {
+      const { sut, store, toastMock } = await setup();
+      const disconnect = sut();
+      toastMock.mockReturnValueOnce('undo of bridge');
+      store
+        .getState()
+        .userData.offerChecklistUndo(
+          { steamId: STEAM_ID, appid: 10, achievementId: 'A' },
+          { id: 'b', text: 'Bridge', done: false },
+          0,
+        );
+
+      disconnect();
+
+      expect(toastMock.dismiss).toHaveBeenCalledExactlyOnceWith(
+        'undo of bridge',
+      );
     });
 
     it('should drop the games that were read', async () => {

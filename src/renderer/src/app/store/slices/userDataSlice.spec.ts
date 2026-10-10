@@ -7,7 +7,7 @@ import { OTHER_STEAM_ID, STEAM_ID } from '@tests/helpers';
 import { deferred, makeAppStore } from '@tests/makeAppStore';
 
 vi.mock('sonner', () => ({
-  toast: Object.assign(vi.fn(), { error: vi.fn() }),
+  toast: Object.assign(vi.fn(), { error: vi.fn(), dismiss: vi.fn() }),
 }));
 
 /** The state of the app following the second account. */
@@ -297,6 +297,61 @@ describe('userDataSlice', () => {
       await vi.advanceTimersByTimeAsync(PAUSE);
 
       expect(setUserDataMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('offerChecklistUndo', () => {
+    it('should name the removed item and offer to undo when an item was removed', async () => {
+      const { sut, toastMock } = await setup(savedList([tower]));
+
+      sut.getState().userData.offerChecklistUndo(FROM, bridge, 0);
+
+      expect(toastMock).toHaveBeenCalledExactlyOnceWith('Removed “Bridge”', {
+        action: { label: 'Undo', onClick: expect.any(Function) },
+      });
+    });
+
+    it('should put the item back when the undo is clicked', async () => {
+      const { sut, toastMock } = await setup(savedList([tower]));
+      await sut.getState().userData.load(10);
+      sut.getState().userData.offerChecklistUndo(FROM, bridge, 0);
+      // The button of the toast, as sonner is given it.
+      const undo = toastMock.mock.calls[0][1]?.action as unknown as {
+        onClick: () => void;
+      };
+
+      undo.onClick();
+
+      expect(sut.getState().userData.byGame[10]).toEqual(
+        savedList([bridge, tower]),
+      );
+    });
+
+    it('should take the offer off the screen when its account is left', async () => {
+      const { sut, follow, toastMock } = await setup(savedList([tower]));
+      follow(makeAppState());
+      toastMock.mockReturnValueOnce('undo of bridge');
+      sut.getState().userData.offerChecklistUndo(FROM, bridge, 0);
+
+      follow(otherAccountState());
+
+      expect(toastMock.dismiss).toHaveBeenCalledExactlyOnceWith(
+        'undo of bridge',
+      );
+    });
+
+    it('should take an offer off the screen only once when accounts change twice', async () => {
+      const { sut, follow, toastMock } = await setup(savedList([tower]));
+      follow(makeAppState());
+      toastMock.mockReturnValueOnce('undo of bridge');
+      sut.getState().userData.offerChecklistUndo(FROM, bridge, 0);
+      follow(otherAccountState());
+
+      follow(makeAppState());
+
+      expect(toastMock.dismiss).toHaveBeenCalledExactlyOnceWith(
+        'undo of bridge',
+      );
     });
   });
 

@@ -32,6 +32,8 @@ export function connectStore(): () => void {
     offs.forEach((off) => off());
     window.removeEventListener('beforeunload', userData.flush);
     userData.flush();
+    // An undo is for the account being left: it could not apply any more.
+    userData.withdrawUndos();
     navigation.forgetPickedGame();
 
     const initial = useStore.getInitialState();

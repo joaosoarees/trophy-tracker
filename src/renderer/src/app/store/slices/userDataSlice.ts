@@ -35,6 +35,21 @@ type UserDataActions = {
     item: IChecklistItem,
     index: number,
   ) => void;
+  /**
+   * Says that a checklist item was removed and offers, in a toast, to take
+   * the removal back (`restoreChecklistItem`). The toast outlives the list
+   * it is about, so it is the store that knows when it can do nothing more.
+   */
+  offerChecklistUndo: (
+    from: ChecklistPlace,
+    item: IChecklistItem,
+    index: number,
+  ) => void;
+  /**
+   * Takes every undo still on offer off the screen. Called as the account is
+   * left (`connectStore`): from then on none of them could put anything back.
+   */
+  withdrawUndos: () => void;
   /** Writes right away what is still waiting for the typing pause. */
   flush: () => void;
 };
@@ -82,6 +97,10 @@ export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => {
       );
     },
   });
+
+  // The toasts that offer an undo, to take them back. Not in the store: no
+  // screen reads them. One that already went away by itself is harmless here.
+  const offeredUndos = new Set<string | number>();
 
   return {
     byGame: {},
@@ -139,6 +158,23 @@ export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => {
       const checklist = restoreChecklistItem(current, item, index);
       if (checklist === current) return;
       get().userData.update(appid, achievementId, { checklist });
+    },
+
+    offerChecklistUndo: (from, item, index) => {
+      const m = messagesFor(get().session.language);
+      const offered = toast(m.checklist.removed(item.text), {
+        action: {
+          label: m.common.undo,
+          // The click takes the toast away by itself, whatever it restored.
+          onClick: () => get().userData.restoreChecklistItem(from, item, index),
+        },
+      });
+      offeredUndos.add(offered);
+    },
+
+    withdrawUndos: () => {
+      offeredUndos.forEach((offered) => toast.dismiss(offered));
+      offeredUndos.clear();
     },
 
     flush: () => saver.flush(),
