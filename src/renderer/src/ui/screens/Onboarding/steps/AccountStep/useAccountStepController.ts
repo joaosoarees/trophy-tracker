@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useReducer, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import { AccountsService } from '@app/services/AccountsService';
@@ -8,8 +8,11 @@ import { type IAppState } from '@shared/types/AppState';
 import { useStepper } from '@ui/screens/Onboarding/components/Stepper/useStepper';
 import { type OnboardingFormData } from '@ui/screens/Onboarding/schema';
 
-/** Where the SteamID in the field came from, which decides how it is presented. */
-type SteamIdSource = 'detected' | 'typed';
+import {
+  accountFormReducer,
+  createAccountFormState,
+  isDetecting,
+} from './accountFormState';
 
 interface IAccountStepOptions {
   /** The accounts the app already has. */
@@ -28,16 +31,13 @@ export function useAccountStepController({
   const { lockFollowingSteps } = useStepper();
   const form = useFormContext<OnboardingFormData>();
 
-  // With no account yet the form is the step; afterwards it opens on request.
-  const [isFormOpen, setIsFormOpen] = useState(
-    accounts.length === 0 || isInitiallyOpen,
+  // Whether the form is open, whether it can be closed, and what is known of
+  // the Steam client's account change together: one reducer holds the three.
+  const [formState, dispatch] = useReducer(
+    accountFormReducer,
+    { hasAccounts: accounts.length > 0, isInitiallyOpen },
+    createAccountFormState,
   );
-  /** Opened with "Add another account": it can be closed again without adding. */
-  const [isFormOptional, setIsFormOptional] = useState(false);
-  // Only a SteamID found in the Steam client is locked. Anything else in the
-  // field was typed by the user, and stays theirs.
-  const [source, setSource] = useState<SteamIdSource>('typed');
-  const [isEditingSteamId, setIsEditingSteamId] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   /** Steam refused the key or the SteamID. */
   const [problem, setProblem] = useState<string | null>(null);
@@ -45,33 +45,37 @@ export function useAccountStepController({
   const [privacyProblem, setPrivacyProblem] = useState<string | null>(null);
 
   // Offer the account signed in to the Steam client, unless the app already
-  // has it or something is in the field. Again each time the form opens.
+  // has it or something else is in the field. It reads the accounts and the
+  // field as they are when the answer arrives, without asking again for them.
+  const offerDetected = useEffectEvent((steamId: string | null) => {
+    const isSaved = accounts.some((account) => account.steamId === steamId);
+    const typed = form.getValues('accountStep.steamId');
+    if (steamId && !isSaved && !typed) {
+      form.setValue('accountStep.steamId', steamId);
+    }
+    dispatch({ type: 'detected', steamId, isSaved, typed });
+  });
+
+  // Asked each time the form opens, and again when the step goes back to its
+  // beginning: the list changing under an open form does not ask.
+  const isAskingSteamClient = isDetecting(formState);
   useEffect(() => {
-    if (!isFormOpen) return;
+    if (!isAskingSteamClient) return;
     let isActive = true;
 
     void OnboardingService.detectSteamId().then((steamId) => {
-      if (!isActive || !steamId) return;
-      if (accounts.some((account) => account.steamId === steamId)) return;
-
-      const current = form.getValues('accountStep.steamId');
-      if (!current) form.setValue('accountStep.steamId', steamId);
-      if (!current || current === steamId) setSource('detected');
+      if (isActive) offerDetected(steamId);
     });
 
     return () => {
       isActive = false;
     };
-    // Only opening the form asks; the list changing under it does not.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, isFormOpen]);
+  }, [isAskingSteamClient]);
 
   function emptyForm() {
     form.setValue('accountStep.steamId', '');
     form.setValue('accountStep.apiKey', '');
     form.clearErrors('accountStep');
-    setSource('typed');
-    setIsEditingSteamId(false);
     setProblem(null);
     setPrivacyProblem(null);
   }
@@ -110,8 +114,7 @@ export function useAccountStepController({
     setIsVerifying(false);
     onChange(next, steamId.trim());
     emptyForm();
-    setIsFormOpen(false);
-    setIsFormOptional(false);
+    dispatch({ type: 'closed' });
   }
 
   async function handleRemove(steamId: string) {
@@ -120,37 +123,36 @@ export function useAccountStepController({
     if (next.accounts.length > 0) return;
     // Back to the beginning: there is nothing for the next step to show.
     lockFollowingSteps();
-    setIsFormOpen(true);
+    emptyForm();
+    dispatch({ type: 'lastAccountRemoved' });
   }
 
   function handleOpenForm() {
     emptyForm();
-    setIsFormOpen(true);
-    setIsFormOptional(true);
+    dispatch({ type: 'opened' });
   }
 
   function handleCloseForm() {
     emptyForm();
-    setIsFormOpen(false);
-    setIsFormOptional(false);
+    dispatch({ type: 'closed' });
   }
 
   function handleEditSteamId() {
-    setIsEditingSteamId(true);
-    setSource('typed');
+    dispatch({ type: 'steamIdEdited' });
     form.setFocus('accountStep.steamId');
   }
 
   return {
     form,
-    isFormOpen,
-    isFormOptional,
+    isFormOpen: formState.isOpen,
+    isFormOptional: formState.isOptional,
     isVerifying,
     problem,
     privacyProblem,
-    steamIdSource: source,
     // Locked while it is the account found in the Steam client.
-    isSteamIdLocked: source !== 'typed' && !isEditingSteamId,
+    isSteamIdLocked: formState.detection === 'inField',
+    /** Nobody is signed in to the Steam client: the SteamID has to be typed. */
+    isSteamIdNotFound: formState.detection === 'none',
     handleVerify: () => void handleVerify(),
     handleRemove: (steamId: string) => void handleRemove(steamId),
     handleOpenForm,

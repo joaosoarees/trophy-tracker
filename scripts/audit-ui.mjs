@@ -511,6 +511,13 @@ async function auditOnboarding(page, steam, language) {
       !(await page.evaluate(`document.querySelector('#steamId').readOnly`)),
       '"Use another account" does not open the SteamID for typing',
     );
+    expectThat(
+      FLOW,
+      !/could not find an account/i.test(
+        await page.evaluate(`document.querySelector('main').innerText`),
+      ),
+      '"Use another account" says no account was found in the Steam client, when one was',
+    );
     await audit(page, `onboarding-account-typed-${language}`);
     await type(page, '#steamId', STEAM_ID);
   }
@@ -589,6 +596,47 @@ async function auditOnboarding(page, steam, language) {
   await audit(page, `onboarding-verified-${language}`);
 
   if (isFirst) {
+    // The only account is removed while "Add another account" is open: the
+    // step is back at its beginning, and the account can be verified again.
+    await page.evaluate(verifyAccount);
+    await sleep(700);
+    await page.evaluate(
+      `[...document.querySelectorAll('main form ul[aria-label] > li button')].at(-1).click()`,
+    );
+    await waitFor(page, `(${accountCards}) === 0`);
+    await sleep(700);
+    const restarted = JSON.parse(
+      await page.evaluate(`JSON.stringify((() => {
+        const field = document.querySelector('#steamId');
+        const forward = [...document.querySelectorAll('main button')].filter((el) => el.offsetParent !== null).at(-1);
+        return {
+          cards: ${accountCards},
+          value: field?.value ?? null,
+          locked: field?.readOnly ?? null,
+          key: document.querySelector('#apiKey')?.value ?? null,
+          inPanel: Boolean(field?.closest('.rounded-lg.border')),
+          forward: forward.type,
+        };
+      })())`),
+    );
+    expectThat(
+      FLOW,
+      restarted.cards === 0 &&
+        restarted.value === STEAM_ID &&
+        restarted.locked &&
+        restarted.key === '' &&
+        !restarted.inPanel &&
+        restarted.forward === 'button',
+      `removing the only account with "Add another account" open does not bring back the form of the first account, with the SteamID of the Steam client (found: ${JSON.stringify(restarted)})`,
+    );
+    await audit(page, `onboarding-last-account-removed-${language}`);
+    await type(page, '#apiKey', '0123456789ABCDEF0123456789ABCDEF');
+    expectThat(
+      FLOW,
+      (await verify()) === '' && (await page.evaluate(accountCards)) === 1,
+      'the account removed in the step could not be verified again',
+    );
+
     // One more account, without leaving the step that is about accounts.
     await captureHover(
       page,

@@ -45,6 +45,7 @@ export default defineConfig({
         'src/renderer/src/ui/screens/**/gameList.ts',
         'src/renderer/src/ui/screens/**/schema.ts',
         'src/renderer/src/ui/screens/**/stepperState.ts',
+        'src/renderer/src/ui/screens/**/accountFormState.ts',
       ],
       exclude: [
         // A spec beside the code is not code to cover.

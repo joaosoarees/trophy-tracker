@@ -58,8 +58,8 @@ export function AccountStep({
     isVerifying,
     problem,
     privacyProblem,
-    steamIdSource,
     isSteamIdLocked,
+    isSteamIdNotFound,
     handleVerify,
     handleRemove,
     handleOpenForm,
@@ -161,7 +161,7 @@ export function AccountStep({
 
             {!isSteamIdLocked && (
               <>
-                {steamIdSource === 'typed' && !hasAccounts && (
+                {isSteamIdNotFound && !hasAccounts && (
                   <p className="text-muted-foreground text-xs">
                     {text.steamId.notDetected}
                   </p>
