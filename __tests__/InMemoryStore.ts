@@ -18,7 +18,7 @@ import { type ISummaryEntry, type Store } from '../src/main/storage/Store';
 
 /**
  * The methods of `Store` the fake implements: what `Tracker`,
- * `SetupService` and `KeyStatus` use of it, together.
+ * `SetupService`, `AccountChecks` and `KeyStatus` use of it, together.
  */
 export type ServiceStore = Pick<
   Store,

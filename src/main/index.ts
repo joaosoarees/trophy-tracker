@@ -6,6 +6,7 @@ import { IpcEvent } from '@shared/ipcEvents';
 
 import { Ipc } from './ipc/Ipc';
 import { MainWindow } from './MainWindow';
+import { AccountChecks } from './services/AccountChecks';
 import { AccountFollower } from './services/AccountFollower';
 import { Accounts } from './services/Accounts';
 import { AppUpdates } from './services/AppUpdates';
@@ -83,7 +84,8 @@ void app.whenReady().then(async () => {
     () => window.send(IpcEvent.stateChanged, setup.getState(), false),
     logError,
   );
-  const setup = new SetupService(store, client, keys);
+  const checks = new AccountChecks(store, client, keys);
+  const setup = new SetupService(store, checks, keys);
   // With a fake Steam the local client is fake too: a folder the audit fills
   // in, read the way a Linux install is, or no client at all.
   const fakeSteamHome = process.env.TROPHY_TRACKER_FAKE_STEAM_HOME;
@@ -148,6 +150,7 @@ void app.whenReady().then(async () => {
   new Ipc({
     setup,
     keys,
+    checks,
     accounts,
     tracker,
     watcher,

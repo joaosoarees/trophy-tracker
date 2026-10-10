@@ -17,6 +17,7 @@ import {
   SteamError,
 } from '../steam/SteamClient';
 
+import { AccountChecks } from './AccountChecks';
 import { AccountFollower } from './AccountFollower';
 import { Accounts } from './Accounts';
 import { GameWatcher } from './GameWatcher';
@@ -74,10 +75,11 @@ function setup({
       return profileOf(credentials);
     },
   });
+  const keys = new KeyStatus(store, client);
   const accountSetup = new SetupService(
     store,
-    client,
-    new KeyStatus(store, client),
+    new AccountChecks(store, client, keys),
+    keys,
   );
   /** What the watcher was asked, in order. */
   const asked: string[] = [];
@@ -123,10 +125,11 @@ function setupWired(signedIn: string) {
     summary: (credentials) =>
       credentials.apiKey === KEY ? summary(credentials) : rejected(),
   });
+  const keys = new KeyStatus(store, client);
   const accountSetup = new SetupService(
     store,
-    client,
-    new KeyStatus(store, client),
+    new AccountChecks(store, client, keys),
+    keys,
   );
   /** Every account the app was said to have started following. */
   const followed: string[] = [];
