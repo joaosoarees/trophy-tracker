@@ -1,7 +1,7 @@
 import { type Meta, type StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 
-import { makeGameSummary } from '@test/factories/makeGameSummary';
+import { makeGameSummary } from '@tests/factories/makeGameSummary';
 import { GameRow } from '@ui/screens/Dashboard/components/GameRow';
 
 const game = makeGameSummary({

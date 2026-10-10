@@ -1,7 +1,7 @@
 import { type Meta, type StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 
-import { makeAchievement } from '@test/factories/makeAchievement';
+import { makeAchievement } from '@tests/factories/makeAchievement';
 import { AchievementCard } from '@ui/screens/Game/components/AchievementCard';
 
 const ICONS =

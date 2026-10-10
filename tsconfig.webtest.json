@@ -9,13 +9,11 @@
       "@app/*": ["./src/renderer/src/app/*"],
       "@ui/*": ["./src/renderer/src/ui/*"],
       "@shared/*": ["./src/shared/*"],
-      "@main/*": ["./src/main/*"],
-      "@test/*": ["./test/*"],
-      "@tests/*": ["./test/*"]
+      "@tests/*": ["./__tests__/*"]
     }
   },
   "include": [
-    "test/makeAppStore.ts",
+    "__tests__/makeAppStore.ts",
     "src/renderer/**/*.spec.ts",
     "src/renderer/src/env.d.ts"
   ],
