@@ -1,19 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
 import { type CurrentGame } from '@shared/types/Game';
+import { fakeSteamClient } from '@tests/fakeSteamClient';
 import {
-  fakeFetch,
-  FORBIDDEN_HTML,
   KEY,
-  makeDiskStore,
   OTHER_KEY,
   OTHER_STEAM_ID,
   STEAM_ID,
   UNKNOWN_STEAM_ID,
 } from '@tests/helpers';
+import { InMemoryStore } from '@tests/InMemoryStore';
 
-import { SteamClient } from '../steam/SteamClient';
-import { type Store } from '../storage/Store';
+import {
+  type ICredentials,
+  type IRawPlayerSummary,
+  SteamError,
+} from '../steam/SteamClient';
 
 import { AccountFollower } from './AccountFollower';
 import { Accounts } from './Accounts';
@@ -21,19 +23,16 @@ import { GameWatcher } from './GameWatcher';
 import { SetupService } from './SetupService';
 
 /** Steam knows whoever is asked about, and calls them "player". */
-const summary = (url: URL) => ({
-  json: {
-    response: {
-      players: [
-        {
-          steamid: url.searchParams.get('steamids'),
-          personaname: 'player',
-          avatarfull: 'x',
-        },
-      ],
-    },
-  },
+const summary = ({ steamId }: ICredentials): IRawPlayerSummary => ({
+  steamid: steamId,
+  personaname: 'player',
+  avatarfull: 'x',
 });
+
+/** Steam rejecting the key it was asked with. */
+const rejected = (): never => {
+  throw new SteamError('invalid-key');
+};
 
 interface ISetupOptions {
   /** The accounts the app starts with; it follows the first. */
@@ -42,35 +41,39 @@ interface ISetupOptions {
   isPlaying?: boolean;
   /** Whether the Steam client's account makes the app switch. */
   hasClientSwitched?: boolean;
-  routes?: Parameters<typeof fakeFetch>[0];
+  /** What Steam answers about the profile of an account; by default, it knows it. */
+  profileOf?: (credentials: ICredentials) => IRawPlayerSummary;
   /** What happens in the app while Steam is being asked about a key. */
-  whileSteamAnswers?: (store: Store) => void;
+  whileSteamAnswers?: (store: InMemoryStore) => void;
 }
 
 /**
  * The app with two accounts, following `STEAM_ID`, over a watcher that only
- * writes down what it was asked and the account in use at that moment.
+ * writes down what it was asked and the account in use at that moment. The
+ * setup is the real one, over a store in memory and a Steam that answers
+ * what it is given.
  */
 function setup({
   saved = [STEAM_ID, OTHER_STEAM_ID],
   isPlaying = false,
   hasClientSwitched = false,
-  routes = { GetPlayerSummaries: summary },
+  profileOf = summary,
   whileSteamAnswers = () => {},
 }: ISetupOptions = {}) {
-  const store = makeDiskStore();
+  const store = new InMemoryStore();
   for (const steamId of [...saved].reverse()) {
     store.setCredentials(
       { steamId, apiKey: KEY },
       { steamId, name: 'player', avatar: 'x' },
     );
   }
-  const steam = fakeFetch(routes);
   const accountSetup = new SetupService(
     store,
-    new SteamClient((input, init) => {
-      whileSteamAnswers(store);
-      return steam(input, init);
+    fakeSteamClient({
+      summary: (credentials) => {
+        whileSteamAnswers(store);
+        return profileOf(credentials);
+      },
     }),
   );
   /** What the watcher was asked, in order. */
@@ -102,24 +105,23 @@ const LAST_PLAYED: Record<string, number> = {
 
 /**
  * The app as `index.ts` wires it, following `STEAM_ID`, its only account:
- * the real setup, follower and watcher over a store on disk. Only the edges
- * are fake: Steam's answers, who is signed in to the client (`signedIn`),
- * the running game (`run`) and each account's library (`LAST_PLAYED`).
+ * the real setup, follower and watcher. Only the edges are fake: the store,
+ * which is in memory, Steam's answers, who is signed in to the client
+ * (`signedIn`), the running game (`run`) and each account's library
+ * (`LAST_PLAYED`). Steam accepts `KEY` and no other.
  */
 function setupWired(signedIn: string) {
-  const store = makeDiskStore();
+  const store = new InMemoryStore();
   store.setCredentials(
     { steamId: STEAM_ID, apiKey: KEY },
     { steamId: STEAM_ID, name: 'player', avatar: 'x' },
   );
   const accountSetup = new SetupService(
     store,
-    new SteamClient(
-      fakeFetch({
-        GetPlayerSummaries: (url) =>
-          url.searchParams.get('key') === KEY ? summary(url) : FORBIDDEN_HTML,
-      }),
-    ),
+    fakeSteamClient({
+      summary: (credentials) =>
+        credentials.apiKey === KEY ? summary(credentials) : rejected(),
+    }),
   );
   /** Every account the app was said to have started following. */
   const followed: string[] = [];
@@ -206,7 +208,7 @@ describe('Accounts', () => {
 
     it('should forget nothing when the app followed a saved account while Steam refused the one being added', async () => {
       const { sut, asked } = setup({
-        routes: { GetPlayerSummaries: FORBIDDEN_HTML },
+        profileOf: rejected,
         whileSteamAnswers: (store) => store.setActiveAccount(OTHER_STEAM_ID),
       });
 
@@ -219,7 +221,7 @@ describe('Accounts', () => {
     it('should ask nothing of the watcher when the add leaves the app without an account', async () => {
       const { sut, asked } = setup({
         saved: [],
-        routes: { GetPlayerSummaries: FORBIDDEN_HTML },
+        profileOf: rejected,
       });
 
       const state = await sut.add(STEAM_ID, KEY);

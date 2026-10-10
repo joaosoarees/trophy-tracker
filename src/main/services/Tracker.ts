@@ -24,16 +24,43 @@ const GAME_TTL = 60_000;
 const SCHEMA_TTL = 24 * 60 * 60_000;
 const CONCURRENCY = 4;
 
+/** The part of `Store` that says whose reads these are and keeps what was read. */
+type ReadCache = Pick<
+  Store,
+  | 'getActiveSteamId'
+  | 'getCredentials'
+  | 'getLibrary'
+  | 'setLibrary'
+  | 'getGame'
+  | 'setGame'
+  | 'getSummary'
+  | 'setSummaries'
+  | 'getSchema'
+  | 'setSchema'
+  | 'getArt'
+  | 'setArt'
+>;
+
+/** The part of `SteamClient` that reads a library, a game and its art. */
+type SteamReads = Pick<
+  SteamClient,
+  | 'getOwnedGames'
+  | 'getGameAchievements'
+  | 'getPlayerAchievements'
+  | 'getUserStats'
+  | 'getStoreArt'
+>;
+
 export interface ITrackerDeps {
-  store: Store;
-  client: SteamClient;
+  store: ReadCache;
+  client: SteamReads;
   readStatMap: (appid: number) => Promise<Map<string, string>>;
   now?: () => number;
 }
 
 export class Tracker {
-  private store: Store;
-  private client: SteamClient;
+  private store: ReadCache;
+  private client: SteamReads;
   private readStatMap: ITrackerDeps['readStatMap'];
   private now: () => number;
   private inflight = new Map<string, Promise<unknown>>();

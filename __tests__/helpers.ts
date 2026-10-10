@@ -4,8 +4,6 @@ import { join } from 'node:path';
 
 import { onTestFinished } from 'vitest';
 
-import { Store } from '../src/main/storage/Store';
-
 export interface IRoute {
   status?: number;
   json?: unknown;
@@ -52,11 +50,6 @@ export function makeTempDir(): string {
     rmSync(dir, { recursive: true, force: true });
   });
   return dir;
-}
-
-/** The real `Store` over a folder of its own, removed when the test ends. */
-export function makeDiskStore(): Store {
-  return new Store(makeTempDir());
 }
 
 export const KEY = '0123456789ABCDEF0123456789ABCDEF';

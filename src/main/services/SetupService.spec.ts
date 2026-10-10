@@ -5,20 +5,25 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { type Language } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
+import { fakeSteamClient, type ISteamAnswers } from '@tests/fakeSteamClient';
 import {
   fakeFetch,
-  FORBIDDEN_HTML,
   KEY,
   makeTempDir,
-  NO_STATS,
-  NOT_PUBLIC,
   OTHER_KEY,
   OTHER_STEAM_ID,
   STEAM_ID,
 } from '@tests/helpers';
-import { game, owned, player } from '@tests/steamLibrary';
+import { InMemoryStore } from '@tests/InMemoryStore';
+import { achieved, game } from '@tests/steamLibrary';
 
-import { SteamClient, SteamError } from '../steam/SteamClient';
+import {
+  type ICredentials,
+  type IRawPlayerSummary,
+  SteamClient,
+  SteamError,
+  type SteamErrorKind,
+} from '../steam/SteamClient';
 import { Store } from '../storage/Store';
 
 import { SetupService } from './SetupService';
@@ -28,29 +33,32 @@ const PRIVACY_BLOCKED =
   'Steam did not allow reading your games. Set “Game details” to Public in your privacy settings.';
 
 /** Steam knows whoever is asked about, and calls them "player". */
-const summary = (url: URL) => ({
-  json: {
-    response: {
-      players: [
-        {
-          steamid: url.searchParams.get('steamids'),
-          personaname: 'player',
-          avatarfull: 'x',
-        },
-      ],
-    },
-  },
+const summary = ({ steamId }: ICredentials): IRawPlayerSummary => ({
+  steamid: steamId,
+  personaname: 'player',
+  avatarfull: 'x',
 });
 
-/** A fresh app. Its language is only set when one is given. */
-function setup(
-  routes: Parameters<typeof fakeFetch>[0] = {},
+/** Steam failing a request the way the real client reports it. */
+const failing = (kind: SteamErrorKind) => (): never => {
+  throw new SteamError(kind);
+};
+
+/**
+ * A fresh app over a store in memory and a Steam that answers what it is
+ * given. Its language is only set when one is given.
+ */
+function setup(answers: ISteamAnswers = {}, language?: Language) {
+  return build(new InMemoryStore(), answers, language);
+}
+
+/** The same app over the store it is given. */
+function build<T extends ConstructorParameters<typeof SetupService>[0]>(
+  store: T,
+  answers: ISteamAnswers,
   language?: Language,
 ) {
-  const dir = makeTempDir();
-  const store = new Store(dir);
-  const fetchImpl = fakeFetch(routes);
-  const client = new SteamClient(fetchImpl, () => store.getLanguage());
+  const client = fakeSteamClient(answers);
   const changes: IAppState[] = [];
   const logErrorMock = vi.fn<(source: string, detail: string) => void>();
   const sut = new SetupService(
@@ -60,14 +68,12 @@ function setup(
     logErrorMock,
   );
   if (language) sut.setLanguage(language);
-  return { dir, store, client, sut, changes, fetchImpl, logErrorMock };
+  return { store, client, sut, changes, logErrorMock };
 }
 
 /** The app with one account, `STEAM_ID`, which it follows. */
-async function withOneAccount(
-  routes: Parameters<typeof fakeFetch>[0] = { GetPlayerSummaries: summary },
-) {
-  const made = setup(routes);
+async function withOneAccount(answers: ISteamAnswers = { summary }) {
+  const made = setup(answers);
   await made.sut.addAccount(STEAM_ID, KEY);
   return made;
 }
@@ -77,6 +83,17 @@ async function withTwoAccounts() {
   const made = await withOneAccount();
   await made.sut.addAccount(OTHER_STEAM_ID, OTHER_KEY);
   return made;
+}
+
+/**
+ * The app with one account over the real `Store`, in the folder `dir`: for
+ * what only the file it saves shows.
+ */
+async function withOneAccountOnDisk() {
+  const dir = makeTempDir();
+  const made = build(new Store(dir), { summary });
+  await made.sut.addAccount(STEAM_ID, KEY);
+  return { ...made, dir };
 }
 
 describe('SetupService', () => {
@@ -109,7 +126,7 @@ describe('SetupService', () => {
 
   describe('addAccount', () => {
     it('should save nothing when Steam rejects the key', async () => {
-      const { sut, store } = setup({ GetPlayerSummaries: FORBIDDEN_HTML });
+      const { sut, store } = setup({ summary: failing('invalid-key') });
 
       const state = await sut.addAccount(STEAM_ID, KEY);
 
@@ -118,7 +135,7 @@ describe('SetupService', () => {
     });
 
     it('should set the app up with the profile when Steam accepts the key', async () => {
-      const { sut } = setup({ GetPlayerSummaries: summary });
+      const { sut } = setup({ summary });
 
       const state = await sut.addAccount(STEAM_ID, KEY);
 
@@ -129,7 +146,7 @@ describe('SetupService', () => {
     });
 
     it('should save the key without the spaces around it', async () => {
-      const { sut, store } = setup({ GetPlayerSummaries: summary });
+      const { sut, store } = setup({ summary });
 
       await sut.addAccount(STEAM_ID, ` ${KEY} `);
 
@@ -250,13 +267,17 @@ describe('SetupService', () => {
     });
 
     it('should ask Steam in the new language from then on', async () => {
-      const { sut, client, fetchImpl } = setup({
+      const { sut, store } = setup();
+      const fetchImpl = fakeFetch({
         GetGameAchievements: { json: { response: {} } },
       });
+      // The real client, built as `index.ts` builds it: it asks the store
+      // for the language on each request.
+      const steam = new SteamClient(fetchImpl, () => store.getLanguage());
 
       sut.setLanguage('pt-BR');
 
-      await client.getGameAchievements(1);
+      await steam.getGameAchievements(1);
       expect(fetchImpl.calls).toEqual([
         'https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=1&language=brazilian',
       ]);
@@ -285,7 +306,7 @@ describe('SetupService', () => {
     });
 
     it('should reject a badly formed key before asking Steam', async () => {
-      const { sut, fetchImpl } = setup();
+      const { sut, client } = setup();
 
       const result = await sut.checkApiKey(STEAM_ID, 'short');
 
@@ -293,11 +314,11 @@ describe('SetupService', () => {
         ok: false,
         error: 'A Web API key has 32 characters (letters A to F and digits).',
       });
-      expect(fetchImpl.calls).toHaveLength(0);
+      expect(client.asked).toEqual([]);
     });
 
     it('should reject a badly formed SteamID before asking Steam', async () => {
-      const { sut, fetchImpl } = setup();
+      const { sut, client } = setup();
 
       const result = await sut.checkApiKey('12345', KEY);
 
@@ -305,13 +326,11 @@ describe('SetupService', () => {
         ok: false,
         error: 'A SteamID is a 17-digit number that starts with 7656.',
       });
-      expect(fetchImpl.calls).toHaveLength(0);
+      expect(client.asked).toEqual([]);
     });
 
     it('should report a SteamID that has no profile', async () => {
-      const { sut } = setup({
-        GetPlayerSummaries: { json: { response: { players: [] } } },
-      });
+      const { sut } = setup({ summary: failing('not-found') });
 
       const result = await sut.checkApiKey(STEAM_ID, KEY);
 
@@ -327,7 +346,7 @@ describe('SetupService', () => {
     ])(
       'should say in $language that Steam does not accept the key',
       async ({ language, error }) => {
-        const { sut } = setup({ GetPlayerSummaries: FORBIDDEN_HTML }, language);
+        const { sut } = setup({ summary: failing('invalid-key') }, language);
 
         const result = await sut.checkApiKey(STEAM_ID, KEY);
 
@@ -336,7 +355,7 @@ describe('SetupService', () => {
     );
 
     it('should answer the profile when Steam accepts the key', async () => {
-      const { sut } = setup({ GetPlayerSummaries: summary });
+      const { sut } = setup({ summary });
 
       const result = await sut.checkApiKey(STEAM_ID, KEY);
 
@@ -377,8 +396,8 @@ describe('SetupService', () => {
     it('should keep the old key when Steam refuses the new one', async () => {
       let isRefusing = false;
       const { sut, store } = await withOneAccount({
-        GetPlayerSummaries: (url) =>
-          isRefusing ? FORBIDDEN_HTML : summary(url),
+        summary: (credentials) =>
+          isRefusing ? failing('invalid-key')() : summary(credentials),
       });
       isRefusing = true;
 
@@ -422,7 +441,7 @@ describe('SetupService', () => {
     });
 
     it('should leave the saved file alone when Steam answers what was already known', async () => {
-      const { sut, dir } = await withOneAccount();
+      const { sut, dir } = await withOneAccountOnDisk();
       const file = join(dir, 'config.json');
       const before = new Date('2020-01-01T00:00:00Z');
       utimesSync(file, before, before);
@@ -433,7 +452,7 @@ describe('SetupService', () => {
     });
 
     it('should save the new status when Steam answers something else', async () => {
-      const { sut, dir, store } = await withOneAccount();
+      const { sut, dir, store } = await withOneAccountOnDisk();
       store.setAccountStatus(STEAM_ID, 'rejected');
       const file = join(dir, 'config.json');
       const before = new Date('2020-01-01T00:00:00Z');
@@ -447,7 +466,7 @@ describe('SetupService', () => {
 
   describe('checkPrivacy', () => {
     it('should reject the profile when the library is not visible', async () => {
-      const { sut } = setup({ GetOwnedGames: { json: { response: {} } } });
+      const { sut } = setup({ owned: () => null });
 
       const result = await sut.checkPrivacy(STEAM_ID, KEY);
 
@@ -456,8 +475,8 @@ describe('SetupService', () => {
 
     it('should reject the profile when the achievements are not visible', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(game(1, 'A', 10)),
-        GetPlayerAchievements: NOT_PUBLIC,
+        owned: () => [game(1, 'A', 10)],
+        player: failing('private'),
       });
 
       const result = await sut.checkPrivacy(STEAM_ID, KEY);
@@ -467,12 +486,12 @@ describe('SetupService', () => {
 
     it('should count only the games that were played', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(
+        owned: () => [
           game(1, 'Played', 10, 200),
           game(2, 'Also played', 10, 100),
           game(3, 'Never opened', 0),
-        ),
-        GetPlayerAchievements: player(1, 2),
+        ],
+        player: () => achieved(1, 2),
       });
 
       const result = await sut.checkPrivacy(STEAM_ID, KEY);
@@ -482,12 +501,12 @@ describe('SetupService', () => {
 
     it('should accept a profile whose most recent game has no achievements', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(
+        owned: () => [
           game(1, 'No achievements', 10, 200),
           game(2, 'With', 10, 100),
-        ),
-        'appid=1': NO_STATS,
-        'appid=2': player(1, 2),
+        ],
+        player: (appid) =>
+          appid === 1 ? failing('no-stats')() : achieved(1, 2),
       });
 
       const result = await sut.checkPrivacy(STEAM_ID, KEY);
@@ -496,7 +515,7 @@ describe('SetupService', () => {
     });
 
     it('should say so when Steam does not accept the key', async () => {
-      const { sut } = setup({ GetOwnedGames: FORBIDDEN_HTML });
+      const { sut } = setup({ owned: failing('invalid-key') });
 
       const result = await sut.checkPrivacy(STEAM_ID, KEY);
 

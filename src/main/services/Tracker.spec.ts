@@ -2,71 +2,77 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { type IGameView } from '@shared/types/Game';
 import { makeGameSummary } from '@tests/factories/makeGameSummary';
-import nioh from '@tests/fixtures/game-achievements-3681010.json';
 import {
-  fakeFetch,
-  FORBIDDEN_HTML,
-  type IRoute,
-  KEY,
-  makeDiskStore,
-  NO_STATS,
-  NOT_PUBLIC,
-  STEAM_ID,
-} from '@tests/helpers';
-import { game, owned, player } from '@tests/steamLibrary';
+  fakeSteamClient,
+  type ISteamAnswers,
+  type SteamRequest,
+} from '@tests/fakeSteamClient';
+import nioh from '@tests/fixtures/game-achievements-3681010.json';
+import { KEY, STEAM_ID } from '@tests/helpers';
+import { InMemoryStore } from '@tests/InMemoryStore';
+import { achieved, game } from '@tests/steamLibrary';
 
-import { SteamClient } from '../steam/SteamClient';
+import {
+  type IRawPlayerAchievement,
+  type IStoreArt,
+  SteamError,
+  type SteamErrorKind,
+} from '../steam/SteamClient';
 
 import { Tracker } from './Tracker';
 
 const NIOH = 3681010;
 const profile = { steamId: STEAM_ID, name: 'player', avatar: '' };
 
-/** A game whose achievement list is empty. */
-const NO_ACHIEVEMENT_LIST: IRoute = {
-  json: { response: { achievements: [] } },
+/** Steam failing a request the way the real client reports it. */
+const failing = (kind: SteamErrorKind, status?: number) => (): never => {
+  throw new SteamError(kind, status);
 };
-const STORE_DOWN: IRoute = { status: 500, text: 'error' };
+
+/** A game whose achievement list is empty. */
+const noAchievementList = (): [] => [];
+const storeDown = failing('unknown', 500);
 
 /** What the player has in Nioh 3: the first `count` achievements of the list. */
-const niohUnlocked = (count: number): IRoute => ({
-  json: {
-    playerstats: {
-      achievements: nioh.response.achievements.slice(0, count).map((a) => ({
-        apiname: a.internal_name,
-        achieved: 1,
-        unlocktime: 9,
-      })),
-    },
-  },
-});
+const niohUnlocked = (count: number): IRawPlayerAchievement[] =>
+  nioh.response.achievements.slice(0, count).map((a) => ({
+    apiname: a.internal_name,
+    achieved: 1,
+    unlocktime: 9,
+  }));
 
-/** The store, which only has art for the game 1. */
-const storeArtOfGame1 = (url: URL): IRoute => {
-  const ids = JSON.parse(url.searchParams.get('input_json')!).ids.map(
-    (i: { appid: number }) => i.appid,
-  );
-  return {
-    json: {
-      response: {
-        store_items: ids
-          .filter((appid: number) => appid === 1)
-          .map((appid: number) => ({
-            appid,
-            assets: {
-              asset_url_format: 'steam/apps/1/${FILENAME}?t=9',
-              header: 'abc/header.jpg',
-              small_capsule: 'def/capsule_231x87.jpg',
-            },
-          })),
-      },
-    },
-  };
+const ART_OF_GAME_1: IStoreArt = {
+  header:
+    'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1/abc/header.jpg?t=9',
+  capsule:
+    'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1/def/capsule_231x87.jpg?t=9',
 };
 
-/** How many requests were made to the Steam method `name`. */
-const requestsTo = (fetchImpl: { calls: string[] }, name: string): number =>
-  fetchImpl.calls.filter((url) => url.includes(name)).length;
+/** The store, which only has art for the game 1. */
+const storeArtOfGame1 = (appids: number[]): Map<number, IStoreArt> =>
+  new Map(
+    appids
+      .filter((appid) => appid === 1)
+      .map((appid) => [appid, { ...ART_OF_GAME_1 }]),
+  );
+
+/**
+ * What the player has in each game, by appid. Being asked about a game that
+ * is not listed is a request the test did not provide for.
+ */
+const perGame =
+  (games: Record<number, () => IRawPlayerAchievement[]>) =>
+  (appid: number): IRawPlayerAchievement[] => {
+    const answer = games[appid];
+    if (!answer) throw new Error(`nothing answers for the game ${appid}`);
+    return answer();
+  };
+
+/** How many times Steam was asked through the client's method `name`. */
+const requestsTo = (
+  client: { asked: SteamRequest[] },
+  name: SteamRequest['method'],
+): number => client.asked.filter(({ method }) => method === name).length;
 
 /** For a test that is not about what the refresh behind the scenes says. */
 const unheard = {
@@ -74,32 +80,33 @@ const unheard = {
   onError: (): void => undefined,
 };
 
-function setup(
-  routes: Parameters<typeof fakeFetch>[0],
-  statMap = new Map<string, string>(),
-) {
-  const store = makeDiskStore();
+/**
+ * A tracker for `STEAM_ID`, the account in use, over a store in memory and a
+ * Steam that answers what it is given.
+ */
+function setup(answers: ISteamAnswers, statMap = new Map<string, string>()) {
+  const store = new InMemoryStore();
   store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
-  const fetchImpl = fakeFetch(routes);
+  const client = fakeSteamClient(answers);
   let now = 1_000_000;
   const sut = new Tracker({
     store,
-    client: new SteamClient(fetchImpl),
+    client,
     readStatMap: () => Promise.resolve(statMap),
     now: () => now,
   });
   const advance = (ms: number): void => {
     now += ms;
   };
-  return { sut, fetchImpl, advance };
+  return { sut, client, advance };
 }
 
 /** A library with the game 7, which has no achievements. */
 const setupGame7 = () =>
   setup({
-    GetOwnedGames: owned(game(7, 'Game', 5)),
-    GetGameAchievements: NO_ACHIEVEMENT_LIST,
-    GetPlayerAchievements: player(0, 0),
+    owned: () => [game(7, 'Game', 5)],
+    achievements: noAchievementList,
+    player: () => achieved(0, 0),
   });
 
 /**
@@ -109,9 +116,9 @@ const setupGame7 = () =>
 function setupNioh() {
   let unlocked = 1;
   const made = setup({
-    GetOwnedGames: owned(game(NIOH, 'Nioh 3', 500)),
-    GetGameAchievements: { json: nioh },
-    GetPlayerAchievements: () => niohUnlocked(unlocked),
+    owned: () => [game(NIOH, 'Nioh 3', 500)],
+    achievements: () => nioh.response.achievements,
+    player: () => niohUnlocked(unlocked),
   });
   const unlock = (count: number): void => {
     unlocked = count;
@@ -123,8 +130,8 @@ function setupNioh() {
 function setupTwoGames() {
   let playtime = 10;
   const made = setup({
-    GetOwnedGames: () => owned(game(1, 'A', playtime), game(2, 'B', 20)),
-    GetPlayerAchievements: player(1, 4),
+    owned: () => [game(1, 'A', playtime), game(2, 'B', 20)],
+    player: () => achieved(1, 4),
   });
   const play = (minutes: number): void => {
     playtime = minutes;
@@ -135,18 +142,14 @@ function setupTwoGames() {
 /** A library with a complete game, 1, and one still in progress, 2. */
 const setupCompleteGame = () =>
   setup({
-    GetOwnedGames: owned(game(1, 'Done', 10), game(2, 'Ongoing', 10)),
-    'appid=1': {
-      json: {
-        playerstats: {
-          achievements: [
-            { apiname: 'A', achieved: 1, unlocktime: 500 },
-            { apiname: 'B', achieved: 1, unlocktime: 900 },
-          ],
-        },
-      },
-    },
-    'appid=2': player(1, 4),
+    owned: () => [game(1, 'Done', 10), game(2, 'Ongoing', 10)],
+    player: perGame({
+      1: () => [
+        { apiname: 'A', achieved: 1, unlocktime: 500 },
+        { apiname: 'B', achieved: 1, unlocktime: 900 },
+      ],
+      2: () => achieved(1, 4),
+    }),
   });
 
 describe('Tracker', () => {
@@ -154,24 +157,10 @@ describe('Tracker', () => {
     it('should build the game view with counters taken from the stats', async () => {
       const { sut } = setup(
         {
-          GetOwnedGames: owned(game(NIOH, 'Nioh 3', 500)),
-          GetGameAchievements: { json: nioh },
-          GetPlayerAchievements: {
-            json: {
-              playerstats: {
-                achievements: [
-                  { apiname: 'ACH_002', achieved: 1, unlocktime: 9 },
-                ],
-              },
-            },
-          },
-          GetUserStatsForGame: {
-            json: {
-              playerstats: {
-                stats: [{ name: 'ACH_001_PROGRESS', value: 12 }],
-              },
-            },
-          },
+          owned: () => [game(NIOH, 'Nioh 3', 500)],
+          achievements: () => nioh.response.achievements,
+          player: () => [{ apiname: 'ACH_002', achieved: 1, unlocktime: 9 }],
+          stats: () => ({ ACH_001_PROGRESS: 12 }),
         },
         new Map([['ACH_001', 'ACH_001_PROGRESS']]),
       );
@@ -188,12 +177,10 @@ describe('Tracker', () => {
     it('should keep the list when the counters fail', async () => {
       const { sut } = setup(
         {
-          GetOwnedGames: owned(game(NIOH, 'Nioh 3', 500)),
-          GetGameAchievements: { json: nioh },
-          GetPlayerAchievements: {
-            json: { playerstats: { achievements: [] } },
-          },
-          GetUserStatsForGame: { status: 500, text: 'error' },
+          owned: () => [game(NIOH, 'Nioh 3', 500)],
+          achievements: () => nioh.response.achievements,
+          player: () => [],
+          stats: failing('unknown', 500),
         },
         new Map([['ACH_001', 'ACH_001_PROGRESS']]),
       );
@@ -207,40 +194,40 @@ describe('Tracker', () => {
     });
 
     it('should answer from the cache when the game was read under a minute ago', async () => {
-      const { sut, fetchImpl } = setupGame7();
+      const { sut, client } = setupGame7();
       await sut.getGame(7);
 
       await sut.getGame(7);
 
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(1);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(1);
     });
 
     it('should read the game again when the cache is over a minute old', async () => {
-      const { sut, fetchImpl, advance } = setupGame7();
+      const { sut, client, advance } = setupGame7();
       await sut.getGame(7);
       advance(61_000);
 
       await sut.getGame(7);
 
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(2);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(2);
     });
 
     it('should read the player state again when forced', async () => {
-      const { sut, fetchImpl } = setupGame7();
+      const { sut, client } = setupGame7();
       await sut.getGame(7);
 
       await sut.getGame(7, true);
 
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(2);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(2);
     });
 
     it('should read the achievement list again when forced', async () => {
-      const { sut, fetchImpl } = setupNioh();
+      const { sut, client } = setupNioh();
       await sut.getGame(NIOH);
 
       await sut.getGame(NIOH, true);
 
-      expect(requestsTo(fetchImpl, 'GetGameAchievements')).toBe(2);
+      expect(requestsTo(client, 'getGameAchievements')).toBe(2);
     });
 
     it('should answer the same object when the periodic check finds nothing new', async () => {
@@ -254,14 +241,14 @@ describe('Tracker', () => {
     });
 
     it('should read only the player state on the periodic check', async () => {
-      const { sut, fetchImpl, advance } = setupNioh();
+      const { sut, client, advance } = setupNioh();
       await sut.getGame(NIOH);
       advance(60_000);
 
       await sut.getGame(NIOH, 'poll');
 
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(2);
-      expect(requestsTo(fetchImpl, 'GetGameAchievements')).toBe(1);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(2);
+      expect(requestsTo(client, 'getGameAchievements')).toBe(1);
     });
 
     it('should answer a new object that keeps the unchanged achievements when one was unlocked', async () => {
@@ -278,25 +265,25 @@ describe('Tracker', () => {
     });
 
     it('should share one read between identical simultaneous requests', async () => {
-      const { sut, fetchImpl } = setup({
-        GetOwnedGames: owned(game(1, 'A', 10), game(2, 'B', 10)),
-        GetGameAchievements: NO_ACHIEVEMENT_LIST,
-        GetPlayerAchievements: player(1, 4),
+      const { sut, client } = setup({
+        owned: () => [game(1, 'A', 10), game(2, 'B', 10)],
+        achievements: noAchievementList,
+        player: () => achieved(1, 4),
       });
 
       const [a, b] = await Promise.all([sut.getGame(1), sut.getGame(1)]);
 
       expect(a).toBe(b);
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(1);
-      expect(requestsTo(fetchImpl, 'GetOwnedGames')).toBe(1);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(1);
+      expect(requestsTo(client, 'getOwnedGames')).toBe(1);
     });
 
     it('should attach the header the store has for the game', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(game(1, 'A', 10)),
-        GetGameAchievements: NO_ACHIEVEMENT_LIST,
-        GetPlayerAchievements: player(1, 4),
-        GetItems: storeArtOfGame1,
+        owned: () => [game(1, 'A', 10)],
+        achievements: noAchievementList,
+        player: () => achieved(1, 4),
+        art: storeArtOfGame1,
       });
 
       const view = await sut.getGame(1);
@@ -308,10 +295,10 @@ describe('Tracker', () => {
 
     it('should leave the header empty when the store fails to provide the art', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(game(1, 'A', 10)),
-        GetGameAchievements: NO_ACHIEVEMENT_LIST,
-        GetPlayerAchievements: player(1, 4),
-        GetItems: STORE_DOWN,
+        owned: () => [game(1, 'A', 10)],
+        achievements: noAchievementList,
+        player: () => achieved(1, 4),
+        art: storeDown,
       });
 
       const view = await sut.getGame(1);
@@ -322,26 +309,26 @@ describe('Tracker', () => {
 
   describe('getGameStaleFirst', () => {
     it('should read the game when nothing is cached', async () => {
-      const { sut, fetchImpl } = setupNioh();
+      const { sut, client } = setupNioh();
 
       const view = await sut.getGameStaleFirst(NIOH, unheard);
 
       expect(view.unlockedCount).toBe(1);
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(1);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(1);
     });
 
     it('should answer the cached game without reading when it is recent', async () => {
-      const { sut, fetchImpl } = setupNioh();
+      const { sut, client } = setupNioh();
       const first = await sut.getGameStaleFirst(NIOH, unheard);
 
       const second = await sut.getGameStaleFirst(NIOH, unheard);
 
       expect(second).toBe(first);
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(1);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(1);
     });
 
     it('should announce nothing when the refresh of a stale game finds no change', async () => {
-      const { sut, fetchImpl, advance } = setupNioh();
+      const { sut, client, advance } = setupNioh();
       const onFreshMock = vi.fn<(view: IGameView) => void>();
       const callbacks = { ...unheard, onFresh: onFreshMock };
       const first = await sut.getGameStaleFirst(NIOH, callbacks);
@@ -349,7 +336,7 @@ describe('Tracker', () => {
 
       const stale = await sut.getGameStaleFirst(NIOH, callbacks);
       await vi.waitFor(() =>
-        expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(2),
+        expect(requestsTo(client, 'getPlayerAchievements')).toBe(2),
       );
       // Joins the refresh still in flight, so what follows sees how it ended.
       await sut.getGame(NIOH);
@@ -381,9 +368,9 @@ describe('Tracker', () => {
     it('should report a failed refresh without failing the answer', async () => {
       let isBroken = false;
       const { sut, advance } = setup({
-        GetOwnedGames: owned(game(7, 'Game', 5)),
-        GetGameAchievements: NO_ACHIEVEMENT_LIST,
-        GetPlayerAchievements: () => (isBroken ? FORBIDDEN_HTML : player(0, 0)),
+        owned: () => [game(7, 'Game', 5)],
+        achievements: noAchievementList,
+        player: () => (isBroken ? failing('invalid-key')() : achieved(0, 0)),
       });
       const onFreshMock = vi.fn<(view: IGameView) => void>();
       const onErrorMock = vi.fn<(e: unknown) => void>();
@@ -407,11 +394,11 @@ describe('Tracker', () => {
   describe('lastPlayedAppId', () => {
     it('should pick the game played most recently', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(
+        owned: () => [
           game(1, 'Old', 10, 100),
           game(2, 'Recent', 10, 900),
           game(3, 'Never', 0, 0),
-        ),
+        ],
       });
 
       const appId = await sut.lastPlayedAppId();
@@ -423,14 +410,16 @@ describe('Tracker', () => {
   describe('getDashboard', () => {
     it('should list the games from the closest to complete to the furthest, complete ones last', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(
+        owned: () => [
           game(1, 'Half', 10),
           game(2, 'Complete', 10),
           game(3, 'Almost', 10),
-        ),
-        'appid=1': player(5, 10),
-        'appid=2': player(10, 10),
-        'appid=3': player(9, 10),
+        ],
+        player: perGame({
+          1: () => achieved(5, 10),
+          2: () => achieved(10, 10),
+          3: () => achieved(9, 10),
+        }),
       });
 
       const list = await sut.getDashboard();
@@ -440,13 +429,15 @@ describe('Tracker', () => {
 
     it('should leave out games never played and games without achievements', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(
+        owned: () => [
           game(1, 'Half', 10),
           game(4, 'No achievements', 10),
           game(5, 'Never opened', 0),
-        ),
-        'appid=1': player(5, 10),
-        'appid=4': NO_STATS,
+        ],
+        player: perGame({
+          1: () => achieved(5, 10),
+          4: failing('no-stats'),
+        }),
       });
 
       const list = await sut.getDashboard();
@@ -456,8 +447,8 @@ describe('Tracker', () => {
 
     it('should describe a game as the dashboard lists it', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(game(3, 'Almost', 10)),
-        GetPlayerAchievements: player(9, 10),
+        owned: () => [game(3, 'Almost', 10)],
+        player: () => achieved(9, 10),
       });
 
       const list = await sut.getDashboard();
@@ -474,15 +465,17 @@ describe('Tracker', () => {
 
     it('should report each played game read, out of how many', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(
+        owned: () => [
           game(1, 'Half', 10),
           game(2, 'Complete', 10),
           game(4, 'No achievements', 10),
           game(5, 'Never opened', 0),
-        ),
-        'appid=1': player(5, 10),
-        'appid=2': player(10, 10),
-        'appid=4': NO_STATS,
+        ],
+        player: perGame({
+          1: () => achieved(5, 10),
+          2: () => achieved(10, 10),
+          4: failing('no-stats'),
+        }),
       });
       const progress: [done: number, total: number][] = [];
 
@@ -498,56 +491,56 @@ describe('Tracker', () => {
     });
 
     it('should share one read between identical simultaneous requests', async () => {
-      const { sut, fetchImpl } = setupTwoGames();
+      const { sut, client } = setupTwoGames();
 
       await Promise.all([sut.getDashboard(), sut.getDashboard()]);
 
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(2);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(2);
     });
 
     it('should read every played game the first time', async () => {
-      const { sut, fetchImpl } = setupTwoGames();
+      const { sut, client } = setupTwoGames();
 
       await sut.getDashboard();
 
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(2);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(2);
     });
 
     it('should not read again a game whose playtime did not change', async () => {
-      const { sut, fetchImpl, advance } = setupTwoGames();
+      const { sut, client, advance } = setupTwoGames();
       await sut.getDashboard();
       advance(11 * 60_000);
 
       await sut.getDashboard();
 
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(2);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(2);
     });
 
     it('should read again only the game whose playtime changed', async () => {
-      const { sut, fetchImpl, advance, play } = setupTwoGames();
+      const { sut, client, advance, play } = setupTwoGames();
       await sut.getDashboard();
       play(15);
       advance(11 * 60_000);
 
       await sut.getDashboard();
 
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(3);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(3);
     });
 
     it('should read every game again when asked for all of them', async () => {
-      const { sut, fetchImpl } = setupTwoGames();
+      const { sut, client } = setupTwoGames();
       await sut.getDashboard();
 
       await sut.getDashboard('all');
 
-      expect(requestsTo(fetchImpl, 'GetPlayerAchievements')).toBe(4);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(4);
     });
 
     it('should attach the capsule the store has for a game', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(game(1, 'A', 10), game(2, 'B', 10)),
-        GetPlayerAchievements: player(1, 4),
-        GetItems: storeArtOfGame1,
+        owned: () => [game(1, 'A', 10), game(2, 'B', 10)],
+        player: () => achieved(1, 4),
+        art: storeArtOfGame1,
       });
 
       const list = await sut.getDashboard();
@@ -559,9 +552,9 @@ describe('Tracker', () => {
 
     it('should leave the capsule empty for a game the store has no art for', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(game(1, 'A', 10), game(2, 'B', 10)),
-        GetPlayerAchievements: player(1, 4),
-        GetItems: storeArtOfGame1,
+        owned: () => [game(1, 'A', 10), game(2, 'B', 10)],
+        player: () => achieved(1, 4),
+        art: storeArtOfGame1,
       });
 
       const list = await sut.getDashboard();
@@ -570,23 +563,23 @@ describe('Tracker', () => {
     });
 
     it('should not ask the store again about art it already asked for', async () => {
-      const { sut, fetchImpl } = setup({
-        GetOwnedGames: owned(game(1, 'A', 10), game(2, 'B', 10)),
-        GetPlayerAchievements: player(1, 4),
-        GetItems: storeArtOfGame1,
+      const { sut, client } = setup({
+        owned: () => [game(1, 'A', 10), game(2, 'B', 10)],
+        player: () => achieved(1, 4),
+        art: storeArtOfGame1,
       });
       await sut.getDashboard();
 
       await sut.getDashboard('all');
 
-      expect(requestsTo(fetchImpl, 'GetItems')).toBe(1);
+      expect(requestsTo(client, 'getStoreArt')).toBe(1);
     });
 
     it('should list the game when the store fails to provide the art', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(game(1, 'A', 10)),
-        GetPlayerAchievements: player(1, 4),
-        GetItems: STORE_DOWN,
+        owned: () => [game(1, 'A', 10)],
+        player: () => achieved(1, 4),
+        art: storeDown,
       });
 
       const list = await sut.getDashboard();
@@ -612,8 +605,8 @@ describe('Tracker', () => {
 
     it('should fail with a private profile instead of answering an empty dashboard', async () => {
       const { sut } = setup({
-        GetOwnedGames: owned(game(1, 'A', 10)),
-        GetPlayerAchievements: NOT_PUBLIC,
+        owned: () => [game(1, 'A', 10)],
+        player: failing('private'),
       });
 
       const dashboardPromise = sut.getDashboard();
