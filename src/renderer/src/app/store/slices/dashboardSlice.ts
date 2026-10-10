@@ -67,7 +67,8 @@ export const createDashboardSlice: StoreSlice<DashboardSlice> = (set, get) => ({
 
     const isSameAccount = sameAccount(get);
     const result = await DashboardService.getDashboard(asked);
-    // Another account's dashboard is being read by now: it owns `isLoading`.
+    // The store was wired again since, for another account or for this one:
+    // the read asked then owns `isLoading`.
     if (!isSameAccount()) return;
     set(
       (prevState) => {

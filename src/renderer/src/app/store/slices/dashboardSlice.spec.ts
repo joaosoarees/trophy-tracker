@@ -334,6 +334,77 @@ describe('dashboardSlice', () => {
     });
   });
 
+  describe('load, when the account was left and followed again', () => {
+    it('should keep saying the dashboard is being read when the answer to the first read of the account arrives during its second', async () => {
+      const { sut, asked, follow } = await setup();
+      follow(otherAccountState());
+      follow(makeAppState());
+      asked[0].resolve({ ok: true, value: [makeGameSummary({ appid: 10 })] });
+
+      await turn();
+
+      expect(sut.getState().dashboard.isLoading).toBe(true);
+    });
+
+    it('should ask the main process for one read at a time when a read is asked after the first answer for the account arrived during its second', async () => {
+      const { sut, asked, modes, follow } = await setup();
+      follow(otherAccountState());
+      follow(makeAppState());
+      asked[0].resolve({ ok: true, value: [] });
+      await turn();
+
+      void sut.getState().dashboard.load('all');
+
+      expect(modes).toEqual(['cached', 'cached', 'cached']);
+    });
+
+    it('should read everything again once the second read of the account ends when that was asked after the answer to its first arrived', async () => {
+      const { sut, asked, modes, follow } = await setup();
+      follow(otherAccountState());
+      follow(makeAppState());
+      asked[0].resolve({ ok: true, value: [] });
+      await turn();
+      void sut.getState().dashboard.load('all');
+      asked[2].resolve({ ok: true, value: [] });
+
+      await turn();
+
+      expect(modes).toEqual(['cached', 'cached', 'cached', 'all']);
+    });
+
+    it('should list what the second read answers when it ends after the first', async () => {
+      const { sut, asked, follow } = await setup();
+      follow(otherAccountState());
+      follow(makeAppState());
+      asked[0].resolve({ ok: true, value: [makeGameSummary({ appid: 10 })] });
+      await turn();
+      asked[2].resolve({ ok: true, value: [makeGameSummary({ appid: 20 })] });
+
+      await turn();
+
+      expect(sut.getState().dashboard).toMatchObject({
+        games: [makeGameSummary({ appid: 20 })],
+        isLoading: false,
+        error: null,
+      });
+    });
+
+    it('should keep what the second read answered when the first one ends after it', async () => {
+      const { sut, asked, follow } = await setup();
+      follow(otherAccountState());
+      follow(makeAppState());
+      asked[2].resolve({ ok: true, value: [makeGameSummary({ appid: 20 })] });
+      await turn();
+      asked[0].resolve({ ok: true, value: [makeGameSummary({ appid: 10 })] });
+
+      await turn();
+
+      expect(sut.getState().dashboard.games).toEqual([
+        makeGameSummary({ appid: 20 }),
+      ]);
+    });
+  });
+
   describe('setProgress', () => {
     it('should show how many games were read when the main process reports it', async () => {
       const { sut } = await setup();

@@ -2,6 +2,8 @@ import { AccountsService } from '@app/services/AccountsService';
 import { DashboardService } from '@app/services/DashboardService';
 import { GamesService } from '@app/services/GamesService';
 
+import { nextStay } from './sameAccount';
+
 import { useStore } from '.';
 
 /**
@@ -13,6 +15,8 @@ export function connectStore(): () => void {
   const { session, games, dashboard, userData, settings, navigation } =
     useStore.getState();
 
+  // Before anything is asked: what was asked earlier is not for this stay.
+  nextStay();
   void session.loadCurrent();
   void dashboard.load();
 

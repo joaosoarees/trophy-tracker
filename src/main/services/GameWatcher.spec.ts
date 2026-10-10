@@ -460,6 +460,23 @@ describe('GameWatcher', () => {
       expect(onGameUpdatedMock).not.toHaveBeenCalled();
     });
 
+    it('should not hand over the view read for the account that was left when the one that took over is on the same game by the time it is read', async () => {
+      const read = held<CheckResult<IGameView>>();
+      const { sut, onGameUpdatedMock, run } = setup({
+        pollGame: () => read.promise,
+      });
+      run(42);
+      await sut.refreshCurrent();
+      const checking = sut.checkUnlocks();
+      sut.forget({ isCurrentIncluded: true });
+      await sut.refreshCurrent();
+      read.resolve({ ok: true, value: view(42, ['a']) });
+
+      await checking;
+
+      expect(onGameUpdatedMock).not.toHaveBeenCalled();
+    });
+
     it('should not poll when the setup is gone', async () => {
       let isConfigured = true;
       const { sut, pollGameMock, run } = setup({
@@ -533,6 +550,95 @@ describe('GameWatcher', () => {
       await turn();
 
       expect(onGameUpdatedMock).toHaveBeenCalledExactlyOnceWith(next);
+    });
+
+    it('should announce once that the game closed when the next check comes round during its last read', async () => {
+      const read = held<CheckResult<IGameView>>();
+      const { every, tick } = manualEvery();
+      const { sut, onCurrentChangedMock, run } = setup({
+        every,
+        pollGame: () => read.promise,
+      });
+      run(42);
+      await sut.refreshCurrent();
+      sut.start();
+      run(null);
+      tick(10_000);
+      await turn();
+      tick(10_000);
+      await turn();
+      read.resolve({ ok: false, error: 'Steam did not answer.' });
+
+      await turn();
+
+      expect(onCurrentChangedMock).toHaveBeenCalledExactlyOnceWith({
+        appid: 42,
+        isRunning: false,
+      });
+    });
+
+    it('should read the game that closed one last time when the next check comes round during that read', async () => {
+      const read = held<CheckResult<IGameView>>();
+      const pollGameMock = vi.fn((_appid: number) => read.promise);
+      const { every, tick } = manualEvery();
+      const { sut, run } = setup({ every, pollGame: pollGameMock });
+      run(42);
+      await sut.refreshCurrent();
+      sut.start();
+      run(null);
+      tick(10_000);
+      await turn();
+
+      tick(10_000);
+      await turn();
+
+      expect(pollGameMock).toHaveBeenCalledExactlyOnceWith(42);
+    });
+
+    it('should ask once which game is running when the next check comes round before the one before it was answered', () => {
+      const getRunningAppIdMock = vi.fn(() => held<number | null>().promise);
+      const { every, tick } = manualEvery();
+      const { sut } = setup({ every, getRunningAppId: getRunningAppIdMock });
+      sut.start();
+      tick(10_000);
+
+      tick(10_000);
+
+      expect(getRunningAppIdMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('should read the running game once when the next read comes round before the one before it has ended', async () => {
+      const read = held<CheckResult<IGameView>>();
+      const pollGameMock = vi.fn((_appid: number) => read.promise);
+      const { every, tick } = manualEvery();
+      const { sut, run } = setup({ every, pollGame: pollGameMock });
+      run(42);
+      await sut.refreshCurrent();
+      sut.start();
+      tick(60_000);
+
+      tick(60_000);
+
+      expect(pollGameMock).toHaveBeenCalledExactlyOnceWith(42);
+    });
+
+    it('should look for the game of the account that took over when a check for the one that was left has not ended', async () => {
+      const answers = [held<number | null>(), held<number | null>()];
+      let asked = 0;
+      const { sut, onCurrentChangedMock } = setup({
+        getRunningAppId: () => answers[asked++].promise,
+      });
+      void sut.checkRunningGame();
+      sut.forget({ isCurrentIncluded: true });
+      const checking = sut.checkRunningGame();
+      answers[1].resolve(42);
+
+      await checking;
+
+      expect(onCurrentChangedMock).toHaveBeenCalledExactlyOnceWith({
+        appid: 42,
+        isRunning: true,
+      });
     });
   });
 

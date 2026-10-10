@@ -229,7 +229,7 @@ describe('gamesSlice', () => {
       expect(sut.getState().games.entries).toEqual({});
     });
 
-    it('should show the failure when its account was left and followed again before the read failed', async () => {
+    it('should show no failure when the read that failed was asked before its account was left and followed again', async () => {
       const { sut, asked, follow } = await setup();
       const loading = sut.getState().games.load(10);
       follow(otherAccountState());
@@ -238,10 +238,23 @@ describe('gamesSlice', () => {
 
       await loading;
 
+      expect(sut.getState().games.entries).toEqual({});
+    });
+
+    it('should keep saying the game is being read when the answer asked for before its account was left and followed again arrives during the read asked since', async () => {
+      const { sut, asked, follow } = await setup();
+      void sut.getState().games.load(10);
+      follow(otherAccountState());
+      follow(makeAppState());
+      void sut.getState().games.load(10);
+      asked[0].resolve({ ok: true, value: makeGameView({ appid: 10 }) });
+
+      await turn();
+
       expect(sut.getState().games.entries[10]).toEqual({
         view: null,
-        isLoading: false,
-        error: 'Steam did not answer.',
+        isLoading: true,
+        error: null,
         justUnlocked: [],
       });
     });

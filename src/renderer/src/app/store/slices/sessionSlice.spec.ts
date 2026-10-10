@@ -206,5 +206,16 @@ describe('sessionSlice', () => {
 
       expect(sut.getState().session.current).toBeNull();
     });
+
+    it('should keep waiting for the current game when the one asked for before its account was left and followed again is answered', async () => {
+      const { sut, asked, follow } = await setup();
+      follow(otherAccountState());
+      follow(makeAppState());
+      asked[0].resolve({ appid: 7, isRunning: false });
+
+      await turn();
+
+      expect(sut.getState().session.current).toBeNull();
+    });
   });
 });
