@@ -378,7 +378,9 @@ export class Tracker {
         );
         entries.set(game.appid, entry);
         if (isLasting) fresh[game.appid] = entry;
-        onProgress?.(++done, pending.length);
+        done += 1;
+        // The interface is showing another account's dashboard by then.
+        if (this.owner() === owner) onProgress?.(done, pending.length);
       });
     } finally {
       this.store.setSummaries(fresh, owner);

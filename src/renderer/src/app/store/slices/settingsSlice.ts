@@ -72,6 +72,19 @@ type SettingsActions = {
   removeAccount: (steamId: string) => Promise<void>;
   /** A state the main process sent by itself; `hasFollowed` when it switched accounts to match Steam. */
   accept: (appState: IAppState, hasFollowed: boolean) => void;
+  /**
+   * The account step saved or removed an account. With the app set up, the
+   * main process is already on that state and the store follows at once.
+   * In the first setup the step keeps it until `finishSetup`: taking it here
+   * would end the setup at the first account.
+   */
+  acceptAccountStep: (appState: IAppState) => void;
+  /**
+   * The first setup ends on the state its account step produced. With the
+   * app already set up there is nothing to take: every answer of the step is
+   * in the store, and so is whatever the main process sent since.
+   */
+  finishSetup: (appState: IAppState) => void;
 };
 
 export type SettingsSlice = SettingsStore & SettingsActions;
@@ -244,5 +257,13 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
     if (!hasFollowed) return;
     const name = appState.profile?.name || appState.activeSteamId || '';
     toast(messagesFor(appState.language).accounts.switched(name));
+  },
+
+  acceptAccountStep: (appState) => {
+    if (get().settings.appState?.isConfigured) get().settings.apply(appState);
+  },
+
+  finishSetup: (appState) => {
+    if (!get().settings.appState?.isConfigured) get().settings.apply(appState);
   },
 });

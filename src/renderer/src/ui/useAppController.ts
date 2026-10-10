@@ -13,7 +13,7 @@ export function useAppController() {
     current,
     isAddingAccount,
     load,
-    apply,
+    finishSetup,
     followRunningGame,
     stopAddingAccount,
     startUpdates,
@@ -29,7 +29,7 @@ export function useAppController() {
       current: state.session.current,
       isAddingAccount: state.navigation.isAddingAccount,
       load: state.settings.load,
-      apply: state.settings.apply,
+      finishSetup: state.settings.finishSetup,
       followRunningGame: state.navigation.followRunningGame,
       stopAddingAccount: state.navigation.stopAddingAccount,
       startUpdates: state.updates.start,
@@ -68,10 +68,13 @@ export function useAppController() {
     if (runningAppId !== undefined) followRunningGame(runningAppId);
   }, [runningAppId, followRunningGame]);
 
-  /** Leaves the account step, with the state it produced when it produced one. */
-  function leaveOnboarding(next?: IAppState) {
+  /**
+   * Leaves the account step. The first setup hands over the state it
+   * produced; an account added to the app is in the store already.
+   */
+  function handleOnboardingDone(next: IAppState) {
     stopAddingAccount();
-    if (next) apply(next);
+    finishSetup(next);
   }
 
   return {
@@ -79,8 +82,8 @@ export function useAppController() {
     isOnboardingShown: !isConfigured || isAddingAccount,
     // With the app already set up, the step is only there to add an account.
     isAddingAccount: isConfigured && isAddingAccount,
-    handleOnboardingDone: (next: IAppState) => leaveOnboarding(next),
-    handleOnboardingCancel: () => leaveOnboarding(),
+    handleOnboardingDone,
+    handleOnboardingCancel: stopAddingAccount,
     isStartingUp: updateStartup !== 'done',
     // While only checking there is no version to show yet.
     updateVersion:

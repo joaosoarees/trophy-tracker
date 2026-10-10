@@ -1,4 +1,5 @@
 import { DashboardService } from '@app/services/DashboardService';
+import { sameAccount } from '@app/store/sameAccount';
 import type { StoreSlice } from '@app/store/Store';
 import { type DashboardMode, type IGameSummary } from '@shared/types/Game';
 
@@ -34,7 +35,10 @@ export const createDashboardSlice: StoreSlice<DashboardSlice> = (set, get) => ({
       'dashboard/load',
     );
 
+    const isSameAccount = sameAccount(get);
     const result = await DashboardService.getDashboard(mode);
+    // Another account's dashboard is being read by now: it owns `isLoading`.
+    if (!isSameAccount()) return;
     set(
       (prevState) => {
         prevState.dashboard.isLoading = false;

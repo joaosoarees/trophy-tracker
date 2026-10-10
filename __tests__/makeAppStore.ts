@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 
 import { type IApi } from '@shared/types/Api';
+import { type IAppState } from '@shared/types/AppState';
 
 /** A promise settled from outside, to control when a call to the main process answers. */
 export function deferred<T>() {
@@ -52,11 +53,24 @@ export async function makeAppStore({
     removeEventListener: () => {},
   });
 
-  const { useStore } = await import('@app/store');
+  const { useStore, connectStore } = await import('@app/store');
   const { toast } = await import('sonner');
+
+  let disconnect: (() => void) | null = null;
+  /**
+   * Puts the store on the account of `appState` as `useAppController` does:
+   * the state is taken, the store is unwired from the account that was left,
+   * which drops what was read for it, and wired for the one in use.
+   */
+  const follow = (appState: IAppState): void => {
+    useStore.getState().settings.apply(appState);
+    disconnect?.();
+    disconnect = connectStore();
+  };
 
   return {
     sut: useStore,
+    follow,
     storage,
     reloadMock,
     toastMock: vi.mocked(toast),

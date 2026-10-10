@@ -1,4 +1,5 @@
 import { GamesService } from '@app/services/GamesService';
+import { sameAccount } from '@app/store/sameAccount';
 import type { StoreSlice } from '@app/store/Store';
 import { type IGameView } from '@shared/types/Game';
 import { mergeView } from '@shared/view';
@@ -51,12 +52,15 @@ export const createGamesSlice: StoreSlice<GamesSlice> = (set, get) => ({
       'games/load',
     );
 
+    const isSameAccount = sameAccount(get);
     const result = await GamesService.getGame(appid, isForced);
+    if (!isSameAccount()) return;
     if (result.ok) return get().games.accept(result.value);
 
     set(
       (prevState) => {
-        const entry = prevState.games.entries[appid];
+        // The entry is gone when its account was left and followed again.
+        const entry = (prevState.games.entries[appid] ??= emptyEntry());
         entry.isLoading = false;
         entry.error = result.error;
       },

@@ -2,6 +2,7 @@ import { toast } from 'sonner';
 
 import { createSaver } from '@app/lib/saver';
 import { UserDataService } from '@app/services/UserDataService';
+import { sameAccount } from '@app/store/sameAccount';
 import type { StoreSlice } from '@app/store/Store';
 import { messagesFor } from '@shared/i18n';
 import {
@@ -28,6 +29,8 @@ type UserDataActions = {
 export type UserDataSlice = UserDataStore & UserDataActions;
 
 type Edit = {
+  /** The account the edit was made under, which is where it is saved. */
+  steamId: string;
   appid: number;
   achievementId: string;
   /** `undefined` when the achievement had no user data before the edit. */
@@ -38,14 +41,18 @@ export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => {
   // Optimistic update: the edit is on screen at once and saved after a pause.
   // If the save fails, the screen goes back to what is actually saved.
   const saver = createSaver<Edit>({
-    save: (_key, { appid, achievementId, data }) =>
+    save: (_key, { steamId, appid, achievementId, data }) =>
       UserDataService.setUserData(
         appid,
         achievementId,
         data ?? { note: '', pinned: false },
+        steamId,
       ),
     onRollback: (key, saved) => {
-      const [appid, achievementId] = splitKey(key);
+      const [steamId, appid, achievementId] = splitKey(key);
+      toast.error(messagesFor(get().session.language).errors.changeNotSaved);
+      // The screen shows another account by now: the edit is not on it.
+      if (get().settings.appState?.activeSteamId !== steamId) return;
       set(
         (prevState) => {
           const game = prevState.userData.byGame[appid];
@@ -56,7 +63,6 @@ export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => {
         false,
         'userData/rollback',
       );
-      toast.error(messagesFor(get().session.language).errors.changeNotSaved);
     },
   });
 
@@ -65,7 +71,9 @@ export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => {
 
     load: async (appid) => {
       if (get().userData.byGame[appid]) return;
+      const isSameAccount = sameAccount(get);
       const data = await UserDataService.getUserData(appid);
+      if (!isSameAccount()) return;
       set(
         (prevState) => {
           prevState.userData.byGame[appid] ??= data;
@@ -76,6 +84,10 @@ export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => {
     },
 
     update: (appid, achievementId, patch) => {
+      // An edit is saved for the account it was made under, whichever is in
+      // use by the time it is written. With none there is nobody to write for.
+      const steamId = get().settings.appState?.activeSteamId;
+      if (!steamId) return;
       const previous = get().userData.byGame[appid]?.[achievementId];
       set(
         (prevState) => {
@@ -91,9 +103,9 @@ export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => {
 
       const data = get().userData.byGame[appid][achievementId];
       saver.schedule(
-        joinKey(appid, achievementId),
-        { appid, achievementId, data },
-        { appid, achievementId, data: previous },
+        joinKey(steamId, appid, achievementId),
+        { steamId, appid, achievementId, data },
+        { steamId, appid, achievementId, data: previous },
       );
     },
 
@@ -101,10 +113,14 @@ export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => {
   };
 };
 
-const joinKey = (appid: number, achievementId: string): string =>
-  `${appid}:${achievementId}`;
+const joinKey = (
+  steamId: string,
+  appid: number,
+  achievementId: string,
+): string => `${steamId}:${appid}:${achievementId}`;
 
-function splitKey(key: string): [number, string] {
-  const separator = key.indexOf(':');
-  return [Number(key.slice(0, separator)), key.slice(separator + 1)];
+/** Only the achievement id, the last part, may hold the separator. */
+function splitKey(key: string): [string, number, string] {
+  const [steamId, appid, ...achievementId] = key.split(':');
+  return [steamId, Number(appid), achievementId.join(':')];
 }

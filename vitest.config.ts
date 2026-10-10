@@ -34,6 +34,10 @@ export default defineConfig({
         'src/renderer/src/app/store/slices/updatesSlice.ts',
         'src/renderer/src/app/store/slices/settingsSlice.ts',
         'src/renderer/src/app/store/slices/userDataSlice.ts',
+        // The rule that drops an answer that arrives after the account
+        // changed. The games, dashboard and session slices have a spec for
+        // that rule alone, so they are not measured as a whole.
+        'src/renderer/src/app/store/sameAccount.ts',
         'src/renderer/src/ui/screens/**/achievementList.ts',
         'src/renderer/src/ui/screens/**/gameList.ts',
         'src/renderer/src/ui/screens/**/schema.ts',

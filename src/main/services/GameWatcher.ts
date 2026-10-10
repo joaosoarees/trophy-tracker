@@ -40,6 +40,12 @@ export class GameWatcher {
   /** The game last seen running since the app opened. */
   private lastSeenRunning: number | null = null;
 
+  /**
+   * How many times the current game was forgotten. What was being observed
+   * when that happened is the game of the account that was left.
+   */
+  private forgotten = 0;
+
   /** What stops each periodic check; empty while the watcher is stopped. */
   private stops: (() => void)[] = [];
 
@@ -108,7 +114,11 @@ export class GameWatcher {
 
   /** Resolves the current game and remembers it without announcing a change. */
   async refreshCurrent(): Promise<CurrentGame> {
-    this.current = await this.observe();
+    const forgotten = this.forgotten;
+    const current = await this.observe();
+    // Another account took over meanwhile: its game is the one to answer.
+    if (forgotten !== this.forgotten) return this.refreshCurrent();
+    this.current = current;
     return this.current;
   }
 
@@ -123,17 +133,22 @@ export class GameWatcher {
     if (isCurrentIncluded) {
       this.current = null;
       this.lastSeenRunning = null;
+      this.forgotten += 1;
     }
   }
 
   async checkRunningGame(): Promise<void> {
+    const forgotten = this.forgotten;
     const next = await this.observe();
+    // Another account took over meanwhile: the next check looks for its game.
+    if (forgotten !== this.forgotten) return;
     const previous = this.current;
     if (!GameWatcher.hasChanged(previous, next)) return;
 
     // The game was closed: one last read catches what was unlocked in the final minute.
     if (GameWatcher.hasStoppedPlaying(previous, next)) {
       await this.checkUnlocks();
+      if (forgotten !== this.forgotten) return;
     }
 
     this.current = next;

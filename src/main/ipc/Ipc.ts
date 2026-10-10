@@ -116,8 +116,8 @@ export class Ipc {
           ),
         ),
       getUserData: (appid) => store.getUserData(appid),
-      setUserData: (appid, achievementId, data) =>
-        store.setUserData(appid, achievementId, data),
+      setUserData: (appid, achievementId, data, steamId) =>
+        store.setUserData(appid, achievementId, data, steamId),
 
       setLanguage: (language) => {
         const state = setup.setLanguage(language);

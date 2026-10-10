@@ -14,6 +14,7 @@ One Zustand store in `app/store/`, split into namespaced slices.
 - **Where state lives depends on how long it should last:** only while a screen is mounted → `useState`; across a window reload → `navigationSlice` (mirrored in `sessionStorage`); across restarts → a preference saved by the main process.
 - Store slices reach the main process through `@app/services`, never through `window.api`. Who calls whom is in Layers, in `CLAUDE.md`.
 - `connectStore` wires the store for the account in use; what was read from Steam for one account is dropped when another is followed.
+- **An answer is taken only while its account is still in use.** No answer from the main process names its account, and a request made under one account may answer after another took over. A slice action that awaits a read (`games.load`, `dashboard.load`, `session.loadCurrent`, `userData.load`) calls `sameAccount(get)` (`app/store/sameAccount.ts`) before it asks and drops the answer when the function says the account changed, touching nothing, not even its loading flag. Dropping is safe: `connectStore` asks again for the account that took over. A new read follows the same shape.
 
 ### Optimistic UI
 
@@ -21,6 +22,7 @@ The screen never waits for something it can already show, and never keeps showin
 
 - **Writes are optimistic.** A new action that writes: remember the previous value, apply to the store, save, and in the `catch` put back what is actually saved and tell the user with a toast (`sonner`, message `errors.changeNotSaved`). `settings.toggleAlwaysOnTop` is the model for a single call.
 - User data goes through `app/lib/saver.ts`, which batches the writes, remembers the last saved value per key and skips the rollback when a newer edit is waiting.
+- **A user-data write names its account.** `userData.update` takes the SteamID in use as the edit is made; it is part of the saver's key and goes with the write (`UserDataService.setUserData`), so an edit flushed after the account changed is still saved where it was made. A save that fails after its account was left tells the user and leaves the screen, which shows another account, as it is.
 - **No `pending` state on items:** saves are local and take milliseconds. Revisit if a write ever goes to a remote server.
 - **Reads are optimistic.** `Tracker.getGameStaleFirst` answers with the last known view, however old, and refreshes it in the background; the interface gets a `game-updated` event only if something changed. A game that was opened before never shows a loading state.
 - **Skeletons are for first loads only:** `GameSkeleton` the first time a game is opened, skeleton rows the first time the dashboard loads.
@@ -43,6 +45,7 @@ store/
   Store.ts              the Store type (one field per slice) and the StoreSlice<T> type
   index.ts              create() with the devtools (dev only) and immer middlewares
   connect.ts            wires the store to the main process events once the app is set up
+  sameAccount.ts        whether the account a read was asked under is still the one in use
   slices/
     sessionSlice.ts       language and current game
     settingsSlice.ts      app state from the main process, always on top, preferences, data folder,

@@ -37,6 +37,16 @@ function otherAccountState(): IAppState {
   });
 }
 
+/** The app before its first account. */
+function notSetUpState(): IAppState {
+  return makeAppState({
+    isConfigured: false,
+    profile: null,
+    accounts: [],
+    activeSteamId: null,
+  });
+}
+
 describe('settingsSlice', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -416,6 +426,50 @@ describe('settingsSlice', () => {
       sut.getState().settings.accept(otherAccountState(), false);
 
       expect(toastMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('acceptAccountStep', () => {
+    it('should follow the added account at once when the app is set up', async () => {
+      const { sut } = await setup();
+      sut.getState().settings.apply(makeAppState());
+
+      sut.getState().settings.acceptAccountStep(otherAccountState());
+
+      expect(sut.getState().settings.appState).toEqual(otherAccountState());
+    });
+
+    it('should stay in the setup when its first account is saved', async () => {
+      const { sut } = await setup();
+      sut.getState().settings.apply(notSetUpState());
+
+      sut.getState().settings.acceptAccountStep(makeAppState());
+
+      expect(sut.getState().settings.appState).toEqual(notSetUpState());
+    });
+  });
+
+  describe('finishSetup', () => {
+    it('should enter the app when the first setup ends', async () => {
+      const { sut } = await setup();
+      sut.getState().settings.apply(notSetUpState());
+
+      sut.getState().settings.finishSetup(makeAppState());
+
+      expect(sut.getState().settings.appState).toEqual(makeAppState());
+    });
+
+    it('should keep the account the main process followed when an account step that began before it ends', async () => {
+      const { sut } = await setup();
+      const whenTheStepBegan = makeAppState();
+      sut.getState().settings.apply(whenTheStepBegan);
+      sut.getState().settings.accept(otherAccountState(), true);
+
+      sut.getState().settings.finishSetup(whenTheStepBegan);
+
+      expect(sut.getState().settings.appState?.activeSteamId).toBe(
+        OTHER_STEAM_ID,
+      );
     });
   });
 

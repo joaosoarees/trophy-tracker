@@ -46,10 +46,16 @@ export interface IApi {
   getGame: (appid: number, force?: boolean) => Promise<CheckResult<IGameView>>;
   getDashboard: (mode?: DashboardMode) => Promise<CheckResult<IGameSummary[]>>;
   getUserData: (appid: number) => Promise<GameUserData>;
+  /**
+   * Saves what the user wrote for an achievement under the account the edit
+   * was made in (`steamId`): another one may be in use by the time the write
+   * arrives. Nothing is kept for an account the app no longer has.
+   */
   setUserData: (
     appid: number,
     achievementId: string,
     data: IAchievementUserData,
+    steamId: string,
   ) => Promise<void>;
 
   /** Saves the language and drops the translated cache; the caller decides whether to reload the window. */
