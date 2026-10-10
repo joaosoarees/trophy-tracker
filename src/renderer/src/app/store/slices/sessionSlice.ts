@@ -1,4 +1,5 @@
 import { GamesService } from '@app/services/GamesService';
+import { sameAccount } from '@app/store/sameAccount';
 import type { StoreSlice } from '@app/store/Store';
 import { DEFAULT_LANGUAGE, type Language } from '@shared/i18n';
 import { type CurrentGame } from '@shared/types/Game';
@@ -32,7 +33,9 @@ export const createSessionSlice: StoreSlice<SessionSlice> = (set, get) => ({
     ),
 
   loadCurrent: async () => {
-    get().session.setCurrent(await GamesService.getCurrent());
+    const isSameAccount = sameAccount(get);
+    const current = await GamesService.getCurrent();
+    if (isSameAccount()) get().session.setCurrent(current);
   },
 
   setCurrent: (current) => {

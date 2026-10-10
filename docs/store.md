@@ -14,6 +14,7 @@ One Zustand store in `app/store/`, split into namespaced slices.
 - **Where state lives depends on how long it should last:** only while a screen is mounted → `useState`; across a window reload → `navigationSlice` (mirrored in `sessionStorage`); across restarts → a preference saved by the main process.
 - Store slices reach the main process through `@app/services`, never through `window.api`. Who calls whom is in Layers, in `CLAUDE.md`.
 - `connectStore` wires the store for the account in use; what was read from Steam for one account is dropped when another is followed.
+- **An answer is taken only while its account is still in use.** No answer from the main process names its account, and a request made under one account may answer after another took over. A slice action that awaits a read (`games.load`, `dashboard.load`, `session.loadCurrent`, `userData.load`) calls `sameAccount(get)` (`app/store/sameAccount.ts`) before it asks and drops the answer when the function says the account changed, touching nothing, not even its loading flag. Dropping is safe: `connectStore` asks again for the account that took over. A new read follows the same shape.
 
 ### Optimistic UI
 
@@ -43,6 +44,7 @@ store/
   Store.ts              the Store type (one field per slice) and the StoreSlice<T> type
   index.ts              create() with the devtools (dev only) and immer middlewares
   connect.ts            wires the store to the main process events once the app is set up
+  sameAccount.ts        whether the account a read was asked under is still the one in use
   slices/
     sessionSlice.ts       language and current game
     settingsSlice.ts      app state from the main process, always on top, preferences, data folder,

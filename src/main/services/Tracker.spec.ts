@@ -933,6 +933,22 @@ describe('Tracker', () => {
       });
     });
 
+    it('should announce no progress when another account is in use by the time the games are read', async () => {
+      const { sut, store } = setupSecondAccount({
+        owned: () => [game(1, 'A', 10), game(2, 'B', 20)],
+        player: () => achieved(1, 4),
+      });
+      const progress: [done: number, total: number][] = [];
+      const reading = sut.getDashboard('cached', (done, total) => {
+        progress.push([done, total]);
+      });
+      store.setActiveAccount(OTHER_STEAM_ID);
+
+      await reading;
+
+      expect(progress).toEqual([]);
+    });
+
     it('should answer the dashboard of the account it was asked for when another is in use by the time the library arrives', async () => {
       const { sut, store, advance } = setupSecondAccount({
         owned: () => [game(1, 'A', 10), game(2, 'B', 20)],

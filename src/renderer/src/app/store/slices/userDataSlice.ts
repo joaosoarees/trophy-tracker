@@ -2,6 +2,7 @@ import { toast } from 'sonner';
 
 import { createSaver } from '@app/lib/saver';
 import { UserDataService } from '@app/services/UserDataService';
+import { sameAccount } from '@app/store/sameAccount';
 import type { StoreSlice } from '@app/store/Store';
 import { messagesFor } from '@shared/i18n';
 import {
@@ -65,7 +66,9 @@ export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => {
 
     load: async (appid) => {
       if (get().userData.byGame[appid]) return;
+      const isSameAccount = sameAccount(get);
       const data = await UserDataService.getUserData(appid);
+      if (!isSameAccount()) return;
       set(
         (prevState) => {
           prevState.userData.byGame[appid] ??= data;

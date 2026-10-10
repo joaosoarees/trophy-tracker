@@ -51,6 +51,21 @@ function setup(overrides: Partial<IGameWatcherDeps> = {}) {
   };
 }
 
+/** An answer that arrives when the test says so. */
+function held<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+/** One turn of the event loop: whatever was ready to run has run. */
+const turn = (): Promise<void> =>
+  new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+
 /** A scheduler that runs nothing and tells which repetitions are still going. */
 function fakeEvery() {
   const going: number[] = [];
@@ -152,6 +167,23 @@ describe('GameWatcher', () => {
     });
   });
 
+  it('should answer the last played game of the account in use when another was in use as it began to look', async () => {
+    const lastPlayed = [held<number | null>(), held<number | null>()];
+    let reads = 0;
+    const { sut } = setup({
+      lastPlayedAppId: () => lastPlayed[reads++].promise,
+    });
+    const refreshing = sut.refreshCurrent();
+    await turn();
+    sut.forget({ isCurrentIncluded: true });
+    lastPlayed[0].resolve(7);
+    lastPlayed[1].resolve(8);
+
+    const current = await refreshing;
+
+    expect(current).toEqual({ appid: 8, isRunning: false });
+  });
+
   describe('isPlaying', () => {
     it('should be true when a game of an account the app has is running', async () => {
       const { sut, run } = setup();
@@ -250,6 +282,40 @@ describe('GameWatcher', () => {
         isRunning: true,
       });
     });
+  });
+
+  it('should not announce the last played game of the account that was left when it is known only after another took over', async () => {
+    const lastPlayed = held<number | null>();
+    const { sut, onCurrentChangedMock } = setup({
+      lastPlayedAppId: () => lastPlayed.promise,
+    });
+    const checking = sut.checkRunningGame();
+    await turn();
+    sut.forget({ isCurrentIncluded: true });
+    lastPlayed.resolve(7);
+
+    await checking;
+
+    expect(onCurrentChangedMock).not.toHaveBeenCalled();
+  });
+
+  it('should not announce the game that closed when another account took over during its last read', async () => {
+    const lastPoll = held<CheckResult<IGameView>>();
+    const { sut, run, onCurrentChangedMock } = setup({
+      pollGame: () => lastPoll.promise,
+    });
+    run(42);
+    await sut.checkRunningGame();
+    onCurrentChangedMock.mockClear();
+    run(null);
+    const checking = sut.checkRunningGame();
+    await turn();
+    sut.forget({ isCurrentIncluded: true });
+    lastPoll.resolve({ ok: true, value: view(42, ['a']) });
+
+    await checking;
+
+    expect(onCurrentChangedMock).not.toHaveBeenCalled();
   });
 
   describe('checkUnlocks', () => {

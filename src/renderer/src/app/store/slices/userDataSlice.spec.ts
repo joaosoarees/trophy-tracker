@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type IApi } from '@shared/types/Api';
 import { type GameUserData } from '@shared/types/UserData';
-import { makeAppStore } from '@tests/makeAppStore';
+import { makeAppState } from '@tests/factories/makeAppState';
+import { OTHER_STEAM_ID } from '@tests/helpers';
+import { deferred, makeAppStore } from '@tests/makeAppStore';
 
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn() }),
@@ -44,6 +46,23 @@ describe('userDataSlice', () => {
       expect(sut.getState().userData.byGame[10]).toEqual({
         A: { note: 'boss of the 3rd map', pinned: true },
       });
+    });
+
+    it('should not file the notes of the account that was left under the one in use when they arrive late', async () => {
+      const answer = deferred<GameUserData>();
+      const { sut } = await makeAppStore({
+        api: { getUserData: () => answer.promise },
+      });
+      sut.getState().settings.apply(makeAppState());
+      const loading = sut.getState().userData.load(10);
+      sut
+        .getState()
+        .settings.apply(makeAppState({ activeSteamId: OTHER_STEAM_ID }));
+      answer.resolve({ A: { note: 'boss of the 3rd map', pinned: true } });
+
+      await loading;
+
+      expect(sut.getState().userData.byGame).toEqual({});
     });
 
     it('should ask for a game only once when it is loaded again', async () => {
