@@ -529,23 +529,33 @@ export class Store {
     this.write('userdata.json', this.userData);
   }
 
-  /** What the user wrote for the account in use; `null` with no account. */
-  private get notes(): AccountUserData | null {
-    const steamId = this.getActiveSteamId();
-    return steamId ? (this.userData.accounts[steamId] ??= {}) : null;
+  /**
+   * What the user wrote for an account: the one in use, unless a write names
+   * the account it was made under. `null` with no account, and for an account
+   * that is not saved: a write that arrives after its account was removed
+   * must not bring its notes back.
+   */
+  private notesOf(owner = this.getActiveSteamId()): AccountUserData | null {
+    if (!owner || !this.hasAccount(owner)) return null;
+    return (this.userData.accounts[owner] ??= {});
   }
 
   getUserData(appid: number): GameUserData {
-    return this.notes?.[appid] ?? {};
+    return this.notesOf()?.[appid] ?? {};
   }
 
+  /**
+   * `owner` is the account the edit was made under: another one may be in use
+   * by the time the write arrives.
+   */
   setUserData(
     appid: number,
     achievementId: string,
     data: IAchievementUserData,
+    owner?: string,
   ): void {
-    const notes = this.notes;
-    // There is nobody to write for: no screen allows it, and nothing is kept.
+    const notes = this.notesOf(owner);
+    // There is nobody to write for: nothing is kept.
     if (!notes) return;
     const game = (notes[appid] ??= {});
     const isEmpty =

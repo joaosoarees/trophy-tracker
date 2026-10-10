@@ -11,11 +11,13 @@ export class UserDataService extends Service {
     return this.api.getUserData(appid);
   }
 
+  /** `steamId` is the account the edit was made under. */
   static setUserData(
     appid: number,
     achievementId: string,
     data: IAchievementUserData,
+    steamId: string,
   ): Promise<void> {
-    return this.api.setUserData(appid, achievementId, data);
+    return this.api.setUserData(appid, achievementId, data, steamId);
   }
 }

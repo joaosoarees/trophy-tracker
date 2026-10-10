@@ -68,6 +68,15 @@ function setupWithTwoAccounts() {
   return { sut, dir };
 }
 
+/** The notes of the game 10 a store keeps for an account, whichever is in use. */
+function notesOf(store: Store, steamId: string) {
+  const inUse = store.getActiveSteamId();
+  store.setActiveAccount(steamId);
+  const notes = store.getUserData(10);
+  if (inUse) store.setActiveAccount(inUse);
+  return notes;
+}
+
 /** A data folder a store has already saved an account in, and left. */
 function makeAccountDir(): string {
   const dir = makeTempDir();
@@ -257,6 +266,41 @@ describe('Store', () => {
       sut.setActiveAccount(OTHER_STEAM_ID);
 
       expect(sut.getUserData(10)).toEqual({ A: NOTE });
+    });
+
+    it('should file a note under the account it names when another is in use by the time it is written', () => {
+      const { sut } = setupWithTwoAccounts();
+
+      sut.setUserData(10, 'A', NOTE, STEAM_ID);
+
+      expect({
+        theirs: notesOf(sut, OTHER_STEAM_ID),
+        mine: notesOf(sut, STEAM_ID),
+      }).toEqual({ theirs: {}, mine: { A: NOTE } });
+    });
+
+    it('should keep the note of the account in use when a note that was emptied names another account', () => {
+      const { sut } = setupWithTwoAccounts();
+      sut.setUserData(10, 'A', NOTE);
+
+      sut.setUserData(10, 'A', { note: '', pinned: false }, STEAM_ID);
+
+      expect(sut.getUserData(10)).toEqual({ A: NOTE });
+    });
+
+    it('should keep nothing when a note names an account that was removed', () => {
+      const { sut, dir } = setupWithTwoAccounts();
+      sut.removeAccount(STEAM_ID);
+
+      sut.setUserData(10, 'A', NOTE, STEAM_ID);
+
+      expect({
+        inUse: sut.getUserData(10),
+        isRemovedOneOnDisk: readFileSync(
+          join(dir, 'userdata.json'),
+          'utf8',
+        ).includes(STEAM_ID),
+      }).toEqual({ inUse: {}, isRemovedOneOnDisk: false });
     });
 
     it.each(['config.json', 'cache.json', 'userdata.json'])(

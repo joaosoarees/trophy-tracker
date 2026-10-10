@@ -3,25 +3,46 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type IApi } from '@shared/types/Api';
 import { type GameUserData } from '@shared/types/UserData';
 import { makeAppState } from '@tests/factories/makeAppState';
-import { OTHER_STEAM_ID } from '@tests/helpers';
+import { OTHER_STEAM_ID, STEAM_ID } from '@tests/helpers';
 import { deferred, makeAppStore } from '@tests/makeAppStore';
 
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn() }),
 }));
 
+/** The state of the app following the second account. */
+const otherAccountState = () =>
+  makeAppState({
+    activeSteamId: OTHER_STEAM_ID,
+    profile: { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' },
+  });
+
 /** How long the store waits after the last edit before writing it. */
 const PAUSE = 500;
 
-/** The store over a main process that has `saved` for every game and saves what it is given. */
+/**
+ * The store, with the first account in use, over a main process that has
+ * `saved` for every game and saves what it is given.
+ */
 async function setup(saved: GameUserData = {}) {
   const getUserDataMock = vi.fn<IApi['getUserData']>(() =>
     Promise.resolve(saved),
   );
   const setUserDataMock = vi.fn<IApi['setUserData']>(() => Promise.resolve());
   const made = await makeAppStore({
-    api: { getUserData: getUserDataMock, setUserData: setUserDataMock },
+    api: {
+      getUserData: getUserDataMock,
+      setUserData: setUserDataMock,
+      // What the store asks as it is wired for an account.
+      getCurrentAppId: () => Promise.resolve(null),
+      getDashboard: () => Promise.resolve({ ok: true, value: [] }),
+      onStateChanged: () => () => {},
+      onGameChanged: () => () => {},
+      onGameUpdated: () => () => {},
+      onDashboardProgress: () => () => {},
+    },
   });
+  made.sut.getState().settings.apply(makeAppState());
   return { ...made, getUserDataMock, setUserDataMock };
 }
 
@@ -115,10 +136,35 @@ describe('userDataSlice', () => {
 
       await vi.advanceTimersByTimeAsync(PAUSE);
 
-      expect(setUserDataMock).toHaveBeenCalledExactlyOnceWith(10, 'A', {
-        note: 'bridge',
-        pinned: false,
-      });
+      expect(setUserDataMock).toHaveBeenCalledExactlyOnceWith(
+        10,
+        'A',
+        { note: 'bridge', pinned: false },
+        STEAM_ID,
+      );
+    });
+
+    it('should save an edit for the account it was made under when another is in use by the time it is written', async () => {
+      const { sut, setUserDataMock } = await setup();
+      sut.getState().userData.update(10, 'A', { note: 'bridge' });
+      sut.getState().settings.apply(otherAccountState());
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(setUserDataMock).toHaveBeenCalledExactlyOnceWith(
+        10,
+        'A',
+        { note: 'bridge', pinned: false },
+        STEAM_ID,
+      );
+    });
+
+    it('should take no edit when no account is in use', async () => {
+      const { sut } = await makeAppStore();
+
+      sut.getState().userData.update(10, 'A', { note: 'bridge' });
+
+      expect(sut.getState().userData.byGame).toEqual({});
     });
   });
 
@@ -129,10 +175,12 @@ describe('userDataSlice', () => {
 
       sut.getState().userData.flush();
 
-      expect(setUserDataMock).toHaveBeenCalledExactlyOnceWith(10, 'A', {
-        note: 'bridge',
-        pinned: false,
-      });
+      expect(setUserDataMock).toHaveBeenCalledExactlyOnceWith(
+        10,
+        'A',
+        { note: 'bridge', pinned: false },
+        STEAM_ID,
+      );
     });
   });
 
@@ -165,6 +213,27 @@ describe('userDataSlice', () => {
       expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(
         'Could not save your change, so it was undone.',
       );
+    });
+
+    it('should leave the notes of the account in use alone when the save that fails is of the account that was left', async () => {
+      const { sut, follow, getUserDataMock, setUserDataMock } = await setup();
+      getUserDataMock
+        .mockResolvedValueOnce({ A: { note: 'mine', pinned: false } })
+        .mockResolvedValueOnce({ A: { note: 'theirs', pinned: false } });
+      const saving = deferred<void>();
+      setUserDataMock.mockReturnValueOnce(saving.promise);
+      follow(makeAppState());
+      await sut.getState().userData.load(10);
+      sut.getState().userData.update(10, 'A', { note: 'never saved' });
+      follow(otherAccountState());
+      await sut.getState().userData.load(10);
+      saving.reject(new Error('disk full'));
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(sut.getState().userData.byGame[10]).toEqual({
+        A: { note: 'theirs', pinned: false },
+      });
     });
 
     it('should remove the entry when the edit that failed was its first', async () => {

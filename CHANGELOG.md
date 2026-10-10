@@ -17,6 +17,7 @@ What changed in each version, for whoever uses the app. The section of a version
 - Adding an account no longer leaves the Game tab on the game of the account that was in use before: a game running on the added account is shown right away, and otherwise the tab opens on the game that account played last.
 - The notice about a key Steam refuses no longer goes away, or blinks, when you open a game or the dashboard the app already had: it stays until Steam accepts the key again.
 - When the dashboard fails halfway through a library (a connection that drops, for one), the app stops asking Steam about the remaining games, and the next attempt carries on from the games already read instead of reading them all again.
+- A note, pin or checklist edited just before the app switches by itself to the account signed in to Steam is saved in the account it was written in, not in the other one.
 - Switching accounts while Steam is still answering no longer shows the previous account's game, dashboard, progress count or last played game under the new account.
 - Leaving "Add account" no longer puts the app back on the account that was in use when it was opened, if the app switched to the account signed in to Steam meanwhile.
 - An account picked by hand in Settings is no longer undone, some time later, when the app fails once to read which account is signed in to Steam.
