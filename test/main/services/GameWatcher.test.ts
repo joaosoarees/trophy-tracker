@@ -64,6 +64,75 @@ describe('GameWatcher', () => {
     });
   });
 
+  it('asks whose game it is when a game starts, and only then', async () => {
+    const followRunningGame = vi.fn(() => Promise.resolve('followed' as const));
+    const { watcher, run } = setup({ followRunningGame });
+    run(42);
+
+    await watcher.checkRunningGame();
+    await watcher.checkRunningGame();
+
+    expect(followRunningGame).toHaveBeenCalledTimes(1);
+  });
+
+  it('says so when the running game is on an account the app does not have', async () => {
+    const { watcher, run } = setup({
+      followRunningGame: () => Promise.resolve('other'),
+    });
+    run(42);
+
+    expect(await watcher.resolveCurrent()).toEqual({
+      appid: 42,
+      running: true,
+      otherAccount: true,
+    });
+  });
+
+  it('does not read a game that is on an account the app does not have', async () => {
+    const { watcher, run, deps } = setup({
+      followRunningGame: () => Promise.resolve('other'),
+    });
+    run(42);
+    await watcher.refreshCurrent();
+
+    await watcher.checkUnlocks();
+
+    expect(deps.pollGame).not.toHaveBeenCalled();
+  });
+
+  it("does not take another account's game for the last one played here", async () => {
+    const { watcher, run } = setup({
+      followRunningGame: () => Promise.resolve('other'),
+    });
+    run(42);
+    await watcher.refreshCurrent();
+
+    run(null);
+
+    expect(await watcher.resolveCurrent()).toEqual({
+      appid: 7,
+      running: false,
+    });
+  });
+
+  it('is playing while a game of an account it has is running', async () => {
+    const { watcher, run } = setup();
+    run(42);
+    await watcher.refreshCurrent();
+
+    expect(watcher.isPlaying).toBe(true);
+  });
+
+  it('is not playing when the running game is on an account it does not have', async () => {
+    const { watcher, run } = setup({
+      followRunningGame: () => Promise.resolve('other'),
+    });
+    run(42);
+    await watcher.refreshCurrent();
+
+    expect(watcher.isPlaying).toBe(false);
+  });
+
   it('shows the running game over the last played one', async () => {
     const { watcher, run } = setup();
     run(42);

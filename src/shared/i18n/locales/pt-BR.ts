@@ -183,6 +183,10 @@ export const ptBR: Messages = {
   },
 
   accounts: {
+    gameOnAnotherAccount:
+      'Este jogo está rodando em uma conta da Steam que não está no app.',
+    lockedWhilePlaying:
+      'Enquanto um jogo está rodando, o app fica na conta que está jogando.',
     keyNotEncrypted:
       'Este sistema não tem cofre de senhas, então a chave fica salva sem criptografia, em um arquivo que só o seu usuário pode ler.',
     use: (name: string) => `Usar ${name}`,

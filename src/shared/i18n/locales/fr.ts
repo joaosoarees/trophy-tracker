@@ -184,6 +184,10 @@ export const fr: Messages = {
   },
 
   accounts: {
+    gameOnAnotherAccount:
+      'Ce jeu est lancé sur un compte Steam qui n’est pas dans l’application.',
+    lockedWhilePlaying:
+      'Tant qu’un jeu est lancé, l’application reste sur le compte qui y joue.',
     keyNotEncrypted:
       'Ce système n’a pas de trousseau de mots de passe : la clé est enregistrée sans chiffrement, dans un fichier que seul votre utilisateur peut lire.',
     use: (name: string) => `Utiliser ${name}`,

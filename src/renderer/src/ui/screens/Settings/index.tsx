@@ -21,6 +21,7 @@ export const Settings = memo(function Settings() {
   const {
     accounts,
     activeAccount,
+    isAccountLocked,
     language,
     appInfo,
     checkState,
@@ -76,7 +77,11 @@ export const Settings = memo(function Settings() {
                 key={account.steamId}
                 account={account}
                 isActive={isActive}
-                onSelect={() => handleSwitchAccount(account.steamId)}
+                onSelect={
+                  isAccountLocked
+                    ? undefined
+                    : () => handleSwitchAccount(account.steamId)
+                }
               >
                 {isActive && <AccountDetails account={account} />}
               </AccountCard>
@@ -84,6 +89,11 @@ export const Settings = memo(function Settings() {
           })}
           <AddAccountCard onAdd={handleAddAccount} />
         </ul>
+        {isAccountLocked && accounts.length > 1 && (
+          <p className="text-muted-foreground pt-2 text-xs">
+            {t.accounts.lockedWhilePlaying}
+          </p>
+        )}
       </section>
 
       <DetailGroup title={t.settings.groups.window}>
