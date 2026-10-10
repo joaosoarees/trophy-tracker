@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { makeStore } from './makeStore';
+import { makeStore } from '@tests/makeAppStore';
 
 async function setup(session: Record<string, string> = {}) {
   const made = await makeStore({ session });

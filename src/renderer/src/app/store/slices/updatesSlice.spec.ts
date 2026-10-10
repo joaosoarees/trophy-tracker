@@ -4,8 +4,7 @@ import { type IApi } from '@shared/types/Api';
 import { type IAppInfo, type IUpdateCheck } from '@shared/types/AppInfo';
 import { makeAppInfo } from '@test/factories/makeAppInfo';
 import { makeAppState } from '@test/factories/makeAppState';
-
-import { deferred, makeStore } from './makeStore';
+import { deferred, makeStore } from '@tests/makeAppStore';
 
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn() }),

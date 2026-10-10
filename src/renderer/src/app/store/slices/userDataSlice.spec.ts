@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type IApi } from '@shared/types/Api';
 import { type GameUserData } from '@shared/types/UserData';
-
-import { makeStore } from './makeStore';
+import { makeStore } from '@tests/makeAppStore';
 
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn() }),
