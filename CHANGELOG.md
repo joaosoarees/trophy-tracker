@@ -9,6 +9,7 @@ What changed in each version, for whoever uses the app. The section of a version
 **When the app cannot save**
 
 - When a game starts on a saved account the app is not on, and the app cannot save the switch to it, the error log is told once, not every ten seconds for as long as it lasts. Meanwhile the Game tab stays on the game the account in use played last, and the app switches to the account that is playing, and shows its game, as soon as it can save again.
+- "Check again" in Settings says "Unexpected error. Try again." when what Steam answered about the key cannot be saved. It used to end without a word, with the card still showing the old status.
 
 ## 1.1.0
 

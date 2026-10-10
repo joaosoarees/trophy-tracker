@@ -74,11 +74,15 @@ function setupFailingSteam(failure: Error) {
 
 /**
  * The same app, its key last given `status`, over a disk that from then on
- * refuses whatever is written at once: the status of a key included.
+ * refuses whatever is written at once: the status of a key included. Steam
+ * accepts the key unless the test gives another Steam.
  */
-function setupRefusingDisk(status: AccountStatus) {
+function setupRefusingDisk(
+  status: AccountStatus,
+  client = fakeSteamClient({ summary }),
+) {
   const store = new InMemoryStore();
-  const made = setup(store);
+  const made = setup(store, client);
   store.setAccountStatus(STEAM_ID, status);
   store.refuseWrites();
   return made;
@@ -497,26 +501,72 @@ describe('KeyStatus', () => {
       expect(changes).toEqual([]);
     });
 
-    it.each<[string, (sut: KeyStatus) => Promise<unknown>]>([
-      [
-        'a read',
-        (sut) =>
-          sut.attempt(() => Promise.reject(new SteamError('invalid-key'))),
-      ],
-      ['a recheck', (sut) => sut.recheck(STEAM_ID)],
-    ])(
-      'should write to the error log that the status could not be saved when %s learns another',
-      async (_source, learn) => {
-        const { sut, logErrorMock } = setupRefusingDisk('rateLimited');
+    it('should write to the error log that the status could not be saved when a read learns another', async () => {
+      const { sut, logErrorMock } = setupRefusingDisk('rateLimited');
 
-        await learn(sut);
+      await sut.attempt(() => Promise.reject(new SteamError('invalid-key')));
 
-        expect(logErrorMock).toHaveBeenCalledExactlyOnceWith(
-          'main: key status',
-          expect.stringContaining('InMemoryStore: the write was refused'),
-        );
-      },
-    );
+      expect(logErrorMock).toHaveBeenCalledExactlyOnceWith(
+        'main: key status',
+        expect.stringContaining('InMemoryStore: the write was refused'),
+      );
+    });
+  });
+
+  describe('a recheck whose answer the disk refuses to write', () => {
+    it('should say the status could not be saved when Steam answers another', async () => {
+      const { sut } = setupRefusingDisk('rateLimited');
+
+      const recheckPromise = sut.recheck(STEAM_ID);
+
+      await expect(recheckPromise).rejects.toThrow(
+        new Error('InMemoryStore: the write was refused'),
+      );
+    });
+
+    it('should say the status could not be saved when Steam refuses a key the file has as valid', async () => {
+      const { sut } = setupRefusingDisk(
+        'valid',
+        fakeSteamClient({
+          summary: () => {
+            throw new SteamError('invalid-key');
+          },
+        }),
+      );
+
+      const recheckPromise = sut.recheck(STEAM_ID);
+
+      await expect(recheckPromise).rejects.toThrow(
+        new Error('InMemoryStore: the write was refused'),
+      );
+    });
+
+    it('should keep the status the file has when Steam answers another', async () => {
+      const { sut, store } = setupRefusingDisk('rateLimited');
+
+      await sut.recheck(STEAM_ID).catch(() => undefined);
+
+      expect(store.getAccounts()[0].status).toBe('rateLimited');
+    });
+
+    it('should leave the error log to whoever asked when Steam answers another', async () => {
+      const { sut, logErrorMock } = setupRefusingDisk('rateLimited');
+
+      await sut.recheck(STEAM_ID).catch(() => undefined);
+
+      expect(logErrorMock).not.toHaveBeenCalled();
+    });
+
+    it('should end without failing when Steam answers what was already known', async () => {
+      const { sut } = setupRefusingDisk('valid');
+
+      const outcome = await sut.recheck(STEAM_ID).then(
+        () => 'ended',
+        (e: unknown) => `rejected: ${String(e)}`,
+      );
+
+      expect(outcome).toBe('ended');
+    });
   });
 
   describe('recheck', () => {

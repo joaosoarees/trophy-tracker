@@ -352,5 +352,17 @@ describe('SetupService', () => {
 
       expect(state.accounts[0].status).toBe('valid');
     });
+
+    it('should say so when what Steam answers about the key cannot be written', async () => {
+      const { sut, store } = await withOneAccount();
+      store.setAccountStatus(STEAM_ID, 'rejected');
+      store.refuseWrites();
+
+      const recheckPromise = sut.recheckAccount(STEAM_ID);
+
+      await expect(recheckPromise).rejects.toThrow(
+        new Error('InMemoryStore: the write was refused'),
+      );
+    });
   });
 });
