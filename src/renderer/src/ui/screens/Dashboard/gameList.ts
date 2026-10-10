@@ -15,7 +15,7 @@ interface IListOptions {
 
 type Compare = (a: IGameSummary, b: IGameSummary) => number;
 
-export const isComplete = (game: IGameSummary): boolean =>
+const isComplete = (game: IGameSummary): boolean =>
   game.unlocked === game.total;
 
 const inList = (game: IGameSummary, filter: DashboardFilter): boolean =>

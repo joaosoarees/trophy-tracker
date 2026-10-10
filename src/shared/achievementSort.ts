@@ -1,17 +1,11 @@
 /** The two lists of a game screen. */
 export type AchievementFilter = 'pending' | 'unlocked';
 
-export const PENDING_SORTS = ['common', 'rare', 'closest', 'name'] as const;
-export const UNLOCKED_SORTS = [
-  'recent',
-  'oldest',
-  'rare',
-  'common',
-  'name',
-] as const;
+const PENDING_SORTS = ['common', 'rare', 'closest', 'name'] as const;
+const UNLOCKED_SORTS = ['recent', 'oldest', 'rare', 'common', 'name'] as const;
 
-export type PendingSort = (typeof PENDING_SORTS)[number];
-export type UnlockedSort = (typeof UNLOCKED_SORTS)[number];
+type PendingSort = (typeof PENDING_SORTS)[number];
+type UnlockedSort = (typeof UNLOCKED_SORTS)[number];
 export type AchievementSort = PendingSort | UnlockedSort;
 
 /** The order chosen for each list; a preference kept across games and restarts. */

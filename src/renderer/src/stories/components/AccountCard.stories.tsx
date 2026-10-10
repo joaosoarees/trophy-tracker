@@ -13,7 +13,6 @@ const account: IAccount = {
   keyEnding: 'CDEF',
   isKeyEncrypted: true,
   status: 'valid',
-  checkedAt: 1_790_000_000_000,
 };
 
 const second: IAccount = {

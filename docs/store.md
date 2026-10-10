@@ -10,7 +10,7 @@ store/
   index.ts              create() with the devtools (dev only) and immer middlewares
   connect.ts            wires the store to the main process events once the app is set up
   slices/
-    sessionSlice.ts       language, current game and failure counter
+    sessionSlice.ts       language and current game
     settingsSlice.ts      app state from the main process, always on top, preferences, data folder,
                           list order, language change, switching and removing accounts
     navigationSlice.ts    current tab, Pending/Unlocked list, game picked in the dashboard, adding an account

@@ -45,8 +45,8 @@ function setup(routes: Parameters<typeof fakeFetch>[0] = {}) {
 /** The app with two accounts, following the second one. */
 async function withTwoAccounts() {
   const made = setup({ GetPlayerSummaries: summary });
-  await made.service.saveConfig(STEAM_ID, KEY);
-  await made.service.saveConfig(OTHER_STEAM_ID, OTHER_KEY);
+  await made.service.addAccount(STEAM_ID, KEY);
+  await made.service.addAccount(OTHER_STEAM_ID, OTHER_KEY);
   return made;
 }
 
@@ -66,7 +66,7 @@ describe('SetupService', () => {
   it('saves nothing when Steam rejects the key', async () => {
     const { service, store } = setup({ GetPlayerSummaries: FORBIDDEN_HTML });
 
-    const state = await service.saveConfig(STEAM_ID, KEY);
+    const state = await service.addAccount(STEAM_ID, KEY);
 
     expect(state.configured).toBe(false);
     expect(store.getCredentials()).toBeNull();
@@ -75,7 +75,7 @@ describe('SetupService', () => {
   it('saves the credentials, trimmed, when Steam accepts the key', async () => {
     const { service, store } = setup({ GetPlayerSummaries: summary });
 
-    const state = await service.saveConfig(STEAM_ID, ` ${KEY} `);
+    const state = await service.addAccount(STEAM_ID, ` ${KEY} `);
 
     expect(state).toMatchObject({
       configured: true,
@@ -89,7 +89,7 @@ describe('SetupService', () => {
 
   it('keeps the app open and marks the account when Steam starts rejecting its key', async () => {
     const { service, changes } = setup({ GetPlayerSummaries: summary });
-    await service.saveConfig(STEAM_ID, KEY);
+    await service.addAccount(STEAM_ID, KEY);
 
     const result = await service.attempt(() =>
       Promise.reject(new SteamError('invalid-key')),
@@ -108,7 +108,7 @@ describe('SetupService', () => {
 
   it('marks the account as limited when Steam asks it to slow down', async () => {
     const { service } = setup({ GetPlayerSummaries: summary });
-    await service.saveConfig(STEAM_ID, KEY);
+    await service.addAccount(STEAM_ID, KEY);
 
     await service.attempt(() => Promise.reject(new SteamError('rate-limited')));
 
@@ -117,7 +117,7 @@ describe('SetupService', () => {
 
   it('takes the mark off once a read works again', async () => {
     const { service } = setup({ GetPlayerSummaries: summary });
-    await service.saveConfig(STEAM_ID, KEY);
+    await service.addAccount(STEAM_ID, KEY);
     await service.attempt(() => Promise.reject(new SteamError('rate-limited')));
 
     await service.attempt(() => Promise.resolve('read'));
@@ -127,7 +127,7 @@ describe('SetupService', () => {
 
   it('says nothing when a read only confirms what was known', async () => {
     const { service, changes } = setup({ GetPlayerSummaries: summary });
-    await service.saveConfig(STEAM_ID, KEY);
+    await service.addAccount(STEAM_ID, KEY);
 
     await service.attempt(() => Promise.resolve('read'));
 
@@ -136,7 +136,7 @@ describe('SetupService', () => {
 
   it('keeps the setup on other failures and hides unexpected ones', async () => {
     const { service } = setup({ GetPlayerSummaries: summary });
-    await service.saveConfig(STEAM_ID, KEY);
+    await service.addAccount(STEAM_ID, KEY);
 
     expect(
       await service.attempt(() => Promise.reject(new SteamError('network'))),
@@ -209,7 +209,7 @@ describe('SetupService', () => {
 
   it('keeps the old key when Steam refuses the new one', async () => {
     const { service, store } = setup({ GetPlayerSummaries: summary });
-    await service.saveConfig(STEAM_ID, KEY);
+    await service.addAccount(STEAM_ID, KEY);
     const refusing = new SetupService(
       store,
       new SteamClient(fakeFetch({ GetPlayerSummaries: FORBIDDEN_HTML })),
@@ -235,7 +235,7 @@ describe('SetupService', () => {
 
   it('removing the last account leaves the app to be set up again', async () => {
     const { service } = setup({ GetPlayerSummaries: summary });
-    await service.saveConfig(STEAM_ID, KEY);
+    await service.addAccount(STEAM_ID, KEY);
 
     expect(service.removeAccount(STEAM_ID)).toMatchObject({
       configured: false,
@@ -245,7 +245,7 @@ describe('SetupService', () => {
 
   it('asks Steam again about a key and records the answer', async () => {
     const { service, store } = setup({ GetPlayerSummaries: summary });
-    await service.saveConfig(STEAM_ID, KEY);
+    await service.addAccount(STEAM_ID, KEY);
     store.setAccountStatus(STEAM_ID, 'rejected');
 
     const state = await service.recheckAccount(STEAM_ID);

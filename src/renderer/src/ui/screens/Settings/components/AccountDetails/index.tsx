@@ -1,7 +1,6 @@
 import { LockOpen } from 'lucide-react';
 import { useId } from 'react';
 
-import { useLocale } from '@app/hooks/useLocale';
 import { useT } from '@app/hooks/useT';
 import { type IAccount } from '@shared/types/Account';
 import { Collapsible } from '@ui/components/Collapsible';
@@ -10,7 +9,6 @@ import { KeyField } from '@ui/components/KeyField';
 import { MaskedKey } from '@ui/components/MaskedKey';
 import { Button } from '@ui/primitives/button';
 import { Label } from '@ui/primitives/label';
-import { formatDate } from '@ui/utils/format';
 
 import { useAccountDetailsController } from './useAccountDetailsController';
 
@@ -25,7 +23,6 @@ interface IAccountDetailsProps {
  */
 export function AccountDetails({ account }: IAccountDetailsProps) {
   const t = useT();
-  const locale = useLocale();
   const keyId = useId();
   const {
     isReplacing,
@@ -53,16 +50,7 @@ export function AccountDetails({ account }: IAccountDetailsProps) {
           <span className="text-muted-foreground text-xs">
             {t.accounts.key}
           </span>
-          <span className="flex flex-wrap items-center gap-x-2">
-            {account.keyEnding && <MaskedKey ending={account.keyEnding} />}
-            {account.checkedAt !== null && (
-              <small className="text-muted-foreground text-xs">
-                {t.accounts.checkedOn(
-                  formatDate(account.checkedAt / 1000, locale),
-                )}
-              </small>
-            )}
-          </span>
+          <MaskedKey ending={account.keyEnding} />
           {!account.isKeyEncrypted && (
             <small className="text-muted-foreground flex items-start gap-1 pt-0.5 text-xs">
               <LockOpen className="mt-0.5 size-3 flex-none" aria-hidden />

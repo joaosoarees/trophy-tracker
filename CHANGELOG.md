@@ -2,6 +2,10 @@
 
 What changed in each version, for whoever uses the app. The section of a version is what its release shows on GitHub.
 
+## Unreleased
+
+- The app no longer reads the files of versions before 0.7.0. Update to 0.7.0 first if you are on an older version and want to keep your setup and notes; otherwise the app starts from the initial setup, and the old files are kept beside the new ones as `.v1.bak`.
+
 ## 0.7.0
 
 ### New

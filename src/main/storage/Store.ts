@@ -50,21 +50,12 @@ interface IStoredAccount {
   keyEnding: string;
   profile: IProfile;
   status: AccountStatus;
-  checkedAt: number | null;
 }
 
 interface IConfigFile {
   accounts: IStoredAccount[];
   /** The account being followed. */
   activeSteamId?: string;
-}
-
-/** The file of the versions that knew a single account. */
-interface ILegacyConfigFile {
-  steamId?: string;
-  apiKey?: string;
-  apiKeyEncrypted?: string;
-  profile?: IProfile;
 }
 
 export interface ISummaryEntry {
@@ -112,18 +103,18 @@ interface ISettingsFile {
 type AccountUserData = Record<string, GameUserData>;
 
 interface IUserDataFile {
-  /** By SteamID. An account that is erased and added again finds its notes here. */
+  /** By SteamID. */
   accounts: Record<string, AccountUserData>;
-  /** Written before any account existed; the first account takes them. */
-  unassigned?: AccountUserData;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * The shape of the files this version writes. Version 1 is what the
- * single-account versions wrote, which carried no number.
+ * The shape of the files this version writes. A file in any other shape is
+ * not read: there is no code here to convert an older one (see "Migrations"
+ * in CLAUDE.md for when that would be worth writing). Version 1 is what the
+ * versions before 0.7.0 wrote, which carried no number.
  */
 const FILE_VERSION = 2;
 
@@ -166,7 +157,7 @@ export class Store {
    * Reads a file, or answers the fallback when there is none. A file that
    * cannot be used is never just treated as empty, because the next write
    * would then erase it for good: it is copied aside first. That covers a
-   * file cut short by a crash and one written by a later version of the app.
+   * file cut short by a crash and one in another version of the format.
    */
   private read<T>(name: string, fallback: T): T {
     const file = join(this.dir, name);
@@ -185,11 +176,18 @@ export class Store {
     }
 
     const { version, ...content } = parsed;
-    if (typeof version === 'number' && version > FILE_VERSION) {
-      this.setAside(name, `v${version}`);
-      return fallback;
+    const found = typeof version === 'number' ? version : 1;
+    // Settings never changed shape, so theirs are read whatever they say.
+    if (
+      found === FILE_VERSION ||
+      (name === 'settings.json' && found < FILE_VERSION)
+    ) {
+      return { ...fallback, ...(content as Partial<T>) };
     }
-    return { ...fallback, ...(content as Partial<T>) };
+    // Another shape is not guessed at. What only Steam can give back is
+    // dropped; what the user wrote or typed is kept aside.
+    if (name !== 'cache.json') this.setAside(name, `v${found}`);
+    return fallback;
   }
 
   private setAside(name: string, reason: string): void {
@@ -224,65 +222,20 @@ export class Store {
     renameSync(temporary, file);
   }
 
-  /** `config.json`, or what the single-account versions left in it. */
   private readConfig(): IConfigFile {
-    const file = this.read<IConfigFile & ILegacyConfigFile>('config.json', {
-      accounts: [],
-    });
-    if (!file.steamId) {
-      return { accounts: file.accounts, activeSteamId: file.activeSteamId };
-    }
-
-    const { steamId, apiKey, apiKeyEncrypted } = file;
-    const key = this.keyOf({ apiKey, apiKeyEncrypted });
-    const migrated: IConfigFile = {
-      accounts: [
-        {
-          steamId,
-          apiKey,
-          apiKeyEncrypted,
-          keyEnding: key?.slice(-4) ?? '',
-          profile: file.profile ?? { steamId, name: '', avatar: '' },
-          status: 'unchecked',
-          checkedAt: null,
-        },
-      ],
-      activeSteamId: steamId,
-    };
-    this.write('config.json', migrated, 0o600);
-    return migrated;
+    return this.read<IConfigFile>('config.json', { accounts: [] });
   }
 
-  /** `cache.json`; what a single-account version read goes to the account in use. */
   private readCache(): ICacheFile {
-    const file = this.read<ICacheFile & Partial<IAccountCache>>('cache.json', {
+    return this.read<ICacheFile>('cache.json', {
       accounts: {},
       art: {},
       schemas: {},
     });
-    const { library, games, summaries, ...cache } = file;
-    const owner = this.config.activeSteamId;
-    if (owner && (library || games || summaries)) {
-      cache.accounts[owner] ??= {
-        library,
-        games: games ?? {},
-        summaries: summaries ?? {},
-      };
-    }
-    return cache;
   }
 
-  /** `userdata.json`; the notes of a single-account version go to the account in use. */
   private readUserData(): IUserDataFile {
-    const file = this.read<Record<string, unknown>>('userdata.json', {});
-    if (isRecord(file.accounts)) return file as unknown as IUserDataFile;
-
-    const legacy = file as AccountUserData;
-    const owner = this.config.activeSteamId;
-    if (Object.keys(legacy).length === 0) return { accounts: {} };
-    return owner
-      ? { accounts: { [owner]: legacy } }
-      : { accounts: {}, unassigned: legacy };
+    return this.read<IUserDataFile>('userdata.json', { accounts: {} });
   }
 
   private keyOf({
@@ -336,12 +289,11 @@ export class Store {
   /** Every account, as the interface may see it: without the key. */
   getAccounts(): IAccount[] {
     return this.config.accounts.map(
-      ({ profile, keyEnding, status, checkedAt, apiKeyEncrypted }) => ({
+      ({ profile, keyEnding, status, apiKeyEncrypted }) => ({
         ...profile,
         keyEnding,
         isKeyEncrypted: apiKeyEncrypted !== undefined,
         status,
-        checkedAt,
       }),
     );
   }
@@ -354,11 +306,7 @@ export class Store {
    * Saves an account whose key Steam has just accepted and starts following
    * it. An account that was already there gets the new key and keeps the rest.
    */
-  setCredentials(
-    { steamId, apiKey }: ICredentials,
-    profile: IProfile,
-    now = Date.now(),
-  ): void {
+  setCredentials({ steamId, apiKey }: ICredentials, profile: IProfile): void {
     const account: IStoredAccount = {
       steamId,
       ...(this.cipher
@@ -367,20 +315,12 @@ export class Store {
       keyEnding: apiKey.slice(-4),
       profile,
       status: 'valid',
-      checkedAt: now,
     };
     const index = this.config.accounts.findIndex((a) => a.steamId === steamId);
     if (index === -1) this.config.accounts.push(account);
     else this.config.accounts[index] = account;
     this.config.activeSteamId = steamId;
     this.saveConfig();
-
-    // Notes written before any account existed belong to the first one.
-    if (this.userData.unassigned) {
-      this.userData.accounts[steamId] ??= this.userData.unassigned;
-      delete this.userData.unassigned;
-      this.saveUserData();
-    }
   }
 
   /** Starts following another saved account; answers whether there is one. */
@@ -392,15 +332,10 @@ export class Store {
   }
 
   /** Records what Steam last said about an account's key. */
-  setAccountStatus(
-    steamId: string,
-    status: AccountStatus,
-    now = Date.now(),
-  ): void {
+  setAccountStatus(steamId: string, status: AccountStatus): void {
     const account = this.config.accounts.find((a) => a.steamId === steamId);
     if (!account) return;
     account.status = status;
-    account.checkedAt = now;
     this.saveConfig();
   }
 
@@ -592,16 +527,14 @@ export class Store {
     this.write('userdata.json', this.userData);
   }
 
-  /** What the user wrote for the account in use. */
-  private get notes(): AccountUserData {
+  /** What the user wrote for the account in use; `null` with no account. */
+  private get notes(): AccountUserData | null {
     const steamId = this.getActiveSteamId();
-    return steamId
-      ? (this.userData.accounts[steamId] ??= {})
-      : (this.userData.unassigned ??= {});
+    return steamId ? (this.userData.accounts[steamId] ??= {}) : null;
   }
 
   getUserData(appid: number): GameUserData {
-    return this.notes[appid] ?? {};
+    return this.notes?.[appid] ?? {};
   }
 
   setUserData(
@@ -609,7 +542,10 @@ export class Store {
     achievementId: string,
     data: IAchievementUserData,
   ): void {
-    const game = (this.notes[appid] ??= {});
+    const notes = this.notes;
+    // There is nobody to write for: no screen allows it, and nothing is kept.
+    if (!notes) return;
+    const game = (notes[appid] ??= {});
     const empty =
       data.note.trim() === '' &&
       !data.pinned &&

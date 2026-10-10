@@ -6,7 +6,7 @@ import {
 } from '@shared/achievementSort';
 import { type DashboardFilter, isDashboardFilter } from '@shared/dashboardSort';
 
-export type Tab = 'game' | 'dashboard' | 'settings';
+type Tab = 'game' | 'dashboard' | 'settings';
 
 type NavigationStore = {
   tab: Tab;

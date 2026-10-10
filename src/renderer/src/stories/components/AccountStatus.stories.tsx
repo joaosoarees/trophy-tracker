@@ -8,12 +8,12 @@ const meta = {
   args: { status: 'valid' },
   argTypes: {
     status: {
-      options: ['valid', 'rejected', 'rateLimited', 'unchecked'],
+      options: ['valid', 'rejected', 'rateLimited'],
       control: 'inline-radio',
       table: {
         type: {
           summary: 'AccountStatus',
-          detail: "'valid' | 'rejected' | 'rateLimited' | 'unchecked'",
+          detail: "'valid' | 'rejected' | 'rateLimited'",
         },
       },
     },
@@ -36,6 +36,3 @@ export const Working: Story = {};
 export const Refused: Story = { args: { status: 'rejected' } };
 
 export const Limited: Story = { args: { status: 'rateLimited' } };
-
-/** An account taken over from a version with a single account, until the first read. */
-export const NotChecked: Story = { args: { status: 'unchecked' } };

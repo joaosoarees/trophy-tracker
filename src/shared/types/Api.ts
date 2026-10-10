@@ -29,7 +29,7 @@ export interface IApi {
     apiKey: string,
   ) => Promise<CheckResult<{ gamesWithPlaytime: number }>>;
   /** Adds an account and starts following it. */
-  saveConfig: (steamId: string, apiKey: string) => Promise<IAppState>;
+  addAccount: (steamId: string, apiKey: string) => Promise<IAppState>;
   setActiveAccount: (steamId: string) => Promise<IAppState>;
   removeAccount: (steamId: string) => Promise<IAppState>;
   replaceKey: (

@@ -3,7 +3,7 @@ import type { StoreSlice } from '@app/store/Store';
 import { type IGameView } from '@shared/types/Game';
 import { mergeView } from '@shared/view';
 
-export type GameEntry = {
+type GameEntry = {
   view: IGameView | null;
   loading: boolean;
   error: string | null;
@@ -63,7 +63,6 @@ export const createGamesSlice: StoreSlice<GamesSlice> = (set, get) => ({
       false,
       'games/loadFailed',
     );
-    get().session.reportFailure();
   },
 
   accept: (next) =>

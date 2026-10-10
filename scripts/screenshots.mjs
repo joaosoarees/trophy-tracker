@@ -46,7 +46,6 @@ const account = (steamId, name, apiKey, face) => ({
   keyEnding: apiKey.slice(-4),
   profile: { steamId, name, avatar: face },
   status: 'valid',
-  checkedAt: Date.UTC(2026, 9, 9),
 });
 
 const steam = await startFakeSteam();

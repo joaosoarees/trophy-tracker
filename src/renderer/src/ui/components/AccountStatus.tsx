@@ -1,4 +1,4 @@
-import { CircleCheck, CircleDashed, CircleX, Hourglass } from 'lucide-react';
+import { CircleCheck, CircleX, Hourglass } from 'lucide-react';
 
 import { useT } from '@app/hooks/useT';
 import { type AccountStatus as Status } from '@shared/types/Account';
@@ -8,7 +8,6 @@ const ICONS = {
   valid: CircleCheck,
   rejected: CircleX,
   rateLimited: Hourglass,
-  unchecked: CircleDashed,
 } as const;
 
 interface IAccountStatusProps {

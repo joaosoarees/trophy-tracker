@@ -2,6 +2,23 @@
 
 Why things are the way they are, for the choices that are not obvious from the code. `CLAUDE.md` holds the rules; this file holds the reasons and what was tried before. Newest first. Add an entry when a choice is made that someone could reasonably want to undo.
 
+## Cleared out before 1.0
+
+With the app in its final shape, what had lost its reason was removed rather than carried into 1.0:
+
+- **The "not checked yet" status of a key**, notes kept for no account, and the guard for a key whose ending was unknown: all three only ever happened to an account taken over from the single-account files.
+- **The failure counter** that made the interface ask for the state again after every failed read: the main process now says by itself when the status of a key changes.
+- **The draft of the setup**, which kept the typed SteamID and the step across a window reload: nothing reloads the window during the setup, the language is saved as it is picked, and an account as it is verified.
+- **The date beside the key** ("Checked on…"). It was only written when the status changed, so it showed when the account was added while claiming to be when the key was last checked.
+- **The "Code signing policy" section of the README**, written for the SignPath application.
+- `saveConfig` became `addAccount`, which is what it does.
+
+## No migration code
+
+Two pieces of code converted old data: one copied the files out of the folder of the app's first name (`steam-trophy-tracker`), and one read the files of the single-account versions (0.1.0 to 0.6.0) as the first account. The first was written for a folder that only ever existed on the developer's machine, before anything was published, and ran on every start of every install with nothing to do. The second served published versions, but the only person who had installed them was the owner, who had already moved on. Both were removed.
+
+What stayed is the check, not the conversion: a file whose format has another version number (or none, as before 0.7.0) is kept aside and not read, so it is never mangled or erased.
+
 ## Unsigned for now
 
 SignPath Foundation refused the application for free signing in October 2026. The reason was the project's visibility, not its quality: they look for stars, forks, contributors and mentions elsewhere, and invite a new application once there are some.

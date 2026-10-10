@@ -3,7 +3,6 @@ import {
   createContext,
   type ReactNode,
   useCallback,
-  useEffect,
   useMemo,
   useReducer,
 } from 'react';
@@ -35,31 +34,21 @@ const STEP =
   'text-muted-foreground block w-full border-t-[3px] pt-1.5 text-left text-xs transition-colors duration-200';
 
 interface IStepperProps {
-  initialStep?: number;
   steps: {
     label: string;
     content: ReactNode;
   }[];
-  onStepChange?: (step: number) => void;
 }
 
-export function Stepper({
-  steps,
-  initialStep = 0,
-  onStepChange,
-}: IStepperProps) {
+export function Stepper({ steps }: IStepperProps) {
   const t = useT();
   const [state, dispatch] = useReducer(
     (current: IStepperState, action: StepperAction) =>
       stepperReducer(current, action, steps.length),
-    createStepperState(initialStep, steps.length),
+    createStepperState(0, steps.length),
   );
 
   const { current, furthest, direction } = state;
-
-  useEffect(() => {
-    onStepChange?.(current);
-  }, [current, onStepChange]);
 
   const previousStep = useCallback(() => dispatch({ type: 'previous' }), []);
   const nextStep = useCallback(() => dispatch({ type: 'next' }), []);

@@ -129,15 +129,6 @@ pnpm screenshots   # the pictures of this page
 
 How the code is organised and the rules it follows are in [CLAUDE.md](CLAUDE.md); how releases and the audit work, in [docs/](docs).
 
-## Code signing policy
-
-The installers are built from this repository by GitHub Actions (`.github/workflows/release.yml`), from a version tag that only the maintainer can create.
-
-- **Author, reviewer and approver:** [Joao Soares](https://github.com/joaosoarees), the only person with write access to the repository.
-- Changes from anyone else arrive as pull requests and are reviewed before they are merged.
-
-The installers are not signed yet.
-
 ## License
 
 [MIT](LICENSE)

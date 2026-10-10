@@ -67,7 +67,6 @@ export const fr: Messages = {
     back: 'Retour',
     next: 'Suivant',
     clearSearch: 'Effacer la recherche',
-    openInBrowser: 'Ouvrir dans le navigateur',
     sortBy: 'Trier par',
   },
 
@@ -198,10 +197,8 @@ export const fr: Messages = {
       valid: 'Clé opérationnelle',
       rejected: 'Clé refusée par Steam',
       rateLimited: 'Steam limite cette clé',
-      unchecked: 'Clé pas encore vérifiée',
     },
     keyEnding: (ending: string) => `Clé se terminant par ${ending}`,
-    checkedOn: (date: string) => `Vérifiée le ${date}`,
     showKey: 'Afficher la clé',
     hideKey: 'Masquer la clé',
     key: 'Clé de l’API Web',
@@ -364,8 +361,6 @@ export const fr: Messages = {
       language: 'Langue',
       howItWorks:
         'Ouvrez un jeu sur Steam et l’application bascule dessus toute seule. Sans jeu ouvert, elle montre le dernier auquel vous avez joué ; le Tableau de bord les liste tous.',
-      saveFailed:
-        'La configuration n’a pas pu être enregistrée. Revenez en arrière et vérifiez de nouveau le compte.',
       finish: 'Entrer dans l’application',
       saving: 'Enregistrement…',
     },

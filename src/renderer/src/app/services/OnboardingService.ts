@@ -25,7 +25,7 @@ export class OnboardingService extends Service {
     return this.api.checkPrivacy(steamId, apiKey);
   }
 
-  static saveConfig(steamId: string, apiKey: string): Promise<IAppState> {
-    return this.api.saveConfig(steamId, apiKey);
+  static addAccount(steamId: string, apiKey: string): Promise<IAppState> {
+    return this.api.addAccount(steamId, apiKey);
   }
 }

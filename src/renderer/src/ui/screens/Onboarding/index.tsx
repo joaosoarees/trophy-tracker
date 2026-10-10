@@ -27,7 +27,6 @@ export function Onboarding({
   const t = useT();
   const {
     form,
-    initialStep,
     saved,
     accounts,
     gamesFound,
@@ -35,7 +34,6 @@ export function Onboarding({
     isFinishing,
     handleSubmit,
     handleAccountsChange,
-    handleStepChange,
   } = useOnboardingController({ state, isAddingAccount, onDone });
 
   const accountSteps = [
@@ -72,8 +70,6 @@ export function Onboarding({
         <FormProvider {...form}>
           <form onSubmit={handleSubmit} noValidate>
             <Stepper
-              initialStep={initialStep}
-              onStepChange={handleStepChange}
               steps={
                 isAddingAccount
                   ? accountSteps

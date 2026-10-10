@@ -63,7 +63,6 @@ export const en = {
     back: 'Back',
     next: 'Next',
     clearSearch: 'Clear search',
-    openInBrowser: 'Open in browser',
     sortBy: 'Sort by',
   },
 
@@ -196,10 +195,8 @@ export const en = {
       valid: 'Key working',
       rejected: 'Key refused by Steam',
       rateLimited: 'Steam is limiting this key',
-      unchecked: 'Key not checked yet',
     },
     keyEnding: (ending: string) => `Key ending in ${ending}`,
-    checkedOn: (date: string) => `Checked on ${date}`,
     showKey: 'Show key',
     hideKey: 'Hide key',
     key: 'Web API key',
@@ -358,8 +355,6 @@ export const en = {
       language: 'Language',
       howItWorks:
         'Open a game on Steam and the app switches to it on its own. With no game open it shows the last one you played; the Dashboard lists them all.',
-      saveFailed:
-        'Could not save the setup. Go back and verify the account again.',
       finish: 'Enter the app',
       saving: 'Saving…',
     },
