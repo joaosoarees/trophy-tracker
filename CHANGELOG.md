@@ -16,6 +16,7 @@ What changed in each version, for whoever uses the app. The section of a version
 - A game running on a Steam account that is not in the app is said to be so, with a way to add that account.
 - Adding an account no longer leaves the Game tab on the game of the account that was in use before: a game running on the added account is shown right away, and otherwise the tab opens on the game that account played last.
 - The notice about a key Steam refuses no longer goes away, or blinks, when you open a game or the dashboard the app already had: it stays until Steam accepts the key again.
+- When the dashboard fails halfway through a library (a connection that drops, for one), the app stops asking Steam about the remaining games, and the next attempt carries on from the games already read instead of reading them all again.
 
 ## 1.0.0
 

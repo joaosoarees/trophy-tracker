@@ -315,6 +315,8 @@ export class Tracker {
 
     let done = 0;
     const fresh: Record<string, ISummaryEntry> = {};
+    // A failure stops the pool, which throws it once the reads in flight
+    // ended: what they read is saved with the rest, for the next attempt.
     try {
       await Tracker.pool(pending, CONCURRENCY, async (game) => {
         const { entry, isLasting } = await this.readSummary(
@@ -372,20 +374,29 @@ export class Tracker {
     }
   }
 
-  /** Runs the task over every item, at most `limit` of them at a time. */
+  /**
+   * Runs the task over the items, at most `limit` of them at a time. Once a
+   * task fails no other is started: the ones already running end first, and
+   * then the first failure is thrown, so nothing is still running when the
+   * caller hears of it.
+   */
   private static async pool<T>(
     items: T[],
     limit: number,
     task: (item: T) => Promise<void>,
   ): Promise<void> {
     const queue = [...items];
+    const failures: unknown[] = [];
     const worker = async (): Promise<void> => {
-      for (let item = queue.shift(); item !== undefined; item = queue.shift()) {
-        await task(item);
+      while (failures.length === 0) {
+        const item = queue.shift();
+        if (item === undefined) return;
+        await task(item).catch((e: unknown) => failures.push(e));
       }
     };
     await Promise.all(
       Array.from({ length: Math.min(limit, queue.length) }, worker),
     );
+    if (failures.length > 0) throw failures[0];
   }
 }
