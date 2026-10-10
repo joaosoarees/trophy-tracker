@@ -1,9 +1,12 @@
 import { type Store } from '../storage/Store';
 
+/** The part of `Store` that says which account is in use and changes it. */
+type AccountInUse = Pick<Store, 'getActiveSteamId' | 'setActiveAccount'>;
+
 interface IAccountFollowerDeps {
   /** SteamID64 of the account signed in to the Steam client, or `null`. */
   getSignedInSteamId: () => Promise<string | null>;
-  store: Store;
+  store: AccountInUse;
   /** Called after the app started following another account. */
   onFollow: (steamId: string) => void;
 }

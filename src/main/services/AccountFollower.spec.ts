@@ -1,31 +1,31 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  KEY,
-  makeDiskStore,
-  OTHER_KEY,
-  OTHER_STEAM_ID,
-  STEAM_ID,
-  UNKNOWN_STEAM_ID,
-} from '@tests/helpers';
+import { OTHER_STEAM_ID, STEAM_ID, UNKNOWN_STEAM_ID } from '@tests/helpers';
 
 import { AccountFollower } from './AccountFollower';
+
+/**
+ * The part of the store the follower uses, in memory: the saved accounts and
+ * the one in use. As in the real one, only a saved account can be put in use.
+ */
+function fakeAccountStore(saved: string[], initiallyInUse: string) {
+  let inUse = initiallyInUse;
+  return {
+    getActiveSteamId: (): string | null => inUse,
+    setActiveAccount: (steamId: string): boolean => {
+      if (!saved.includes(steamId)) return false;
+      inUse = steamId;
+      return true;
+    },
+  };
+}
 
 /**
  * The app with two accounts, following `STEAM_ID`, and a Steam client signed
  * in to `initiallySignedIn`. `signIn` changes who is signed in to the client.
  */
 function setup(initiallySignedIn: string | null) {
-  const store = makeDiskStore();
-  for (const [steamId, apiKey] of [
-    [OTHER_STEAM_ID, OTHER_KEY],
-    [STEAM_ID, KEY],
-  ]) {
-    store.setCredentials(
-      { steamId, apiKey },
-      { steamId, name: '', avatar: '' },
-    );
-  }
+  const store = fakeAccountStore([OTHER_STEAM_ID, STEAM_ID], STEAM_ID);
   let signedIn = initiallySignedIn;
   const onFollowMock = vi.fn<(steamId: string) => void>();
   const sut = new AccountFollower({
