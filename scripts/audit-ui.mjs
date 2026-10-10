@@ -934,6 +934,49 @@ async function auditAccounts(page, steam, home) {
     'cancelling does not bring the app back',
   );
 
+  // A game is started on the account signed in to Steam while the other one,
+  // picked by hand, is in use: the app has to go to the account that plays.
+  await openSettings();
+  await page.evaluate(clickAccountCard(1));
+  await waitFor(page, `(${activeAccountCard}) === 1`);
+  steam.play(NIOH);
+  const wentToThePlayer = await waitFor(
+    page,
+    `(${gameTitle}) === 'Nioh 3' && /running/i.test(${headerText})`,
+  );
+  expectThat(
+    FLOW,
+    wentToThePlayer,
+    `a game started on the other account is not shown with that account (on screen: "${await page.evaluate(gameTitle)}")`,
+  );
+  await sleep(900);
+  await audit(page, 'flow-game-on-the-other-account');
+  await openSettings();
+  expectThat(
+    FLOW,
+    (await page.evaluate(activeAccountCard)) === 0,
+    'the account playing the game is not the one in use',
+  );
+  expectThat(
+    FLOW,
+    (await page.evaluate(
+      `${ACCOUNT_CARDS}[1].querySelector('button') === null`,
+    )) && /stays on the account/.test(await page.evaluate(settingsText)),
+    'another account can still be switched to while the game runs, or nothing says why not',
+  );
+  await audit(page, 'flow-accounts-locked-while-playing');
+  steam.quit();
+  expectThat(
+    FLOW,
+    await waitFor(page, `${ACCOUNT_CARDS}[1].querySelector('button') !== null`),
+    'the other account stays locked after the game closed',
+  );
+  expectThat(
+    FLOW,
+    (await page.evaluate(activeAccountCard)) === 0,
+    'closing the game took the app back to the account picked before',
+  );
+
   // Removing: the question names the account, and can be backed out of.
   await openSettings();
   await page.evaluate(clickAccountCard(1));
@@ -974,7 +1017,7 @@ async function auditAccounts(page, steam, home) {
     'after the removal the Game tab is not on the remaining account',
   );
   console.log(
-    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: two accounts switched by hand and by Steam, a refused key replaced, one added and one removed`,
+    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: two accounts switched by hand and by Steam, a refused key replaced, one added, a game started on the other one, and one removed`,
   );
 }
 
