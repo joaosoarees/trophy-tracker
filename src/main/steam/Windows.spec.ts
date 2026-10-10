@@ -121,6 +121,12 @@ describe('Windows', () => {
       expect(path).toBe(to);
     });
 
+    it('should leave the path alone when on WSL and it does not start with a drive', () => {
+      const path = Windows.toLocalPath('\\\\server\\share\\Steam', true);
+
+      expect(path).toBe('\\\\server\\share\\Steam');
+    });
+
     it('should leave the path alone when on Windows itself', () => {
       const path = Windows.toLocalPath('D:\\Steam', false);
 

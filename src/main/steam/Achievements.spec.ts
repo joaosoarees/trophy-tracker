@@ -6,6 +6,10 @@ import onimusha from '@tests/fixtures/game-achievements-2638890.json';
 import nioh from '@tests/fixtures/game-achievements-3681010.json';
 
 import { Achievements, type IGameSources } from './Achievements';
+import {
+  type IRawPlayerAchievement,
+  type IRawSchemaAchievement,
+} from './SteamClient';
 
 const ICONS =
   'https://shared.fastly.steamstatic.com/community_assets/images/apps/3681010';
@@ -43,6 +47,38 @@ function onimushaSources(): IGameSources {
     player: [],
     stats: {},
     statMap: new Map(),
+    now: 1,
+  };
+}
+
+/**
+ * A game with one achievement, `ACH`, as Steam lists it, and what Steam says
+ * the player has in it. The counter, when the test gives it a target, is fed
+ * by the stat `ACH_STAT`.
+ */
+function oneAchievementSources(
+  listed: Partial<IRawSchemaAchievement> = {},
+  mine: Partial<IRawPlayerAchievement> = {},
+  stats: Record<string, number> = {},
+): IGameSources {
+  return {
+    appid: 7,
+    name: 'Game',
+    schema: [
+      {
+        internal_name: 'ACH',
+        localized_name: 'Achievement',
+        localized_desc: 'Do it.',
+        icon: 'icon.jpg',
+        icon_gray: 'gray.jpg',
+        hidden: false,
+        player_percent_unlocked: '50.0',
+        ...listed,
+      },
+    ],
+    player: [{ apiname: 'ACH', achieved: 0, unlocktime: 0, ...mine }],
+    stats,
+    statMap: new Map([['ACH', 'ACH_STAT']]),
     now: 1,
   };
 }
@@ -166,6 +202,82 @@ describe('Achievements', () => {
       expect(achievementOf(view, 'ACH_000').iconGray).toBe(
         `${ICONS}/6e8bc359fa978c42faea0d99beb4aa3287891367.jpg`,
       );
+    });
+  });
+
+  describe('buildGameView, when Steam leaves something out', () => {
+    it('should name the achievement after its internal name when Steam gives it no name', () => {
+      const sources = oneAchievementSources({ localized_name: '' });
+
+      const view = Achievements.buildGameView(sources);
+
+      expect(achievementOf(view, 'ACH').name).toBe('ACH');
+    });
+
+    it.each([
+      { field: 'icon', listed: { icon: '' } },
+      { field: 'iconGray', listed: { icon_gray: '' } },
+    ] as const)(
+      'should leave the address of $field empty when Steam names no file for it',
+      ({ field, listed }) => {
+        const sources = oneAchievementSources(listed);
+
+        const view = Achievements.buildGameView(sources);
+
+        expect(achievementOf(view, 'ACH')[field]).toBe('');
+      },
+    );
+
+    it.each([
+      { what: 'no rarity', rarity: undefined },
+      { what: 'a rarity that is not a number', rarity: 'n/a' },
+    ])('should have no rarity when Steam reports $what', ({ rarity }) => {
+      const sources = oneAchievementSources({
+        player_percent_unlocked: rarity,
+      });
+
+      const view = Achievements.buildGameView(sources);
+
+      expect(achievementOf(view, 'ACH').rarity).toBeNull();
+    });
+
+    it('should not date the unlock when Steam gives no time for it', () => {
+      const sources = oneAchievementSources({}, { achieved: 1, unlocktime: 0 });
+
+      const view = Achievements.buildGameView(sources);
+
+      expect(achievementOf(view, 'ACH').unlockedAt).toBeNull();
+    });
+
+    it('should not date an achievement that is locked when Steam still sends a time for it', () => {
+      const sources = oneAchievementSources({}, { achieved: 0, unlocktime: 9 });
+
+      const view = Achievements.buildGameView(sources);
+
+      expect(achievementOf(view, 'ACH').unlockedAt).toBeNull();
+    });
+
+    it('should stop the counter at its target when the stat went past it', () => {
+      const sources = oneAchievementSources(
+        { max_progress_int: 10 },
+        {},
+        { ACH_STAT: 14 },
+      );
+
+      const view = Achievements.buildGameView(sources);
+
+      expect(achievementOf(view, 'ACH').progress).toEqual({
+        current: 10,
+        target: 10,
+      });
+    });
+
+    it('should show no counter when the stat that feeds it has no value yet', () => {
+      const sources = oneAchievementSources({ max_progress_int: 10 });
+
+      const view = Achievements.buildGameView(sources);
+
+      expect(achievementOf(view, 'ACH').progress).toBeNull();
     });
   });
 

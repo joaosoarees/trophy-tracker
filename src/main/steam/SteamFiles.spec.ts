@@ -64,6 +64,15 @@ describe('SteamFiles', () => {
       ]);
     });
 
+    it('should answer the two folders the installer offers, whatever the home folder, when the system is Windows', () => {
+      const candidates = SteamFiles.dirCandidates('win32', 'C:\\Users\\me');
+
+      expect(candidates).toEqual([
+        'C:\\Program Files (x86)\\Steam',
+        'C:\\Program Files\\Steam',
+      ]);
+    });
+
     it('should answer no folder when Steam does not run on the system', () => {
       const candidates = SteamFiles.dirCandidates('freebsd', '/home/me');
 

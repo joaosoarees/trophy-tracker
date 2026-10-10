@@ -63,6 +63,24 @@ describe('TextVdf', () => {
       expect(parsed).toEqual({});
     });
 
+    it('should leave out a key with no value when its block closes right after it', () => {
+      const parsed = TextVdf.parse('"users" { "765" } "MostRecent" "1"');
+
+      expect(parsed).toEqual({ users: {}, MostRecent: '1' });
+    });
+
+    it('should leave out a key with no value when the file ends right after it', () => {
+      const parsed = TextVdf.parse('"MostRecent" "1" "Timestamp"');
+
+      expect(parsed).toEqual({ MostRecent: '1' });
+    });
+
+    it('should read the pairs when a brace that follows no key opens the file', () => {
+      const parsed = TextVdf.parse('{ "MostRecent" "1" }');
+
+      expect(parsed).toEqual({ MostRecent: '1' });
+    });
+
     it('should keep what it read when the file ends before its blocks close', () => {
       const parsed = TextVdf.parse('"users" { "765" { "MostRecent" "1"');
 
