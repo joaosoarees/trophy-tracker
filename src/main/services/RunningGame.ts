@@ -5,10 +5,16 @@ import { type Store } from '../storage/Store';
 /** How often the Web API is asked which game is running. */
 const API_INTERVAL = 30_000;
 
+/** The part of `SteamClient` that reads a player's profile. */
+type Profiles = Pick<SteamClient, 'getPlayerSummary'>;
+
+/** The part of `Store` that hands out the saved accounts' credentials. */
+type SavedCredentials = Pick<Store, 'getCredentials' | 'getCredentialsOf'>;
+
 interface IRunningGameDeps {
   local: ISteamLocal;
-  client: SteamClient;
-  store: Store;
+  client: Profiles;
+  store: SavedCredentials;
   now?: () => number;
   /** How long an answer from the Web API is reused, in milliseconds. */
   interval?: number;
@@ -24,8 +30,8 @@ interface IRunningGameDeps {
  */
 export class RunningGame {
   private readonly local: ISteamLocal;
-  private readonly client: SteamClient;
-  private readonly store: Store;
+  private readonly client: Profiles;
+  private readonly store: SavedCredentials;
   private readonly now: () => number;
   private readonly interval: number;
 
