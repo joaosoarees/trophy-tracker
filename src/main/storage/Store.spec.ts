@@ -1,531 +1,788 @@
 import {
   existsSync,
-  mkdtempSync,
   readdirSync,
   readFileSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Store } from '@main/storage/Store';
-import { KEY, OTHER_KEY, OTHER_STEAM_ID, STEAM_ID } from '@test/helpers';
+import { makeGameView } from '@tests/factories/makeGameView';
+import {
+  KEY,
+  makeTempDir,
+  OTHER_KEY,
+  OTHER_STEAM_ID,
+  STEAM_ID,
+  UNKNOWN_STEAM_ID,
+} from '@tests/helpers';
 
-const tempDir = (): string => mkdtempSync(join(tmpdir(), 'stt-'));
-const profile = { steamId: STEAM_ID, name: 'player', avatar: '' };
-/** A data folder that already has an account: notes are always somebody's. */
-const accountDir = (): string => {
-  const dir = tempDir();
-  new Store(dir).setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
-  return dir;
+import { type ICipher, type IStoreOptions, Store } from './Store';
+
+const CREDENTIALS = { steamId: STEAM_ID, apiKey: KEY };
+const PROFILE = { steamId: STEAM_ID, name: 'player', avatar: '' };
+const OTHER_CREDENTIALS = { steamId: OTHER_STEAM_ID, apiKey: OTHER_KEY };
+const OTHER_PROFILE = { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' };
+const NOTE = { note: 'mine', pinned: false };
+const SUMMARY = { total: 4, unlocked: 1, playtime: 10 };
+const CHECKLIST = [{ id: '1', text: 'Bridge Kodama', done: true }];
+const BOUNDS = { x: 2000, y: 100, width: 640, height: 900 };
+const CACHE_DELAY = 1000;
+
+/** A cipher that "encrypts" by prefixing the text, so the result is checkable. */
+const CIPHER: ICipher = {
+  encrypt: (plain) => `enc:${plain}`,
+  decrypt: (encoded) => encoded.slice(4),
 };
 
+interface ISetupOverrides {
+  /** The data folder; by default a new, empty one. */
+  dir?: string;
+  cipher?: ICipher | null;
+  options?: IStoreOptions;
+}
+
+/** A store over a folder of its own, with no account. */
+function setup({
+  dir = makeTempDir(),
+  cipher = null,
+  options,
+}: ISetupOverrides = {}) {
+  const sut = new Store(dir, cipher, options);
+  return { sut, dir };
+}
+
+/** A store that already has an account: notes are always somebody's. */
+function setupWithAccount() {
+  const { sut, dir } = setup();
+  sut.setCredentials(CREDENTIALS, PROFILE);
+  return { sut, dir };
+}
+
+/** Two accounts; the second one added is the one in use. */
+function setupWithTwoAccounts() {
+  const { sut, dir } = setupWithAccount();
+  sut.setCredentials(OTHER_CREDENTIALS, OTHER_PROFILE);
+  return { sut, dir };
+}
+
+/** A data folder a store has already saved an account in, and left. */
+function makeAccountDir(): string {
+  const dir = makeTempDir();
+  new Store(dir).setCredentials(CREDENTIALS, PROFILE);
+  return dir;
+}
+
+const filesEnding = (dir: string, suffix: string): string[] =>
+  readdirSync(dir).filter((file) => file.endsWith(suffix));
+
 describe('Store', () => {
-  it('stores the key in a user-only file and reads it back', () => {
-    const dir = tempDir();
-    new Store(dir).setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
+  describe('credentials', () => {
     // Windows has no permission bits; there the user's profile folder is
     // what keeps other accounts out.
-    if (process.platform !== 'win32') {
-      expect(statSync(join(dir, 'config.json')).mode & 0o777).toBe(0o600);
-    }
-    const again = new Store(dir);
-    expect(again.getCredentials()).toEqual({ steamId: STEAM_ID, apiKey: KEY });
-    expect(again.getProfile()).toEqual(profile);
-  });
+    it.skipIf(process.platform === 'win32')(
+      'should write the key to a file only the user can read when an account is saved',
+      () => {
+        const { sut, dir } = setup();
 
-  it('remembers the version the app closed itself to install', () => {
-    const dir = tempDir();
-    const store = new Store(dir);
-    expect(store.getUpdateAttempt()).toBeNull();
-    store.setUpdateAttempt('1.2.0');
-    expect(new Store(dir).getUpdateAttempt()).toBe('1.2.0');
-    store.setUpdateAttempt(null);
-    expect(new Store(dir).getUpdateAttempt()).toBeNull();
-  });
+        sut.setCredentials(CREDENTIALS, PROFILE);
 
-  it('encrypts the key when a cipher is available', () => {
-    const dir = tempDir();
-    const cipher = {
-      encrypt: (s: string) => `enc:${s}`,
-      decrypt: (s: string) => s.slice(4),
-    };
-    new Store(dir, cipher).setCredentials(
-      { steamId: STEAM_ID, apiKey: KEY },
-      profile,
-    );
-    expect(new Store(dir).getCredentials()).toBeNull();
-    expect(new Store(dir, cipher).getCredentials()?.apiKey).toBe(KEY);
-  });
-
-  it('starts in English', () => {
-    expect(new Store(tempDir()).getLanguage()).toBe('en');
-  });
-
-  it('remembers the language', () => {
-    const dir = tempDir();
-
-    new Store(dir).setLanguage('pt-BR');
-
-    expect(new Store(dir).getLanguage()).toBe('pt-BR');
-  });
-
-  it('drops what was read in the old language when the language changes, keeping the counts', () => {
-    const dir = tempDir();
-    const store = new Store(dir);
-    store.setSchema(1, []);
-    store.setSummaries({ 1: { total: 4, unlocked: 1, playtime: 10 } });
-
-    store.setLanguage('pt-BR');
-
-    const again = new Store(dir);
-    expect(again.getSchema(1)).toBeNull();
-    expect(again.getSummary(1)).toEqual({
-      total: 4,
-      unlocked: 1,
-      playtime: 10,
-    });
-  });
-
-  it('drops a cache written in another language on startup (e.g. from an earlier, Portuguese-only version)', () => {
-    const dir = tempDir();
-    writeFileSync(
-      join(dir, 'cache.json'),
-      JSON.stringify({
-        games: {},
-        summaries: {},
-        art: {},
-        schemas: { 1: { fetchedAt: 1, items: [] } },
-      }),
-    );
-    expect(new Store(dir).getSchema(1)).toBeNull();
-
-    const store = new Store(dir);
-    store.setSchema(2, []);
-    expect(new Store(dir).getSchema(2)).toEqual({
-      fetchedAt: expect.any(Number),
-      items: [],
-    });
-  });
-
-  it('remembers the order chosen for each list and ignores invalid stored values', () => {
-    const dir = tempDir();
-    const store = new Store(dir);
-    expect(store.getAchievementSort()).toEqual({
-      pending: 'common',
-      unlocked: 'recent',
-    });
-
-    store.setAchievementSort({ pending: 'closest', unlocked: 'rare' });
-    expect(new Store(dir).getAchievementSort()).toEqual({
-      pending: 'closest',
-      unlocked: 'rare',
-    });
-
-    // `closest` only makes sense for pending achievements.
-    writeFileSync(
-      join(dir, 'settings.json'),
-      JSON.stringify({
-        achievementSort: { pending: 'recent', unlocked: 'closest' },
-      }),
-    );
-    expect(new Store(dir).getAchievementSort()).toEqual({
-      pending: 'common',
-      unlocked: 'recent',
-    });
-  });
-
-  it('remembers the order chosen for each dashboard list', () => {
-    const dir = tempDir();
-    const store = new Store(dir);
-    expect(store.getDashboardSort()).toEqual({
-      ongoing: 'closest',
-      complete: 'completed',
-    });
-
-    store.setDashboardSort({ ongoing: 'played', complete: 'name' });
-    expect(new Store(dir).getDashboardSort()).toEqual({
-      ongoing: 'played',
-      complete: 'name',
-    });
-  });
-
-  it('persists notes and pins', () => {
-    const dir = accountDir();
-
-    new Store(dir).setUserData(10, 'A', {
-      note: 'boss of the 3rd map',
-      pinned: true,
-    });
-
-    expect(new Store(dir).getUserData(10)).toEqual({
-      A: { note: 'boss of the 3rd map', pinned: true },
-    });
-  });
-
-  it('removes an entry left with a blank note and no pin', () => {
-    const dir = accountDir();
-    const store = new Store(dir);
-    store.setUserData(10, 'B', { note: '', pinned: true });
-
-    store.setUserData(10, 'B', { note: ' ', pinned: false });
-
-    expect(new Store(dir).getUserData(10)).toEqual({});
-  });
-
-  it('keeps an entry that has only a checklist', () => {
-    const dir = accountDir();
-    const checklist = [{ id: '1', text: 'Bridge Kodama', done: true }];
-
-    new Store(dir).setUserData(10, 'A', { note: '', pinned: false, checklist });
-
-    expect(new Store(dir).getUserData(10)).toEqual({
-      A: { note: '', pinned: false, checklist },
-    });
-  });
-
-  it('removes the entry when its checklist is emptied', () => {
-    const dir = accountDir();
-    const store = new Store(dir);
-    const checklist = [{ id: '1', text: 'Bridge Kodama', done: true }];
-    store.setUserData(10, 'A', { note: '', pinned: false, checklist });
-
-    store.setUserData(10, 'A', { note: '', pinned: false, checklist: [] });
-
-    expect(new Store(dir).getUserData(10)).toEqual({});
-  });
-
-  it('remembers always-on-top', () => {
-    const dir = tempDir();
-
-    new Store(dir).setAlwaysOnTop(true);
-
-    expect(new Store(dir).getAlwaysOnTop()).toBe(true);
-  });
-
-  it('remembers the window unless told otherwise', () => {
-    expect(new Store(tempDir()).getPreferences()).toEqual({
-      rememberWindow: true,
-    });
-  });
-
-  it('remembers a preference the user changed', () => {
-    const dir = tempDir();
-
-    new Store(dir).setPreference('rememberWindow', false);
-
-    expect(new Store(dir).getPreferences().rememberWindow).toBe(false);
-  });
-
-  it('remembers where the window was closed', () => {
-    const dir = tempDir();
-    const bounds = { x: 2000, y: 100, width: 640, height: 900 };
-
-    new Store(dir).setWindowBounds(bounds);
-
-    expect(new Store(dir).getWindowBounds()).toEqual(bounds);
-  });
-
-  it('forgets where the window was when asked not to remember it', () => {
-    const dir = tempDir();
-    const store = new Store(dir);
-    store.setWindowBounds({ x: 2000, y: 100, width: 640, height: 900 });
-
-    store.setPreference('rememberWindow', false);
-
-    expect(new Store(dir).getWindowBounds()).toBeNull();
-  });
-});
-
-describe('Store: several accounts', () => {
-  const other = { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' };
-  const note = { note: 'mine', pinned: false };
-
-  /** Two accounts; the second one added is the one in use. */
-  function withTwoAccounts(dir = tempDir()) {
-    const store = new Store(dir);
-    store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
-    store.setCredentials({ steamId: OTHER_STEAM_ID, apiKey: OTHER_KEY }, other);
-    return { store, dir };
-  }
-
-  it('lists the accounts without their keys', () => {
-    const { store } = withTwoAccounts();
-
-    expect(store.getAccounts()).toEqual([
-      {
-        ...profile,
-        keyEnding: KEY.slice(-4),
-        isKeyEncrypted: false,
-        status: 'valid',
+        const mode = statSync(join(dir, 'config.json')).mode & 0o777;
+        expect(mode).toBe(0o600);
       },
-      {
-        ...other,
-        keyEnding: OTHER_KEY.slice(-4),
-        isKeyEncrypted: false,
-        status: 'valid',
-      },
-    ]);
-  });
+    );
 
-  it('says whether a key is kept encrypted', () => {
-    const cipher = {
-      encrypt: (plain: string) => `enc:${plain}`,
-      decrypt: (encoded: string) => encoded.slice(4),
-    };
-    const store = new Store(tempDir(), cipher);
+    it('should answer the saved credentials when the folder is opened again', () => {
+      const { sut, dir } = setup();
 
-    store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
+      sut.setCredentials(CREDENTIALS, PROFILE);
 
-    expect(store.getAccounts()[0].isKeyEncrypted).toBe(true);
-  });
+      const reopened = new Store(dir);
+      expect(reopened.getCredentials()).toEqual(CREDENTIALS);
+    });
 
-  it('remembers which account is in use', () => {
-    const { store, dir } = withTwoAccounts();
+    it('should answer the saved profile when the folder is opened again', () => {
+      const { sut, dir } = setup();
 
-    store.setActiveAccount(STEAM_ID);
+      sut.setCredentials(CREDENTIALS, PROFILE);
 
-    expect(new Store(dir).getCredentials()).toEqual({
-      steamId: STEAM_ID,
-      apiKey: KEY,
+      const reopened = new Store(dir);
+      expect(reopened.getProfile()).toEqual(PROFILE);
+    });
+
+    it('should not answer a key saved with a cipher when the folder is opened without it', () => {
+      const { sut, dir } = setup({ cipher: CIPHER });
+
+      sut.setCredentials(CREDENTIALS, PROFILE);
+
+      const reopenedWithoutCipher = new Store(dir);
+      expect(reopenedWithoutCipher.getCredentials()).toBeNull();
+    });
+
+    it('should answer a key saved with a cipher when the folder is opened with it', () => {
+      const { sut, dir } = setup({ cipher: CIPHER });
+
+      sut.setCredentials(CREDENTIALS, PROFILE);
+
+      const reopened = new Store(dir, CIPHER);
+      expect(reopened.getCredentials()).toEqual(CREDENTIALS);
     });
   });
 
-  it('does not follow an account it has no key for', () => {
-    const { store } = withTwoAccounts();
+  describe('accounts', () => {
+    it('should list the accounts without their keys when two are saved', () => {
+      const { sut } = setupWithTwoAccounts();
 
-    expect(store.setActiveAccount('76561198000000099')).toBe(false);
-    expect(store.getActiveSteamId()).toBe(OTHER_STEAM_ID);
-  });
+      const accounts = sut.getAccounts();
 
-  it('keeps what was read from Steam apart for each account', () => {
-    const { store } = withTwoAccounts();
-    store.setSummaries({ 10: { total: 4, unlocked: 1, playtime: 10 } });
+      expect(accounts).toEqual([
+        {
+          ...PROFILE,
+          keyEnding: KEY.slice(-4),
+          isKeyEncrypted: false,
+          status: 'valid',
+        },
+        {
+          ...OTHER_PROFILE,
+          keyEnding: OTHER_KEY.slice(-4),
+          isKeyEncrypted: false,
+          status: 'valid',
+        },
+      ]);
+    });
 
-    store.setActiveAccount(STEAM_ID);
+    it('should list a key as encrypted when a cipher is available', () => {
+      const { sut } = setup({ cipher: CIPHER });
+      sut.setCredentials(CREDENTIALS, PROFILE);
 
-    expect(store.getSummary(10)).toBeNull();
-    store.setActiveAccount(OTHER_STEAM_ID);
-    expect(store.getSummary(10)?.unlocked).toBe(1);
-  });
+      const accounts = sut.getAccounts();
 
-  it('hands a late read to the account it was made for', () => {
-    const { store } = withTwoAccounts();
+      expect(accounts).toEqual([
+        {
+          ...PROFILE,
+          keyEnding: KEY.slice(-4),
+          isKeyEncrypted: true,
+          status: 'valid',
+        },
+      ]);
+    });
 
-    store.setSummaries(
-      { 10: { total: 4, unlocked: 3, playtime: 10 } },
-      STEAM_ID,
+    it('should answer the credentials of the account that was chosen when the folder is opened again', () => {
+      const { sut, dir } = setupWithTwoAccounts();
+
+      sut.setActiveAccount(STEAM_ID);
+
+      const reopened = new Store(dir);
+      expect(reopened.getCredentials()).toEqual(CREDENTIALS);
+    });
+
+    it('should refuse to follow an account when it has no key for it', () => {
+      const { sut } = setupWithTwoAccounts();
+
+      const isFollowing = sut.setActiveAccount(UNKNOWN_STEAM_ID);
+
+      expect(isFollowing).toBe(false);
+    });
+
+    it('should stay on the account in use when asked to follow one it has no key for', () => {
+      const { sut } = setupWithTwoAccounts();
+
+      sut.setActiveAccount(UNKNOWN_STEAM_ID);
+
+      expect(sut.getActiveSteamId()).toBe(OTHER_STEAM_ID);
+    });
+
+    it('should not answer the summary read for one account when another is followed', () => {
+      const { sut } = setupWithTwoAccounts();
+      sut.setSummaries({ 10: SUMMARY });
+
+      sut.setActiveAccount(STEAM_ID);
+
+      expect(sut.getSummary(10)).toBeNull();
+    });
+
+    it('should answer the summary read for an account when it is followed again', () => {
+      const { sut } = setupWithTwoAccounts();
+      sut.setSummaries({ 10: SUMMARY });
+      sut.setActiveAccount(STEAM_ID);
+
+      sut.setActiveAccount(OTHER_STEAM_ID);
+
+      expect(sut.getSummary(10)).toEqual(SUMMARY);
+    });
+
+    it('should not hand a late read to the account in use when it was made for another', () => {
+      const { sut } = setupWithTwoAccounts();
+
+      sut.setSummaries({ 10: SUMMARY }, STEAM_ID);
+
+      expect(sut.getSummary(10)).toBeNull();
+    });
+
+    it('should hand a late read to the account it was made for when that one is followed', () => {
+      const { sut } = setupWithTwoAccounts();
+      sut.setSummaries({ 10: SUMMARY }, STEAM_ID);
+
+      sut.setActiveAccount(STEAM_ID);
+
+      expect(sut.getSummary(10)).toEqual(SUMMARY);
+    });
+
+    it('should drop a late read when the account it was made for was removed', () => {
+      const { sut, dir } = setupWithTwoAccounts();
+      sut.removeAccount(STEAM_ID);
+
+      sut.setSummaries({ 10: SUMMARY }, STEAM_ID);
+
+      const cache = readFileSync(join(dir, 'cache.json'), 'utf8');
+      expect(cache).not.toContain(STEAM_ID);
+    });
+
+    it('should not answer the notes written for one account when another is followed', () => {
+      const { sut } = setupWithTwoAccounts();
+      sut.setUserData(10, 'A', NOTE);
+
+      sut.setActiveAccount(STEAM_ID);
+
+      expect(sut.getUserData(10)).toEqual({});
+    });
+
+    it('should answer the notes written for an account when it is followed again', () => {
+      const { sut } = setupWithTwoAccounts();
+      sut.setUserData(10, 'A', NOTE);
+      sut.setActiveAccount(STEAM_ID);
+
+      sut.setActiveAccount(OTHER_STEAM_ID);
+
+      expect(sut.getUserData(10)).toEqual({ A: NOTE });
+    });
+
+    it.each(['config.json', 'cache.json', 'userdata.json'])(
+      'should leave nothing of an account in %s when it is removed',
+      (file) => {
+        const { sut, dir } = setupWithTwoAccounts();
+        sut.setUserData(10, 'A', NOTE);
+        sut.setSummaries({ 10: SUMMARY });
+
+        sut.removeAccount(OTHER_STEAM_ID);
+
+        const content = readFileSync(join(dir, file), 'utf8');
+        expect(content).not.toContain(OTHER_STEAM_ID);
+      },
     );
 
-    expect(store.getSummary(10)).toBeNull();
-    store.setActiveAccount(STEAM_ID);
-    expect(store.getSummary(10)?.unlocked).toBe(3);
-  });
+    it('should follow another account when the one in use is removed', () => {
+      const { sut } = setupWithTwoAccounts();
 
-  it('drops a late read for an account that was removed', () => {
-    const { store, dir } = withTwoAccounts();
-    store.removeAccount(STEAM_ID);
+      sut.removeAccount(OTHER_STEAM_ID);
 
-    store.setSummaries(
-      { 10: { total: 4, unlocked: 3, playtime: 10 } },
-      STEAM_ID,
-    );
+      expect(sut.getActiveSteamId()).toBe(STEAM_ID);
+    });
 
-    expect(readFileSync(join(dir, 'cache.json'), 'utf8')).not.toContain(
-      STEAM_ID,
-    );
-  });
+    it('should answer the new key when an account that is already there is saved again', () => {
+      const { sut } = setupWithTwoAccounts();
 
-  it('keeps notes apart for each account', () => {
-    const { store } = withTwoAccounts();
-    store.setUserData(10, 'A', note);
-
-    store.setActiveAccount(STEAM_ID);
-
-    expect(store.getUserData(10)).toEqual({});
-    store.setActiveAccount(OTHER_STEAM_ID);
-    expect(store.getUserData(10)).toEqual({ A: note });
-  });
-
-  it('removing an account deletes its key, what was read and its notes', () => {
-    const { store, dir } = withTwoAccounts();
-    store.setUserData(10, 'A', note);
-    store.setSummaries({ 10: { total: 4, unlocked: 1, playtime: 10 } });
-
-    store.removeAccount(OTHER_STEAM_ID);
-
-    for (const file of ['config.json', 'cache.json', 'userdata.json']) {
-      expect(readFileSync(join(dir, file), 'utf8')).not.toContain(
-        OTHER_STEAM_ID,
+      sut.setCredentials(
+        { steamId: OTHER_STEAM_ID, apiKey: KEY },
+        OTHER_PROFILE,
       );
-    }
-    expect(store.getActiveSteamId()).toBe(STEAM_ID);
-  });
 
-  it('gives a new key to an account that is already there, keeping the rest', () => {
-    const { store } = withTwoAccounts();
-    store.setUserData(10, 'A', note);
-
-    store.setCredentials({ steamId: OTHER_STEAM_ID, apiKey: KEY }, other);
-
-    expect(store.getAccounts()).toHaveLength(2);
-    expect(store.getCredentials()?.apiKey).toBe(KEY);
-    expect(store.getUserData(10)).toEqual({ A: note });
-  });
-
-  it('records what Steam last said about a key', () => {
-    const { store, dir } = withTwoAccounts();
-
-    store.setAccountStatus(STEAM_ID, 'rejected');
-
-    expect(new Store(dir).getAccounts()[0].status).toBe('rejected');
-  });
-});
-
-describe('Store: files that cannot be used', () => {
-  const note = { note: 'mine', pinned: false };
-  const summary = { 10: { total: 4, unlocked: 1, playtime: 10 } };
-
-  it('leaves no half-written file behind', () => {
-    const dir = accountDir();
-
-    new Store(dir).setUserData(10, 'A', note);
-
-    expect(readdirSync(dir).filter((file) => file.endsWith('.tmp'))).toEqual(
-      [],
-    );
-    expect(new Store(dir).getUserData(10)).toEqual({ A: note });
-  });
-
-  it('keeps a damaged file aside instead of treating it as empty', () => {
-    const dir = accountDir();
-    writeFileSync(join(dir, 'userdata.json'), '{"accounts": {"7656');
-    const reported: string[] = [];
-
-    const store = new Store(dir, null, {
-      report: (message) => reported.push(message),
+      expect(sut.getCredentials()).toEqual({
+        steamId: OTHER_STEAM_ID,
+        apiKey: KEY,
+      });
     });
-    store.setUserData(10, 'A', note);
 
-    expect(readFileSync(join(dir, 'userdata.json.damaged.bak'), 'utf8')).toBe(
-      '{"accounts": {"7656',
+    it('should list an account once when it is saved again', () => {
+      const { sut } = setupWithTwoAccounts();
+
+      sut.setCredentials(
+        { steamId: OTHER_STEAM_ID, apiKey: KEY },
+        OTHER_PROFILE,
+      );
+
+      const steamIds = sut.getAccounts().map((account) => account.steamId);
+      expect(steamIds).toEqual([STEAM_ID, OTHER_STEAM_ID]);
+    });
+
+    it('should keep the notes of an account when it is saved again', () => {
+      const { sut } = setupWithTwoAccounts();
+      sut.setUserData(10, 'A', NOTE);
+
+      sut.setCredentials(
+        { steamId: OTHER_STEAM_ID, apiKey: KEY },
+        OTHER_PROFILE,
+      );
+
+      expect(sut.getUserData(10)).toEqual({ A: NOTE });
+    });
+
+    it('should list the status Steam last gave a key when the folder is opened again', () => {
+      const { sut, dir } = setupWithAccount();
+
+      sut.setAccountStatus(STEAM_ID, 'rejected');
+
+      const reopened = new Store(dir);
+      expect(reopened.getAccounts()).toEqual([
+        {
+          ...PROFILE,
+          keyEnding: KEY.slice(-4),
+          isKeyEncrypted: false,
+          status: 'rejected',
+        },
+      ]);
+    });
+  });
+
+  describe('language', () => {
+    it('should answer English when no language was chosen', () => {
+      const { sut } = setup();
+
+      const language = sut.getLanguage();
+
+      expect(language).toBe('en');
+    });
+
+    it('should answer the chosen language when the folder is opened again', () => {
+      const { sut, dir } = setup();
+
+      sut.setLanguage('pt-BR');
+
+      const reopened = new Store(dir);
+      expect(reopened.getLanguage()).toBe('pt-BR');
+    });
+
+    it.each([
+      {
+        what: 'achievement list',
+        read: (store: Store) => store.getSchema(1),
+      },
+      { what: 'game', read: (store: Store) => store.getGame(1) },
+      { what: 'art', read: (store: Store) => store.getArt(1) },
+    ])(
+      'should drop the $what read in the old language when the language changes',
+      ({ read }) => {
+        const { sut, dir } = setup();
+        sut.setSchema(1, []);
+        sut.setGame(makeGameView({ appid: 1 }));
+        sut.setArt(new Map([[1, { header: 'header', capsule: 'capsule' }]]));
+
+        sut.setLanguage('pt-BR');
+
+        const reopened = new Store(dir);
+        expect(read(reopened)).toBeNull();
+      },
     );
-    expect(reported).toEqual([
-      'userdata.json could not be used (damaged); kept as userdata.json.damaged.bak',
-    ]);
+
+    it('should keep the counts when the language changes', () => {
+      const { sut, dir } = setup();
+      sut.setSummaries({ 1: SUMMARY });
+
+      sut.setLanguage('pt-BR');
+
+      const reopened = new Store(dir);
+      expect(reopened.getSummary(1)).toEqual(SUMMARY);
+    });
+
+    it('should drop a cache read in another language when it opens', () => {
+      const dir = makeTempDir();
+      writeFileSync(
+        join(dir, 'cache.json'),
+        JSON.stringify({
+          version: 2,
+          language: 'pt-BR',
+          accounts: {},
+          art: {},
+          schemas: { 1: { fetchedAt: 1, items: [] } },
+        }),
+      );
+
+      const { sut } = setup({ dir });
+
+      expect(sut.getSchema(1)).toBeNull();
+    });
+
+    it('should keep a cache read in its own language when it opens', () => {
+      const dir = makeTempDir();
+      new Store(dir).setSchema(2, [], 5);
+
+      const { sut } = setup({ dir });
+
+      expect(sut.getSchema(2)).toEqual({ fetchedAt: 5, items: [] });
+    });
   });
 
-  it('keeps aside a file written by a later version of the app', () => {
-    const dir = accountDir();
-    const later = JSON.stringify({ version: 99, accounts: 'another shape' });
-    writeFileSync(join(dir, 'userdata.json'), later);
+  describe('list orders', () => {
+    it('should answer the default order of the achievements when none was chosen', () => {
+      const { sut } = setup();
 
-    new Store(dir).setUserData(10, 'A', note);
+      const sort = sut.getAchievementSort();
 
-    expect(readFileSync(join(dir, 'userdata.json.v99.bak'), 'utf8')).toBe(
-      later,
+      expect(sort).toEqual({ pending: 'common', unlocked: 'recent' });
+    });
+
+    it('should answer the chosen order of the achievements when the folder is opened again', () => {
+      const { sut, dir } = setup();
+
+      sut.setAchievementSort({ pending: 'closest', unlocked: 'rare' });
+
+      const reopened = new Store(dir);
+      expect(reopened.getAchievementSort()).toEqual({
+        pending: 'closest',
+        unlocked: 'rare',
+      });
+    });
+
+    it('should answer the default order of the achievements when the stored one is invalid', () => {
+      const dir = makeTempDir();
+      // `closest` only makes sense for pending achievements.
+      writeFileSync(
+        join(dir, 'settings.json'),
+        JSON.stringify({
+          achievementSort: { pending: 'recent', unlocked: 'closest' },
+        }),
+      );
+      const { sut } = setup({ dir });
+
+      const sort = sut.getAchievementSort();
+
+      expect(sort).toEqual({ pending: 'common', unlocked: 'recent' });
+    });
+
+    it('should answer the default order of the dashboard when none was chosen', () => {
+      const { sut } = setup();
+
+      const sort = sut.getDashboardSort();
+
+      expect(sort).toEqual({ ongoing: 'closest', complete: 'completed' });
+    });
+
+    it('should answer the chosen order of the dashboard when the folder is opened again', () => {
+      const { sut, dir } = setup();
+
+      sut.setDashboardSort({ ongoing: 'played', complete: 'name' });
+
+      const reopened = new Store(dir);
+      expect(reopened.getDashboardSort()).toEqual({
+        ongoing: 'played',
+        complete: 'name',
+      });
+    });
+  });
+
+  describe('update attempt', () => {
+    it('should answer no version when the app never closed itself to install one', () => {
+      const { sut } = setup();
+
+      const version = sut.getUpdateAttempt();
+
+      expect(version).toBeNull();
+    });
+
+    it('should answer the version the app closed itself to install when the folder is opened again', () => {
+      const { sut, dir } = setup();
+
+      sut.setUpdateAttempt('1.2.0');
+
+      const reopened = new Store(dir);
+      expect(reopened.getUpdateAttempt()).toBe('1.2.0');
+    });
+
+    it('should answer no version when the attempt was cleared', () => {
+      const { sut, dir } = setup();
+      sut.setUpdateAttempt('1.2.0');
+
+      sut.setUpdateAttempt(null);
+
+      const reopened = new Store(dir);
+      expect(reopened.getUpdateAttempt()).toBeNull();
+    });
+  });
+
+  describe('user data', () => {
+    it('should answer a note and its pin when the folder is opened again', () => {
+      const { sut, dir } = setupWithAccount();
+
+      sut.setUserData(10, 'A', { note: 'boss of the 3rd map', pinned: true });
+
+      const reopened = new Store(dir);
+      expect(reopened.getUserData(10)).toEqual({
+        A: { note: 'boss of the 3rd map', pinned: true },
+      });
+    });
+
+    it('should remove an entry when it is left with a blank note and no pin', () => {
+      const { sut, dir } = setupWithAccount();
+      sut.setUserData(10, 'B', { note: '', pinned: true });
+
+      sut.setUserData(10, 'B', { note: ' ', pinned: false });
+
+      const reopened = new Store(dir);
+      expect(reopened.getUserData(10)).toEqual({});
+    });
+
+    it('should keep an entry when it has only a checklist', () => {
+      const { sut, dir } = setupWithAccount();
+
+      sut.setUserData(10, 'A', {
+        note: '',
+        pinned: false,
+        checklist: CHECKLIST,
+      });
+
+      const reopened = new Store(dir);
+      expect(reopened.getUserData(10)).toEqual({
+        A: { note: '', pinned: false, checklist: CHECKLIST },
+      });
+    });
+
+    it('should remove an entry when its checklist is emptied', () => {
+      const { sut, dir } = setupWithAccount();
+      sut.setUserData(10, 'A', {
+        note: '',
+        pinned: false,
+        checklist: CHECKLIST,
+      });
+
+      sut.setUserData(10, 'A', { note: '', pinned: false, checklist: [] });
+
+      const reopened = new Store(dir);
+      expect(reopened.getUserData(10)).toEqual({});
+    });
+  });
+
+  describe('window settings', () => {
+    it('should answer always-on-top as set when the folder is opened again', () => {
+      const { sut, dir } = setup();
+
+      sut.setAlwaysOnTop(true);
+
+      const reopened = new Store(dir);
+      expect(reopened.getAlwaysOnTop()).toBe(true);
+    });
+
+    it('should remember the window when no preference was set', () => {
+      const { sut } = setup();
+
+      const preferences = sut.getPreferences();
+
+      expect(preferences).toEqual({ rememberWindow: true });
+    });
+
+    it('should answer a preference the user changed when the folder is opened again', () => {
+      const { sut, dir } = setup();
+
+      sut.setPreference('rememberWindow', false);
+
+      const reopened = new Store(dir);
+      expect(reopened.getPreferences()).toEqual({ rememberWindow: false });
+    });
+
+    it('should answer where the window was closed when the folder is opened again', () => {
+      const { sut, dir } = setup();
+
+      sut.setWindowBounds(BOUNDS);
+
+      const reopened = new Store(dir);
+      expect(reopened.getWindowBounds()).toEqual(BOUNDS);
+    });
+
+    it('should forget where the window was when asked not to remember it', () => {
+      const { sut, dir } = setup();
+      sut.setWindowBounds(BOUNDS);
+
+      sut.setPreference('rememberWindow', false);
+
+      const reopened = new Store(dir);
+      expect(reopened.getWindowBounds()).toBeNull();
+    });
+  });
+
+  describe('files that cannot be used', () => {
+    it('should leave no half-written file behind when it writes', () => {
+      const { sut, dir } = setupWithAccount();
+
+      sut.setUserData(10, 'A', NOTE);
+
+      expect(filesEnding(dir, '.tmp')).toEqual([]);
+    });
+
+    it('should keep a damaged file aside when the next write replaces it', () => {
+      const dir = makeAccountDir();
+      writeFileSync(join(dir, 'userdata.json'), '{"accounts": {"7656');
+      const { sut } = setup({ dir });
+
+      sut.setUserData(10, 'A', NOTE);
+
+      const kept = readFileSync(join(dir, 'userdata.json.damaged.bak'), 'utf8');
+      expect(kept).toBe('{"accounts": {"7656');
+    });
+
+    it('should report the damaged file when it sets it aside', () => {
+      const dir = makeAccountDir();
+      writeFileSync(join(dir, 'userdata.json'), '{"accounts": {"7656');
+      const reported: string[] = [];
+
+      setup({ dir, options: { report: (message) => reported.push(message) } });
+
+      expect(reported).toEqual([
+        'userdata.json could not be used (damaged); kept as userdata.json.damaged.bak',
+      ]);
+    });
+
+    it('should keep aside a file written by a later version of the app when the next write replaces it', () => {
+      const dir = makeAccountDir();
+      const later = JSON.stringify({ version: 99, accounts: 'another shape' });
+      writeFileSync(join(dir, 'userdata.json'), later);
+      const { sut } = setup({ dir });
+
+      sut.setUserData(10, 'A', NOTE);
+
+      const kept = readFileSync(join(dir, 'userdata.json.v99.bak'), 'utf8');
+      expect(kept).toBe(later);
+    });
+
+    it('should not guess at a file when it is from before the format had a version', () => {
+      const dir = makeAccountDir();
+      writeFileSync(
+        join(dir, 'userdata.json'),
+        JSON.stringify({ 10: { A: NOTE } }),
+      );
+
+      const { sut } = setup({ dir });
+
+      expect(sut.getUserData(10)).toEqual({});
+    });
+
+    it('should keep aside a file when it is from before the format had a version', () => {
+      const dir = makeAccountDir();
+      const older = JSON.stringify({ 10: { A: NOTE } });
+      writeFileSync(join(dir, 'userdata.json'), older);
+
+      setup({ dir });
+
+      const kept = readFileSync(join(dir, 'userdata.json.v1.bak'), 'utf8');
+      expect(kept).toBe(older);
+    });
+
+    it('should not keep an older cache aside when it drops it', () => {
+      const dir = makeTempDir();
+      writeFileSync(join(dir, 'cache.json'), JSON.stringify({ games: {} }));
+      const { sut } = setup({ dir });
+
+      sut.setSummaries({ 10: SUMMARY });
+
+      expect(filesEnding(dir, '.bak')).toEqual([]);
+    });
+
+    it('should read the settings when they are from before the format had a version', () => {
+      const dir = makeTempDir();
+      writeFileSync(
+        join(dir, 'settings.json'),
+        JSON.stringify({ alwaysOnTop: true, language: 'fr' }),
+      );
+
+      const { sut } = setup({ dir });
+
+      expect(sut.getLanguage()).toBe('fr');
+    });
+
+    it('should set nothing aside when the files are fine', () => {
+      const dir = makeAccountDir();
+      new Store(dir).setUserData(10, 'A', NOTE);
+      const { sut } = setup({ dir });
+
+      sut.setUserData(10, 'B', NOTE);
+
+      expect(filesEnding(dir, '.bak')).toEqual([]);
+    });
+
+    it.each(['config.json', 'cache.json', 'userdata.json', 'settings.json'])(
+      'should say which version of the format %s is in when it writes it',
+      (file) => {
+        const { sut, dir } = setup();
+
+        sut.setCredentials(CREDENTIALS, PROFILE);
+        sut.setSummaries({ 10: SUMMARY });
+        sut.setUserData(10, 'A', NOTE);
+        sut.setAlwaysOnTop(true);
+
+        const { version } = JSON.parse(
+          readFileSync(join(dir, file), 'utf8'),
+        ) as { version?: number };
+        expect(version).toBe(2);
+      },
     );
   });
 
-  it('keeps aside a file from before the format had a version, instead of guessing at it', () => {
-    const dir = accountDir();
-    const older = JSON.stringify({ 10: { A: note } });
-    writeFileSync(join(dir, 'userdata.json'), older);
+  describe('writing what was read from Steam after a delay', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
 
-    const store = new Store(dir);
+    afterEach(() => {
+      vi.useRealTimers();
+    });
 
-    expect(store.getUserData(10)).toEqual({});
-    expect(readFileSync(join(dir, 'userdata.json.v1.bak'), 'utf8')).toBe(older);
-  });
+    it('should not write a read when the delay has not passed', () => {
+      const { sut, dir } = setup({ options: { cacheDelay: CACHE_DELAY } });
+      sut.setSummaries({ 1: SUMMARY });
 
-  it('drops an older cache without keeping it: Steam can give it all back', () => {
-    const dir = tempDir();
-    writeFileSync(join(dir, 'cache.json'), JSON.stringify({ games: {} }));
+      vi.advanceTimersByTime(CACHE_DELAY - 1);
 
-    new Store(dir).setSummaries(summary);
+      expect(existsSync(join(dir, 'cache.json'))).toBe(false);
+    });
 
-    expect(readdirSync(dir).filter((file) => file.endsWith('.bak'))).toEqual(
-      [],
-    );
-  });
+    it('should write a read when the delay has passed', () => {
+      const { sut, dir } = setup({ options: { cacheDelay: CACHE_DELAY } });
+      sut.setSummaries({ 1: SUMMARY });
 
-  it('reads settings written before the format had a version', () => {
-    const dir = tempDir();
-    writeFileSync(
-      join(dir, 'settings.json'),
-      JSON.stringify({ alwaysOnTop: true, language: 'fr' }),
-    );
+      vi.advanceTimersByTime(CACHE_DELAY);
 
-    expect(new Store(dir).getLanguage()).toBe('fr');
-  });
+      const reopened = new Store(dir);
+      expect(reopened.getSummary(1)).toEqual(SUMMARY);
+    });
 
-  it('sets nothing aside when the files are fine', () => {
-    const dir = accountDir();
-    new Store(dir).setUserData(10, 'A', note);
+    it('should schedule one write when a burst of reads arrives', () => {
+      const { sut } = setup({ options: { cacheDelay: CACHE_DELAY } });
 
-    new Store(dir).setUserData(10, 'B', note);
+      for (let appid = 1; appid <= 50; appid++) {
+        sut.setSummaries({ [appid]: SUMMARY });
+      }
 
-    expect(readdirSync(dir).filter((file) => file.endsWith('.bak'))).toEqual(
-      [],
-    );
-  });
+      expect(vi.getTimerCount()).toBe(1);
+    });
 
-  it('says which version of the format each file is in', () => {
-    const dir = tempDir();
+    it('should write the whole burst when the delay has passed', () => {
+      const { sut, dir } = setup({ options: { cacheDelay: CACHE_DELAY } });
+      for (let appid = 1; appid <= 50; appid++) {
+        sut.setSummaries({ [appid]: SUMMARY });
+      }
 
-    new Store(dir).setSummaries(summary);
+      vi.advanceTimersByTime(CACHE_DELAY);
 
-    expect(
-      (
-        JSON.parse(readFileSync(join(dir, 'cache.json'), 'utf8')) as {
-          version: number;
-        }
-      ).version,
-    ).toBe(2);
-  });
-});
+      const reopened = new Store(dir);
+      expect(reopened.getSummary(50)).toEqual(SUMMARY);
+    });
 
-describe('Store: writing what was read from Steam', () => {
-  const entry = { total: 4, unlocked: 1, playtime: 10 };
+    it('should answer with a read when it is not written yet', () => {
+      const { sut } = setup({ options: { cacheDelay: CACHE_DELAY } });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
+      sut.setSummaries({ 1: SUMMARY });
 
-  it('writes a burst of reads once, after a moment', () => {
-    vi.useFakeTimers();
-    const dir = tempDir();
-    const store = new Store(dir, null, { cacheDelay: 1000 });
+      expect(sut.getSummary(1)).toEqual(SUMMARY);
+    });
 
-    for (let appid = 1; appid <= 50; appid++) {
-      store.setSummaries({ [appid]: entry });
-    }
+    it('should write what is waiting when asked to, as the app closes', () => {
+      const { sut, dir } = setup({ options: { cacheDelay: CACHE_DELAY } });
+      sut.setSummaries({ 1: SUMMARY });
 
-    expect(existsSync(join(dir, 'cache.json'))).toBe(false);
-    vi.advanceTimersByTime(1000);
-    expect(new Store(dir).getSummary(50)).toEqual(entry);
-  });
+      sut.flush();
 
-  it('answers with what was read before it is written', () => {
-    vi.useFakeTimers();
-    const store = new Store(tempDir(), null, { cacheDelay: 1000 });
-
-    store.setSummaries({ 1: entry });
-
-    expect(store.getSummary(1)).toEqual(entry);
-  });
-
-  it('writes what is waiting when asked to, as the app closes', () => {
-    vi.useFakeTimers();
-    const dir = tempDir();
-    const store = new Store(dir, null, { cacheDelay: 1000 });
-    store.setSummaries({ 1: entry });
-
-    store.flush();
-
-    expect(new Store(dir).getSummary(1)).toEqual(entry);
+      const reopened = new Store(dir);
+      expect(reopened.getSummary(1)).toEqual(SUMMARY);
+    });
   });
 });

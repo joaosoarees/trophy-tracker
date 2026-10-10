@@ -1,30 +1,37 @@
 import { describe, expect, it } from 'vitest';
 
-import { BinaryVdf } from '@main/steam/BinaryVdf';
+import { BinaryVdf } from './BinaryVdf';
 
-describe('binary VDF', () => {
-  const str = (s: string) =>
-    Buffer.concat([Buffer.from(s, 'utf8'), Buffer.from([0])]);
-  const obj = (key: string, ...children: Buffer[]) =>
-    Buffer.concat([Buffer.from([0]), str(key), ...children, Buffer.from([8])]);
-  const text = (key: string, value: string) =>
-    Buffer.concat([Buffer.from([1]), str(key), str(value)]);
-  const int = (key: string, value: number) => {
-    const b = Buffer.alloc(4);
-    b.writeInt32LE(value);
-    return Buffer.concat([Buffer.from([2]), str(key), b]);
-  };
-  const bit = (n: string, name: string, ...extra: Buffer[]) =>
-    obj(n, text('name', name), ...extra);
-  const progress = (stat: string) =>
-    obj(
-      'progress',
-      int('min_val', 0),
-      int('max_val', 39),
-      obj('value', text('operation', 'statvalue'), text('operand1', stat)),
-    );
+const END = Buffer.from([8]);
 
-  const schema = Buffer.concat([
+const str = (s: string) =>
+  Buffer.concat([Buffer.from(s, 'utf8'), Buffer.from([0])]);
+const obj = (key: string, ...children: Buffer[]) =>
+  Buffer.concat([Buffer.from([0]), str(key), ...children, END]);
+const text = (key: string, value: string) =>
+  Buffer.concat([Buffer.from([1]), str(key), str(value)]);
+const int = (key: string, value: number) => {
+  const b = Buffer.alloc(4);
+  b.writeInt32LE(value);
+  return Buffer.concat([Buffer.from([2]), str(key), b]);
+};
+const bit = (n: string, name: string, ...extra: Buffer[]) =>
+  obj(n, text('name', name), ...extra);
+const progress = (stat: string) =>
+  obj(
+    'progress',
+    int('min_val', 0),
+    int('max_val', 39),
+    obj('value', text('operation', 'statvalue'), text('operand1', stat)),
+  );
+
+/**
+ * A game's schema as the Steam client keeps it: a plain stat, and a stat whose
+ * bits are the achievements, of which only `ACH_001` has a counter. The
+ * default of the plain stat needs all 32 bits and the sign to be read right.
+ */
+function makeSchema(): Buffer {
+  return Buffer.concat([
     obj(
       '3681010',
       obj(
@@ -33,7 +40,7 @@ describe('binary VDF', () => {
           '3',
           text('type', 'INT'),
           text('name', 'ACH_001_PROGRESS'),
-          int('default', 0),
+          int('default', -70000),
         ),
         obj(
           '1376',
@@ -47,22 +54,60 @@ describe('binary VDF', () => {
       ),
       text('gamename', 'Nioh 3'),
     ),
-    Buffer.from([8]),
+    END,
   ]);
+}
 
-  it('reads objects, strings and integers', () => {
-    const root = BinaryVdf.parse(schema) as any;
-    expect(root['3681010'].gamename).toBe('Nioh 3');
-    expect(root['3681010'].stats['1376'].bits['3'].progress.max_val).toBe(39);
+describe('BinaryVdf', () => {
+  describe('parse', () => {
+    it('should read the objects, strings and integers of a file', () => {
+      const file = makeSchema();
+
+      const root = BinaryVdf.parse(file);
+
+      expect(root).toEqual({
+        '3681010': {
+          stats: {
+            '3': { type: 'INT', name: 'ACH_001_PROGRESS', default: -70000 },
+            '1376': {
+              type: 4,
+              bits: {
+                '0': { name: 'ACH_000' },
+                '3': {
+                  name: 'ACH_001',
+                  progress: {
+                    min_val: 0,
+                    max_val: 39,
+                    value: {
+                      operation: 'statvalue',
+                      operand1: 'ACH_001_PROGRESS',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          gamename: 'Nioh 3',
+        },
+      });
+    });
+
+    it('should throw when the file is truncated', () => {
+      const file = makeSchema().subarray(0, 40);
+
+      expect(() => BinaryVdf.parse(file)).toThrow(
+        new Error('Truncated binary VDF'),
+      );
+    });
   });
 
-  it('links each counted achievement to its stat', () => {
-    expect([...BinaryVdf.achievementStatMap(BinaryVdf.parse(schema))]).toEqual([
-      ['ACH_001', 'ACH_001_PROGRESS'],
-    ]);
-  });
+  describe('achievementStatMap', () => {
+    it('should link only the achievement with a counter to its stat', () => {
+      const schema = BinaryVdf.parse(makeSchema());
 
-  it('rejects a truncated file', () => {
-    expect(() => BinaryVdf.parse(schema.subarray(0, 40))).toThrow();
+      const statMap = BinaryVdf.achievementStatMap(schema);
+
+      expect(statMap).toEqual(new Map([['ACH_001', 'ACH_001_PROGRESS']]));
+    });
   });
 });

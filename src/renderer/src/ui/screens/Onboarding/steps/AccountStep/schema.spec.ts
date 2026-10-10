@@ -1,48 +1,41 @@
 import { describe, expect, it } from 'vitest';
 
 import { en } from '@shared/i18n/locales/en';
-import { KEY, STEAM_ID } from '@test/helpers';
-import { accountStepSchema } from '@ui/screens/Onboarding/steps/AccountStep/schema';
-import { languageStepSchema } from '@ui/screens/Onboarding/steps/LanguageStep/schema';
+import { KEY, STEAM_ID } from '@tests/helpers';
 
-describe('onboarding schemas', () => {
-  it('accept valid values, trimming surrounding whitespace', () => {
-    expect(languageStepSchema.parse({ language: 'pt-BR' })).toEqual({
-      language: 'pt-BR',
-    });
-    expect(
-      accountStepSchema.parse({
-        steamId: ` ${STEAM_ID} `,
-        apiKey: `${KEY}\n`,
-      }),
-    ).toEqual({ steamId: STEAM_ID, apiKey: KEY });
-  });
+import { accountStepSchema } from './schema';
 
-  it('rejects an unknown language', () => {
-    const result = languageStepSchema.safeParse({ language: 'xx' });
+describe('accountStepSchema', () => {
+  it('should accept the account, trimming surrounding whitespace, when it is well formed', () => {
+    const typed = { steamId: ` ${STEAM_ID} `, apiKey: `${KEY}\n` };
 
-    expect(result.error?.issues[0].message).toBe('languageRequired');
-  });
+    const account = accountStepSchema.parse(typed);
 
-  it('rejects a badly formed account, naming each problem by its message key', () => {
-    const result = accountStepSchema.safeParse({
-      steamId: '12345',
-      apiKey: 'short',
-    });
-
-    expect(
-      result.error?.issues.map(
-        (issue) => `${issue.path.join('.')}: ${issue.message}`,
-      ),
-    ).toEqual(['steamId: steamIdFormat', 'apiKey: apiKeyFormat']);
+    expect(account).toEqual({ steamId: STEAM_ID, apiKey: KEY });
   });
 
   it.each([
-    'languageRequired',
-    'steamIdFormat',
-    'apiKeyFormat',
-    'verificationRequired',
-  ])('the message key %s exists in the translations', (key) => {
-    expect(en.validation).toHaveProperty(key);
-  });
+    { field: 'steamId', value: '12345', message: 'steamIdFormat' },
+    { field: 'apiKey', value: 'short', message: 'apiKeyFormat' },
+  ])(
+    'should reject the account with the message key $message when $field is badly formed',
+    ({ field, value, message }) => {
+      const typed = { steamId: STEAM_ID, apiKey: KEY, [field]: value };
+
+      const result = accountStepSchema.safeParse(typed);
+
+      expect(result.error?.issues).toEqual([
+        expect.objectContaining({ path: [field], message }),
+      ]);
+    },
+  );
+
+  it.each(['steamIdFormat', 'apiKeyFormat', 'verificationRequired'])(
+    'should have a translation for the message key %s',
+    (key) => {
+      const hasTranslation = key in en.validation;
+
+      expect(hasTranslation).toBe(true);
+    },
+  );
 });

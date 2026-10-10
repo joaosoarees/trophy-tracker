@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { FileSteam, type IFileSteamDeps } from '@main/steam/FileSteam';
-import { makeStatSchema } from '@test/factories/makeStatSchema';
-import { STEAM_ID } from '@test/helpers';
+import { makeStatSchema } from '@tests/factories/makeStatSchema';
+import { STEAM_ID } from '@tests/helpers';
+
+import { FileSteam, type IFileSteamDeps } from './FileSteam';
+
+const STEAM = '/home/me/.local/share/Steam';
+const LOGIN_USERS_FILE = 'config/loginusers.vdf';
+const STATS_FILE = 'appcache/stats/UserGameStatsSchema_10.bin';
 
 const LOGIN_USERS = `"users"\n{\n\t"${STEAM_ID}"\n\t{\n\t\t"MostRecent"\t\t"1"\n\t}\n}\n`;
 
@@ -12,10 +17,10 @@ const LOGIN_USERS = `"users"\n{\n\t"${STEAM_ID}"\n\t{\n\t\t"MostRecent"\t\t"1"\n
  */
 const portable = (path: string) => path.replaceAll('\\', '/');
 
-/** A computer whose disk holds exactly the given files. */
+/** A Linux computer whose disk holds exactly the given files. */
 function setup(
   files: Record<string, string | Buffer> = {},
-  over: Partial<IFileSteamDeps> = {},
+  overrides: Partial<IFileSteamDeps> = {},
 ) {
   const read: string[] = [];
   const folders = new Set(
@@ -24,7 +29,7 @@ function setup(
       return parts.map((_, i) => parts.slice(0, i + 1).join('/'));
     }),
   );
-  const local = new FileSteam({
+  const sut = new FileSteam({
     platform: 'linux',
     home: '/home/me',
     exists: (path) => folders.has(portable(path)),
@@ -35,89 +40,110 @@ function setup(
         ? Promise.resolve(Buffer.from(files[path]))
         : Promise.reject(new Error(`ENOENT: ${path}`));
     },
-    ...over,
+    ...overrides,
   });
-  return { local, read };
+  return { sut, read };
 }
 
 describe('FileSteam', () => {
-  const steam = '/home/me/.local/share/Steam';
+  describe('canTrackRunningGame', () => {
+    it('should be false when Steam is installed', () => {
+      const { sut } = setup({ [`${STEAM}/${LOGIN_USERS_FILE}`]: LOGIN_USERS });
 
-  it('cannot tell which game is running by itself', async () => {
-    const { local } = setup({
-      [`${steam}/config/loginusers.vdf`]: LOGIN_USERS,
+      const canTrack = sut.canTrackRunningGame;
+
+      expect(canTrack).toBe(false);
+    });
+  });
+
+  describe('getRunningAppId', () => {
+    it('should answer null when Steam is installed', async () => {
+      const { sut } = setup({ [`${STEAM}/${LOGIN_USERS_FILE}`]: LOGIN_USERS });
+
+      const appId = await sut.getRunningAppId();
+
+      expect(appId).toBeNull();
+    });
+  });
+
+  describe('getActiveSteamId', () => {
+    it("should answer the most recent account when the client's files name one", async () => {
+      const { sut } = setup({ [`${STEAM}/${LOGIN_USERS_FILE}`]: LOGIN_USERS });
+
+      const steamId = await sut.getActiveSteamId();
+
+      expect(steamId).toBe(STEAM_ID);
     });
 
-    expect(local.canTrackRunningGame).toBe(false);
-    expect(await local.getRunningAppId()).toBeNull();
-  });
+    it('should read the first folder that exists when Steam is not in the usual one', async () => {
+      const flatpak = '/home/me/.var/app/com.valvesoftware.Steam/data/Steam';
+      const { sut, read } = setup({
+        [`${flatpak}/${LOGIN_USERS_FILE}`]: LOGIN_USERS,
+      });
 
-  it("takes the signed-in account from the client's files", async () => {
-    const { local } = setup({
-      [`${steam}/config/loginusers.vdf`]: LOGIN_USERS,
+      await sut.getActiveSteamId();
+
+      expect(read).toEqual([`${flatpak}/${LOGIN_USERS_FILE}`]);
     });
 
-    expect(await local.getActiveSteamId()).toBe(STEAM_ID);
-  });
+    it('should answer the account in the macOS folder when the system is a Mac', async () => {
+      const mac = '/Users/me/Library/Application Support/Steam';
+      const { sut } = setup(
+        { [`${mac}/${LOGIN_USERS_FILE}`]: LOGIN_USERS },
+        { platform: 'darwin', home: '/Users/me' },
+      );
 
-  it('looks in the first folder where Steam is actually installed', async () => {
-    const flatpak = '/home/me/.var/app/com.valvesoftware.Steam/data/Steam';
-    const { local, read } = setup({
-      [`${flatpak}/config/loginusers.vdf`]: LOGIN_USERS,
+      const steamId = await sut.getActiveSteamId();
+
+      expect(steamId).toBe(STEAM_ID);
     });
 
-    await local.getActiveSteamId();
+    it('should answer null without reading anything when Steam is not installed', async () => {
+      const { sut, read } = setup();
 
-    expect(read).toEqual([`${flatpak}/config/loginusers.vdf`]);
-  });
+      const steamId = await sut.getActiveSteamId();
 
-  it('uses the macOS folder on a Mac', async () => {
-    const mac = '/Users/me/Library/Application Support/Steam';
-    const { local } = setup(
-      { [`${mac}/config/loginusers.vdf`]: LOGIN_USERS },
-      { platform: 'darwin', home: '/Users/me' },
-    );
-
-    expect(await local.getActiveSteamId()).toBe(STEAM_ID);
-  });
-
-  it('knows no account when Steam is not installed', async () => {
-    const { local, read } = setup();
-
-    expect(await local.getActiveSteamId()).toBeNull();
-    expect(read).toEqual([]);
-  });
-
-  it('knows no account when the file cannot be read', async () => {
-    const { local } = setup({ [`${steam}/steam.sh`]: '' });
-
-    expect(await local.getActiveSteamId()).toBeNull();
-  });
-
-  it("reads a game's counters from the client's cache", async () => {
-    const { local } = setup({
-      [`${steam}/appcache/stats/UserGameStatsSchema_10.bin`]: makeStatSchema(
-        10,
-        { ACH_KODAMA: 'KODAMA_COUNT' },
-      ),
+      expect(steamId).toBeNull();
+      expect(read).toEqual([]);
     });
 
-    expect((await local.readStatMap(10)).get('ACH_KODAMA')).toBe(
-      'KODAMA_COUNT',
-    );
+    it('should answer null when the file cannot be read', async () => {
+      const { sut } = setup({ [`${STEAM}/steam.sh`]: '' });
+
+      const steamId = await sut.getActiveSteamId();
+
+      expect(steamId).toBeNull();
+    });
   });
 
-  it.each<{ problem: string; files: Record<string, string> }>([
-    { problem: 'missing', files: { [`${steam}/steam.sh`]: '' } },
-    {
-      problem: 'corrupted',
-      files: {
-        [`${steam}/appcache/stats/UserGameStatsSchema_10.bin`]: 'not a schema',
+  describe('readStatMap', () => {
+    it("should link each achievement to its counter when the client's cache has the game", async () => {
+      const { sut } = setup({
+        [`${STEAM}/${STATS_FILE}`]: makeStatSchema(10, {
+          ACH_KODAMA: 'KODAMA_COUNT',
+        }),
+      });
+
+      const statMap = await sut.readStatMap(10);
+
+      expect(statMap).toEqual(new Map([['ACH_KODAMA', 'KODAMA_COUNT']]));
+    });
+
+    it.each<{ problem: string; files: Record<string, string> }>([
+      { problem: 'missing', files: { [`${STEAM}/steam.sh`]: '' } },
+      {
+        problem: 'corrupted',
+        files: { [`${STEAM}/${STATS_FILE}`]: 'not a schema' },
       },
-    },
-  ])('has no counters when the cache file is $problem', async ({ files }) => {
-    const { local } = setup(files);
+    ])(
+      'should answer no counters when the cache file is $problem',
+      async ({ files }) => {
+        const { sut } = setup(files);
 
-    expect((await local.readStatMap(10)).size).toBe(0);
+        const statMap = await sut.readStatMap(10);
+
+        expect(statMap).toEqual(new Map());
+      },
+    );
   });
 });

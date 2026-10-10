@@ -1,65 +1,73 @@
 import { describe, expect, it } from 'vitest';
 
-import { SteamFiles } from '@main/steam/SteamFiles';
-import { STEAM_ID } from '@test/helpers';
+import { OTHER_STEAM_ID, STEAM_ID } from '@tests/helpers';
 
-const LOGIN_USERS = `"users"
-{
-	"76561198000000001"
-	{
-		"AccountName"		"old \\"quoted\\" account"
-		"PersonaName"		"Old"
-		"MostRecent"		"0"
-	}
-	"${STEAM_ID}"
-	{
-		"AccountName"		"current"
-		"MostRecent"		"1"
-		"Timestamp"		"1790000000"
-	}
-}
-`;
+import { SteamFiles } from './SteamFiles';
 
-describe('SteamFiles.mostRecentSteamId', () => {
-  it('picks the account marked as most recent', () => {
-    expect(SteamFiles.mostRecentSteamId(LOGIN_USERS)).toBe(STEAM_ID);
+/** An account of `loginusers.vdf`, marked with `MostRecent` when given. */
+const account = (steamId: string, mostRecent?: '0' | '1'): string => {
+  const mark = mostRecent === undefined ? '' : `"MostRecent" "${mostRecent}"`;
+  return `"${steamId}" { "AccountName" "someone" ${mark} }`;
+};
+
+const loginUsers = (...accounts: string[]): string =>
+  `"users" { ${accounts.join(' ')} }`;
+
+describe('SteamFiles', () => {
+  describe('mostRecentSteamId', () => {
+    it('should answer the account marked as most recent', () => {
+      const file = loginUsers(
+        account(OTHER_STEAM_ID, '0'),
+        account(STEAM_ID, '1'),
+      );
+
+      const steamId = SteamFiles.mostRecentSteamId(file);
+
+      expect(steamId).toBe(STEAM_ID);
+    });
+
+    it('should answer the first account when none is marked', () => {
+      const file = loginUsers(account(OTHER_STEAM_ID, '0'), account(STEAM_ID));
+
+      const steamId = SteamFiles.mostRecentSteamId(file);
+
+      expect(steamId).toBe(OTHER_STEAM_ID);
+    });
+
+    it.each([
+      { reason: 'has no accounts', file: '"users" { }' },
+      { reason: 'is not a VDF', file: 'not a vdf at all' },
+    ])('should answer null when the file $reason', ({ file }) => {
+      const steamId = SteamFiles.mostRecentSteamId(file);
+
+      expect(steamId).toBeNull();
+    });
   });
 
-  it('falls back to the first account when none is marked', () => {
-    expect(
-      SteamFiles.mostRecentSteamId(LOGIN_USERS.replace('"MostRecent"		"1"', '')),
-    ).toBe('76561198000000001');
-  });
+  describe('dirCandidates', () => {
+    it('should answer the single folder of the client when the system is macOS', () => {
+      const candidates = SteamFiles.dirCandidates('darwin', '/Users/me');
 
-  it('returns nothing for a file with no accounts', () => {
-    expect(SteamFiles.mostRecentSteamId('"users" { }')).toBeNull();
-    expect(SteamFiles.mostRecentSteamId('not a vdf at all')).toBeNull();
-  });
-});
+      expect(candidates).toEqual([
+        '/Users/me/Library/Application Support/Steam',
+      ]);
+    });
 
-describe('SteamFiles.dirCandidates', () => {
-  it('knows the single place the client lives in on macOS', () => {
-    expect(SteamFiles.dirCandidates('darwin', '/Users/me')).toEqual([
-      '/Users/me/Library/Application Support/Steam',
-    ]);
-  });
-
-  it('tries the usual Linux folder first', () => {
-    const [first] = SteamFiles.dirCandidates('linux', '/home/me');
-
-    expect(first).toBe('/home/me/.local/share/Steam');
-  });
-
-  it.each(['/home/me/.steam/steam', 'com.valvesoftware.Steam', 'snap/steam'])(
-    'also looks on Linux where other packagings install it: %s',
-    (fragment) => {
+    it('should answer the usual folder first, then those of other packagings, when the system is Linux', () => {
       const candidates = SteamFiles.dirCandidates('linux', '/home/me');
 
-      expect(candidates.some((dir) => dir.includes(fragment))).toBe(true);
-    },
-  );
+      expect(candidates).toEqual([
+        '/home/me/.local/share/Steam',
+        '/home/me/.steam/steam',
+        '/home/me/.var/app/com.valvesoftware.Steam/data/Steam',
+        '/home/me/snap/steam/common/.local/share/Steam',
+      ]);
+    });
 
-  it('has nowhere to look on a system Steam does not run on', () => {
-    expect(SteamFiles.dirCandidates('freebsd', '/home/me')).toEqual([]);
+    it('should answer no folder when Steam does not run on the system', () => {
+      const candidates = SteamFiles.dirCandidates('freebsd', '/home/me');
+
+      expect(candidates).toEqual([]);
+    });
   });
 });

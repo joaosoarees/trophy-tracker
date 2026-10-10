@@ -6,9 +6,11 @@ import {
   LANGUAGE_CODES,
   LANGUAGES,
   messagesFor,
-} from '@shared/i18n';
+} from './index';
 
 type Tree = { [key: string]: unknown };
+
+const TRANSLATIONS = LANGUAGE_CODES.filter((code) => code !== 'en');
 
 /** Path and shape of every message, to compare languages beyond what the type already guarantees. */
 function shape(node: unknown, path = ''): string[] {
@@ -20,52 +22,86 @@ function shape(node: unknown, path = ''): string[] {
   );
 }
 
+/** Whether any text in the tree, at any depth, is blank. */
+const hasBlankText = (node: unknown): boolean =>
+  typeof node === 'string'
+    ? node.trim() === ''
+    : typeof node === 'object' &&
+      node !== null &&
+      Object.values(node).some(hasBlankText);
+
 describe('i18n', () => {
-  it('defaults to English', () => {
-    expect(DEFAULT_LANGUAGE).toBe('en');
+  describe('DEFAULT_LANGUAGE', () => {
+    it('should be English', () => {
+      expect(DEFAULT_LANGUAGE).toBe('en');
+    });
   });
 
-  it.each([
-    { code: 'en', dashboard: 'Dashboard', steam: 'english' },
-    { code: 'pt-BR', dashboard: 'Painel', steam: 'brazilian' },
-    { code: 'es', dashboard: 'Panel', steam: 'spanish' },
-    { code: 'fr', dashboard: 'Tableau de bord', steam: 'french' },
-  ] as const)(
-    '$code has its own messages and the name Steam uses for it',
-    ({ code, dashboard, steam }) => {
-      expect(messagesFor(code).nav.dashboard).toBe(dashboard);
-      expect(LANGUAGES[code].steam).toBe(steam);
-    },
-  );
+  describe('LANGUAGES', () => {
+    it.each([
+      { code: 'en', steam: 'english' },
+      { code: 'pt-BR', steam: 'brazilian' },
+      { code: 'es', steam: 'spanish' },
+      { code: 'fr', steam: 'french' },
+    ] as const)(
+      'should name $code as Steam does: $steam',
+      ({ code, steam }) => {
+        const steamName = LANGUAGES[code].steam;
 
-  it('recognises a registered language', () => {
-    expect(isLanguage('pt-BR')).toBe(true);
+        expect(steamName).toBe(steam);
+      },
+    );
   });
 
-  it.each(['de', undefined, 'toString'])(
-    'does not take %s for a language',
-    (value) => {
-      expect(isLanguage(value)).toBe(false);
-    },
-  );
+  describe('messagesFor', () => {
+    it.each([
+      { code: 'en', dashboard: 'Dashboard' },
+      { code: 'pt-BR', dashboard: 'Painel' },
+      { code: 'es', dashboard: 'Panel' },
+      { code: 'fr', dashboard: 'Tableau de bord' },
+    ] as const)(
+      'should answer the messages of $code when asked for it: $dashboard',
+      ({ code, dashboard }) => {
+        const messages = messagesFor(code);
 
-  it.each(LANGUAGE_CODES)(
-    '%s has the same messages as English, with lists of the same length',
-    (code) => {
-      const reference = shape(messagesFor('en')).sort();
+        expect(messages.nav.dashboard).toBe(dashboard);
+      },
+    );
 
-      expect(shape(messagesFor(code)).sort()).toEqual(reference);
-    },
-  );
+    it.each(TRANSLATIONS)(
+      'should give %s the same messages as English, with lists of the same length',
+      (code) => {
+        const reference = shape(messagesFor('en')).sort();
 
-  it.each(LANGUAGE_CODES)('%s leaves no message empty', (code) => {
-    const empty = (node: unknown): boolean =>
-      typeof node === 'string'
-        ? node.trim() === ''
-        : typeof node === 'object' &&
-          node !== null &&
-          Object.values(node).some(empty);
+        const messages = shape(messagesFor(code)).sort();
 
-    expect(empty(messagesFor(code))).toBe(false);
+        expect(messages).toEqual(reference);
+      },
+    );
+
+    it.each(LANGUAGE_CODES)('should leave no message of %s blank', (code) => {
+      const messages = messagesFor(code);
+
+      const hasBlank = hasBlankText(messages);
+
+      expect(hasBlank).toBe(false);
+    });
+  });
+
+  describe('isLanguage', () => {
+    it('should answer true when the language is registered', () => {
+      const isRegistered = isLanguage('pt-BR');
+
+      expect(isRegistered).toBe(true);
+    });
+
+    it.each(['de', undefined, 'toString'])(
+      'should answer false when given %s',
+      (value) => {
+        const isRegistered = isLanguage(value);
+
+        expect(isRegistered).toBe(false);
+      },
+    );
   });
 });

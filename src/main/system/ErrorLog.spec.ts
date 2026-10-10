@@ -1,56 +1,109 @@
-import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ErrorLog } from '@main/system/ErrorLog';
+import { makeTempDir } from '@tests/helpers';
 
-const file = () =>
-  join(mkdtempSync(join(tmpdir(), 'tt-')), 'logs', 'errors.log');
+import { ErrorLog } from './ErrorLog';
+
+const NOW = '2026-03-04T05:06:07.000Z';
+/** Over the half megabyte at which the file is rotated. */
+const LARGE_SIZE = 600 * 1024;
+
+/** A log whose file, and the folder it is in, do not exist yet. */
+function setup() {
+  const file = join(makeTempDir(), 'logs', 'errors.log');
+  const sut = new ErrorLog(file);
+  return { sut, file };
+}
+
+/** A log whose file already holds `content`. */
+function setupWithFile(content: string) {
+  const { sut, file } = setup();
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, content);
+  return { sut, file };
+}
 
 describe('ErrorLog', () => {
-  it('creates the folder and appends each error with its source and time', () => {
-    const log = file();
-    new ErrorLog(log).write(
-      'interface: render',
-      'TypeError: x is undefined\n  at Card',
-    );
-    new ErrorLog(log).write('main: uncaughtException', 'boom');
-
-    const text = readFileSync(log, 'utf8');
-    expect(text).toMatch(
-      /^\[\d{4}-\d\d-\d\dT[^\]]+\] interface: render\nTypeError: x is undefined\n {2}at Card\n\n/,
-    );
-    expect(text).toContain('] main: uncaughtException\nboom\n');
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(NOW));
   });
 
-  it('caps a single entry', () => {
-    const log = file();
-
-    new ErrorLog(log).write('big', 'x'.repeat(50_000));
-
-    expect(statSync(log).size).toBeLessThan(9_000);
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('rotates the file when it gets large', () => {
-    const log = file();
-    // The first entry creates the folder; the file is then grown by hand.
-    new ErrorLog(log).write('first', 'entry');
-    writeFileSync(log, 'y'.repeat(600 * 1024));
+  describe('write', () => {
+    it('should create the folder of the file when it does not exist', () => {
+      const { sut, file } = setup();
 
-    new ErrorLog(log).write('after', 'small');
+      sut.write('main: uncaughtException', 'boom');
 
-    expect(statSync(`${log}.old`).size).toBe(600 * 1024);
-    expect(readFileSync(log, 'utf8')).toContain('] after\nsmall');
-  });
+      expect(existsSync(dirname(file))).toBe(true);
+    });
 
-  it('never throws, even when the file cannot be written', () => {
-    // A file where a folder is expected: nothing can be created under it.
-    const blocker = join(mkdtempSync(join(tmpdir(), 'tt-')), 'not-a-folder');
-    writeFileSync(blocker, '');
-    expect(() =>
-      new ErrorLog(join(blocker, 'logs', 'errors.log')).write('s', 'd'),
-    ).not.toThrow();
+    it('should write the time, the source and the detail of the error', () => {
+      const { sut, file } = setup();
+
+      sut.write('interface: render', 'TypeError: x is undefined\n  at Card');
+
+      expect(readFileSync(file, 'utf8')).toBe(
+        `[${NOW}] interface: render\nTypeError: x is undefined\n  at Card\n\n`,
+      );
+    });
+
+    it('should add the error after the ones already in the file', () => {
+      const { sut, file } = setupWithFile('earlier\n\n');
+
+      sut.write('main: uncaughtException', 'boom');
+
+      expect(readFileSync(file, 'utf8')).toBe(
+        `earlier\n\n[${NOW}] main: uncaughtException\nboom\n\n`,
+      );
+    });
+
+    it('should keep the first 8000 characters when the detail is longer', () => {
+      const { sut, file } = setup();
+
+      sut.write('big', 'x'.repeat(50_000));
+
+      expect(readFileSync(file, 'utf8')).toBe(
+        `[${NOW}] big\n${'x'.repeat(8000)}\n\n`,
+      );
+    });
+
+    it('should move the file to .old when it is over half a megabyte', () => {
+      const { sut, file } = setupWithFile('y'.repeat(LARGE_SIZE));
+
+      sut.write('after', 'small');
+
+      expect(statSync(`${file}.old`).size).toBe(LARGE_SIZE);
+    });
+
+    it('should start a new file with the error when the old one was moved', () => {
+      const { sut, file } = setupWithFile('y'.repeat(LARGE_SIZE));
+
+      sut.write('after', 'small');
+
+      expect(readFileSync(file, 'utf8')).toBe(`[${NOW}] after\nsmall\n\n`);
+    });
+
+    it('should not throw when the file cannot be written', () => {
+      // A file where a folder is expected: nothing can be created under it.
+      const blocker = join(makeTempDir(), 'not-a-folder');
+      writeFileSync(blocker, '');
+      const sut = new ErrorLog(join(blocker, 'logs', 'errors.log'));
+
+      expect(() => sut.write('source', 'detail')).not.toThrow();
+    });
   });
 });

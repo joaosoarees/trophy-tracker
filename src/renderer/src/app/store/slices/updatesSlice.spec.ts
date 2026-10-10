@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { type IApi } from '@shared/types/Api';
 import { type IAppInfo, type IUpdateCheck } from '@shared/types/AppInfo';
-import { makeAppInfo } from '@test/factories/makeAppInfo';
-import { makeAppState } from '@test/factories/makeAppState';
-import { deferred, makeStore } from '@tests/makeAppStore';
+import { makeAppInfo } from '@tests/factories/makeAppInfo';
+import { makeAppState } from '@tests/factories/makeAppState';
+import { deferred, makeAppStore } from '@tests/makeAppStore';
 
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn() }),
@@ -20,307 +19,479 @@ const MANUAL = makeAppInfo({ newVersion: '1.1.0', updateStatus: 'manual' });
 const BLOCKED = makeAppInfo({ newVersion: '1.1.0', updateStatus: 'blocked' });
 const NOTHING = makeAppInfo();
 
+/** Versions the app cannot install by itself. */
+const NEEDING_THE_USER = [
+  { where: 'the user has to download it', info: MANUAL },
+  { where: 'the system would block the install', info: BLOCKED },
+];
+
+/** What the toast says about version 1.1.0. */
+const AVAILABLE = 'Version 1.1.0 is available';
+
+/** `sessionStorage` after a reload of a window whose startup check ran. */
+const AFTER_RELOAD = { 'updates.checkedOnStartup': 'true' };
+
+/** How long the app holds its first screen waiting for the check. */
+const STARTUP_WAIT = 4000;
+
 const found = (info: IAppInfo): IUpdateCheck => ({ ok: true, info });
 
-/** The app opening: a store, a main process whose check the test answers, and `start()` called. */
-async function open(options: { session?: Record<string, string> } = {}) {
-  const check = deferred<IUpdateCheck>();
-  let announce: (info: IAppInfo) => void = () => {};
-  const api = {
-    checkForUpdates: vi.fn(() => check.promise),
-    getAppInfo: vi.fn(() => Promise.resolve(NOTHING)),
-    installUpdate: vi.fn(() => Promise.resolve()),
-    onAppInfoChanged: vi.fn((cb: (info: IAppInfo) => void) => {
-      announce = cb;
-      return () => {};
-    }),
-  } satisfies Partial<IApi>;
+interface ISetupOptions {
+  /** What is already in `sessionStorage`. */
+  session?: Record<string, string>;
+  /** What the main process already knows about updates. */
+  known?: IAppInfo;
+}
 
-  const made = await makeStore({ api, session: options.session });
-  made.store.getState().updates.start();
+/**
+ * The store before `start()`, and a main process whose first check the test
+ * answers.
+ */
+async function setup({ session, known = NOTHING }: ISetupOptions = {}) {
+  const check = deferred<IUpdateCheck>();
+  let onAppInfoChanged: (info: IAppInfo) => void = () => {};
+  const checkForUpdatesMock = vi.fn(() => check.promise);
+  const installUpdateMock = vi.fn(() => Promise.resolve());
+
+  const made = await makeAppStore({
+    api: {
+      checkForUpdates: checkForUpdatesMock,
+      getAppInfo: () => Promise.resolve(known),
+      installUpdate: installUpdateMock,
+      onAppInfoChanged: (cb) => {
+        onAppInfoChanged = cb;
+        return () => {};
+      },
+    },
+    session,
+  });
+
+  let toastButton: { onClick: () => void } | undefined;
+  made.toastMock.mockImplementation((_message, options) => {
+    toastButton = options?.action as { onClick: () => void } | undefined;
+    return 0;
+  });
 
   return {
     ...made,
-    api,
-    updates: () => made.store.getState().updates,
+    checkForUpdatesMock,
+    installUpdateMock,
     /** The main process answers the check made as the app opens. */
     answer: async (result: IUpdateCheck) => {
       check.resolve(result);
       await vi.advanceTimersByTimeAsync(0);
     },
     /** The main process announces a change by itself. */
-    announce: (info: IAppInfo) => announce(info),
+    announce: (info: IAppInfo) => onAppInfoChanged(info),
+    /** The user clicks the button of the last toast shown. */
+    clickToastButton: () => {
+      if (!toastButton) throw new Error('The last toast had no button');
+      toastButton.onClick();
+    },
   };
 }
 
-beforeEach(() => {
-  vi.useFakeTimers();
-});
+/** The app opening: `start()` called, the check not answered yet. */
+async function open(options: ISetupOptions = {}) {
+  const app = await setup(options);
+  app.sut.getState().updates.start();
+  return app;
+}
 
-afterEach(() => {
-  vi.useRealTimers();
-  vi.unstubAllGlobals();
-});
+/** The app open, past the startup check, with nothing new found. */
+async function inUse() {
+  const app = await open();
+  await app.answer(found(NOTHING));
+  return app;
+}
 
-describe('updates: as the app opens', () => {
-  it('holds the first screen while it waits to hear about a new version', async () => {
-    const { updates } = await open();
-
-    expect(updates().startup).toBe('checking');
+describe('updatesSlice', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
   });
 
-  it('opens the app when there is nothing new', async () => {
-    const { updates, answer, toast } = await open();
-
-    await answer(found(NOTHING));
-
-    expect(updates().startup).toBe('done');
-    expect(toast).not.toHaveBeenCalled();
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
-  it('stays on the update screen when a version it can install is found in time', async () => {
-    const { updates, answer } = await open();
+  describe('as the app opens', () => {
+    it('should hold the first screen when the check is not answered yet', async () => {
+      const { sut } = await setup();
 
-    await answer(found(DOWNLOADING));
+      sut.getState().updates.start();
 
-    expect(updates().startup).toBe('updating');
-    expect(updates().appInfo).toEqual(DOWNLOADING);
-  });
+      expect(sut.getState().updates.startup).toBe('checking');
+    });
 
-  it('follows the download progress on the update screen', async () => {
-    const { updates, answer, announce } = await open();
-    await answer(found(DOWNLOADING));
+    it('should open the app when there is nothing new', async () => {
+      const { sut, answer } = await open();
 
-    announce({ ...DOWNLOADING, downloadPercent: 42 });
+      await answer(found(NOTHING));
 
-    expect(updates().appInfo?.downloadPercent).toBe(42);
-    expect(updates().startup).toBe('updating');
-  });
+      expect(sut.getState().updates.startup).toBe('done');
+    });
 
-  it('restarts by itself when the download started at opening finishes', async () => {
-    const { answer, announce, api } = await open();
-    await answer(found(DOWNLOADING));
+    it('should announce nothing when there is nothing new', async () => {
+      const { answer, toastMock } = await open();
 
-    announce(READY);
+      await answer(found(NOTHING));
 
-    expect(api.installUpdate).toHaveBeenCalledTimes(1);
-  });
+      expect(toastMock).not.toHaveBeenCalled();
+    });
 
-  it('restarts at once when a version was already downloaded', async () => {
-    const { answer, api } = await open();
+    it('should stay on the update screen when a version it can install is found in time', async () => {
+      const { sut, answer } = await open();
 
-    await answer(found(READY));
+      await answer(found(DOWNLOADING));
 
-    expect(api.installUpdate).toHaveBeenCalledTimes(1);
-  });
+      expect(sut.getState().updates.startup).toBe('updating');
+    });
 
-  it('opens the app and says so when the download fails', async () => {
-    const { updates, answer, announce, toast } = await open();
-    await answer(found(DOWNLOADING));
+    it('should keep what was found when a version it can install is found in time', async () => {
+      const { sut, answer } = await open();
 
-    announce(MANUAL);
+      await answer(found(DOWNLOADING));
 
-    expect(updates().startup).toBe('done');
-    expect(toast).toHaveBeenCalledTimes(1);
-  });
+      expect(sut.getState().updates.appInfo).toEqual(DOWNLOADING);
+    });
 
-  it.each([
-    { where: 'the user has to download it', info: MANUAL },
-    { where: 'the system would block the install', info: BLOCKED },
-  ])(
-    'opens the app and announces the version when $where',
-    async ({ info }) => {
-      const { updates, answer, toast, api } = await open();
+    it('should follow the download when the main process announces its progress', async () => {
+      const { sut, answer, announce } = await open();
+      await answer(found(DOWNLOADING));
 
-      await answer(found(info));
+      announce({ ...DOWNLOADING, downloadPercent: 42 });
 
-      expect(updates().startup).toBe('done');
-      expect(toast).toHaveBeenCalledWith(
-        'Version 1.1.0 is available',
-        expect.anything(),
+      expect(sut.getState().updates.appInfo).toEqual({
+        ...DOWNLOADING,
+        downloadPercent: 42,
+      });
+    });
+
+    it('should stay on the update screen when the download progresses', async () => {
+      const { sut, answer, announce } = await open();
+      await answer(found(DOWNLOADING));
+
+      announce({ ...DOWNLOADING, downloadPercent: 42 });
+
+      expect(sut.getState().updates.startup).toBe('updating');
+    });
+
+    it('should restart by itself when the download started at opening finishes', async () => {
+      const { answer, announce, installUpdateMock } = await open();
+      await answer(found(DOWNLOADING));
+
+      announce(READY);
+
+      expect(installUpdateMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('should restart at once when a version was already downloaded', async () => {
+      const { answer, installUpdateMock } = await open();
+
+      await answer(found(READY));
+
+      expect(installUpdateMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('should open the app when the download fails', async () => {
+      const { sut, answer, announce } = await open();
+      await answer(found(DOWNLOADING));
+
+      announce(MANUAL);
+
+      expect(sut.getState().updates.startup).toBe('done');
+    });
+
+    it('should announce the version when the download fails', async () => {
+      const { answer, announce, toastMock } = await open();
+      await answer(found(DOWNLOADING));
+
+      announce(MANUAL);
+
+      expect(toastMock).toHaveBeenCalledExactlyOnceWith(
+        AVAILABLE,
+        expect.any(Object),
       );
-      expect(api.installUpdate).not.toHaveBeenCalled();
-    },
-  );
-
-  it('opens the app when the check cannot be made', async () => {
-    const { updates, answer, toast } = await open();
-
-    await answer({ ok: false, info: NOTHING });
-
-    expect(updates().startup).toBe('done');
-    expect(toast).not.toHaveBeenCalled();
-  });
-});
-
-describe('updates: the announcement toast', () => {
-  it('leads to Settings once the app is set up', async () => {
-    const { store, answer, toast } = await open();
-    store.getState().settings.apply(makeAppState());
-
-    await answer(found(MANUAL));
-    const action = toast.mock.calls[0][1]?.action as
-      { onClick: () => void } | undefined;
-    action?.onClick();
-
-    expect(store.getState().navigation.tab).toBe('settings');
-  });
-
-  it('has no shortcut during the onboarding, where there is no Settings', async () => {
-    const { answer, toast } = await open();
-
-    await answer(found(MANUAL));
-
-    expect(toast.mock.calls[0][1]?.action).toBeUndefined();
-  });
-});
-
-describe('updates: when the answer takes too long', () => {
-  it('opens the app after four seconds without an answer', async () => {
-    const { updates } = await open();
-
-    await vi.advanceTimersByTimeAsync(4000);
-
-    expect(updates().startup).toBe('done');
-  });
-
-  it('does not go back to the update screen when the version arrives late', async () => {
-    const { updates, answer } = await open();
-    await vi.advanceTimersByTimeAsync(4000);
-
-    await answer(found(DOWNLOADING));
-
-    expect(updates().startup).toBe('done');
-    expect(updates().appInfo).toEqual(DOWNLOADING);
-  });
-
-  it('still announces a late version the user has to fetch', async () => {
-    const { answer, toast } = await open();
-    await vi.advanceTimersByTimeAsync(4000);
-
-    await answer(found(MANUAL));
-
-    expect(toast).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('updates: with the app in use', () => {
-  /** The app open, past the startup check, with nothing new found. */
-  async function inUse() {
-    const app = await open();
-    await app.answer(found(NOTHING));
-    return app;
-  }
-
-  it('asks before restarting when a version finishes downloading', async () => {
-    const { updates, announce, api } = await inUse();
-    announce(DOWNLOADING);
-
-    announce(READY);
-
-    expect(updates().isReadyDialogOpen).toBe(true);
-    expect(api.installUpdate).not.toHaveBeenCalled();
-  });
-
-  it('does not ask again for the same downloaded version', async () => {
-    const { updates, announce } = await inUse();
-    announce(READY);
-    updates().dismissReady();
-
-    announce(READY);
-
-    expect(updates().isReadyDialogOpen).toBe(false);
-  });
-
-  it('restarts when the user accepts, after writing what was waiting to be saved', async () => {
-    const { store, updates, announce, api } = await inUse();
-    const order: string[] = [];
-    store.setState((state) => {
-      state.userData.flush = () => void order.push('flush');
     });
-    api.installUpdate.mockImplementation(() => {
-      order.push('install');
-      return Promise.resolve();
+
+    it.each(NEEDING_THE_USER)(
+      'should open the app when $where',
+      async ({ info }) => {
+        const { sut, answer } = await open();
+
+        await answer(found(info));
+
+        expect(sut.getState().updates.startup).toBe('done');
+      },
+    );
+
+    it.each(NEEDING_THE_USER)(
+      'should announce the version when $where',
+      async ({ info }) => {
+        const { answer, toastMock } = await open();
+
+        await answer(found(info));
+
+        expect(toastMock).toHaveBeenCalledExactlyOnceWith(
+          AVAILABLE,
+          expect.any(Object),
+        );
+      },
+    );
+
+    it.each(NEEDING_THE_USER)(
+      'should not restart when $where',
+      async ({ info }) => {
+        const { answer, installUpdateMock } = await open();
+
+        await answer(found(info));
+
+        expect(installUpdateMock).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should open the app when the check cannot be made', async () => {
+      const { sut, answer } = await open();
+
+      await answer({ ok: false, info: NOTHING });
+
+      expect(sut.getState().updates.startup).toBe('done');
     });
-    announce(READY);
 
-    updates().restart();
+    it('should announce nothing when the check cannot be made', async () => {
+      const { answer, toastMock } = await open();
 
-    expect(order).toEqual(['flush', 'install']);
+      await answer({ ok: false, info: NOTHING });
+
+      expect(toastMock).not.toHaveBeenCalled();
+    });
   });
 
-  it('answers whether a requested check could be made, keeping what it found', async () => {
-    const { updates, api } = await inUse();
-    api.checkForUpdates.mockResolvedValueOnce(found(MANUAL));
+  describe('the announcement toast', () => {
+    it('should lead to Settings when its button is clicked in an app that is set up', async () => {
+      const { sut, answer, clickToastButton } = await open();
+      sut.getState().settings.apply(makeAppState());
+      await answer(found(MANUAL));
 
-    const ok = await updates().check();
+      clickToastButton();
 
-    expect(ok).toBe(true);
-    expect(updates().appInfo).toEqual(MANUAL);
-    expect(updates().isChecking).toBe(false);
+      expect(sut.getState().navigation.tab).toBe('settings');
+    });
+
+    it('should have no button when the app is not set up yet', async () => {
+      const { answer, toastMock } = await open();
+
+      await answer(found(MANUAL));
+
+      expect(toastMock).toHaveBeenCalledExactlyOnceWith(AVAILABLE, {
+        duration: 10_000,
+      });
+    });
   });
 
-  it('says a check is running while it waits for the answer', async () => {
-    const { updates, api } = await inUse();
-    api.checkForUpdates.mockReturnValueOnce(new Promise(() => {}));
+  describe('when the answer takes too long', () => {
+    it('should open the app when four seconds pass without an answer', async () => {
+      const { sut } = await open();
 
-    void updates().check();
+      await vi.advanceTimersByTimeAsync(STARTUP_WAIT);
 
-    expect(updates().isChecking).toBe(true);
+      expect(sut.getState().updates.startup).toBe('done');
+    });
+
+    it('should not go back to the update screen when the version arrives late', async () => {
+      const { sut, answer } = await open();
+      await vi.advanceTimersByTimeAsync(STARTUP_WAIT);
+
+      await answer(found(DOWNLOADING));
+
+      expect(sut.getState().updates.startup).toBe('done');
+    });
+
+    it('should keep what was found when the version arrives late', async () => {
+      const { sut, answer } = await open();
+      await vi.advanceTimersByTimeAsync(STARTUP_WAIT);
+
+      await answer(found(DOWNLOADING));
+
+      expect(sut.getState().updates.appInfo).toEqual(DOWNLOADING);
+    });
+
+    it('should announce the version when one the user has to fetch arrives late', async () => {
+      const { answer, toastMock } = await open();
+      await vi.advanceTimersByTimeAsync(STARTUP_WAIT);
+
+      await answer(found(MANUAL));
+
+      expect(toastMock).toHaveBeenCalledExactlyOnceWith(
+        AVAILABLE,
+        expect.any(Object),
+      );
+    });
   });
 
-  it('brings the restart question back after it was put off', async () => {
-    const { updates, announce } = await inUse();
-    announce(READY);
-    updates().dismissReady();
+  describe('with the app in use', () => {
+    it('should ask before restarting when a version finishes downloading', async () => {
+      const { sut, announce } = await inUse();
+      announce(DOWNLOADING);
 
-    updates().showReady();
+      announce(READY);
 
-    expect(updates().isReadyDialogOpen).toBe(true);
+      expect(sut.getState().updates.isReadyDialogOpen).toBe(true);
+    });
+
+    it('should not restart by itself when a version finishes downloading', async () => {
+      const { announce, installUpdateMock } = await inUse();
+      announce(DOWNLOADING);
+
+      announce(READY);
+
+      expect(installUpdateMock).not.toHaveBeenCalled();
+    });
+
+    it('should not ask again when the same downloaded version is announced', async () => {
+      const { sut, announce } = await inUse();
+      announce(READY);
+      sut.getState().updates.dismissReady();
+
+      announce(READY);
+
+      expect(sut.getState().updates.isReadyDialogOpen).toBe(false);
+    });
+
+    it('should write what was waiting to be saved before it restarts when the user accepts', async () => {
+      const { sut, announce, installUpdateMock } = await inUse();
+      const order: string[] = [];
+      sut.setState((state) => {
+        state.userData.flush = () => void order.push('flush');
+      });
+      installUpdateMock.mockImplementationOnce(() => {
+        order.push('install');
+        return Promise.resolve();
+      });
+      announce(READY);
+
+      sut.getState().updates.restart();
+
+      expect(order).toEqual(['flush', 'install']);
+    });
+
+    it('should answer true when a requested check could be made', async () => {
+      const { sut, checkForUpdatesMock } = await inUse();
+      checkForUpdatesMock.mockResolvedValueOnce(found(MANUAL));
+
+      const ok = await sut.getState().updates.check();
+
+      expect(ok).toBe(true);
+    });
+
+    it('should answer false when a requested check could not be made', async () => {
+      const { sut, checkForUpdatesMock } = await inUse();
+      checkForUpdatesMock.mockResolvedValueOnce({ ok: false, info: NOTHING });
+
+      const ok = await sut.getState().updates.check();
+
+      expect(ok).toBe(false);
+    });
+
+    it('should keep what was found when a requested check is answered', async () => {
+      const { sut, checkForUpdatesMock } = await inUse();
+      checkForUpdatesMock.mockResolvedValueOnce(found(MANUAL));
+
+      await sut.getState().updates.check();
+
+      expect(sut.getState().updates.appInfo).toEqual(MANUAL);
+    });
+
+    it('should no longer say a check is running when a requested check is answered', async () => {
+      const { sut, checkForUpdatesMock } = await inUse();
+      checkForUpdatesMock.mockResolvedValueOnce(found(MANUAL));
+
+      await sut.getState().updates.check();
+
+      expect(sut.getState().updates.isChecking).toBe(false);
+    });
+
+    it('should say a check is running when a requested check is not answered yet', async () => {
+      const { sut, checkForUpdatesMock } = await inUse();
+      checkForUpdatesMock.mockReturnValueOnce(new Promise(() => {}));
+
+      void sut.getState().updates.check();
+
+      expect(sut.getState().updates.isChecking).toBe(true);
+    });
+
+    it('should answer false when a requested check fails', async () => {
+      const { sut, checkForUpdatesMock } = await inUse();
+      checkForUpdatesMock.mockRejectedValueOnce(new Error('offline'));
+
+      const ok = await sut.getState().updates.check();
+
+      expect(ok).toBe(false);
+    });
+
+    it('should no longer say a check is running when a requested check fails', async () => {
+      const { sut, checkForUpdatesMock } = await inUse();
+      checkForUpdatesMock.mockRejectedValueOnce(new Error('offline'));
+
+      await sut.getState().updates.check();
+
+      expect(sut.getState().updates.isChecking).toBe(false);
+    });
+
+    it('should bring the restart question back when it was put off', async () => {
+      const { sut, announce } = await inUse();
+      announce(READY);
+      sut.getState().updates.dismissReady();
+
+      sut.getState().updates.showReady();
+
+      expect(sut.getState().updates.isReadyDialogOpen).toBe(true);
+    });
+
+    it('should show no restart question when nothing is downloaded', async () => {
+      const { sut } = await inUse();
+
+      sut.getState().updates.showReady();
+
+      expect(sut.getState().updates.isReadyDialogOpen).toBe(false);
+    });
   });
 
-  it('has no restart question to show while nothing is downloaded', async () => {
-    const { updates } = await inUse();
+  describe('after a window reload', () => {
+    it('should not hold the app when the startup check ran before the reload', async () => {
+      const { sut } = await setup({ session: AFTER_RELOAD });
 
-    updates().showReady();
+      const { startup } = sut.getState().updates;
 
-    expect(updates().isReadyDialogOpen).toBe(false);
-  });
+      expect(startup).toBe('done');
+    });
 
-  it('reports a requested check that failed', async () => {
-    const { updates, api } = await inUse();
-    api.checkForUpdates.mockRejectedValueOnce(new Error('offline'));
+    it('should not check again when the startup check ran before the reload', async () => {
+      const { sut, checkForUpdatesMock } = await setup({
+        session: AFTER_RELOAD,
+      });
 
-    expect(await updates().check()).toBe(false);
-    expect(updates().isChecking).toBe(false);
-  });
-});
+      sut.getState().updates.start();
 
-describe('updates: after a window reload', () => {
-  const afterReload = { 'updates.checkedOnStartup': 'true' };
+      expect(checkForUpdatesMock).not.toHaveBeenCalled();
+    });
 
-  it('does not hold the app or check again', async () => {
-    const { updates, api } = await open({ session: afterReload });
+    it('should read what the main process already knows when the startup check ran before the reload', async () => {
+      const { sut } = await setup({ session: AFTER_RELOAD, known: MANUAL });
 
-    expect(updates().startup).toBe('done');
-    expect(api.checkForUpdates).not.toHaveBeenCalled();
-  });
+      sut.getState().updates.start();
+      await vi.advanceTimersByTimeAsync(0);
 
-  it('reads what the main process already knows', async () => {
-    const { updates, api } = await open({ session: afterReload });
-    api.getAppInfo.mockResolvedValue(MANUAL);
+      expect(sut.getState().updates.appInfo).toEqual(MANUAL);
+    });
 
-    updates().start();
-    await vi.advanceTimersByTimeAsync(0);
+    it('should remember that the startup check ran when the app opens', async () => {
+      const { answer, storage } = await open();
 
-    expect(updates().appInfo).toEqual(MANUAL);
-  });
+      await answer(found(NOTHING));
 
-  it('remembers that the startup check ran, for the next reload', async () => {
-    const { answer, storage } = await open();
-
-    await answer(found(NOTHING));
-
-    expect(storage.get('updates.checkedOnStartup')).toBe('true');
+      expect(storage.get('updates.checkedOnStartup')).toBe('true');
+    });
   });
 });

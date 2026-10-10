@@ -1,116 +1,171 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createSaver } from '@app/lib/saver';
+import { createSaver } from './saver';
 
-/** A `save` whose outcome each test decides, call by call. */
-function setup() {
-  const outcomes: ('ok' | 'fail')[] = [];
-  const save = vi.fn((_key: string, _value: string) =>
-    (outcomes.shift() ?? 'ok') === 'ok'
+const PAUSE = 500;
+
+type Outcome = 'ok' | 'fail';
+
+/**
+ * A saver of texts with a pause of half a second. `outcomes` decides how each
+ * save ends, call by call; the ones it does not name succeed.
+ */
+function setup(outcomes: Outcome[] = []) {
+  const remaining = [...outcomes];
+  const saveMock = vi.fn((_key: string, _value: string) =>
+    (remaining.shift() ?? 'ok') === 'ok'
       ? Promise.resolve()
       : Promise.reject(new Error('disk full')),
   );
-  const onRollback = vi.fn();
-  const saver = createSaver<string>({ save, onRollback, delay: 500 });
+  const onRollbackMock =
+    vi.fn<(key: string, saved: string | undefined) => void>();
+  const sut = createSaver<string>({
+    save: saveMock,
+    onRollback: onRollbackMock,
+    delay: PAUSE,
+  });
 
-  return {
-    saver,
-    save,
-    onRollback,
-    next: (o: 'ok' | 'fail') => outcomes.push(o),
-  };
+  return { sut, saveMock, onRollbackMock };
 }
 
-const settle = () => vi.advanceTimersByTimeAsync(0);
-
 describe('createSaver', () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
-
-  it('saves only the latest version after the pause', async () => {
-    const { saver, save } = setup();
-    let previous = '';
-    for (const text of ['a', 'ab', 'abc']) {
-      saver.schedule('note', text, previous);
-      previous = text;
-      await vi.advanceTimersByTimeAsync(100);
-    }
-    expect(save).not.toHaveBeenCalled();
-
-    await vi.advanceTimersByTimeAsync(500);
-    expect(save.mock.calls).toEqual([['note', 'abc']]);
+  beforeEach(() => {
+    vi.useFakeTimers();
   });
 
-  it('handles different keys independently', async () => {
-    const { saver, save } = setup();
-    saver.schedule('a', '1', undefined);
-    saver.schedule('b', '2', undefined);
-    await vi.advanceTimersByTimeAsync(500);
-    expect(save.mock.calls).toEqual([
-      ['a', '1'],
-      ['b', '2'],
-    ]);
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('saves pending work right away on close, only once', async () => {
-    const { saver, save } = setup();
-    saver.schedule('a', '1', undefined);
-    saver.flush();
-    expect(save.mock.calls).toEqual([['a', '1']]);
+  describe('schedule', () => {
+    it('should not save when the pause has not passed', async () => {
+      const { sut, saveMock } = setup();
+      sut.schedule('note', 'a', '');
 
-    await vi.advanceTimersByTimeAsync(1000);
-    saver.flush();
-    expect(save).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(PAUSE - 1);
+
+      expect(saveMock).not.toHaveBeenCalled();
+    });
+
+    it('should not save when a newer edit restarted the pause', async () => {
+      const { sut, saveMock } = setup();
+      sut.schedule('note', 'a', '');
+      await vi.advanceTimersByTimeAsync(PAUSE - 1);
+      sut.schedule('note', 'ab', 'a');
+
+      await vi.advanceTimersByTimeAsync(PAUSE - 1);
+
+      expect(saveMock).not.toHaveBeenCalled();
+    });
+
+    it('should save only the latest version when the pause has passed', async () => {
+      const { sut, saveMock } = setup();
+      sut.schedule('note', 'a', '');
+      sut.schedule('note', 'ab', 'a');
+      sut.schedule('note', 'abc', 'ab');
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(saveMock).toHaveBeenCalledExactlyOnceWith('note', 'abc');
+    });
+
+    it('should save each key when edits to different keys are waiting', async () => {
+      const { sut, saveMock } = setup();
+      sut.schedule('a', '1', undefined);
+      sut.schedule('b', '2', undefined);
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(saveMock).toHaveBeenCalledTimes(2);
+      expect(saveMock).toHaveBeenNthCalledWith(1, 'a', '1');
+      expect(saveMock).toHaveBeenNthCalledWith(2, 'b', '2');
+    });
+
+    it('should save the newer edit when the save before it failed', async () => {
+      const { sut, saveMock } = setup(['fail', 'ok']);
+      sut.schedule('note', 'one', 'old');
+      sut.flush();
+      sut.schedule('note', 'two', 'one');
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(saveMock).toHaveBeenCalledTimes(2);
+      expect(saveMock).toHaveBeenNthCalledWith(1, 'note', 'one');
+      expect(saveMock).toHaveBeenNthCalledWith(2, 'note', 'two');
+    });
   });
 
-  it('rolls back to what was saved before the edits when the save fails', async () => {
-    const { saver, onRollback, next } = setup();
-    next('fail');
-    saver.schedule('note', 'new', 'old');
-    saver.schedule('note', 'newer', 'new');
-    await vi.advanceTimersByTimeAsync(500);
+  describe('flush', () => {
+    it('should save what is waiting right away when it is called', () => {
+      const { sut, saveMock } = setup();
+      sut.schedule('a', '1', undefined);
 
-    expect(onRollback).toHaveBeenCalledExactlyOnceWith('note', 'old');
+      sut.flush();
+
+      expect(saveMock).toHaveBeenCalledExactlyOnceWith('a', '1');
+    });
+
+    it('should not save again when the pause passes after it', async () => {
+      const { sut, saveMock } = setup();
+      sut.schedule('a', '1', undefined);
+      sut.flush();
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(saveMock).toHaveBeenCalledExactlyOnceWith('a', '1');
+    });
+
+    it('should not save again when it is called a second time', () => {
+      const { sut, saveMock } = setup();
+      sut.schedule('a', '1', undefined);
+      sut.flush();
+
+      sut.flush();
+
+      expect(saveMock).toHaveBeenCalledExactlyOnceWith('a', '1');
+    });
   });
 
-  it('rolls back to nothing when there was no saved value', async () => {
-    const { saver, onRollback, next } = setup();
-    next('fail');
-    saver.schedule('note', 'first', undefined);
-    await vi.advanceTimersByTimeAsync(500);
+  describe('rollback', () => {
+    it('should roll back to what was saved before the edits when the save fails', async () => {
+      const { sut, onRollbackMock } = setup(['fail']);
+      sut.schedule('note', 'new', 'old');
+      sut.schedule('note', 'newer', 'new');
 
-    expect(onRollback).toHaveBeenCalledExactlyOnceWith('note', undefined);
-  });
+      await vi.advanceTimersByTimeAsync(PAUSE);
 
-  it('does not roll back when a newer edit is waiting to be saved', async () => {
-    const { saver, save, onRollback, next } = setup();
-    next('fail');
-    next('ok');
-    saver.schedule('note', 'one', 'old');
-    await vi.advanceTimersByTimeAsync(499);
-    saver.flush();
-    saver.schedule('note', 'two', 'one');
-    await settle();
-    expect(onRollback).not.toHaveBeenCalled();
+      expect(onRollbackMock).toHaveBeenCalledExactlyOnceWith('note', 'old');
+    });
 
-    await vi.advanceTimersByTimeAsync(500);
-    expect(save.mock.calls).toEqual([
-      ['note', 'one'],
-      ['note', 'two'],
-    ]);
-    expect(onRollback).not.toHaveBeenCalled();
-  });
+    it('should roll back to nothing when there was no saved value', async () => {
+      const { sut, onRollbackMock } = setup(['fail']);
+      sut.schedule('note', 'first', undefined);
 
-  it('after a successful save, a later failure rolls back to that saved value', async () => {
-    const { saver, onRollback, next } = setup();
-    next('ok');
-    next('fail');
-    saver.schedule('note', 'one', 'old');
-    await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(PAUSE);
 
-    saver.schedule('note', 'two', 'one');
-    await vi.advanceTimersByTimeAsync(500);
+      expect(onRollbackMock).toHaveBeenCalledExactlyOnceWith('note', undefined);
+    });
 
-    expect(onRollback).toHaveBeenCalledExactlyOnceWith('note', 'one');
+    it('should not roll back when a newer edit is waiting to be saved', async () => {
+      const { sut, onRollbackMock } = setup(['fail', 'ok']);
+      sut.schedule('note', 'one', 'old');
+      sut.flush();
+      sut.schedule('note', 'two', 'one');
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(onRollbackMock).not.toHaveBeenCalled();
+    });
+
+    it('should roll back to the last saved value when a save fails after one succeeded', async () => {
+      const { sut, onRollbackMock } = setup(['ok', 'fail']);
+      sut.schedule('note', 'one', 'old');
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      sut.schedule('note', 'two', 'one');
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(onRollbackMock).toHaveBeenCalledExactlyOnceWith('note', 'one');
+    });
   });
 });

@@ -1,82 +1,106 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { makeStore } from '@tests/makeAppStore';
+import { makeAppStore } from '@tests/makeAppStore';
 
-async function setup(session: Record<string, string> = {}) {
-  const made = await makeStore({ session });
-  return { ...made, navigation: () => made.store.getState().navigation };
+/** The store as the window opens, with `session` left by the page before a reload. */
+function setup(session: Record<string, string> = {}) {
+  return makeAppStore({ session });
 }
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-describe('navigation: the hidden-only filter', () => {
-  it('stays on while the user moves around the same game', async () => {
-    const { navigation } = await setup();
-    navigation().toggleHiddenOnly();
-
-    navigation().showAchievements('unlocked');
-    navigation().goTo('dashboard');
-
-    expect(navigation().isHiddenOnly).toBe(true);
+describe('navigationSlice', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-  it('is turned off when the user picks another game', async () => {
-    const { navigation, storage } = await setup();
-    navigation().toggleHiddenOnly();
+  describe('the hidden-only filter', () => {
+    it('should stay on when the user shows another list of the same game', async () => {
+      const { sut } = await setup();
+      sut.getState().navigation.toggleHiddenOnly();
 
-    navigation().pickGame(105600);
+      sut.getState().navigation.showAchievements('unlocked');
 
-    expect(navigation().isHiddenOnly).toBe(false);
-    expect(storage.get('view-hidden-only')).toBe('false');
+      expect(sut.getState().navigation.isHiddenOnly).toBe(true);
+    });
+
+    it('should stay on when the user goes to another tab', async () => {
+      const { sut } = await setup();
+      sut.getState().navigation.toggleHiddenOnly();
+
+      sut.getState().navigation.goTo('dashboard');
+
+      expect(sut.getState().navigation.isHiddenOnly).toBe(true);
+    });
+
+    it('should be turned off when the user picks another game', async () => {
+      const { sut } = await setup();
+      sut.getState().navigation.toggleHiddenOnly();
+
+      sut.getState().navigation.pickGame(105600);
+
+      expect(sut.getState().navigation.isHiddenOnly).toBe(false);
+    });
+
+    it('should be remembered as off for a reload when the user picks another game', async () => {
+      const { sut, storage } = await setup();
+      sut.getState().navigation.toggleHiddenOnly();
+
+      sut.getState().navigation.pickGame(105600);
+
+      expect(storage.get('view-hidden-only')).toBe('false');
+    });
+
+    it('should be turned off when the app follows a game opened on Steam', async () => {
+      const { sut } = await setup();
+      sut.getState().navigation.toggleHiddenOnly();
+
+      sut.getState().navigation.followRunningGame(2638890);
+
+      expect(sut.getState().navigation.isHiddenOnly).toBe(false);
+    });
+
+    it('should stay on when the running game closes', async () => {
+      const { sut } = await setup();
+      sut.getState().navigation.followRunningGame(2638890);
+      sut.getState().navigation.toggleHiddenOnly();
+
+      sut.getState().navigation.followRunningGame(null);
+
+      expect(sut.getState().navigation.isHiddenOnly).toBe(true);
+    });
+
+    it('should be on when the window reloads with it on', async () => {
+      const { sut } = await setup({ 'view-hidden-only': 'true' });
+
+      const { isHiddenOnly } = sut.getState().navigation;
+
+      expect(isHiddenOnly).toBe(true);
+    });
   });
 
-  it('is turned off when the app follows a game opened on Steam', async () => {
-    const { navigation } = await setup();
-    navigation().toggleHiddenOnly();
+  describe('the game details', () => {
+    it('should be closed when the app opens', async () => {
+      const { sut } = await setup();
 
-    navigation().followRunningGame(2638890);
+      const { isGameDetailsOpen } = sut.getState().navigation;
 
-    expect(navigation().isHiddenOnly).toBe(false);
-  });
+      expect(isGameDetailsOpen).toBe(false);
+    });
 
-  it('is kept when the running game closes, since the game on screen stays', async () => {
-    const { navigation } = await setup();
-    navigation().followRunningGame(2638890);
-    navigation().toggleHiddenOnly();
+    it('should stay open when the user picks another game', async () => {
+      const { sut } = await setup();
+      sut.getState().navigation.toggleGameDetails();
 
-    navigation().followRunningGame(null);
+      sut.getState().navigation.pickGame(105600);
 
-    expect(navigation().isHiddenOnly).toBe(true);
-  });
+      expect(sut.getState().navigation.isGameDetailsOpen).toBe(true);
+    });
 
-  it('survives a window reload', async () => {
-    const { navigation } = await setup({ 'view-hidden-only': 'true' });
+    it('should be open when the window reloads with them open', async () => {
+      const { sut } = await setup({ 'view-game-details': 'true' });
 
-    expect(navigation().isHiddenOnly).toBe(true);
-  });
-});
+      const { isGameDetailsOpen } = sut.getState().navigation;
 
-describe('navigation: the game details', () => {
-  it('start closed', async () => {
-    const { navigation } = await setup();
-
-    expect(navigation().isGameDetailsOpen).toBe(false);
-  });
-
-  it('stay open across games once opened', async () => {
-    const { navigation } = await setup();
-    navigation().toggleGameDetails();
-
-    navigation().pickGame(105600);
-
-    expect(navigation().isGameDetailsOpen).toBe(true);
-  });
-
-  it('survive a window reload', async () => {
-    const { navigation } = await setup({ 'view-game-details': 'true' });
-
-    expect(navigation().isGameDetailsOpen).toBe(true);
+      expect(isGameDetailsOpen).toBe(true);
+    });
   });
 });

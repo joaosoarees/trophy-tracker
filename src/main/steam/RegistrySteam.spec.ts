@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { RegistrySteam } from '@main/steam/RegistrySteam';
-import { makeStatSchema } from '@test/factories/makeStatSchema';
-import { STEAM_ID } from '@test/helpers';
+import { makeStatSchema } from '@tests/factories/makeStatSchema';
+import { STEAM_ID } from '@tests/helpers';
+
+import { RegistrySteam } from './RegistrySteam';
+
+const STATS_FILE = '/mnt/c/steam/appcache/stats/UserGameStatsSchema_10.bin';
+
+interface ISetupOverrides {
+  /** Where the registry says Steam is; by default, `/mnt/c/steam`. */
+  steamPath?: string | null;
+}
 
 /**
  * The code joins paths with the separator of the system the tests run on;
@@ -10,57 +18,84 @@ import { STEAM_ID } from '@test/helpers';
  */
 const portable = (path: string) => path.replaceAll('\\', '/');
 
-const REGISTRY = {
-  getRunningAppId: () => Promise.resolve(2638890),
-  getActiveSteamId: () => Promise.resolve(STEAM_ID),
-  getSteamPath: () => Promise.resolve<string | null>('/mnt/c/steam'),
-};
-
-/** A Windows whose registry says the above and whose disk holds exactly the given files. */
-function setup(files: Record<string, Buffer> = {}, registry = REGISTRY) {
+/**
+ * A Windows with a game running and an account signed in, whose disk holds
+ * exactly the given files.
+ */
+function setup(
+  files: Record<string, Buffer> = {},
+  { steamPath = '/mnt/c/steam' }: ISetupOverrides = {},
+) {
   const read: string[] = [];
-  const local = new RegistrySteam(registry, (systemPath) => {
-    const path = portable(systemPath);
-    read.push(path);
-    return path in files
-      ? Promise.resolve(files[path])
-      : Promise.reject(new Error(`ENOENT: ${path}`));
-  });
-  return { local, read };
+  const sut = new RegistrySteam(
+    {
+      getRunningAppId: () => Promise.resolve(2638890),
+      getActiveSteamId: () => Promise.resolve(STEAM_ID),
+      getSteamPath: () => Promise.resolve(steamPath),
+    },
+    (systemPath) => {
+      const path = portable(systemPath);
+      read.push(path);
+      return path in files
+        ? Promise.resolve(files[path])
+        : Promise.reject(new Error(`ENOENT: ${path}`));
+    },
+  );
+  return { sut, read };
 }
 
 describe('RegistrySteam', () => {
-  it('can tell which game is running without asking the Web API', async () => {
-    const { local } = setup();
+  describe('canTrackRunningGame', () => {
+    it('should be true when the registry is what it reads', () => {
+      const { sut } = setup();
 
-    expect(local.canTrackRunningGame).toBe(true);
-    expect(await local.getRunningAppId()).toBe(2638890);
+      const canTrack = sut.canTrackRunningGame;
+
+      expect(canTrack).toBe(true);
+    });
   });
 
-  it('takes the signed-in account from the registry', async () => {
-    const { local } = setup();
+  describe('getRunningAppId', () => {
+    it('should answer the game in the registry when one is running', async () => {
+      const { sut } = setup();
 
-    expect(await local.getActiveSteamId()).toBe(STEAM_ID);
+      const appId = await sut.getRunningAppId();
+
+      expect(appId).toBe(2638890);
+    });
   });
 
-  it("reads a game's counters from the folder the registry points to", async () => {
-    const file = '/mnt/c/steam/appcache/stats/UserGameStatsSchema_10.bin';
-    const { local } = setup({
-      [file]: makeStatSchema(10, { ACH_KODAMA: 'KODAMA_COUNT' }),
+  describe('getActiveSteamId', () => {
+    it('should answer the account in the registry when one is signed in', async () => {
+      const { sut } = setup();
+
+      const steamId = await sut.getActiveSteamId();
+
+      expect(steamId).toBe(STEAM_ID);
+    });
+  });
+
+  describe('readStatMap', () => {
+    it('should link each achievement to its counter when the folder the registry points to has the game', async () => {
+      const { sut } = setup({
+        [STATS_FILE]: makeStatSchema(10, { ACH_KODAMA: 'KODAMA_COUNT' }),
+      });
+
+      const statMap = await sut.readStatMap(10);
+
+      expect(statMap).toEqual(new Map([['ACH_KODAMA', 'KODAMA_COUNT']]));
     });
 
-    expect([...(await local.readStatMap(10))]).toEqual([
-      ['ACH_KODAMA', 'KODAMA_COUNT'],
-    ]);
-  });
+    it('should answer no counters without reading anything when the registry does not say where Steam is', async () => {
+      const { sut, read } = setup(
+        { [STATS_FILE]: makeStatSchema(10, { ACH_KODAMA: 'KODAMA_COUNT' }) },
+        { steamPath: null },
+      );
 
-  it('has no counters when the registry does not say where Steam is', async () => {
-    const { local, read } = setup(
-      {},
-      { ...REGISTRY, getSteamPath: () => Promise.resolve(null) },
-    );
+      const statMap = await sut.readStatMap(10);
 
-    expect((await local.readStatMap(10)).size).toBe(0);
-    expect(read).toEqual([]);
+      expect(statMap).toEqual(new Map());
+      expect(read).toEqual([]);
+    });
   });
 });

@@ -1,197 +1,348 @@
 import { describe, expect, it } from 'vitest';
 
-import { type IWindowsDeps, Windows } from '@main/steam/Windows';
-import { STEAM_ID } from '@test/helpers';
+import { STEAM_ID } from '@tests/helpers';
 
-describe('Windows interop', () => {
-  it.each([
-    {
-      kind: 'a number',
-      output:
-        '\r\nHKEY_CURRENT_USER\\Software\\Valve\\Steam\r\n    RunningAppID    REG_DWORD    0x28442a\r\n\r\n',
-      value: 2638890,
-    },
-    {
-      kind: 'a text',
-      output:
-        '\r\nHKEY_CURRENT_USER\\Software\\Valve\\Steam\r\n    SteamPath    REG_SZ    c:/program files (x86)/steam\r\n',
-      value: 'c:/program files (x86)/steam',
-    },
-    {
-      kind: 'nothing when the value does not exist',
-      output:
-        'ERROR: The system was unable to find the specified registry key or value.',
-      value: null,
-    },
-  ])('reads $kind from the output of reg.exe', ({ output, value }) => {
-    expect(Windows.parseRegValue(output)).toBe(value);
-  });
+import { Windows } from './Windows';
 
-  it('converts the signed-in account to a SteamID64', () => {
-    expect(Windows.accountIdToSteamId(0x25e4c2a)).toBe(STEAM_ID);
-  });
+const STEAM_KEY = 'HKCU\\Software\\Valve\\Steam';
+const POLICY_KEY = 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\CI\\Policy';
 
-  it.each([
-    {
-      from: 'c:/program files (x86)/steam',
-      to: '/mnt/c/program files (x86)/steam',
-    },
-    { from: 'D:\\Steam', to: '/mnt/d/Steam' },
-  ])('translates the Windows path $from to WSL', ({ from, to }) => {
-    expect(Windows.toLocalPath(from, true)).toBe(to);
-  });
+interface IRegistryValue {
+  key: string;
+  name: string;
+  type: string;
+  data: string;
+}
 
-  it('leaves the path alone on Windows itself', () => {
-    expect(Windows.toLocalPath('D:\\Steam', false)).toBe('D:\\Steam');
-  });
-});
+interface ISetupOverrides {
+  /** The one value in the registry; a query for any other fails. */
+  registry?: IRegistryValue;
+  /** What a command other than `reg.exe` prints. */
+  output?: string;
+  /** Makes every command fail with this error. */
+  failure?: Error;
+  hasWindows?: boolean;
+  isWsl?: boolean;
+}
 
 /** What `reg query` prints for one value. */
-const regOutput = (name: string, type: string, value: string) =>
-  `\r\nHKEY_CURRENT_USER\\Software\\Valve\\Steam\r\n    ${name}    ${type}    ${value}\r\n\r\n`;
+const regOutput = ({ key, name, type, data }: IRegistryValue) =>
+  `\r\n${key}\r\n    ${name}    ${type}    ${data}\r\n\r\n`;
 
-/** A Windows where each command prints what the test says, or fails. */
-function windows(
-  answer: string | Error = '',
-  over: Partial<IWindowsDeps> = {},
-): IWindowsDeps & { commands: [string, string[]][] } {
+/** A Windows, reached natively, that keeps every command it was asked to run. */
+function setup({
+  registry,
+  output = '',
+  failure,
+  ...deps
+}: ISetupOverrides = {}) {
   const commands: [string, string[]][] = [];
-  return {
-    commands,
+  const sut = new Windows({
     hasWindows: true,
     isWsl: false,
     run: (file, args) => {
       commands.push([file, args]);
-      return answer instanceof Error
-        ? Promise.reject(answer)
-        : Promise.resolve(answer);
+      if (failure) return Promise.reject(failure);
+      if (file !== 'reg.exe') return Promise.resolve(output);
+      const [, key, , name] = args;
+      return registry?.key === key && registry.name === name
+        ? Promise.resolve(regOutput(registry))
+        : Promise.reject(new Error(`reg.exe: no ${key} ${name}`));
     },
-    ...over,
-  };
+    ...deps,
+  });
+  return { sut, commands };
 }
 
-describe('the Steam registry', () => {
-  it('reads the running game', async () => {
-    const system = windows(regOutput('RunningAppID', 'REG_DWORD', '0x28442a'));
+describe('Windows', () => {
+  describe('parseRegValue', () => {
+    it.each([
+      {
+        printed: 'a REG_DWORD',
+        output:
+          '\r\nHKEY_CURRENT_USER\\Software\\Valve\\Steam\r\n    RunningAppID    REG_DWORD    0x28442a\r\n\r\n',
+        expected: 2638890,
+      },
+      {
+        printed: 'a REG_SZ',
+        output:
+          '\r\nHKEY_CURRENT_USER\\Software\\Valve\\Steam\r\n    SteamPath    REG_SZ    c:/program files (x86)/steam\r\n',
+        expected: 'c:/program files (x86)/steam',
+      },
+      {
+        printed: 'that the value does not exist',
+        output:
+          'ERROR: The system was unable to find the specified registry key or value.',
+        expected: null,
+      },
+    ])(
+      'should answer $expected when reg.exe prints $printed',
+      ({ output, expected }) => {
+        const value = Windows.parseRegValue(output);
 
-    expect(await new Windows(system).getRunningAppId()).toBe(2638890);
-    expect(system.commands).toEqual([
-      [
-        'reg.exe',
-        ['query', 'HKCU\\Software\\Valve\\Steam', '/v', 'RunningAppID'],
-      ],
-    ]);
+        expect(value).toBe(expected);
+      },
+    );
   });
 
-  it('knows no game is running when the registry says zero', async () => {
-    const system = windows(regOutput('RunningAppID', 'REG_DWORD', '0x0'));
+  describe('accountIdToSteamId', () => {
+    it('should answer the SteamID64 when given the account number of the registry', () => {
+      const steamId = Windows.accountIdToSteamId(0x25e4c2a);
 
-    expect(await new Windows(system).getRunningAppId()).toBeNull();
+      expect(steamId).toBe(STEAM_ID);
+    });
   });
 
-  it('reads the signed-in account as a SteamID64', async () => {
-    const system = windows(regOutput('ActiveUser', 'REG_DWORD', '0x25e4c2a'));
+  describe('toLocalPath', () => {
+    it.each([
+      {
+        from: 'c:/program files (x86)/steam',
+        to: '/mnt/c/program files (x86)/steam',
+      },
+      { from: 'D:\\Steam', to: '/mnt/d/Steam' },
+    ])('should translate $from to $to when on WSL', ({ from, to }) => {
+      const path = Windows.toLocalPath(from, true);
 
-    expect(await new Windows(system).getActiveSteamId()).toBe(STEAM_ID);
-  });
-
-  it('knows nobody is signed in when the registry says zero', async () => {
-    const system = windows(regOutput('ActiveUser', 'REG_DWORD', '0x0'));
-
-    expect(await new Windows(system).getActiveSteamId()).toBeNull();
-  });
-
-  it('reads the Steam folder as it is on Windows', async () => {
-    const system = windows(regOutput('SteamPath', 'REG_SZ', 'c:/steam'));
-
-    expect(await new Windows(system).getSteamPath()).toBe('c:/steam');
-  });
-
-  it('reads the Steam folder as a WSL path from WSL', async () => {
-    const system = windows(regOutput('SteamPath', 'REG_SZ', 'c:/steam'), {
-      isWsl: true,
+      expect(path).toBe(to);
     });
 
-    expect(await new Windows(system).getSteamPath()).toBe('/mnt/c/steam');
+    it('should leave the path alone when on Windows itself', () => {
+      const path = Windows.toLocalPath('D:\\Steam', false);
+
+      expect(path).toBe('D:\\Steam');
+    });
   });
 
-  it('answers nothing when the query fails', async () => {
-    const system = windows(new Error('reg.exe not found'));
+  describe('getRunningAppId', () => {
+    it('should answer the game when the registry has one running', async () => {
+      const { sut } = setup({
+        registry: {
+          key: STEAM_KEY,
+          name: 'RunningAppID',
+          type: 'REG_DWORD',
+          data: '0x28442a',
+        },
+      });
 
-    expect(await new Windows(system).getRunningAppId()).toBeNull();
-    expect(await new Windows(system).getSteamPath()).toBeNull();
+      const appId = await sut.getRunningAppId();
+
+      expect(appId).toBe(2638890);
+    });
+
+    it('should ask reg.exe once for the value when asked for the running game', async () => {
+      const { sut, commands } = setup();
+
+      await sut.getRunningAppId();
+
+      expect(commands).toEqual([
+        [
+          'reg.exe',
+          ['query', 'HKCU\\Software\\Valve\\Steam', '/v', 'RunningAppID'],
+        ],
+      ]);
+    });
+
+    it('should answer null when the registry says zero', async () => {
+      const { sut } = setup({
+        registry: {
+          key: STEAM_KEY,
+          name: 'RunningAppID',
+          type: 'REG_DWORD',
+          data: '0x0',
+        },
+      });
+
+      const appId = await sut.getRunningAppId();
+
+      expect(appId).toBeNull();
+    });
+
+    it('should answer null when the query fails', async () => {
+      const { sut } = setup({ failure: new Error('reg.exe not found') });
+
+      const appId = await sut.getRunningAppId();
+
+      expect(appId).toBeNull();
+    });
+
+    it('should answer null without running anything when there is no Windows', async () => {
+      const { sut, commands } = setup({
+        registry: {
+          key: STEAM_KEY,
+          name: 'RunningAppID',
+          type: 'REG_DWORD',
+          data: '0x28442a',
+        },
+        hasWindows: false,
+      });
+
+      const appId = await sut.getRunningAppId();
+
+      expect(appId).toBeNull();
+      expect(commands).toEqual([]);
+    });
   });
 
-  it('does not even try where there is no Windows', async () => {
-    const system = windows('', { hasWindows: false });
+  describe('getActiveSteamId', () => {
+    it('should answer the SteamID64 of the account when the registry has one signed in', async () => {
+      const { sut } = setup({
+        registry: {
+          key: `${STEAM_KEY}\\ActiveProcess`,
+          name: 'ActiveUser',
+          type: 'REG_DWORD',
+          data: '0x25e4c2a',
+        },
+      });
 
-    expect(await new Windows(system).getRunningAppId()).toBeNull();
-    expect(system.commands).toEqual([]);
+      const steamId = await sut.getActiveSteamId();
+
+      expect(steamId).toBe(STEAM_ID);
+    });
+
+    it('should answer null when the registry says zero', async () => {
+      const { sut } = setup({
+        registry: {
+          key: `${STEAM_KEY}\\ActiveProcess`,
+          name: 'ActiveUser',
+          type: 'REG_DWORD',
+          data: '0x0',
+        },
+      });
+
+      const steamId = await sut.getActiveSteamId();
+
+      expect(steamId).toBeNull();
+    });
   });
-});
 
-describe('Smart App Control', () => {
-  it.each([
-    { state: 'enforcing', value: '0x1', isOn: true },
-    { state: 'evaluating', value: '0x2', isOn: false },
-    { state: 'off', value: '0x0', isOn: false },
-  ])('counts as on only when enforcing: $state', async ({ value, isOn }) => {
-    const system = windows(
-      regOutput('VerifiedAndReputablePolicyState', 'REG_DWORD', value),
+  describe('getSteamPath', () => {
+    it('should answer the folder as the registry has it when on Windows itself', async () => {
+      const { sut } = setup({
+        registry: {
+          key: STEAM_KEY,
+          name: 'SteamPath',
+          type: 'REG_SZ',
+          data: 'c:/steam',
+        },
+      });
+
+      const steamPath = await sut.getSteamPath();
+
+      expect(steamPath).toBe('c:/steam');
+    });
+
+    it('should answer the folder as a WSL path when on WSL', async () => {
+      const { sut } = setup({
+        registry: {
+          key: STEAM_KEY,
+          name: 'SteamPath',
+          type: 'REG_SZ',
+          data: 'c:/steam',
+        },
+        isWsl: true,
+      });
+
+      const steamPath = await sut.getSteamPath();
+
+      expect(steamPath).toBe('/mnt/c/steam');
+    });
+
+    it('should answer null when the query fails', async () => {
+      const { sut } = setup({ failure: new Error('reg.exe not found') });
+
+      const steamPath = await sut.getSteamPath();
+
+      expect(steamPath).toBeNull();
+    });
+  });
+
+  describe('isSmartAppControlOn', () => {
+    it.each([
+      { state: 'enforcing', data: '0x1', shouldBeOn: true },
+      { state: 'evaluating', data: '0x2', shouldBeOn: false },
+      { state: 'off', data: '0x0', shouldBeOn: false },
+    ])(
+      'should answer $shouldBeOn when Smart App Control is $state',
+      async ({ data, shouldBeOn }) => {
+        const { sut } = setup({
+          registry: {
+            key: POLICY_KEY,
+            name: 'VerifiedAndReputablePolicyState',
+            type: 'REG_DWORD',
+            data,
+          },
+        });
+
+        const isOn = await sut.isSmartAppControlOn();
+
+        expect(isOn).toBe(shouldBeOn);
+      },
     );
 
-    expect(await new Windows(system).isSmartAppControlOn()).toBe(isOn);
+    it('should answer false when this Windows does not have it', async () => {
+      const { sut } = setup({ failure: new Error('value not found') });
+
+      const isOn = await sut.isSmartAppControlOn();
+
+      expect(isOn).toBe(false);
+    });
   });
 
-  it('counts as off on a Windows that does not have it', async () => {
-    const system = windows(new Error('value not found'));
+  describe('isSigned', () => {
+    it.each([
+      { status: 'Valid', shouldBeSigned: true },
+      { status: 'NotSigned', shouldBeSigned: false },
+      { status: 'HashMismatch', shouldBeSigned: false },
+    ])(
+      'should answer $shouldBeSigned when the signature is reported as $status',
+      async ({ status, shouldBeSigned }) => {
+        const { sut } = setup({ output: `${status}\r\n` });
 
-    expect(await new Windows(system).isSmartAppControlOn()).toBe(false);
-  });
-});
+        const isSigned = await sut.isSigned('C:\\app.exe');
 
-describe('code signature', () => {
-  it.each([
-    { status: 'Valid\r\n', isSigned: true },
-    { status: 'NotSigned\r\n', isSigned: false },
-    { status: 'HashMismatch\r\n', isSigned: false },
-  ])(
-    'a file reported as $status is signed: $isSigned',
-    async ({ status, isSigned }) => {
-      expect(await new Windows(windows(status)).isSigned('C:\\app.exe')).toBe(
-        isSigned,
-      );
-    },
-  );
-
-  it('treats a file it cannot check as unsigned', async () => {
-    const system = windows(new Error('powershell.exe not found'));
-
-    expect(await new Windows(system).isSigned('C:\\app.exe')).toBe(false);
-  });
-
-  it('quotes the path so an apostrophe in it cannot end the command', async () => {
-    const system = windows('Valid');
-
-    await new Windows(system).isSigned("C:\\Users\\O'Brien\\app.exe");
-
-    expect(system.commands[0][1].at(-1)).toBe(
-      "(Get-AuthenticodeSignature -LiteralPath 'C:\\Users\\O''Brien\\app.exe').Status",
+        expect(isSigned).toBe(shouldBeSigned);
+      },
     );
+
+    it('should answer false when the file cannot be checked', async () => {
+      const { sut } = setup({ failure: new Error('powershell.exe not found') });
+
+      const isSigned = await sut.isSigned('C:\\app.exe');
+
+      expect(isSigned).toBe(false);
+    });
+
+    it('should double the apostrophe in the command when the path has one', async () => {
+      const { sut, commands } = setup({ output: 'Valid' });
+
+      await sut.isSigned("C:\\Users\\O'Brien\\app.exe");
+
+      expect(commands).toEqual([
+        [
+          'powershell.exe',
+          [
+            '-NoProfile',
+            '-NonInteractive',
+            '-Command',
+            "(Get-AuthenticodeSignature -LiteralPath 'C:\\Users\\O''Brien\\app.exe').Status",
+          ],
+        ],
+      ]);
+    });
   });
-});
 
-describe('reaching Windows from WSL', () => {
-  it('opens a link in the Windows browser', async () => {
-    const system = windows();
+  describe('openInBrowser', () => {
+    it('should hand the link to the Windows browser when asked to open it', async () => {
+      const { sut, commands } = setup();
 
-    await new Windows(system).openInBrowser('https://example.com/?a=1&b=2');
+      await sut.openInBrowser('https://example.com/?a=1&b=2');
 
-    expect(system.commands).toEqual([
-      [
-        'rundll32.exe',
-        ['url.dll,FileProtocolHandler', 'https://example.com/?a=1&b=2'],
-      ],
-    ]);
+      expect(commands).toEqual([
+        [
+          'rundll32.exe',
+          ['url.dll,FileProtocolHandler', 'https://example.com/?a=1&b=2'],
+        ],
+      ]);
+    });
   });
 });

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type IApi } from '@shared/types/Api';
 import { type GameUserData } from '@shared/types/UserData';
-import { makeStore } from '@tests/makeAppStore';
+import { makeAppStore } from '@tests/makeAppStore';
 
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn() }),
@@ -11,124 +11,152 @@ vi.mock('sonner', () => ({
 /** How long the store waits after the last edit before writing it. */
 const PAUSE = 500;
 
-async function setup(saved: GameUserData = {}, api: Partial<IApi> = {}) {
-  const setUserData = vi.fn(() => Promise.resolve());
-  const getUserData = vi.fn(() => Promise.resolve(saved));
-  const made = await makeStore({ api: { getUserData, setUserData, ...api } });
-  return {
-    ...made,
-    getUserData,
-    setUserData,
-    userData: () => made.store.getState().userData,
-    /** What the screen shows for game 10. */
-    shown: () => made.store.getState().userData.byGame[10],
-  };
+/** The store over a main process that has `saved` for every game and saves what it is given. */
+async function setup(saved: GameUserData = {}) {
+  const getUserDataMock = vi.fn<IApi['getUserData']>(() =>
+    Promise.resolve(saved),
+  );
+  const setUserDataMock = vi.fn<IApi['setUserData']>(() => Promise.resolve());
+  const made = await makeAppStore({
+    api: { getUserData: getUserDataMock, setUserData: setUserDataMock },
+  });
+  return { ...made, getUserDataMock, setUserDataMock };
 }
 
-beforeEach(() => {
-  vi.useFakeTimers();
-});
+describe('userDataSlice', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
 
-afterEach(() => {
-  vi.useRealTimers();
-  vi.unstubAllGlobals();
-});
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
 
-describe('user data: reading', () => {
-  it('reads the notes of a game from the main process', async () => {
-    const { userData, shown } = await setup({
-      A: { note: 'boss of the 3rd map', pinned: true },
+  describe('load', () => {
+    it('should show the notes of a game when the main process answers', async () => {
+      const { sut } = await setup({
+        A: { note: 'boss of the 3rd map', pinned: true },
+      });
+
+      await sut.getState().userData.load(10);
+
+      expect(sut.getState().userData.byGame[10]).toEqual({
+        A: { note: 'boss of the 3rd map', pinned: true },
+      });
     });
 
-    await userData().load(10);
+    it('should ask for a game only once when it is loaded again', async () => {
+      const { sut, getUserDataMock } = await setup();
+      await sut.getState().userData.load(10);
 
-    expect(shown()).toEqual({
-      A: { note: 'boss of the 3rd map', pinned: true },
-    });
-  });
+      await sut.getState().userData.load(10);
 
-  it('reads each game only once', async () => {
-    const { userData, getUserData } = await setup();
-
-    await userData().load(10);
-    await userData().load(10);
-
-    expect(getUserData).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('user data: editing', () => {
-  it('shows an edit at once, before it is saved', async () => {
-    const { userData, shown, setUserData } = await setup();
-
-    userData().update(10, 'A', { note: 'bridge first' });
-
-    expect(shown()).toEqual({ A: { note: 'bridge first', pinned: false } });
-    expect(setUserData).not.toHaveBeenCalled();
-  });
-
-  it('changes only what the edit is about', async () => {
-    const { userData, shown } = await setup({
-      A: { note: 'bridge first', pinned: false },
-    });
-    await userData().load(10);
-
-    userData().update(10, 'A', { pinned: true });
-
-    expect(shown().A).toEqual({ note: 'bridge first', pinned: true });
-  });
-
-  it('saves after the typing pause, only the last version', async () => {
-    const { userData, setUserData } = await setup();
-    userData().update(10, 'A', { note: 'b' });
-    userData().update(10, 'A', { note: 'br' });
-    userData().update(10, 'A', { note: 'bridge' });
-
-    await vi.advanceTimersByTimeAsync(PAUSE);
-
-    expect(setUserData).toHaveBeenCalledTimes(1);
-    expect(setUserData).toHaveBeenCalledWith(10, 'A', {
-      note: 'bridge',
-      pinned: false,
+      expect(getUserDataMock).toHaveBeenCalledExactlyOnceWith(10);
     });
   });
 
-  it('writes right away what is waiting when asked to flush', async () => {
-    const { userData, setUserData } = await setup();
-    userData().update(10, 'A', { note: 'bridge' });
+  describe('update', () => {
+    it('should show an edit when it is not saved yet', async () => {
+      const { sut } = await setup();
 
-    userData().flush();
+      sut.getState().userData.update(10, 'A', { note: 'bridge first' });
 
-    expect(setUserData).toHaveBeenCalledTimes(1);
+      expect(sut.getState().userData.byGame[10]).toEqual({
+        A: { note: 'bridge first', pinned: false },
+      });
+    });
+
+    it('should not save an edit when the typing pause has not passed', async () => {
+      const { sut, setUserDataMock } = await setup();
+
+      sut.getState().userData.update(10, 'A', { note: 'bridge first' });
+
+      expect(setUserDataMock).not.toHaveBeenCalled();
+    });
+
+    it('should change only what the edit is about when the entry has more', async () => {
+      const { sut } = await setup({
+        A: { note: 'bridge first', pinned: false },
+      });
+      await sut.getState().userData.load(10);
+
+      sut.getState().userData.update(10, 'A', { pinned: true });
+
+      expect(sut.getState().userData.byGame[10]).toEqual({
+        A: { note: 'bridge first', pinned: true },
+      });
+    });
+
+    it('should save only the last version when the typing pause passes', async () => {
+      const { sut, setUserDataMock } = await setup();
+      sut.getState().userData.update(10, 'A', { note: 'b' });
+      sut.getState().userData.update(10, 'A', { note: 'br' });
+      sut.getState().userData.update(10, 'A', { note: 'bridge' });
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(setUserDataMock).toHaveBeenCalledExactlyOnceWith(10, 'A', {
+        note: 'bridge',
+        pinned: false,
+      });
+    });
   });
-});
 
-describe('user data: when the save fails', () => {
-  const failing = { setUserData: () => Promise.reject(new Error('disk full')) };
+  describe('flush', () => {
+    it('should save what is waiting when the typing pause has not passed', async () => {
+      const { sut, setUserDataMock } = await setup();
+      sut.getState().userData.update(10, 'A', { note: 'bridge' });
 
-  it('puts back what was saved before the edit and tells the user', async () => {
-    const { userData, shown, toast } = await setup(
-      { A: { note: 'saved note', pinned: false } },
-      failing,
-    );
-    await userData().load(10);
-    userData().update(10, 'A', { note: 'never saved' });
+      sut.getState().userData.flush();
 
-    await vi.advanceTimersByTimeAsync(PAUSE);
-
-    expect(shown().A).toEqual({ note: 'saved note', pinned: false });
-    expect(toast.error).toHaveBeenCalledWith(
-      'Could not save your change, so it was undone.',
-    );
+      expect(setUserDataMock).toHaveBeenCalledExactlyOnceWith(10, 'A', {
+        note: 'bridge',
+        pinned: false,
+      });
+    });
   });
 
-  it('removes an entry that had never been saved', async () => {
-    const { userData, shown } = await setup({}, failing);
-    await userData().load(10);
-    userData().update(10, 'A', { note: 'never saved' });
+  describe('when the save fails', () => {
+    it('should put back what was saved before the edit when the save fails', async () => {
+      const { sut, setUserDataMock } = await setup({
+        A: { note: 'saved note', pinned: false },
+      });
+      setUserDataMock.mockRejectedValueOnce(new Error('disk full'));
+      await sut.getState().userData.load(10);
+      sut.getState().userData.update(10, 'A', { note: 'never saved' });
 
-    await vi.advanceTimersByTimeAsync(PAUSE);
+      await vi.advanceTimersByTimeAsync(PAUSE);
 
-    expect(shown()).toEqual({});
+      expect(sut.getState().userData.byGame[10]).toEqual({
+        A: { note: 'saved note', pinned: false },
+      });
+    });
+
+    it('should tell the user when the save fails', async () => {
+      const { sut, setUserDataMock, toastMock } = await setup({
+        A: { note: 'saved note', pinned: false },
+      });
+      setUserDataMock.mockRejectedValueOnce(new Error('disk full'));
+      await sut.getState().userData.load(10);
+      sut.getState().userData.update(10, 'A', { note: 'never saved' });
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(
+        'Could not save your change, so it was undone.',
+      );
+    });
+
+    it('should remove the entry when the edit that failed was its first', async () => {
+      const { sut, setUserDataMock } = await setup();
+      setUserDataMock.mockRejectedValueOnce(new Error('disk full'));
+      await sut.getState().userData.load(10);
+      sut.getState().userData.update(10, 'A', { note: 'never saved' });
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(sut.getState().userData.byGame[10]).toEqual({});
+    });
   });
 });
