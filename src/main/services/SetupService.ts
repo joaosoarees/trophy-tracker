@@ -108,7 +108,7 @@ export class SetupService {
   }
 
   /** Adds an account, and starts following it, only if Steam accepts its key. */
-  async saveConfig(steamId: string, apiKey: string): Promise<IAppState> {
+  async addAccount(steamId: string, apiKey: string): Promise<IAppState> {
     const check = await this.checkApiKey(steamId, apiKey);
     if (check.ok) {
       this.store.setCredentials(

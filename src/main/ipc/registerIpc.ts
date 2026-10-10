@@ -60,8 +60,8 @@ export function registerIpc({
     detectSteamId: () => local.getActiveSteamId(),
     checkApiKey: (steamId, apiKey) => setup.checkApiKey(steamId, apiKey),
     checkPrivacy: (steamId, apiKey) => setup.checkPrivacy(steamId, apiKey),
-    saveConfig: async (steamId, apiKey) => {
-      const state = await setup.saveConfig(steamId, apiKey);
+    addAccount: async (steamId, apiKey) => {
+      const state = await setup.addAccount(steamId, apiKey);
       if (state.configured) void watcher.checkRunningGame();
       return state;
     },

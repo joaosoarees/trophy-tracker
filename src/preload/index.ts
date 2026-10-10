@@ -22,7 +22,7 @@ const calls = [
   'detectSteamId',
   'checkApiKey',
   'checkPrivacy',
-  'saveConfig',
+  'addAccount',
   'setActiveAccount',
   'removeAccount',
   'replaceKey',
