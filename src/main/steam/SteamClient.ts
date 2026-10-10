@@ -6,6 +6,11 @@ import {
 } from '@shared/i18n';
 
 const API = 'https://api.steampowered.com';
+/**
+ * How long a request may take, from being sent to the end of its answer. The
+ * owner's number, not one measured against Steam.
+ */
+const REQUEST_TIMEOUT_MS = 15_000;
 
 export type SteamErrorKind =
   | 'invalid-key'
@@ -126,6 +131,12 @@ export class SteamClient {
     private getLanguage: () => Language = () => DEFAULT_LANGUAGE,
     /** Where the Web API is; only the interface audit points it elsewhere. */
     private apiBase: string = API,
+    /**
+     * The signal that gives up on a request Steam does not answer in time;
+     * asked for on each request, which fails as an unreachable Steam does.
+     */
+    private timeout: () => AbortSignal = () =>
+      AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   ) {}
 
   private async get<T>(
@@ -136,14 +147,17 @@ export class SteamClient {
     for (const [k, v] of Object.entries(params))
       url.searchParams.set(k, String(v));
 
+    // The limit covers the answer to its end, so reading the text may fail
+    // as the request itself does: an answer cut short is no answer either.
     let res: Response;
+    let text: string;
     try {
-      res = await this.fetchImpl(url);
+      res = await this.fetchImpl(url, { signal: this.timeout() });
+      text = await res.text();
     } catch {
       throw new SteamError('network');
     }
 
-    const text = await res.text();
     let body: (T & IPlayerStats<object>) | null = null;
     try {
       body = JSON.parse(text) as T & IPlayerStats<object>;

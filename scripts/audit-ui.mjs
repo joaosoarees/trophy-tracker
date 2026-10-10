@@ -18,8 +18,9 @@
 // - the screen shown when the interface fails to draw, and the way back.
 // Then, in the first language, the flows no single capture shows: the game
 // details opening and closing, a game starting, an achievement unlocked
-// while playing, the game finished and closed, and Steam off the air with
-// the app open, before it opens, and before it opens for the first time.
+// while playing, the game finished and closed, Steam taking a request and
+// never answering it, and Steam off the air with the app open, before it
+// opens, and before it opens for the first time.
 import { spawn } from 'node:child_process';
 import {
   existsSync,
@@ -1298,6 +1299,54 @@ async function auditPlaying(page, steam) {
   );
 }
 
+/**
+ * Steam takes a request and never answers it: the app must give up by itself
+ * (after two seconds against the fake Steam, fifteen for a user), keep what is
+ * on screen and say that Steam could not be reached, as when it is down.
+ */
+async function auditUnanswered(page, steam) {
+  const FLOW = 'Steam not answering';
+  const failuresBefore = failures.length;
+  await openGame(page, 'Nioh 3');
+  const title = await page.evaluate(gameTitle);
+  const error = visibleText('header .text-destructive');
+
+  steam.state.mode = 'hung';
+  await page.evaluate(refreshGame);
+  await sleep(700);
+  const errorAtOnce = await page.evaluate(error);
+  expectThat(
+    FLOW,
+    errorAtOnce === '',
+    `an error was shown before the time limit of the request passed (shown: "${errorAtOnce}")`,
+  );
+  const hasGivenUp = await waitFor(
+    page,
+    `/reach|connection/i.test(${error})`,
+    8_000,
+  );
+  expectThat(
+    FLOW,
+    hasGivenUp,
+    `the app is still waiting for a Steam that does not answer (shown: "${await page.evaluate(error)}")`,
+  );
+  expectThat(
+    FLOW,
+    (await page.evaluate(gameTitle)) === title,
+    'the game left the screen when Steam did not answer',
+  );
+  await audit(page, 'flow-steam-not-answering-game');
+
+  // Steam answers again: the next read clears the error.
+  steam.state.mode = 'ok';
+  await page.evaluate(refreshGame);
+  const hasRecovered = await waitFor(page, `(${error}) === ''`);
+  expectThat(FLOW, hasRecovered, 'the error stayed after Steam answered again');
+  console.log(
+    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: Steam takes a request and never answers it`,
+  );
+}
+
 /** Steam stops answering with the app open: what is on screen must stay, with an error. */
 async function auditOutage(page, steam) {
   const FLOW = 'Steam down';
@@ -1456,6 +1505,7 @@ for (const language of languages) {
       if (language !== LANGUAGES[0]) return;
       await auditAccounts(page, steam, home);
       await auditPlaying(page, steam);
+      await auditUnanswered(page, steam);
       await auditOutage(page, steam);
     });
     if (language !== LANGUAGES[0]) continue;

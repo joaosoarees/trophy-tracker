@@ -2,8 +2,8 @@
 // app makes, in the shape Steam answers them and in the language asked for,
 // from the real responses kept in __tests__/fixtures, and lets the audit change
 // what "Steam" says: unlock an achievement, start a game, reject the key,
-// hide the profile, or go off the air. It also writes the two files of a
-// Steam client's folder that the app reads.
+// hide the profile, go off the air, or take a request and never answer it. It
+// also writes the two files of a Steam client's folder that the app reads.
 //
 // The app only talks to it in development, when started with
 // TROPHY_TRACKER_FAKE_STEAM set to this server's address (see main/index.ts).
@@ -170,8 +170,10 @@ export async function startFakeSteam() {
   const state = {
     /**
      * `ok`, `bad-key` (Steam rejects the key), `private` (profile hidden),
-     * `down` (no answer at all) or `second-thoughts` (Steam accepts the key
-     * the first time it is asked about a profile, and rejects it from then on).
+     * `down` (the connection is dropped), `hung` (the request is taken and
+     * never answered, so only the app's own time limit ends it) or
+     * `second-thoughts` (Steam accepts the key the first time it is asked
+     * about a profile, and rejects it from then on).
      */
     mode: 'ok',
     /** How many times a profile was asked about in `second-thoughts`; set to 0 with the mode. */
@@ -338,6 +340,8 @@ export async function startFakeSteam() {
       request.socket.destroy();
       return;
     }
+    // Taken and left without an answer, for as long as the app waits.
+    if (state.mode === 'hung') return;
     const [status, body] = answer(requests.at(-1));
     response.writeHead(status, {
       'content-type':
@@ -378,6 +382,11 @@ export async function startFakeSteam() {
         (url) =>
           url.pathname.includes(call) && url.searchParams.get('key') === key,
       ).length,
-    stop: () => new Promise((resolve) => server.close(resolve)),
+    stop: () =>
+      new Promise((resolve) => {
+        server.close(resolve);
+        // A request left without an answer would keep the server open.
+        server.closeAllConnections();
+      }),
   };
 }
