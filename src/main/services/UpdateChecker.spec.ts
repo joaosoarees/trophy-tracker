@@ -13,6 +13,7 @@ const RATE_LIMIT: IRoute = { status: 403, json: { message: 'rate limit' } };
 
 interface ISetupOverrides {
   apiBase?: string;
+  timeout?: () => AbortSignal;
 }
 
 /** Version 1.2.0 of `someone/app`, at time zero, with GitHub answering `route`. */
@@ -162,6 +163,18 @@ describe('UpdateChecker', () => {
       const hasChecked = await sut.check();
 
       expect(hasChecked).toBe(false);
+    });
+
+    it('should give the request the signal of its timeout when it asks GitHub', async () => {
+      const { signal } = new AbortController();
+      const { sut, fetchImpl } = setup(LATER_RELEASE, {
+        timeout: () => signal,
+      });
+
+      await sut.check();
+
+      expect(fetchImpl.inits).toHaveLength(1);
+      expect(fetchImpl.inits[0]?.signal).toBe(signal);
     });
 
     it('should update the version when the last check is under six hours old', async () => {

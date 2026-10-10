@@ -2,6 +2,7 @@ import { type IAppInfo } from '@shared/types/AppInfo';
 import { isNewerVersion } from '@shared/version';
 
 const RECHECK_AFTER_MS = 6 * 60 * 60 * 1000;
+const REQUEST_TIMEOUT_MS = 10_000;
 
 interface IUpdateCheckerDeps {
   currentVersion: string;
@@ -11,6 +12,8 @@ interface IUpdateCheckerDeps {
   /** Where GitHub's API is; only the interface audit points it elsewhere. */
   apiBase?: string;
   now?: () => number;
+  /** The signal that gives up on a request GitHub does not answer in time. */
+  timeout?: () => AbortSignal;
 }
 
 /**
@@ -24,6 +27,7 @@ export class UpdateChecker {
   private readonly url: string;
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => number;
+  private readonly timeout: () => AbortSignal;
   private newVersion: string | null = null;
   private checkedAt: number | null = null;
   private running: Promise<boolean> | null = null;
@@ -34,11 +38,13 @@ export class UpdateChecker {
     fetchImpl = fetch,
     apiBase = 'https://api.github.com',
     now = Date.now,
+    timeout = () => AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   }: IUpdateCheckerDeps) {
     this.currentVersion = currentVersion;
     this.url = `${apiBase}/repos/${repository}/releases/latest`;
     this.fetchImpl = fetchImpl;
     this.now = now;
+    this.timeout = timeout;
   }
 
   /**
@@ -73,7 +79,7 @@ export class UpdateChecker {
     try {
       const res = await this.fetchImpl(this.url, {
         headers: { Accept: 'application/vnd.github+json' },
-        signal: AbortSignal.timeout(10_000),
+        signal: this.timeout(),
       });
       if (res.ok) {
         const release = (await res.json()) as { tag_name?: string };
