@@ -1,7 +1,13 @@
 import { useContext } from 'react';
 
-import { StepperContext } from '.';
+import { StepperContext } from './StepperContext';
 
 export function useStepper() {
-  return useContext(StepperContext);
+  const stepper = useContext(StepperContext);
+
+  if (!stepper) {
+    throw new Error('Cannot use `useStepper` outside `Stepper`.');
+  }
+
+  return stepper;
 }

@@ -6,34 +6,29 @@ import {
   stepperReducer,
 } from './stepperState';
 
-const STEPS = 3;
-
-/** On the first step, with nothing ahead reached. */
+/** On the first of three steps, with nothing ahead reached. */
 const makeState = (props: Partial<IStepperState> = {}): IStepperState => ({
   current: 0,
   furthest: 0,
   direction: 'forward',
+  stepCount: 3,
   ...props,
 });
 
 describe('stepperState', () => {
   describe('createStepperState', () => {
-    it.each([
-      { initialStep: 1, current: 1 },
-      { initialStep: 9, current: 2 },
-      { initialStep: -1, current: 0 },
-    ])(
-      'should start on step $current when given step $initialStep of three',
-      ({ initialStep, current }) => {
-        const state = createStepperState(initialStep, STEPS);
+    it('should start on the first step, with nothing ahead reached, when given the number of steps', () => {
+      const stepCount = 3;
 
-        expect(state).toEqual({
-          current,
-          furthest: current,
-          direction: 'forward',
-        });
-      },
-    );
+      const state = createStepperState(stepCount);
+
+      expect(state).toEqual({
+        current: 0,
+        furthest: 0,
+        direction: 'forward',
+        stepCount: 3,
+      });
+    });
   });
 
   describe('stepperReducer', () => {
@@ -41,19 +36,20 @@ describe('stepperState', () => {
       it('should move forward when there is a step ahead', () => {
         const state = makeState();
 
-        const moved = stepperReducer(state, { type: 'next' }, STEPS);
+        const moved = stepperReducer(state, { type: 'next' });
 
         expect(moved).toEqual({
           current: 1,
           furthest: 1,
           direction: 'forward',
+          stepCount: 3,
         });
       });
 
       it('should keep the state when it is on the last step', () => {
         const state = makeState({ current: 2, furthest: 2 });
 
-        const moved = stepperReducer(state, { type: 'next' }, STEPS);
+        const moved = stepperReducer(state, { type: 'next' });
 
         expect(moved).toBe(state);
       });
@@ -63,19 +59,20 @@ describe('stepperState', () => {
       it('should move back, remembering how far the user got, when there is a step behind', () => {
         const state = makeState({ current: 2, furthest: 2 });
 
-        const moved = stepperReducer(state, { type: 'previous' }, STEPS);
+        const moved = stepperReducer(state, { type: 'previous' });
 
         expect(moved).toEqual({
           current: 1,
           furthest: 2,
           direction: 'backward',
+          stepCount: 3,
         });
       });
 
       it('should keep the state when it is on the first step', () => {
         const state = makeState();
 
-        const moved = stepperReducer(state, { type: 'previous' }, STEPS);
+        const moved = stepperReducer(state, { type: 'previous' });
 
         expect(moved).toBe(state);
       });
@@ -85,12 +82,13 @@ describe('stepperState', () => {
       it('should jump back when the step is behind the current one', () => {
         const state = makeState({ current: 2, furthest: 2 });
 
-        const moved = stepperReducer(state, { type: 'goTo', step: 0 }, STEPS);
+        const moved = stepperReducer(state, { type: 'goTo', step: 0 });
 
         expect(moved).toEqual({
           current: 0,
           furthest: 2,
           direction: 'backward',
+          stepCount: 3,
         });
       });
 
@@ -101,19 +99,20 @@ describe('stepperState', () => {
           direction: 'backward',
         });
 
-        const moved = stepperReducer(state, { type: 'goTo', step: 2 }, STEPS);
+        const moved = stepperReducer(state, { type: 'goTo', step: 2 });
 
         expect(moved).toEqual({
           current: 2,
           furthest: 2,
           direction: 'forward',
+          stepCount: 3,
         });
       });
 
       it('should keep the state when the step was not reached yet', () => {
         const state = makeState({ current: 1, furthest: 1 });
 
-        const moved = stepperReducer(state, { type: 'goTo', step: 2 }, STEPS);
+        const moved = stepperReducer(state, { type: 'goTo', step: 2 });
 
         expect(moved).toBe(state);
       });
@@ -125,7 +124,6 @@ describe('stepperState', () => {
         stepperReducer(
           makeState({ current: 1, furthest: 2, direction: 'backward' }),
           { type: 'lockFollowing' },
-          STEPS,
         );
 
       it('should make the current step the furthest one when steps ahead were reached', () => {
@@ -135,19 +133,20 @@ describe('stepperState', () => {
           direction: 'backward',
         });
 
-        const locked = stepperReducer(state, { type: 'lockFollowing' }, STEPS);
+        const locked = stepperReducer(state, { type: 'lockFollowing' });
 
         expect(locked).toEqual({
           current: 1,
           furthest: 1,
           direction: 'backward',
+          stepCount: 3,
         });
       });
 
       it('should refuse a jump to a following step when they were locked again', () => {
         const locked = makeLockedState();
 
-        const moved = stepperReducer(locked, { type: 'goTo', step: 2 }, STEPS);
+        const moved = stepperReducer(locked, { type: 'goTo', step: 2 });
 
         expect(moved).toBe(locked);
       });
@@ -155,12 +154,13 @@ describe('stepperState', () => {
       it('should keep the earlier steps reachable when the following ones were locked', () => {
         const locked = makeLockedState();
 
-        const moved = stepperReducer(locked, { type: 'goTo', step: 0 }, STEPS);
+        const moved = stepperReducer(locked, { type: 'goTo', step: 0 });
 
         expect(moved).toEqual({
           current: 0,
           furthest: 1,
           direction: 'backward',
+          stepCount: 3,
         });
       });
     });

@@ -1,6 +1,5 @@
 import {
   type ComponentPropsWithoutRef,
-  createContext,
   type ReactNode,
   useCallback,
   useMemo,
@@ -12,22 +11,9 @@ import { Pressable } from '@ui/components/Pressable';
 import { Button } from '@ui/primitives/button';
 import { cn } from '@ui/utils/cn';
 
-import {
-  createStepperState,
-  type IStepperState,
-  type StepperAction,
-  stepperReducer,
-} from './stepperState';
+import { StepperContext } from './StepperContext';
+import { createStepperState, stepperReducer } from './stepperState';
 import { useStepper } from './useStepper';
-
-interface IStepperContextValue {
-  previousStep: () => void;
-  nextStep: () => void;
-  /** Call when the current step changes something the following steps depend on. */
-  lockFollowingSteps: () => void;
-}
-
-export const StepperContext = createContext({} as IStepperContextValue);
 
 /** A step's name under its bar, whether it can be clicked or not. */
 const STEP =
@@ -42,10 +28,11 @@ interface IStepperProps {
 
 export function Stepper({ steps }: IStepperProps) {
   const t = useT();
+  // How many steps there are is part of the state, counted as it is born.
   const [state, dispatch] = useReducer(
-    (current: IStepperState, action: StepperAction) =>
-      stepperReducer(current, action, steps.length),
-    createStepperState(0, steps.length),
+    stepperReducer,
+    steps.length,
+    createStepperState,
   );
 
   const { current, furthest, direction } = state;
