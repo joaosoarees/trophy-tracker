@@ -92,6 +92,15 @@ describe('BinaryVdf', () => {
       });
     });
 
+    it('should throw and say where when the file has a type it does not know', () => {
+      const unknown = Buffer.concat([Buffer.from([5]), str('wide'), str('x')]);
+      const file = Buffer.concat([text('gamename', 'Nioh 3'), unknown, END]);
+
+      expect(() => BinaryVdf.parse(file)).toThrow(
+        new Error('Unknown VDF type 5 at position 17'),
+      );
+    });
+
     it('should throw when the file is truncated', () => {
       const file = makeSchema().subarray(0, 40);
 
