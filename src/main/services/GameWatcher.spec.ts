@@ -80,6 +80,20 @@ function fakeEvery() {
   };
 }
 
+/** A scheduler that runs a repetition only when the test says its time has come. */
+function manualEvery() {
+  const runs = new Map<number, () => void>();
+
+  return {
+    every: (run: () => void, ms: number) => {
+      runs.set(ms, run);
+      return () => void runs.delete(ms);
+    },
+    /** The time of the repetition started with this interval has come round. */
+    tick: (ms: number) => runs.get(ms)?.(),
+  };
+}
+
 describe('GameWatcher', () => {
   describe('refreshCurrent', () => {
     it('should show the last played game when no game is running', async () => {
@@ -164,6 +178,18 @@ describe('GameWatcher', () => {
       const current = await sut.refreshCurrent();
 
       expect(current).toBeNull();
+    });
+
+    it('should show the last played game of the account in use when a game was seen closing before another account took over', async () => {
+      const { sut, run } = setup();
+      run(42);
+      await sut.refreshCurrent();
+      run(null);
+      sut.forget({ isCurrentIncluded: true });
+
+      const current = await sut.refreshCurrent();
+
+      expect(current).toEqual({ appid: 7, isRunning: false });
     });
   });
 
@@ -266,6 +292,20 @@ describe('GameWatcher', () => {
         ['updated', 3],
         ['changed', { appid: 42, isRunning: false }],
       ]);
+    });
+
+    it('should announce that the game closed when its last read fails', async () => {
+      const { sut, onCurrentChangedMock, run } = setup();
+      run(42);
+      await sut.refreshCurrent();
+      run(null);
+
+      await sut.checkRunningGame();
+
+      expect(onCurrentChangedMock).toHaveBeenCalledExactlyOnceWith({
+        appid: 42,
+        isRunning: false,
+      });
     });
 
     it('should announce the current game again when it was forgotten', async () => {
@@ -376,6 +416,50 @@ describe('GameWatcher', () => {
       expect(pollGameMock).not.toHaveBeenCalled();
     });
 
+    it('should not announce an update when the poll returns the view the interface has, though it was given another game since', async () => {
+      const { sut, onGameUpdatedMock, run, poll } = setup();
+      run(42);
+      await sut.refreshCurrent();
+      const seen = view(42, ['a']);
+      sut.remember(seen);
+      sut.remember(view(7, ['a']));
+      poll(seen);
+
+      await sut.checkUnlocks();
+
+      expect(onGameUpdatedMock).not.toHaveBeenCalled();
+    });
+
+    it('should hand over the view again when what was read was dropped since the interface saw it', async () => {
+      const { sut, onGameUpdatedMock, run, poll } = setup();
+      run(42);
+      await sut.refreshCurrent();
+      const seen = view(42, ['a']);
+      sut.remember(seen);
+      sut.forget();
+      poll(seen);
+
+      await sut.checkUnlocks();
+
+      expect(onGameUpdatedMock).toHaveBeenCalledExactlyOnceWith(seen);
+    });
+
+    it('should not hand over the view of the game of the account that was left when it is read only after another took over', async () => {
+      const read = held<CheckResult<IGameView>>();
+      const { sut, onGameUpdatedMock, run } = setup({
+        pollGame: () => read.promise,
+      });
+      run(42);
+      await sut.refreshCurrent();
+      const checking = sut.checkUnlocks();
+      sut.forget({ isCurrentIncluded: true });
+      read.resolve({ ok: true, value: view(42, ['a']) });
+
+      await checking;
+
+      expect(onGameUpdatedMock).not.toHaveBeenCalled();
+    });
+
     it('should not poll when the setup is gone', async () => {
       let isConfigured = true;
       const { sut, pollGameMock, run } = setup({
@@ -388,6 +472,67 @@ describe('GameWatcher', () => {
       await sut.checkUnlocks();
 
       expect(pollGameMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('forget', () => {
+    it('should keep the current game when only what was read is dropped', async () => {
+      const { sut, onCurrentChangedMock, run } = setup();
+      run(42);
+      await sut.checkRunningGame();
+      sut.forget();
+
+      await sut.checkRunningGame();
+
+      expect(onCurrentChangedMock).toHaveBeenCalledExactlyOnceWith({
+        appid: 42,
+        isRunning: true,
+      });
+    });
+  });
+
+  describe('checks that overlap', () => {
+    it('should announce a game that opened once when the next check comes round before the one that saw it has ended', async () => {
+      const answers = [held<number | null>(), held<number | null>()];
+      let asked = 0;
+      const { every, tick } = manualEvery();
+      const { sut, onCurrentChangedMock } = setup({
+        every,
+        getRunningAppId: () => answers[asked++].promise,
+      });
+      sut.start();
+      tick(10_000);
+      tick(10_000);
+      answers[0].resolve(42);
+      answers[1].resolve(42);
+
+      await turn();
+
+      expect(onCurrentChangedMock).toHaveBeenCalledExactlyOnceWith({
+        appid: 42,
+        isRunning: true,
+      });
+    });
+
+    it('should hand over the new view once when the next read comes round before the one before it has ended and both answer it', async () => {
+      const read = held<CheckResult<IGameView>>();
+      const { every, tick } = manualEvery();
+      const { sut, onGameUpdatedMock, run } = setup({
+        every,
+        pollGame: () => read.promise,
+      });
+      run(42);
+      await sut.refreshCurrent();
+      sut.remember(view(42, ['a']));
+      sut.start();
+      tick(60_000);
+      tick(60_000);
+      const next = view(42, ['a', 'b']);
+      read.resolve({ ok: true, value: next });
+
+      await turn();
+
+      expect(onGameUpdatedMock).toHaveBeenCalledExactlyOnceWith(next);
     });
   });
 
