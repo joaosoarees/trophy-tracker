@@ -1,5 +1,6 @@
 import {
   existsSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   statSync,
@@ -84,6 +85,15 @@ function makeAccountDir(): string {
   return dir;
 }
 
+/** Marks a file the store wrote as written in another version of the format. */
+function rewriteVersion(dir: string, name: string, version: number): string {
+  const file = join(dir, name);
+  const content = JSON.parse(readFileSync(file, 'utf8')) as object;
+  const rewritten = JSON.stringify({ ...content, version });
+  writeFileSync(file, rewritten);
+  return rewritten;
+}
+
 const filesEnding = (dir: string, suffix: string): string[] =>
   readdirSync(dir).filter((file) => file.endsWith(suffix));
 
@@ -128,6 +138,21 @@ describe('Store', () => {
 
       const reopenedWithoutCipher = new Store(dir);
       expect(reopenedWithoutCipher.getCredentials()).toBeNull();
+    });
+
+    it('should answer no credentials when the saved key can no longer be decrypted', () => {
+      const { sut, dir } = setup({ cipher: CIPHER });
+      sut.setCredentials(CREDENTIALS, PROFILE);
+      const brokenCipher: ICipher = {
+        encrypt: CIPHER.encrypt,
+        decrypt: () => {
+          throw new Error('the keyring changed');
+        },
+      };
+
+      const reopened = new Store(dir, brokenCipher);
+
+      expect(reopened.getCredentials()).toBeNull();
     });
 
     it('should answer a key saved with a cipher when the folder is opened with it', () => {
@@ -633,6 +658,16 @@ describe('Store', () => {
       expect(reopened.getWindowBounds()).toEqual(BOUNDS);
     });
 
+    it('should keep where the window was when asked to remember it', () => {
+      const { sut, dir } = setup();
+      sut.setWindowBounds(BOUNDS);
+
+      sut.setPreference('rememberWindow', true);
+
+      const reopened = new Store(dir);
+      expect(reopened.getWindowBounds()).toEqual(BOUNDS);
+    });
+
     it('should forget where the window was when asked not to remember it', () => {
       const { sut, dir } = setup();
       sut.setWindowBounds(BOUNDS);
@@ -733,6 +768,147 @@ describe('Store', () => {
       expect(sut.getLanguage()).toBe('fr');
     });
 
+    it.each(['[1, 2]', '"text"', 'null', '7'])(
+      'should keep the file aside as damaged when what it holds is %s, not an object',
+      (content) => {
+        const dir = makeAccountDir();
+        writeFileSync(join(dir, 'userdata.json'), content);
+
+        setup({ dir });
+
+        const kept = readFileSync(
+          join(dir, 'userdata.json.damaged.bak'),
+          'utf8',
+        );
+        expect(kept).toBe(content);
+      },
+    );
+
+    it('should start with no notes when the file that holds them is not an object', () => {
+      const dir = makeAccountDir();
+      writeFileSync(join(dir, 'userdata.json'), '[1, 2]');
+
+      const { sut } = setup({ dir });
+
+      expect(sut.getUserData(10)).toEqual({});
+    });
+
+    it.each(['config.json', 'cache.json', 'userdata.json', 'settings.json'])(
+      'should keep %s aside when it is damaged',
+      (name) => {
+        const dir = makeTempDir();
+        writeFileSync(join(dir, name), '{"cut short');
+
+        setup({ dir });
+
+        expect(filesEnding(dir, '.bak')).toEqual([`${name}.damaged.bak`]);
+      },
+    );
+
+    it('should say so, and start from nothing, when the damaged file cannot be copied aside', () => {
+      const dir = makeAccountDir();
+      writeFileSync(join(dir, 'userdata.json'), '{"accounts": {"7656');
+      // A folder where the copy would go: nothing can be copied over it.
+      mkdirSync(join(dir, 'userdata.json.damaged.bak'));
+      const reported: string[] = [];
+
+      const { sut } = setup({
+        dir,
+        options: { report: (message) => reported.push(message) },
+      });
+
+      expect(reported).toEqual([
+        'userdata.json could not be used (damaged) nor copied aside',
+      ]);
+      expect(sut.getUserData(10)).toEqual({});
+    });
+
+    it('should report the version of a file from another version when it sets it aside', () => {
+      const dir = makeAccountDir();
+      rewriteVersion(dir, 'config.json', 99);
+      const reported: string[] = [];
+
+      setup({ dir, options: { report: (message) => reported.push(message) } });
+
+      expect(reported).toEqual([
+        'config.json could not be used (v99); kept as config.json.v99.bak',
+      ]);
+    });
+
+    it('should not know the accounts of a file written by a later version of the app', () => {
+      const dir = makeAccountDir();
+      rewriteVersion(dir, 'config.json', 99);
+
+      const { sut } = setup({ dir });
+
+      expect(sut.getAccounts()).toEqual([]);
+    });
+
+    it('should keep aside the accounts written by a later version of the app when it opens', () => {
+      const dir = makeAccountDir();
+      const later = rewriteVersion(dir, 'config.json', 99);
+
+      setup({ dir });
+
+      const kept = readFileSync(join(dir, 'config.json.v99.bak'), 'utf8');
+      expect(kept).toBe(later);
+    });
+
+    // Windows has no permission bits; see the test of the key's own file.
+    it.skipIf(process.platform === 'win32')(
+      'should let only the user read the copy when a file is set aside, since it may hold a key',
+      () => {
+        const dir = makeAccountDir();
+        writeFileSync(join(dir, 'userdata.json'), '{"accounts": {"7656');
+
+        setup({ dir });
+
+        const copy = join(dir, 'userdata.json.damaged.bak');
+        expect(statSync(copy).mode & 0o777).toBe(0o600);
+      },
+    );
+
+    it('should not read a cache written by a later version of the app', () => {
+      const dir = makeAccountDir();
+      new Store(dir).setSummaries({ 10: SUMMARY });
+      rewriteVersion(dir, 'cache.json', 99);
+
+      const { sut } = setup({ dir });
+
+      expect(sut.getSummary(10)).toBeNull();
+    });
+
+    it('should not keep a later cache aside when it drops it', () => {
+      const dir = makeAccountDir();
+      new Store(dir).setSummaries({ 10: SUMMARY });
+      rewriteVersion(dir, 'cache.json', 99);
+
+      setup({ dir });
+
+      expect(filesEnding(dir, '.bak')).toEqual([]);
+    });
+
+    it('should start from the default settings when they were written by a later version of the app', () => {
+      const dir = makeTempDir();
+      new Store(dir).setLanguage('fr');
+      rewriteVersion(dir, 'settings.json', 99);
+
+      const { sut } = setup({ dir });
+
+      expect(sut.getLanguage()).toBe('en');
+    });
+
+    it('should keep aside the settings written by a later version of the app when it opens', () => {
+      const dir = makeTempDir();
+      new Store(dir).setLanguage('fr');
+      const later = rewriteVersion(dir, 'settings.json', 99);
+
+      setup({ dir });
+
+      const kept = readFileSync(join(dir, 'settings.json.v99.bak'), 'utf8');
+      expect(kept).toBe(later);
+    });
+
     it('should set nothing aside when the files are fine', () => {
       const dir = makeAccountDir();
       new Store(dir).setUserData(10, 'A', NOTE);
@@ -817,6 +993,42 @@ describe('Store', () => {
       sut.setSummaries({ 1: SUMMARY });
 
       expect(sut.getSummary(1)).toEqual(SUMMARY);
+    });
+
+    it('should write nothing when asked to, as the app closes, with nothing waiting', () => {
+      const { sut, dir } = setup({ options: { cacheDelay: CACHE_DELAY } });
+      sut.setSummaries({ 1: SUMMARY });
+      sut.flush();
+      const file = join(dir, 'cache.json');
+      writeFileSync(file, 'written since');
+
+      sut.flush();
+
+      expect(readFileSync(file, 'utf8')).toBe('written since');
+    });
+
+    it('should not write again when the delay passes after what was waiting was written as the app closes', () => {
+      const { sut, dir } = setup({ options: { cacheDelay: CACHE_DELAY } });
+      sut.setSummaries({ 1: SUMMARY });
+      sut.flush();
+      const file = join(dir, 'cache.json');
+      writeFileSync(file, 'written since');
+
+      vi.advanceTimersByTime(CACHE_DELAY);
+
+      expect(readFileSync(file, 'utf8')).toBe('written since');
+    });
+
+    it('should write a read after its delay when it arrives after what was waiting was written', () => {
+      const { sut, dir } = setup({ options: { cacheDelay: CACHE_DELAY } });
+      sut.setSummaries({ 1: SUMMARY });
+      sut.flush();
+      sut.setSummaries({ 2: SUMMARY });
+
+      vi.advanceTimersByTime(CACHE_DELAY);
+
+      const reopened = new Store(dir);
+      expect(reopened.getSummary(2)).toEqual(SUMMARY);
     });
 
     it('should write what is waiting when asked to, as the app closes', () => {

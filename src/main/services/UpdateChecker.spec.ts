@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { makeAppInfo } from '@tests/factories/makeAppInfo';
 import { fakeFetch, type IRoute } from '@tests/helpers';
@@ -141,6 +141,50 @@ describe('UpdateChecker', () => {
         makeAppInfo({ version: '1.2.0', newVersion: '1.3.0' }),
       );
     });
+
+    it('should report no new version when the release it had found is no longer the latest', async () => {
+      let route = LATER_RELEASE;
+      const { sut, clock } = setup(() => route);
+      await sut.getAppInfo();
+      route = SAME_RELEASE;
+      clock.now = 7 * HOUR;
+
+      const info = await sut.getAppInfo();
+
+      expect(info).toEqual(makeAppInfo({ version: '1.2.0', newVersion: null }));
+    });
+
+    it('should not ask GitHub again when the last check, which failed, is under six hours old', async () => {
+      const { sut, fetchImpl, clock } = setup(RATE_LIMIT);
+      await sut.getAppInfo();
+      clock.now = 5 * HOUR;
+
+      await sut.getAppInfo();
+
+      expect(fetchImpl.calls).toHaveLength(1);
+    });
+
+    it('should not ask GitHub again when the last check, which could not reach it, is under six hours old', async () => {
+      const { sut, fetchImpl, clock } = setup(() => {
+        throw new TypeError('fetch failed');
+      });
+      await sut.getAppInfo();
+      clock.now = 5 * HOUR;
+
+      await sut.getAppInfo();
+
+      expect(fetchImpl.calls).toHaveLength(1);
+    });
+
+    it('should ask GitHub for its JSON format', async () => {
+      const { sut, fetchImpl } = setup(LATER_RELEASE);
+
+      await sut.getAppInfo();
+
+      expect(fetchImpl.inits.map((init) => init?.headers)).toEqual([
+        { Accept: 'application/vnd.github+json' },
+      ]);
+    });
   });
 
   describe('check', () => {
@@ -163,6 +207,31 @@ describe('UpdateChecker', () => {
       const hasChecked = await sut.check();
 
       expect(hasChecked).toBe(false);
+    });
+
+    it('should answer false when GitHub cannot be reached', async () => {
+      const { sut } = setup(() => {
+        throw new TypeError('fetch failed');
+      });
+
+      const hasChecked = await sut.check();
+
+      expect(hasChecked).toBe(false);
+    });
+
+    describe('with the limit users get', () => {
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it('should give the request ten seconds when it was built with no limit of its own', async () => {
+        const timeoutMock = vi.spyOn(AbortSignal, 'timeout');
+        const { sut } = setup(LATER_RELEASE);
+
+        await sut.check();
+
+        expect(timeoutMock).toHaveBeenCalledExactlyOnceWith(10_000);
+      });
     });
 
     it('should give the request the signal of its timeout when it asks GitHub', async () => {

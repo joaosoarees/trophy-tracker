@@ -157,6 +157,17 @@ describe('createSaver', () => {
       expect(onRollbackMock).not.toHaveBeenCalled();
     });
 
+    it('should roll back to what the save before wrote when an edit made while it was being written cannot be saved', async () => {
+      const { sut, onRollbackMock } = setup(['ok', 'fail']);
+      sut.schedule('note', 'one', 'old');
+      sut.flush();
+      sut.schedule('note', 'two', 'one');
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(onRollbackMock).toHaveBeenCalledExactlyOnceWith('note', 'one');
+    });
+
     it('should roll back to the last saved value when a save fails after one succeeded', async () => {
       const { sut, onRollbackMock } = setup(['ok', 'fail']);
       sut.schedule('note', 'one', 'old');

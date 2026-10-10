@@ -111,6 +111,65 @@ describe('achievementList', () => {
       expect(ids(list)).toEqual(order);
     });
 
+    it('should sort by name as the language does when a name starts with an accented letter', () => {
+      const game = view([
+        achievement('z', { name: 'Zèle' }),
+        achievement('e', { name: 'Élan' }),
+        achievement('a', { name: 'Avant' }),
+      ]);
+
+      const list = listAchievements(
+        game,
+        {},
+        { ...PENDING, sort: 'name', locale: 'fr-FR' },
+      );
+
+      expect(ids(list)).toEqual(['a', 'e', 'z']);
+    });
+
+    it.each([
+      { sort: 'common', order: ['common', 'rare', 'unrated'] },
+      { sort: 'rare', order: ['rare', 'common', 'unrated'] },
+    ] as const)(
+      'should put last an achievement of unknown rarity when sorting by $sort',
+      ({ sort, order }) => {
+        const game = view([
+          achievement('unrated', { rarity: null }),
+          achievement('rare', { rarity: 2 }),
+          achievement('common', { rarity: 90 }),
+        ]);
+
+        const list = listAchievements(game, {}, { ...PENDING, sort });
+
+        expect(ids(list)).toEqual(order);
+      },
+    );
+
+    it('should put last an achievement Steam gives no unlock date for when sorting by recent', () => {
+      const game = view([
+        achievement('undated', { unlocked: true, unlockedAt: null }),
+        achievement('dated', { unlocked: true, unlockedAt: 100 }),
+      ]);
+
+      const list = listAchievements(game, {}, UNLOCKED);
+
+      expect(ids(list)).toEqual(['dated', 'undated']);
+    });
+
+    it('should put an achievement whose counter has not moved before one with no counter when sorting by closest', () => {
+      const game = view([
+        achievement('none', { rarity: 90 }),
+        achievement('unmoved', {
+          rarity: 2,
+          progress: { current: 0, target: 10 },
+        }),
+      ]);
+
+      const list = listAchievements(game, {}, { ...PENDING, sort: 'closest' });
+
+      expect(ids(list)).toEqual(['unmoved', 'none']);
+    });
+
     it('should count a user checklist as progress when sorting by closest', () => {
       const game = makeGame();
       const userData = {

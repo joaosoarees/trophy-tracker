@@ -408,6 +408,24 @@ describe('settingsSlice', () => {
 
       expect(sut.getState().settings.appState).toEqual(notSetUp);
     });
+
+    it('should write what was waiting to be saved before it asks for the account to be removed', async () => {
+      const order: string[] = [];
+      const { sut } = await setup({
+        removeAccount: () => {
+          order.push('removed');
+          return Promise.resolve(otherAccountState());
+        },
+      });
+      sut.getState().settings.apply(makeAppState());
+      sut.setState((state) => {
+        state.userData.flush = () => void order.push('flushed');
+      });
+
+      await sut.getState().settings.removeAccount(STEAM_ID);
+
+      expect(order).toEqual(['flushed', 'removed']);
+    });
   });
 
   describe('accept', () => {
@@ -419,6 +437,21 @@ describe('settingsSlice', () => {
 
       expect(toastMock).toHaveBeenCalledExactlyOnceWith(
         'Now following other, the account signed in to Steam.',
+      );
+    });
+
+    it('should name the account by its SteamID when the profile of the account it followed has no name', async () => {
+      const { sut, toastMock } = await setup();
+      sut.getState().settings.apply(makeAppState());
+      const unnamed = makeAppState({
+        activeSteamId: OTHER_STEAM_ID,
+        profile: { steamId: OTHER_STEAM_ID, name: '', avatar: '' },
+      });
+
+      sut.getState().settings.accept(unnamed, true);
+
+      expect(toastMock).toHaveBeenCalledExactlyOnceWith(
+        `Now following ${OTHER_STEAM_ID}, the account signed in to Steam.`,
       );
     });
 
@@ -645,6 +678,18 @@ describe('settingsSlice', () => {
       await sut.getState().settings.openFolder('data');
 
       expect(toastMock).not.toHaveBeenCalled();
+    });
+
+    it('should tell the user something went wrong when the main process fails to open the folder', async () => {
+      const { sut, toastMock } = await setup({
+        openFolder: () => Promise.reject(new Error('no file manager')),
+      });
+
+      await sut.getState().settings.openFolder('data');
+
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(
+        'Unexpected error. Try again.',
+      );
     });
 
     it('should say the path was copied when the folder cannot be opened', async () => {

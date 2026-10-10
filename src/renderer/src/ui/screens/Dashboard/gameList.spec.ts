@@ -83,6 +83,65 @@ describe('gameList', () => {
       },
     );
 
+    it('should sort by name as the language does when a name starts with an accented letter', () => {
+      const library = ['Zelda', 'Élan', 'Abzu'].map((name) =>
+        makeGameSummary({ name, unlocked: 1 }),
+      );
+
+      const list = listGames(library, {
+        ...ONGOING,
+        sort: 'name',
+        locale: 'fr-FR',
+      });
+
+      expect(names(list)).toEqual(['Abzu', 'Élan', 'Zelda']);
+    });
+
+    it('should put first the game played last when two are as close to complete', () => {
+      const library = [
+        makeGameSummary({ name: 'Earlier', unlocked: 5, lastPlayed: 100 }),
+        makeGameSummary({ name: 'Later', unlocked: 5, lastPlayed: 900 }),
+      ];
+
+      const list = listGames(library, { ...ONGOING, sort: 'closest' });
+
+      expect(names(list)).toEqual(['Later', 'Earlier']);
+    });
+
+    it('should put first the game closest to complete when two have as few achievements left', () => {
+      const library = [
+        makeGameSummary({ name: 'Small', unlocked: 8, total: 10 }),
+        makeGameSummary({ name: 'Large', unlocked: 98, total: 100 }),
+      ];
+
+      const list = listGames(library, { ...ONGOING, sort: 'fewest' });
+
+      expect(names(list)).toEqual(['Large', 'Small']);
+    });
+
+    it('should put first the game played last when two were completed at the same time', () => {
+      const done = { unlocked: 10, completedAt: 500 };
+      const library = [
+        makeGameSummary({ ...done, name: 'Earlier', lastPlayed: 100 }),
+        makeGameSummary({ ...done, name: 'Later', lastPlayed: 900 }),
+      ];
+
+      const list = listGames(library, COMPLETE);
+
+      expect(names(list)).toEqual(['Later', 'Earlier']);
+    });
+
+    it('should put last a complete game with no completion date when sorting by completion', () => {
+      const library = [
+        makeGameSummary({ name: 'Undated', unlocked: 10, completedAt: null }),
+        makeGameSummary({ name: 'Dated', unlocked: 10, completedAt: 500 }),
+      ];
+
+      const list = listGames(library, COMPLETE);
+
+      expect(names(list)).toEqual(['Dated', 'Undated']);
+    });
+
     it('should list only the games whose name matches when there is a search', () => {
       const library = makeLibrary();
 

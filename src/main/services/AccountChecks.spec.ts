@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { type Language } from '@shared/i18n';
-import { fakeSteamClient, type ISteamAnswers } from '@tests/fakeSteamClient';
+import {
+  fakeSteamClient,
+  type ISteamAnswers,
+  type SteamRequest,
+} from '@tests/fakeSteamClient';
 import { KEY, OTHER_KEY, OTHER_STEAM_ID, STEAM_ID } from '@tests/helpers';
 import { InMemoryStore } from '@tests/InMemoryStore';
 import { achieved, game } from '@tests/steamLibrary';
@@ -31,6 +35,12 @@ const summary = ({ steamId }: ICredentials): IRawPlayerSummary => ({
 const failing = (kind: SteamErrorKind) => (): never => {
   throw new SteamError(kind);
 };
+
+/** The games Steam was asked about for what a player has in them, in order. */
+const playerRequests = (client: { asked: SteamRequest[] }): number[] =>
+  client.asked.flatMap((request) =>
+    request.method === 'getPlayerAchievements' ? [request.appid] : [],
+  );
 
 /**
  * The checks of an app with no account, over a store in memory and a Steam
@@ -191,6 +201,69 @@ describe('AccountChecks', () => {
       const result = await sut.checkPrivacy(STEAM_ID, KEY);
 
       expect(result).toEqual({ ok: false, error: KEY_REJECTED });
+    });
+
+    it('should say Steam could not be reached when it stops answering as the achievements are read', async () => {
+      const { sut } = setup({
+        owned: () => [game(1, 'A', 10)],
+        player: failing('network'),
+      });
+
+      const result = await sut.checkPrivacy(STEAM_ID, KEY);
+
+      expect(result).toEqual({
+        ok: false,
+        error: 'Could not reach Steam. Check your connection.',
+      });
+    });
+
+    it('should ask about one game when the most recent one answers', async () => {
+      const { sut, client } = setup({
+        owned: () => [game(1, 'Older', 10, 100), game(2, 'Recent', 10, 200)],
+        player: () => achieved(1, 2),
+      });
+
+      await sut.checkPrivacy(STEAM_ID, KEY);
+
+      expect(playerRequests(client)).toEqual([2]);
+    });
+
+    it('should ask about the five most recent games and no other when none of them has achievements', async () => {
+      const { sut, client } = setup({
+        owned: () =>
+          [1, 2, 3, 4, 5, 6, 7].map((appid) =>
+            game(appid, `Game ${appid}`, 10, appid * 100),
+          ),
+        player: failing('no-stats'),
+      });
+
+      await sut.checkPrivacy(STEAM_ID, KEY);
+
+      expect(playerRequests(client)).toEqual([7, 6, 5, 4, 3]);
+    });
+
+    it('should accept the profile when none of the games it asks about has achievements', async () => {
+      const { sut } = setup({
+        owned: () => [game(1, 'A', 10), game(2, 'B', 10)],
+        player: failing('no-stats'),
+      });
+
+      const result = await sut.checkPrivacy(STEAM_ID, KEY);
+
+      expect(result).toEqual({ ok: true, value: { gamesWithPlaytime: 2 } });
+    });
+
+    it('should ask Steam with the SteamID and the key without the spaces around them', async () => {
+      const { sut, client } = setup({ owned: () => [] });
+
+      await sut.checkPrivacy(` ${STEAM_ID} `, ` ${KEY} `);
+
+      expect(client.asked).toEqual([
+        {
+          method: 'getOwnedGames',
+          credentials: { steamId: STEAM_ID, apiKey: KEY },
+        },
+      ]);
     });
   });
 });
