@@ -98,7 +98,7 @@ function setup(answers: ISteamAnswers, statMap = new Map<string, string>()) {
   const advance = (ms: number): void => {
     now += ms;
   };
-  return { sut, client, advance };
+  return { sut, client, store, advance };
 }
 
 /** A library with the game 7, which has no achievements. */
@@ -151,6 +151,109 @@ const setupCompleteGame = () =>
       2: () => achieved(1, 4),
     }),
   });
+
+/** One turn of the event loop: whatever was ready to run has run. */
+const turn = (): Promise<void> =>
+  new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+
+const DOZEN = Array.from({ length: 12 }, (_, i) => i + 1);
+
+/**
+ * A library with the games 1 to 12, none read yet, over a Steam that answers
+ * about a game only when the test lets it, so the reads of the dashboard
+ * overlap as they do on a network. `events` lists, in order, each progress
+ * announced and how each dashboard ended.
+ */
+function setupDozenGames() {
+  const waiting = new Map<
+    number,
+    {
+      resolve: (list: IRawPlayerAchievement[]) => void;
+      reject: (e: SteamError) => void;
+    }
+  >();
+  const made = setup({
+    owned: () => DOZEN.map((appid) => game(appid, `Game ${appid}`, 10)),
+    player: (appid) =>
+      new Promise<IRawPlayerAchievement[]>((resolve, reject) => {
+        waiting.set(appid, { resolve, reject });
+      }),
+  });
+  const events: string[] = [];
+
+  /**
+   * Asks for the dashboard and waits until Steam is being asked about the
+   * games it starts with. `ended` resolves when the dashboard answered, or failed.
+   */
+  const start = async (): Promise<{ ended: Promise<void> }> => {
+    const ended = made.sut
+      .getDashboard('cached', (done, total) => {
+        events.push(`${done}/${total}`);
+      })
+      .then(
+        (list) => {
+          events.push(`answered ${list.length} games`);
+        },
+        (e: unknown) => {
+          events.push(
+            `failed: ${e instanceof SteamError ? e.kind : String(e)}`,
+          );
+        },
+      );
+    // The library was answered and the four first requests were made.
+    await turn();
+    return { ended };
+  };
+
+  /** Steam answers every game it is still asked about, until it is asked about no other. */
+  const answerTheRest = async (): Promise<void> => {
+    for (;;) {
+      await turn();
+      if (waiting.size === 0) return;
+      for (const [appid, { resolve }] of [...waiting]) {
+        waiting.delete(appid);
+        resolve(achieved(1, 4));
+      }
+    }
+  };
+
+  /**
+   * Steam fails the request about one game while the others are in flight,
+   * then answers the rest; resolves once the dashboard ended and nothing is
+   * left running.
+   */
+  const failGame = async (
+    appid: number,
+    kind: SteamErrorKind,
+    ended: Promise<void>,
+  ): Promise<void> => {
+    waiting.get(appid)?.reject(new SteamError(kind));
+    waiting.delete(appid);
+    await answerTheRest();
+    await ended;
+  };
+
+  /** The games Steam was asked about, in order. */
+  const gamesAsked = (): number[] =>
+    made.client.asked.flatMap((request) =>
+      request.method === 'getPlayerAchievements' ? [request.appid] : [],
+    );
+  /** The games the store holds a summary of. */
+  const gamesSaved = (): number[] =>
+    DOZEN.filter((appid) => made.store.getSummary(appid) !== null);
+
+  return {
+    ...made,
+    events,
+    start,
+    answerTheRest,
+    failGame,
+    gamesAsked,
+    gamesSaved,
+  };
+}
 
 describe('Tracker', () => {
   describe('getGame', () => {
@@ -264,6 +367,40 @@ describe('Tracker', () => {
       expect(second.achievements[5]).toBe(first.achievements[5]);
     });
 
+    it('should say Steam answered when the game was read', async () => {
+      const { sut } = setupGame7();
+      const onAnswerMock = vi.fn<() => void>();
+
+      await sut.getGame(7, false, onAnswerMock);
+
+      expect(onAnswerMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('should not say Steam answered when the game comes from the cache', async () => {
+      const { sut } = setupGame7();
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.getGame(7);
+
+      await sut.getGame(7, false, onAnswerMock);
+
+      expect(onAnswerMock).not.toHaveBeenCalled();
+    });
+
+    it('should say Steam answered to each request when they share one read', async () => {
+      const { sut, client } = setupGame7();
+      const onFirstAnswerMock = vi.fn<() => void>();
+      const onSecondAnswerMock = vi.fn<() => void>();
+
+      await Promise.all([
+        sut.getGame(7, false, onFirstAnswerMock),
+        sut.getGame(7, false, onSecondAnswerMock),
+      ]);
+
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(1);
+      expect(onFirstAnswerMock).toHaveBeenCalledExactlyOnceWith();
+      expect(onSecondAnswerMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
     it('should share one read between identical simultaneous requests', async () => {
       const { sut, client } = setup({
         owned: () => [game(1, 'A', 10), game(2, 'B', 10)],
@@ -363,6 +500,52 @@ describe('Tracker', () => {
         ),
       );
       expect(onErrorMock).not.toHaveBeenCalled();
+    });
+
+    it('should not say Steam answered when the cached game is recent', async () => {
+      const { sut } = setupNioh();
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.getGameStaleFirst(NIOH, unheard);
+
+      await sut.getGameStaleFirst(NIOH, { ...unheard, onAnswer: onAnswerMock });
+
+      expect(onAnswerMock).not.toHaveBeenCalled();
+    });
+
+    it('should say Steam answered when the refresh of a stale game ends', async () => {
+      const { sut, advance } = setupNioh();
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.getGameStaleFirst(NIOH, unheard);
+      advance(5 * 60_000);
+
+      await sut.getGameStaleFirst(NIOH, { ...unheard, onAnswer: onAnswerMock });
+      // Joins the refresh still in flight, so what follows sees how it ended.
+      await sut.getGame(NIOH);
+
+      expect(onAnswerMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('should not say Steam answered when the refresh of a stale game fails', async () => {
+      let isBroken = false;
+      const { sut, advance } = setup({
+        owned: () => [game(7, 'Game', 5)],
+        achievements: noAchievementList,
+        player: () => (isBroken ? failing('invalid-key')() : achieved(0, 0)),
+      });
+      const onAnswerMock = vi.fn<() => void>();
+      const onErrorMock = vi.fn<(e: unknown) => void>();
+      await sut.getGameStaleFirst(7, unheard);
+      isBroken = true;
+      advance(5 * 60_000);
+
+      await sut.getGameStaleFirst(7, {
+        ...unheard,
+        onError: onErrorMock,
+        onAnswer: onAnswerMock,
+      });
+      await vi.waitFor(() => expect(onErrorMock).toHaveBeenCalledOnce());
+
+      expect(onAnswerMock).not.toHaveBeenCalled();
     });
 
     it('should report a failed refresh without failing the answer', async () => {
@@ -498,6 +681,69 @@ describe('Tracker', () => {
       expect(requestsTo(client, 'getPlayerAchievements')).toBe(2);
     });
 
+    it('should say Steam answered when a game was read for the dashboard', async () => {
+      const { sut } = setupTwoGames();
+      const onAnswerMock = vi.fn<() => void>();
+
+      await sut.getDashboard('cached', undefined, onAnswerMock);
+
+      expect(onAnswerMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('should say Steam answered when only the library was read again', async () => {
+      const { sut, client, advance } = setupTwoGames();
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.getDashboard();
+      advance(11 * 60_000);
+
+      await sut.getDashboard('cached', undefined, onAnswerMock);
+
+      expect(requestsTo(client, 'getOwnedGames')).toBe(2);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(2);
+      expect(onAnswerMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('should not say Steam answered when the library and every game come from the cache', async () => {
+      const { sut, client } = setupTwoGames();
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.getDashboard();
+      const askedBefore = client.asked.length;
+
+      await sut.getDashboard('cached', undefined, onAnswerMock);
+
+      expect(client.asked).toHaveLength(askedBefore);
+      expect(onAnswerMock).not.toHaveBeenCalled();
+    });
+
+    it('should not say Steam answered when only the art, which needs no key, was asked for', async () => {
+      const { sut, client } = setup({
+        owned: () => [game(1, 'A', 10)],
+        player: () => achieved(1, 4),
+        art: storeDown,
+      });
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.getDashboard();
+
+      await sut.getDashboard('cached', undefined, onAnswerMock);
+
+      expect(requestsTo(client, 'getStoreArt')).toBe(2);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(1);
+      expect(onAnswerMock).not.toHaveBeenCalled();
+    });
+
+    it('should not say Steam answered when the only game read has no stats', async () => {
+      const { sut } = setup({
+        owned: () => [game(4, 'No achievements', 10)],
+        player: failing('no-stats'),
+      });
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.library();
+
+      await sut.getDashboard('cached', undefined, onAnswerMock);
+
+      expect(onAnswerMock).not.toHaveBeenCalled();
+    });
+
     it('should read every played game the first time', async () => {
       const { sut, client } = setupTwoGames();
 
@@ -601,6 +847,60 @@ describe('Tracker', () => {
       const list = await sut.getDashboard();
 
       expect(list.find((g) => g.appid === 2)?.completedAt).toBeNull();
+    });
+
+    it('should start no other game when the read of one fails the dashboard', async () => {
+      const { start, failGame, gamesAsked } = setupDozenGames();
+      const { ended } = await start();
+
+      await failGame(2, 'network', ended);
+
+      expect(gamesAsked()).toEqual([1, 2, 3, 4]);
+    });
+
+    it('should keep the games that were being read when another failed the dashboard', async () => {
+      const { start, failGame, gamesSaved } = setupDozenGames();
+      const { ended } = await start();
+
+      await failGame(2, 'network', ended);
+
+      expect(gamesSaved()).toEqual([1, 3, 4]);
+    });
+
+    it('should answer the failure only after the reads in flight ended, and announce nothing after it', async () => {
+      const { start, failGame, events } = setupDozenGames();
+      const { ended } = await start();
+
+      await failGame(2, 'network', ended);
+
+      expect(events).toEqual(['1/12', '2/12', '3/12', 'failed: network']);
+    });
+
+    it('should read only the games that were not read when a failed dashboard is asked for again', async () => {
+      const { start, failGame, answerTheRest, gamesAsked, client, events } =
+        setupDozenGames();
+      await failGame(2, 'network', (await start()).ended);
+      client.asked.length = 0;
+      events.length = 0;
+
+      const { ended } = await start();
+      await answerTheRest();
+      await ended;
+
+      expect(gamesAsked()).toEqual([2, 5, 6, 7, 8, 9, 10, 11, 12]);
+      expect(events.at(-1)).toBe('answered 12 games');
+    });
+
+    it('should read the other games and keep the failed one out of the cache when one fails with an unknown error', async () => {
+      const { start, failGame, gamesAsked, gamesSaved, events } =
+        setupDozenGames();
+      const { ended } = await start();
+
+      await failGame(2, 'unknown', ended);
+
+      expect(gamesAsked()).toEqual(DOZEN);
+      expect(gamesSaved()).toEqual([1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+      expect(events.at(-1)).toBe('answered 11 games');
     });
 
     it('should fail with a private profile instead of answering an empty dashboard', async () => {

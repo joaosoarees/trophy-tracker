@@ -20,11 +20,14 @@ export interface ISteamAnswers {
   owned?: (credentials: ICredentials) => IRawOwnedGame[] | null;
   /** The achievement list of a game (`getGameAchievements`). */
   achievements?: (appid: number) => IRawSchemaAchievement[];
-  /** What a player has in a game (`getPlayerAchievements`). */
+  /**
+   * What a player has in a game (`getPlayerAchievements`). A promise is Steam
+   * taking its time: the test settles it when the answer is to arrive.
+   */
   player?: (
     appid: number,
     credentials: ICredentials,
-  ) => IRawPlayerAchievement[];
+  ) => IRawPlayerAchievement[] | Promise<IRawPlayerAchievement[]>;
   /** The counters of a player in a game (`getUserStats`). */
   stats?: (appid: number, credentials: ICredentials) => Record<string, number>;
   /** The art the store has; by default it has none for any game. */
@@ -66,7 +69,10 @@ type FakeSteamClient = Pick<
 export function fakeSteamClient(answers: ISteamAnswers = {}): FakeSteamClient {
   const asked: SteamRequest[] = [];
   /** Writes the request down and answers later, as a request would. */
-  const answer = <T>(request: SteamRequest, give?: () => T): Promise<T> => {
+  const answer = <T>(
+    request: SteamRequest,
+    give?: () => T | Promise<T>,
+  ): Promise<T> => {
     asked.push(request);
     return Promise.resolve().then(() => {
       if (give) return give();
