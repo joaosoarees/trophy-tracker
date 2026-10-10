@@ -1,0 +1,28 @@
+# Accounts
+
+The rules below are binding; `CLAUDE.md` sends you here before you change anything about accounts: adding, removing, switching, following the Steam client's account, a key and its status, or the account cards.
+
+The app keeps several Steam accounts and follows one at a time. An account is a SteamID, the name and avatar Steam gave for it, and its own Web API key.
+
+The form of the account step is described in `docs/onboarding-form.md`; where the accounts are kept on disk, in `docs/local-data.md`.
+
+## Rules
+
+- **Everything read or written is per account.** `storage/Store.ts` keeps, by SteamID: the key (`config.json`); the library, game views and summaries (`cache.json`); the notes, pins and checklists (`userdata.json`). Achievement lists and art describe the game and are shared.
+- **A read belongs to the account it started for.** `Tracker` hands each result to the store with the SteamID it was read with, and shares in-flight reads per account. A result for a removed account is discarded.
+- **The key never reaches the interface.** `IAccount` carries only its last four characters (`keyEnding`). `ui/components/MaskedKey` is the only way a saved key is shown: no reveal, no copy. A key goes in through `KeyField` and is forgotten by the interface once saved.
+- **Key status** (`AccountStatus`): `valid`, `rejected`, `rateLimited`. One `rejected` covers a revoked key and a mistyped one: Steam answers both the same way (403 as HTML).
+- `SetupService.attempt` records what each read says about the key in use, and tells the interface (`state-changed`) only when the status changes.
+- **A rejected key does not send the user back to the setup.** The app stays open with what it had, `AppShell` shows `KeyTroubleNotice` over the Game and the Dashboard, and "Replace key" in Settings fixes it. The onboarding shows only when there is no account at all.
+- **Switching** (`settings.switchAccount`) flushes pending note edits first: they belong to the account being left. `useAppController` runs `connectStore` again for each account: what was read for the previous one leaves the screen and the other is loaded, instantly when it has a cache.
+- **The app follows the account signed in to Steam**, on every system (`services/AccountFollower.ts`). It switches, with a toast, when the client's account changes (asked as the app opens and every 30 s) and **when a game starts**, whatever account was picked by hand. A manual pick therefore stands until a game starts.
+- **The running game is always the client's account's**, never shown with another account's data. `GameWatcher` asks the follower whose game it is when a game starts. Off Windows, the running game is asked about on the profile of the client's account when the app has it (`RunningGame.ts`), not on the one in use.
+- **While a game runs, the account playing it cannot be left** (`GameWatcher.isPlaying`): Settings draws the other cards as not clickable and says why, and the main process refuses the switch.
+- If the client's account is one the app does not have, the Game tab says so and offers to add it (`CurrentGame.isOnAnotherAccount`, `AppShell/GameOnAnotherAccount`). That game is neither read nor remembered as the last one played.
+- **One card per account** (`AccountCard`, in Settings). Nothing about an account is drawn outside its card. The one in use has the accent border and opens, inside the card, its masked key with "Replace key" and "Remove account" (`Settings/components/AccountDetails`); any other card is one button that switches to it.
+- **A card keeps its shape when the account in use changes:** `AccountCard` is drawn the same way in use or not, and what makes another account clickable is a button laid under the card's content. The same goes for anything that flips between "is a button" and "is not": change what is inside, not the element.
+- **Adding.** The dashed card at the end of the list opens the onboarding as the account step alone: no language step, no bar of steps, and no step after it (`navigation.isAddingAccount`), the form already open. The account just added becomes the one in use. A SteamID that is already saved is refused.
+- **Removing** an account deletes its key, its cache and its notes, and the dialog says so by name. Removing the last one leads back to the onboarding.
+- **In the setup, everything about accounts happens in the account step**, and there is no step after it. An account Steam accepts is saved at once and joins a list of cards above the form, which closes into "Add another account". The step's forward button enters the app.
+- The first setup ends on the account signed in to Steam, or else the first added.
+- An account added in that visit can be removed again in one click. An older one cannot: it may have notes, and Settings asks first.
