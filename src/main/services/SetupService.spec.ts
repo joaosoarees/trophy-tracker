@@ -230,6 +230,26 @@ describe('SetupService', () => {
       expect(result).toEqual({ ok: false, error: KEY_REJECTED });
       expect(store.getCredentialsOf(STEAM_ID)?.apiKey).toBe(KEY);
     });
+
+    it('should refuse, saving nothing, when the account is not one the app has', async () => {
+      const { sut, store } = await withOneAccount();
+
+      const result = await sut.replaceKey(OTHER_STEAM_ID, OTHER_KEY);
+
+      expect(result).toEqual({
+        ok: false,
+        error: 'The app has not been set up yet.',
+      });
+      expect(store.getAccounts().map((a) => a.steamId)).toEqual([STEAM_ID]);
+    });
+
+    it('should save the key without the spaces around it', async () => {
+      const { sut, store } = await withOneAccount();
+
+      await sut.replaceKey(STEAM_ID, ` ${OTHER_KEY} `);
+
+      expect(store.getCredentialsOf(STEAM_ID)?.apiKey).toBe(OTHER_KEY);
+    });
   });
 
   describe('removeAccount', () => {
