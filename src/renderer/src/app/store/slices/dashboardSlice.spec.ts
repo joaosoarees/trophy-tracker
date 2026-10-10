@@ -159,6 +159,28 @@ describe('dashboardSlice', () => {
       expect(modes).toEqual(['cached', 'all']);
     });
 
+    it('should read everything again once the read in flight ends when that was asked after a lesser read during it', async () => {
+      const { sut, asked, modes } = await setup();
+      void sut.getState().dashboard.load('changed');
+      void sut.getState().dashboard.load('all');
+      asked[0].resolve({ ok: true, value: [] });
+
+      await turn();
+
+      expect(modes).toEqual(['cached', 'all']);
+    });
+
+    it('should read everything again when that is asked after the read that failed, during which a lesser read was asked', async () => {
+      const { sut, asked, modes } = await setup();
+      void sut.getState().dashboard.load('changed');
+      asked[0].resolve({ ok: false, error: 'Steam did not answer.' });
+      await turn();
+
+      void sut.getState().dashboard.load('all');
+
+      expect(modes).toEqual(['cached', 'all']);
+    });
+
     it('should not read the dashboard again when what was asked during a read is what the main process already has', async () => {
       const { sut, asked, modes } = await setup();
       void sut.getState().dashboard.load();
