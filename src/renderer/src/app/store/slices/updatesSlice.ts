@@ -20,16 +20,14 @@ const CHECKED_KEY = 'updates.checkedOnStartup';
  */
 type Startup = 'checking' | 'updating' | 'done';
 
-/** Outcome of the last check the user asked for. */
-type CheckState = 'idle' | 'checking' | 'upToDate' | 'failed';
-
 type UpdatesStore = {
   /** Running version and what is known about a later one; `null` until asked. */
   appInfo: IAppInfo | null;
   startup: Startup;
   /** A version finished downloading while the app was in use. */
   isReadyDialogOpen: boolean;
-  checkState: CheckState;
+  /** A check the user asked for is waiting for its answer. */
+  isChecking: boolean;
 };
 
 type UpdatesActions = {
@@ -124,7 +122,7 @@ export const createUpdatesSlice: StoreSlice<UpdatesSlice> = (set, get) => {
     appInfo: null,
     startup: alreadyCheckedThisLaunch() ? 'done' : 'checking',
     isReadyDialogOpen: false,
-    checkState: 'idle',
+    isChecking: false,
 
     start: () => {
       const off = SystemService.onAppInfoChanged(get().updates.accept);
@@ -140,24 +138,24 @@ export const createUpdatesSlice: StoreSlice<UpdatesSlice> = (set, get) => {
     },
 
     check: async () => {
-      const setCheckState = (checkState: CheckState): void =>
+      const setChecking = (isChecking: boolean): void =>
         set(
           (prevState) => {
-            prevState.updates.checkState = checkState;
+            prevState.updates.isChecking = isChecking;
           },
           false,
-          `updates/check:${checkState}`,
+          isChecking ? 'updates/check' : 'updates/checked',
         );
 
-      setCheckState('checking');
+      setChecking(true);
       try {
         const { ok, info } = await SystemService.checkForUpdates();
         get().updates.accept(info);
-        setCheckState(ok ? 'upToDate' : 'failed');
         return ok;
       } catch {
-        setCheckState('failed');
         return false;
+      } finally {
+        setChecking(false);
       }
     },
 

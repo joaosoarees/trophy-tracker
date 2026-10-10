@@ -90,7 +90,7 @@ export const Link: Story = {
 };
 
 export const Small: Story = {
-  args: { children: 'Check for updates', variant: 'secondary', size: 'sm' },
+  args: { children: 'Open folder', variant: 'secondary', size: 'sm' },
 };
 
 export const WithIcon: Story = {

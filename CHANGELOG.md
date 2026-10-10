@@ -4,6 +4,10 @@ What changed in each version, for whoever uses the app. The section of a version
 
 ## Unreleased
 
+### Changed
+
+- Settings no longer has its own "Check for updates" button: the one in the bar at the top of the window does the same from any screen.
+
 ### Fixed
 
 - With more than one account, starting a game that only the account signed in to Steam owns no longer shows "your profile's game details are not public". The app switches to the account that is playing, and stays on it while the game runs.
