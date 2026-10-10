@@ -64,15 +64,36 @@ export function createChecklistItem(
 ): IChecklistItem | 'blank' | 'duplicate' {
   const clean = text.trim();
   if (clean === '') return 'blank';
-
-  const key = clean.toLowerCase();
-  if (existing.some((item) => item.text.toLowerCase() === key)) {
-    return 'duplicate';
-  }
+  if (isOnChecklist(clean, existing)) return 'duplicate';
 
   return {
     id: `${Date.now().toString(36)}-${existing.length}`,
     text: clean,
     done: false,
   };
+}
+
+/** A list holds a text once, whatever its case and the spaces around it. */
+function isOnChecklist(text: string, items: IChecklistItem[]): boolean {
+  const key = text.trim().toLowerCase();
+  return items.some((item) => item.text.toLowerCase() === key);
+}
+
+/**
+ * A removed item goes back into the list as it is now, not as it was when the
+ * item left: at the place it was taken from, or at the end when the list got
+ * shorter than that. Answers the list it was given when the item is already on
+ * it, or its text is, typed again meanwhile.
+ */
+export function restoreChecklistItem(
+  items: IChecklistItem[],
+  removed: IChecklistItem,
+  index: number,
+): IChecklistItem[] {
+  const isBack =
+    items.some((item) => item.id === removed.id) ||
+    isOnChecklist(removed.text, items);
+  if (isBack) return items;
+
+  return [...items.slice(0, index), removed, ...items.slice(index)];
 }

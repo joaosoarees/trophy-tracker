@@ -5,6 +5,7 @@ import { makeAchievement } from '@tests/factories/makeAchievement';
 import {
   createChecklistItem,
   parseChecklist,
+  restoreChecklistItem,
   shownProgress,
 } from './checklist';
 import {
@@ -26,6 +27,10 @@ const userDataWith = (checklist: IChecklistItem[]): IAchievementUserData => ({
   pinned: false,
   checklist,
 });
+
+const bridge: IChecklistItem = { id: 'b', text: 'Bridge', done: false };
+const cave: IChecklistItem = { id: 'c', text: 'Cave', done: false };
+const tower: IChecklistItem = { id: 't', text: 'Tower', done: false };
 
 /** Three items, two of them done. */
 const twoOfThreeDone = (): IChecklistItem[] => [
@@ -178,6 +183,48 @@ describe('checklist', () => {
       const item = createChecklistItem('bridge kodama', existing);
 
       expect(item).toBe('duplicate');
+    });
+  });
+
+  describe('restoreChecklistItem', () => {
+    it('should put the item back where it was when the list is as it was left', () => {
+      const items = [bridge, tower];
+
+      const restored = restoreChecklistItem(items, cave, 1);
+
+      expect(restored).toEqual([bridge, cave, tower]);
+    });
+
+    it('should keep what was changed meanwhile when the item is put back', () => {
+      const items = [{ ...bridge, done: true }, tower];
+
+      const restored = restoreChecklistItem(items, cave, 1);
+
+      expect(restored).toEqual([{ ...bridge, done: true }, cave, tower]);
+    });
+
+    it('should put the item back at the end when the list got shorter than its place', () => {
+      const items = [bridge];
+
+      const restored = restoreChecklistItem(items, tower, 2);
+
+      expect(restored).toEqual([bridge, tower]);
+    });
+
+    it('should answer the list it was given when the item is already on it', () => {
+      const items = [bridge, cave, tower];
+
+      const restored = restoreChecklistItem(items, cave, 0);
+
+      expect(restored).toBe(items);
+    });
+
+    it('should answer the list it was given when another item has that text in another case', () => {
+      const items = [bridge, { id: 'typed-again', text: 'cave', done: true }];
+
+      const restored = restoreChecklistItem(items, cave, 1);
+
+      expect(restored).toBe(items);
     });
   });
 });

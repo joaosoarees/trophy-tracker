@@ -1,20 +1,32 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
+import { useShallow } from 'zustand/react/shallow';
 
 import { useT } from '@app/hooks/useT';
+import { useStore } from '@app/store';
 import { createChecklistItem, parseChecklist } from '@shared/checklist';
 import { type IChecklistItem } from '@shared/types/UserData';
 
-export function useChecklistController(
-  items: IChecklistItem[],
-  onChange: (items: IChecklistItem[]) => void,
-) {
+interface IParams {
+  appid: number;
+  achievementId: string;
+  items: IChecklistItem[];
+  onChange: (items: IChecklistItem[]) => void;
+}
+
+export function useChecklistController({
+  appid,
+  achievementId,
+  items,
+  onChange,
+}: IParams) {
   const t = useT();
-  // What the list is now, for an undo that arrives after other edits.
-  const latestItems = useRef(items);
-  useEffect(() => {
-    latestItems.current = items;
-  }, [items]);
+  const { steamId, restoreItem } = useStore(
+    useShallow((state) => ({
+      steamId: state.settings.appState?.activeSteamId ?? null,
+      restoreItem: state.userData.restoreChecklistItem,
+    })),
+  );
 
   const [draft, setDraft] = useState('');
   const [isDuplicate, setIsDuplicate] = useState(false);
@@ -62,19 +74,17 @@ export function useChecklistController(
     if (index === -1) return;
     const removed = items[index];
     onChange(items.filter((item) => item.id !== id));
+    // With no account in use nothing was removed for anyone.
+    if (steamId === null) return;
 
+    // The toast outlives this list (a collapsed card, a search, another game
+    // or account), so the undo names where the item came from and the store
+    // puts it back into the list as it is at the click.
+    const from = { steamId, appid, achievementId };
     toast(t.checklist.removed(removed.text), {
       action: {
         label: t.common.undo,
-        onClick: () => {
-          const current = latestItems.current;
-          if (current.some((item) => item.id === removed.id)) return;
-          onChange([
-            ...current.slice(0, index),
-            removed,
-            ...current.slice(index),
-          ]);
-        },
+        onClick: () => restoreItem(from, removed, index),
       },
     });
   }

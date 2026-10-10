@@ -11,12 +11,21 @@ import { PasteListDialog } from './PasteListDialog';
 import { useChecklistController } from './useChecklistController';
 
 interface IChecklistProps {
+  appid: number;
+  achievementId: string;
+  /** The achievement's name, for the dialog that takes a pasted list. */
   achievement: string;
   items: IChecklistItem[];
   onChange: (items: IChecklistItem[]) => void;
 }
 
-export function Checklist({ achievement, items, onChange }: IChecklistProps) {
+export function Checklist({
+  appid,
+  achievementId,
+  achievement,
+  items,
+  onChange,
+}: IChecklistProps) {
   const t = useT();
   const {
     orderedItems,
@@ -32,7 +41,7 @@ export function Checklist({ achievement, items, onChange }: IChecklistProps) {
     handleRename,
     handleToggle,
     handleRemove,
-  } = useChecklistController(items, onChange);
+  } = useChecklistController({ appid, achievementId, items, onChange });
 
   return (
     <div className="mt-2.5 space-y-1.5">

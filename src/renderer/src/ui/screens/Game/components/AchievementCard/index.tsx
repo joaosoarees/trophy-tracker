@@ -34,7 +34,7 @@ interface IAchievementCardProps {
 export const AchievementCard = memo(function AchievementCard(
   props: IAchievementCardProps,
 ) {
-  const { achievement } = props;
+  const { achievement, appid } = props;
   const t = useT();
   const locale = useLocale();
   const {
@@ -179,6 +179,8 @@ export const AchievementCard = memo(function AchievementCard(
 
         <Collapsible open={isChecklistOpen && !achievement.unlocked}>
           <Checklist
+            appid={appid}
+            achievementId={achievement.id}
             achievement={achievement.name}
             items={checklist}
             onChange={handleChecklistChange}
