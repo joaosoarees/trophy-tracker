@@ -33,6 +33,31 @@ function setup(
 }
 
 describe('UpdateChecker', () => {
+  describe('isDue', () => {
+    it('should be due when no check was ever made', () => {
+      const checkedAt = null;
+
+      const isDue = UpdateChecker.isDue(checkedAt, 0);
+
+      expect(isDue).toBe(true);
+    });
+
+    it.each([
+      { age: 'just under six hours', elapsed: 6 * HOUR - 1, isExpected: false },
+      { age: 'exactly six hours', elapsed: 6 * HOUR, isExpected: false },
+      { age: 'just over six hours', elapsed: 6 * HOUR + 1, isExpected: true },
+    ])(
+      'should answer $isExpected when the last check is $age old',
+      ({ elapsed, isExpected }) => {
+        const checkedAt = 1000;
+
+        const isDue = UpdateChecker.isDue(checkedAt, checkedAt + elapsed);
+
+        expect(isDue).toBe(isExpected);
+      },
+    );
+  });
+
   describe('getAppInfo', () => {
     it('should report the new version when a later release exists', async () => {
       const { sut } = setup(LATER_RELEASE);

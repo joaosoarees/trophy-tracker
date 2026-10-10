@@ -41,10 +41,16 @@ export class UpdateChecker {
     this.now = now;
   }
 
+  /**
+   * Whether a check last made at `checkedAt` (`null`: never) should be made
+   * again at `now`: only once more than six hours have passed.
+   */
+  static isDue(checkedAt: number | null, now: number): boolean {
+    return checkedAt === null || now - checkedAt > RECHECK_AFTER_MS;
+  }
+
   async getAppInfo(): Promise<IAppInfo> {
-    const isStale =
-      this.checkedAt === null || this.now() - this.checkedAt > RECHECK_AFTER_MS;
-    if (isStale) await this.check();
+    if (UpdateChecker.isDue(this.checkedAt, this.now())) await this.check();
     return {
       version: this.currentVersion,
       newVersion: this.newVersion,
