@@ -48,6 +48,13 @@ export const createSessionSlice: StoreSlice<SessionSlice> = (set, get) => ({
       false,
       'session/setCurrent',
     );
+    // A game opened on Steam brings the app to it. With no current game
+    // nothing is known yet, so nothing is said about what runs.
+    if (current !== null) {
+      get().navigation.followRunningGame(
+        current.isRunning ? current.appid : null,
+      );
+    }
     // Playtime has just changed; re-read only the games that changed.
     if (hasClosed) void get().dashboard.load('changed');
   },

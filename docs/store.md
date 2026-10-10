@@ -65,6 +65,7 @@ Conventions:
 - State is namespaced: `state.games.entries`, `state.dashboard.load`. A slice can read and change another one through the whole-store `get()`/`set()`.
 - A draft mutation reads `prevState.games.entries[appid].loading = true`.
 - `NONE_UNLOCKED` is an example of a stable default for a selector.
+- **A rule that makes one slice follow another is written in the action, not in an effect.** `session.setCurrent` tells `navigation.followRunningGame` which game runs, so a game opened on Steam brings the app to it in the same update, with a slice test. An effect that copies one slice into another costs a second commit and has no test.
 - **A preference the main process acts on** (remembering the window) is an `IPreferences` field: add it to `shared/types/Preferences.ts` with its default, and `Store.getPreferences` / `setPreference` and `settings.setPreference` carry it with no further wiring. It gets a `Switch` row in Settings.
 - What must survive closing the app is written by `main/storage/Store.ts`. The navigation slice keeps the tab and the picked game in `sessionStorage` only so they survive the window reload of a language change.
 - What each lifetime holds today:

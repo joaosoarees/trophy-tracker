@@ -428,12 +428,12 @@ const advance = `[...document.querySelectorAll('main button')].filter((el) => el
  */
 const verifyAccount = `(() => {
   const shown = (el) => el.offsetParent !== null;
-  const panel = document.querySelector('#steamId')?.closest('.rounded-lg.border');
+  const panel = document.querySelector('[id$="-steamId"]')?.closest('.rounded-lg.border');
   const own = [...document.querySelectorAll('main button')].filter((el) => shown(el) && !el.closest('footer'));
   const all = [...document.querySelectorAll('main button')].filter(shown);
   const target = panel
     ? [...panel.querySelectorAll('button')].filter(shown).at(-1)
-    : document.querySelector('#steamId')
+    : document.querySelector('[id$="-steamId"]')
       ? all.at(-1)
       : own.at(-1);
   target.click();
@@ -513,7 +513,7 @@ async function auditOnboarding(page, steam, language) {
 
   const steamId = JSON.parse(
     await page.evaluate(
-      `JSON.stringify({ value: document.querySelector('#steamId').value, locked: document.querySelector('#steamId').readOnly })`,
+      `JSON.stringify({ value: document.querySelector('[id$="-steamId"]').value, locked: document.querySelector('[id$="-steamId"]').readOnly })`,
     ),
   );
   expectThat(
@@ -525,12 +525,14 @@ async function auditOnboarding(page, steam, language) {
   if (isFirst) {
     // The way out of the detected account: the field opens for typing.
     await page.evaluate(
-      `document.querySelector('#steamId').closest('.space-y-2').querySelector('p button').click()`,
+      `document.querySelector('[id$="-steamId"]').closest('.space-y-2').querySelector('p button').click()`,
     );
     await sleep(500);
     expectThat(
       FLOW,
-      !(await page.evaluate(`document.querySelector('#steamId').readOnly`)),
+      !(await page.evaluate(
+        `document.querySelector('[id$="-steamId"]').readOnly`,
+      )),
       '"Use another account" does not open the SteamID for typing',
     );
     expectThat(
@@ -541,13 +543,13 @@ async function auditOnboarding(page, steam, language) {
       '"Use another account" says no account was found in the Steam client, when one was',
     );
     await audit(page, `onboarding-account-typed-${language}`);
-    await type(page, '#steamId', STEAM_ID);
+    await type(page, '[id$="-steamId"]', STEAM_ID);
   }
   const KEY = '0123456789ABCDEF0123456789ABCDEF';
-  await type(page, '#apiKey', KEY);
+  await type(page, '[id$="-apiKey"]', KEY);
 
   const verify = async ({ isEnterHeld = false } = {}) => {
-    if (isEnterHeld) await holdEnter(page, '#apiKey');
+    if (isEnterHeld) await holdEnter(page, '[id$="-apiKey"]');
     else await page.evaluate(verifyAccount);
     // Buttons are disabled while Steam is being asked, however long it takes.
     await sleep(300);
@@ -614,7 +616,7 @@ async function auditOnboarding(page, steam, language) {
     const refusal = await verify();
     const kept = JSON.parse(
       await page.evaluate(
-        `JSON.stringify({ cards: ${accountCards}, steamId: document.querySelector('#steamId')?.value ?? null, key: document.querySelector('#apiKey')?.value ?? null })`,
+        `JSON.stringify({ cards: ${accountCards}, steamId: document.querySelector('[id$="-steamId"]')?.value ?? null, key: document.querySelector('[id$="-apiKey"]')?.value ?? null })`,
       ),
     );
     expectThat(
@@ -646,7 +648,8 @@ async function auditOnboarding(page, steam, language) {
   expectThat(
     FLOW,
     (await page.evaluate(accountCards)) === 1 &&
-      (await page.evaluate(`document.querySelector('#steamId')`)) === null,
+      (await page.evaluate(`document.querySelector('[id$="-steamId"]')`)) ===
+        null,
     'a verified account does not join the list with the form put away',
   );
   await audit(page, `onboarding-verified-${language}`);
@@ -663,13 +666,13 @@ async function auditOnboarding(page, steam, language) {
     await sleep(700);
     const restarted = JSON.parse(
       await page.evaluate(`JSON.stringify((() => {
-        const field = document.querySelector('#steamId');
+        const field = document.querySelector('[id$="-steamId"]');
         const forward = [...document.querySelectorAll('main button')].filter((el) => el.offsetParent !== null).at(-1);
         return {
           cards: ${accountCards},
           value: field?.value ?? null,
           locked: field?.readOnly ?? null,
-          key: document.querySelector('#apiKey')?.value ?? null,
+          key: document.querySelector('[id$="-apiKey"]')?.value ?? null,
           inPanel: Boolean(field?.closest('.rounded-lg.border')),
           forward: forward.type,
         };
@@ -686,7 +689,7 @@ async function auditOnboarding(page, steam, language) {
       `removing the only account with "Add another account" open does not bring back the form of the first account, with the SteamID of the Steam client (found: ${JSON.stringify(restarted)})`,
     );
     await audit(page, `onboarding-last-account-removed-${language}`);
-    await type(page, '#apiKey', KEY);
+    await type(page, '[id$="-apiKey"]', KEY);
     expectThat(
       FLOW,
       (await verify()) === '' && (await page.evaluate(accountCards)) === 1,
@@ -702,7 +705,7 @@ async function auditOnboarding(page, steam, language) {
     await page.evaluate(verifyAccount);
     await sleep(700);
     const blank = await page.evaluate(
-      `document.querySelector('#steamId').value + '|' + document.querySelector('#steamId').readOnly`,
+      `document.querySelector('[id$="-steamId"]').value + '|' + document.querySelector('[id$="-steamId"]').readOnly`,
     );
     expectThat(
       FLOW,
@@ -710,8 +713,8 @@ async function auditOnboarding(page, steam, language) {
       `adding another account does not start from an empty SteamID (shown: "${blank}")`,
     );
     await audit(page, `onboarding-add-another-${language}`);
-    await type(page, '#steamId', SECOND_STEAM_ID);
-    await type(page, '#apiKey', 'FEDCBA9876543210FEDCBA9876540000');
+    await type(page, '[id$="-steamId"]', SECOND_STEAM_ID);
+    await type(page, '[id$="-apiKey"]', 'FEDCBA9876543210FEDCBA9876540000');
     expectThat(
       FLOW,
       (await verify()) === '',
@@ -950,9 +953,36 @@ async function auditAccounts(page, steam, home) {
     `the switch made by the app is not announced (toasts: "${toast}")`,
   );
 
-  // Steam starts refusing the key in use: the game stays, with a notice.
+  // Steam starts refusing the key in use with Settings open on its account:
+  // the field that replaces it opens by itself, and closed by hand it stays so.
+  const KEY_FIELD = `document.querySelector('main input[type="password"]')`;
+  await openSettings();
+  expectThat(
+    FLOW,
+    await page.evaluate(`${KEY_FIELD} === null`),
+    'the field that replaces a key is open on an account whose key works',
+  );
   steam.state.mode = 'bad-key';
   await page.evaluate(refreshGame);
+  const refusedInSettings = await waitFor(
+    page,
+    `${ACCOUNT_CARDS}[0].innerText.includes('Key refused by Steam')`,
+  );
+  expectThat(
+    FLOW,
+    refusedInSettings && (await waitFor(page, `${KEY_FIELD} !== null`, 3000)),
+    'the field that replaces a key does not open when the key is refused with Settings open',
+  );
+  await page.evaluate(clickButton('main', 'Replace key'));
+  await sleep(1200);
+  expectThat(
+    FLOW,
+    await page.evaluate(`${KEY_FIELD} === null`),
+    'the field of a refused key, closed by hand, does not stay closed',
+  );
+
+  // On the other tabs the game stays, with a notice.
+  await page.evaluate(navButton(0));
   const noticed = await waitFor(
     page,
     `(${visibleText('[role="alert"]')}).includes('Steam refused the key of Audit Hunter')`,
@@ -1035,7 +1065,7 @@ async function auditAccounts(page, steam, home) {
   await page.evaluate(clickAccountCard(-1));
   const adding = await waitFor(
     page,
-    `document.querySelector('#steamId') !== null`,
+    `document.querySelector('[id$="-steamId"]') !== null`,
   );
   expectThat(FLOW, adding, 'the tile to add an account opens nothing');
   expectThat(

@@ -11,12 +11,12 @@ import { IconButton } from './IconButton';
  * Where a Web API key is typed or pasted: hidden by default, in the
  * monospaced face so 32 characters can be checked by eye once shown. Only a
  * key being typed can be shown; a saved one never comes back to the screen.
+ * It cannot be made read-only: a key shown as text would have no way back.
  */
 export function KeyField({
   className,
-  readOnly,
   ...props
-}: Omit<ComponentProps<'input'>, 'type'>) {
+}: Omit<ComponentProps<'input'>, 'type' | 'readOnly'>) {
   const t = useT();
   const [isShown, setIsShown] = useState(false);
 
@@ -26,26 +26,22 @@ export function KeyField({
         type={isShown ? 'text' : 'password'}
         autoComplete="off"
         spellCheck={false}
-        readOnly={readOnly}
         className={cn(
           // The hint is a sentence, not a key: it keeps the interface face.
           'pr-10 font-mono placeholder:font-sans',
-          readOnly && 'bg-muted',
           className,
         )}
         {...props}
       />
-      {!readOnly && (
-        <IconButton
-          type="button"
-          label={isShown ? t.accounts.hideKey : t.accounts.showKey}
-          aria-pressed={isShown}
-          className="absolute top-1/2 right-0.5 -translate-y-1/2"
-          onClick={() => setIsShown((isShown) => !isShown)}
-        >
-          {isShown ? <EyeOff /> : <Eye />}
-        </IconButton>
-      )}
+      <IconButton
+        type="button"
+        label={isShown ? t.accounts.hideKey : t.accounts.showKey}
+        aria-pressed={isShown}
+        className="absolute top-1/2 right-0.5 -translate-y-1/2"
+        onClick={() => setIsShown((isCurrentlyShown) => !isCurrentlyShown)}
+      >
+        {isShown ? <EyeOff /> : <Eye />}
+      </IconButton>
     </div>
   );
 }

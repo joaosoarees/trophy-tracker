@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type KeyboardEvent, useState } from 'react';
 
 import { useT } from '@app/hooks/useT';
 import { singleFlight } from '@app/lib/singleFlight';
@@ -12,8 +12,13 @@ export function useAccountDetailsController(account: IAccount) {
   const apply = useStore((state) => state.settings.apply);
   const removeAccount = useStore((state) => state.settings.removeAccount);
 
-  // A refused key is the one thing here that needs doing: its field is open.
-  const [isReplacing, setIsReplacing] = useState(account.status === 'rejected');
+  // `null` until the user decides: a refused key is the one thing here that
+  // needs doing, so its field is open, also when the key is refused with
+  // this already on screen.
+  const [isReplacingByChoice, setIsReplacingByChoice] = useState<
+    boolean | null
+  >(null);
+  const isReplacing = isReplacingByChoice ?? account.status === 'rejected';
   const [key, setKey] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -24,7 +29,7 @@ export function useAccountDetailsController(account: IAccount) {
   const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
 
   function handleToggleReplacing() {
-    setIsReplacing((open) => !open);
+    setIsReplacingByChoice(!isReplacing);
     setKey('');
     setProblem(null);
   }
@@ -46,11 +51,21 @@ export function useAccountDetailsController(account: IAccount) {
       }
       // The key is not kept here a moment longer than it takes to save it.
       setKey('');
-      setIsReplacing(false);
+      // Nor is the choice: a key refused again later opens the field again.
+      setIsReplacingByChoice(null);
       apply(result.value);
     } finally {
       setIsSaving(false);
     }
+  }
+
+  function handleSaveKey() {
+    void saveOnce(saveKey);
+  }
+
+  /** Enter in the field is its own "Verify and save". */
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') handleSaveKey();
   }
 
   async function handleRecheck() {
@@ -77,7 +92,8 @@ export function useAccountDetailsController(account: IAccount) {
     setKey,
     setIsConfirmingRemoval,
     handleToggleReplacing,
-    handleSaveKey: () => void saveOnce(saveKey),
+    handleSaveKey,
+    handleKeyDown,
     handleRecheck: () => void handleRecheck(),
     handleRemove,
   };

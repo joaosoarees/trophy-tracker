@@ -1,4 +1,5 @@
 import { CircleCheck, Lock, Plus, X } from 'lucide-react';
+import { useId } from 'react';
 
 import { useT } from '@app/hooks/useT';
 import { SystemService } from '@app/services/SystemService';
@@ -51,6 +52,9 @@ export function AccountStep({
   onCancel,
 }: IAccountStepProps) {
   const t = useT();
+  const id = useId();
+  const steamIdId = `${id}-steamId`;
+  const apiKeyId = `${id}-apiKey`;
   const {
     form,
     isFormOpen,
@@ -122,10 +126,10 @@ export function AccountStep({
           )}
         >
           <div className="space-y-2">
-            <Label htmlFor="steamId">{text.steamId.label}</Label>
+            <Label htmlFor={steamIdId}>{text.steamId.label}</Label>
             <div className="relative">
               <Input
-                id="steamId"
+                id={steamIdId}
                 inputMode="numeric"
                 placeholder="7656…"
                 readOnly={isSteamIdLocked}
@@ -171,9 +175,9 @@ export function AccountStep({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="apiKey">{text.key.label}</Label>
+            <Label htmlFor={apiKeyId}>{text.key.label}</Label>
             <KeyField
-              id="apiKey"
+              id={apiKeyId}
               placeholder={text.key.placeholder}
               {...form.register('accountStep.apiKey')}
               onKeyDown={handleEnter}

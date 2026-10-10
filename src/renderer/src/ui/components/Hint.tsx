@@ -1,4 +1,4 @@
-import { type ComponentProps, type ReactNode } from 'react';
+import { type ComponentProps, type ReactElement } from 'react';
 
 import {
   Tooltip,
@@ -10,8 +10,8 @@ interface IHintProps {
   /** What the tooltip says. */
   label: string;
   side?: ComponentProps<typeof TooltipContent>['side'];
-  /** The element being explained; it must accept a ref (a button, a link). */
-  children: ReactNode;
+  /** The element being explained: one element that takes a ref (a button, a link, a `span`). */
+  children: ReactElement;
 }
 
 /** A tooltip that shows on hover and on keyboard focus, unlike the native `title`. */

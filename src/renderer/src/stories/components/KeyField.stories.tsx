@@ -9,9 +9,6 @@ const meta = {
     'aria-label': 'Web API key',
     placeholder: 'Paste the key here',
   },
-  argTypes: {
-    readOnly: { control: 'boolean' },
-  },
   parameters: {
     docs: {
       description: {
@@ -34,9 +31,4 @@ export const Filled: Story = {
 
 export const Invalid: Story = {
   args: { defaultValue: 'not-a-key', 'aria-invalid': true },
-};
-
-/** Once verified: recessed, with nothing to toggle. */
-export const ReadOnly: Story = {
-  args: { defaultValue: '0123456789ABCDEF0123456789ABCDEF', readOnly: true },
 };

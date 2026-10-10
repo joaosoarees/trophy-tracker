@@ -9,10 +9,8 @@ export function useAppController() {
   const {
     appState,
     language,
-    current,
     isAddingAccount,
     load,
-    followRunningGame,
     stopAddingAccount,
     startUpdates,
     updateStartup,
@@ -24,10 +22,8 @@ export function useAppController() {
     useShallow((state) => ({
       appState: state.settings.appState,
       language: state.session.language,
-      current: state.session.current,
       isAddingAccount: state.navigation.isAddingAccount,
       load: state.settings.load,
-      followRunningGame: state.navigation.followRunningGame,
       stopAddingAccount: state.navigation.stopAddingAccount,
       startUpdates: state.updates.start,
       updateStartup: state.updates.startup,
@@ -57,13 +53,6 @@ export function useAppController() {
   useEffect(() => {
     if (isConfigured) return connectStore();
   }, [isConfigured, activeSteamId]);
-
-  // `undefined` while the current game is still unknown.
-  const runningAppId =
-    current === null ? undefined : current.isRunning ? current.appid : null;
-  useEffect(() => {
-    if (runningAppId !== undefined) followRunningGame(runningAppId);
-  }, [runningAppId, followRunningGame]);
 
   return {
     appState,

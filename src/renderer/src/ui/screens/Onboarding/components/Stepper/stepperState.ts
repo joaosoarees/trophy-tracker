@@ -4,6 +4,8 @@ export interface IStepperState {
   furthest: number;
   /** Which way the last move went, for the transition. */
   direction: 'forward' | 'backward';
+  /** How many steps there are; no move leaves them. */
+  stepCount: number;
 }
 
 export type StepperAction =
@@ -14,25 +16,21 @@ export type StepperAction =
   /** Something on the current step changed and what comes after must be redone. */
   | { type: 'lockFollowing' };
 
-export function createStepperState(
-  initialStep: number,
-  stepCount: number,
-): IStepperState {
-  const current = Math.min(Math.max(0, initialStep), stepCount - 1);
-
-  return { current, furthest: current, direction: 'forward' };
+/** On the first step, with nothing ahead reached. */
+export function createStepperState(stepCount: number): IStepperState {
+  return { current: 0, furthest: 0, direction: 'forward', stepCount };
 }
 
 export function stepperReducer(
   state: IStepperState,
   action: StepperAction,
-  stepCount: number,
 ): IStepperState {
   const moveTo = (step: number): IStepperState => {
-    const current = Math.min(Math.max(0, step), stepCount - 1);
+    const current = Math.min(Math.max(0, step), state.stepCount - 1);
     if (current === state.current) return state;
 
     return {
+      ...state,
       current,
       furthest: Math.max(state.furthest, current),
       direction: current < state.current ? 'backward' : 'forward',
