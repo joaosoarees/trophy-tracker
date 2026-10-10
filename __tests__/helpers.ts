@@ -15,15 +15,21 @@ export interface IRoute {
 /**
  * Fake `fetch`: the first route whose fragment appears in the URL answers. A
  * request no route answers throws, so a call the test did not provide for is
- * never taken for an answer from Steam. `calls` lists every request made.
+ * never taken for an answer from Steam. `calls` lists the URL of every request
+ * made, and `inits` the options each was made with, in the same order.
  */
 export function fakeFetch(
   routes: Record<string, IRoute | ((url: URL) => IRoute)>,
-): typeof fetch & { calls: string[] } {
+): typeof fetch & { calls: string[]; inits: (RequestInit | undefined)[] } {
   const calls: string[] = [];
-  const impl = async (input: string | URL | Request): Promise<Response> => {
+  const inits: (RequestInit | undefined)[] = [];
+  const impl = async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response> => {
     const url = new URL(input instanceof Request ? input.url : input);
     calls.push(url.toString());
+    inits.push(init);
     for (const [fragment, route] of Object.entries(routes)) {
       if (!url.toString().includes(fragment)) continue;
       const r = typeof route === 'function' ? route(url) : route;
@@ -33,7 +39,7 @@ export function fakeFetch(
     }
     throw new Error(`fakeFetch: no route answers ${url.toString()}`);
   };
-  return Object.assign(impl, { calls });
+  return Object.assign(impl, { calls, inits });
 }
 
 /**

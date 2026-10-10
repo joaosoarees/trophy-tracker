@@ -13,6 +13,7 @@ const RATE_LIMIT: IRoute = { status: 403, json: { message: 'rate limit' } };
 
 interface ISetupOverrides {
   apiBase?: string;
+  timeout?: () => AbortSignal;
 }
 
 /** Version 1.2.0 of `someone/app`, at time zero, with GitHub answering `route`. */
@@ -33,6 +34,31 @@ function setup(
 }
 
 describe('UpdateChecker', () => {
+  describe('isDue', () => {
+    it('should be due when no check was ever made', () => {
+      const checkedAt = null;
+
+      const isDue = UpdateChecker.isDue(checkedAt, 0);
+
+      expect(isDue).toBe(true);
+    });
+
+    it.each([
+      { age: 'just under six hours', elapsed: 6 * HOUR - 1, isExpected: false },
+      { age: 'exactly six hours', elapsed: 6 * HOUR, isExpected: false },
+      { age: 'just over six hours', elapsed: 6 * HOUR + 1, isExpected: true },
+    ])(
+      'should answer $isExpected when the last check is $age old',
+      ({ elapsed, isExpected }) => {
+        const checkedAt = 1000;
+
+        const isDue = UpdateChecker.isDue(checkedAt, checkedAt + elapsed);
+
+        expect(isDue).toBe(isExpected);
+      },
+    );
+  });
+
   describe('getAppInfo', () => {
     it('should report the new version when a later release exists', async () => {
       const { sut } = setup(LATER_RELEASE);
@@ -137,6 +163,18 @@ describe('UpdateChecker', () => {
       const hasChecked = await sut.check();
 
       expect(hasChecked).toBe(false);
+    });
+
+    it('should give the request the signal of its timeout when it asks GitHub', async () => {
+      const { signal } = new AbortController();
+      const { sut, fetchImpl } = setup(LATER_RELEASE, {
+        timeout: () => signal,
+      });
+
+      await sut.check();
+
+      expect(fetchImpl.inits).toHaveLength(1);
+      expect(fetchImpl.inits[0]?.signal).toBe(signal);
     });
 
     it('should update the version when the last check is under six hours old', async () => {

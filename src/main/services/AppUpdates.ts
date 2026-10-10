@@ -1,7 +1,7 @@
 import { type IAppInfo, type IUpdateCheck } from '@shared/types/AppInfo';
 import { isNewerVersion } from '@shared/version';
 
-const RECHECK_AFTER_MS = 6 * 60 * 60 * 1000;
+import { UpdateChecker } from './UpdateChecker';
 
 export interface IAutoUpdaterListener {
   /** How much of the new version has been downloaded, from 0 to 100. */
@@ -124,9 +124,8 @@ export class AppUpdates {
       return this.checker.getAppInfo();
     }
 
-    const isStale =
-      this.checkedAt === null || this.now() - this.checkedAt > RECHECK_AFTER_MS;
-    if (isStale && this.status === 'idle') {
+    const isDue = UpdateChecker.isDue(this.checkedAt, this.now());
+    if (isDue && this.status === 'idle') {
       // Not awaited: what it finds arrives through `onChange`.
       void this.look();
     }

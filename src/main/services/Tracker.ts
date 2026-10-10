@@ -44,7 +44,6 @@ export class Tracker {
     this.now = deps.now ?? (() => Date.now());
   }
 
-  /** Identical simultaneous requests share the same read. */
   /** Identical reads for the same account share one request. */
   private once<T>(name: string, run: () => Promise<T>): Promise<T> {
     const key = `${this.store.getActiveSteamId() ?? ''}:${name}`;
