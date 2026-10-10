@@ -62,6 +62,16 @@ describe('sessionSlice', () => {
     vi.unstubAllGlobals();
   });
 
+  describe('language', () => {
+    it('should be English when the main process has not said which one yet', async () => {
+      const { sut } = await makeAppStore();
+
+      const language = sut.getState().session.language;
+
+      expect(language).toBe('en');
+    });
+  });
+
   describe('setLanguage', () => {
     it('should put the interface in the language when it is picked', async () => {
       const { sut } = await setup();
@@ -194,6 +204,19 @@ describe('sessionSlice', () => {
       expect(sut.getState().session.current).toEqual({
         appid: 7,
         isRunning: false,
+      });
+    });
+
+    it('should bring the app to the game when the one it is answered is running', async () => {
+      const { sut, asked } = await setup();
+      sut.getState().navigation.goTo('dashboard');
+      asked[0].resolve({ appid: 7, isRunning: true });
+
+      await turn();
+
+      expect(sut.getState().navigation).toMatchObject({
+        tab: 'game',
+        seenRunningAppId: 7,
       });
     });
 
