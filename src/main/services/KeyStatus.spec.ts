@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { type IAccount } from '@shared/types/Account';
+import { type AccountStatus, type IAccount } from '@shared/types/Account';
 import { type IGameView } from '@shared/types/Game';
 import { fakeSteamClient } from '@tests/fakeSteamClient';
 import nioh from '@tests/fixtures/game-achievements-3681010.json';
@@ -70,6 +70,18 @@ function setupFailingSteam(failure: Error) {
       },
     }),
   );
+}
+
+/**
+ * The same app, its key last given `status`, over a disk that from then on
+ * refuses whatever is written at once: the status of a key included.
+ */
+function setupRefusingDisk(status: AccountStatus) {
+  const store = new InMemoryStore();
+  const made = setup(store);
+  store.setAccountStatus(STEAM_ID, status);
+  store.refuseWrites();
+  return made;
 }
 
 /**
@@ -447,6 +459,62 @@ describe('KeyStatus', () => {
         await sut.attempt(() => Promise.reject(new SteamError(kind)));
 
         expect(logErrorMock).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe('a status the disk refuses to write', () => {
+    it('should answer what was read when the key that worked cannot be marked valid again', async () => {
+      const { sut } = setupRefusingDisk('rejected');
+
+      const result = await sut.attempt((onAnswer) => {
+        onAnswer();
+        return Promise.resolve('read');
+      });
+
+      expect(result).toEqual({ ok: true, value: 'read' });
+    });
+
+    it('should answer what Steam said when the key it rejected cannot be marked', async () => {
+      const { sut } = setupRefusingDisk('valid');
+
+      const result = await sut.attempt(() =>
+        Promise.reject(new SteamError('invalid-key')),
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        error: 'Steam rejected the Web API key.',
+      });
+    });
+
+    it('should keep the status the file has and announce no change when another cannot be written', async () => {
+      const { sut, store, changes } = setupRefusingDisk('valid');
+
+      await sut.attempt(() => Promise.reject(new SteamError('invalid-key')));
+
+      expect(store.getAccounts()[0].status).toBe('valid');
+      expect(changes).toEqual([]);
+    });
+
+    it.each<[string, (sut: KeyStatus) => Promise<unknown>]>([
+      [
+        'a read',
+        (sut) =>
+          sut.attempt(() => Promise.reject(new SteamError('invalid-key'))),
+      ],
+      ['a recheck', (sut) => sut.recheck(STEAM_ID)],
+    ])(
+      'should write to the error log that the status could not be saved when %s learns another',
+      async (_source, learn) => {
+        const { sut, logErrorMock } = setupRefusingDisk('rateLimited');
+
+        await learn(sut);
+
+        expect(logErrorMock).toHaveBeenCalledExactlyOnceWith(
+          'main: key status',
+          expect.stringContaining('InMemoryStore: the write was refused'),
+        );
       },
     );
   });

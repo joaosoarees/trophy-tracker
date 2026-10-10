@@ -3,6 +3,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmdirSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
@@ -92,6 +93,30 @@ function rewriteVersion(dir: string, name: string, version: number): string {
   const rewritten = JSON.stringify({ ...content, version });
   writeFileSync(file, rewritten);
   return rewritten;
+}
+
+/**
+ * Makes the disk refuse a file from now on: a folder sits where the file is
+ * first written, and nothing can be written over a folder, on any system and
+ * whoever runs the tests. Answers what makes the disk take the file again.
+ */
+function refuseWrites(dir: string, name: string): () => void {
+  const inTheWay = join(dir, `${name}.tmp`);
+  mkdirSync(inTheWay);
+  return () => rmdirSync(inTheWay);
+}
+
+/**
+ * Whether the store said, by throwing, that it could not write. The error is
+ * the system's own, worded by each one: only that it is thrown is promised.
+ */
+function hasRefused(write: () => unknown): boolean {
+  try {
+    write();
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 const filesEnding = (dir: string, suffix: string): string[] =>
@@ -935,6 +960,245 @@ describe('Store', () => {
         expect(version).toBe(2);
       },
     );
+  });
+
+  describe('a write the disk refuses', () => {
+    it.each<[string, (store: Store) => unknown, (store: Store) => unknown]>([
+      [
+        'always on top',
+        (store) => store.setAlwaysOnTop(true),
+        (store) => store.getAlwaysOnTop(),
+      ],
+      [
+        'a preference',
+        (store) => store.setPreference('rememberWindow', false),
+        (store) => store.getPreferences(),
+      ],
+      [
+        'the order of the achievements',
+        (store) =>
+          store.setAchievementSort({ pending: 'closest', unlocked: 'rare' }),
+        (store) => store.getAchievementSort(),
+      ],
+      [
+        'the order of the dashboard',
+        (store) =>
+          store.setDashboardSort({ ongoing: 'played', complete: 'name' }),
+        (store) => store.getDashboardSort(),
+      ],
+      [
+        'the version being installed',
+        (store) => store.setUpdateAttempt('1.2.3'),
+        (store) => store.getUpdateAttempt(),
+      ],
+      [
+        'where the window was',
+        (store) => store.setWindowBounds(BOUNDS),
+        (store) => store.getWindowBounds(),
+      ],
+      [
+        'the language',
+        (store) => store.setLanguage('pt-BR'),
+        (store) => store.getLanguage(),
+      ],
+    ])(
+      'should say so and answer what it did before when %s cannot be written',
+      (_what, write, read) => {
+        const { sut, dir } = setup();
+        const before = read(sut);
+        refuseWrites(dir, 'settings.json');
+
+        const hasThrown = hasRefused(() => write(sut));
+
+        expect({ hasThrown, held: read(sut) }).toEqual({
+          hasThrown: true,
+          held: before,
+        });
+      },
+    );
+
+    it('should keep where the window was when it cannot write that it is no longer remembered', () => {
+      const { sut, dir } = setup();
+      sut.setWindowBounds(BOUNDS);
+      refuseWrites(dir, 'settings.json');
+
+      const hasThrown = hasRefused(() =>
+        sut.setPreference('rememberWindow', false),
+      );
+
+      expect({ hasThrown, bounds: sut.getWindowBounds() }).toEqual({
+        hasThrown: true,
+        bounds: BOUNDS,
+      });
+    });
+
+    it('should keep what was read in the language it stays in when the other one cannot be written', () => {
+      const { sut, dir } = setup();
+      sut.setSchema(1, [], 5);
+      refuseWrites(dir, 'settings.json');
+
+      const hasThrown = hasRefused(() => sut.setLanguage('pt-BR'));
+
+      expect({ hasThrown, schema: sut.getSchema(1) }).toEqual({
+        hasThrown: true,
+        schema: { fetchedAt: 5, items: [] },
+      });
+    });
+
+    it.each([
+      { what: 'a new note', achievement: 'B', data: NOTE },
+      {
+        what: 'a note that changed',
+        achievement: 'A',
+        data: { note: 'changed', pinned: true },
+      },
+      {
+        what: 'a note that was emptied',
+        achievement: 'A',
+        data: { note: '', pinned: false },
+      },
+    ])(
+      'should say so and answer the notes that are saved when $what cannot be written',
+      ({ achievement, data }) => {
+        const { sut, dir } = setupWithAccount();
+        sut.setUserData(10, 'A', NOTE);
+        refuseWrites(dir, 'userdata.json');
+
+        const hasThrown = hasRefused(() =>
+          sut.setUserData(10, achievement, data),
+        );
+
+        expect({ hasThrown, notes: sut.getUserData(10) }).toEqual({
+          hasThrown: true,
+          notes: { A: NOTE },
+        });
+      },
+    );
+
+    it('should keep the notes of the account a refused note names when another is in use', () => {
+      const { sut, dir } = setupWithTwoAccounts();
+      sut.setUserData(10, 'A', NOTE, STEAM_ID);
+      refuseWrites(dir, 'userdata.json');
+
+      const hasThrown = hasRefused(() =>
+        sut.setUserData(10, 'A', { note: 'changed', pinned: false }, STEAM_ID),
+      );
+
+      expect({ hasThrown, notes: notesOf(sut, STEAM_ID) }).toEqual({
+        hasThrown: true,
+        notes: { A: NOTE },
+      });
+    });
+
+    it.each<{
+      file: string;
+      refused: (store: Store) => unknown;
+      next: (store: Store) => unknown;
+      read: (store: Store) => unknown;
+      saved: unknown;
+    }>([
+      {
+        file: 'settings.json',
+        refused: (store) => store.setAlwaysOnTop(true),
+        next: (store) => store.setWindowBounds(BOUNDS),
+        read: (store) => store.getAlwaysOnTop(),
+        saved: false,
+      },
+      {
+        file: 'config.json',
+        refused: (store) => store.setActiveAccount(STEAM_ID),
+        next: (store) => store.setAccountStatus(STEAM_ID, 'rejected'),
+        read: (store) => store.getActiveSteamId(),
+        saved: OTHER_STEAM_ID,
+      },
+      {
+        file: 'userdata.json',
+        refused: (store) => store.setUserData(10, 'A', NOTE),
+        next: (store) => store.setUserData(10, 'B', NOTE),
+        read: (store) => store.getUserData(10),
+        saved: { B: NOTE },
+      },
+    ])(
+      'should not write to $file, with the next change, the one that was refused',
+      ({ file, refused, next, read, saved }) => {
+        const { sut, dir } = setupWithTwoAccounts();
+        const takeWrites = refuseWrites(dir, file);
+        hasRefused(() => refused(sut));
+        takeWrites();
+
+        next(sut);
+
+        const reopened = new Store(dir);
+        expect(read(reopened)).toEqual(saved);
+      },
+    );
+
+    /**
+     * Two accounts, `OTHER_STEAM_ID` in use, each with a note and a summary,
+     * over a disk that takes the accounts but refuses the notes.
+     */
+    function setupRefusingNotes() {
+      const { sut, dir } = setupWithTwoAccounts();
+      sut.setUserData(10, 'A', NOTE);
+      sut.setSummaries({ 10: SUMMARY });
+      refuseWrites(dir, 'userdata.json');
+      return { sut, dir };
+    }
+
+    /** What a store keeps of the account in use. */
+    const inUseOf = (store: Store) => ({
+      inUse: store.getActiveSteamId(),
+      credentials: store.getCredentials(),
+      accounts: store.getAccounts().map((account) => account.steamId),
+      notes: store.getUserData(10),
+      summary: store.getSummary(10),
+    });
+
+    const BEFORE_THE_REMOVAL = {
+      inUse: OTHER_STEAM_ID,
+      credentials: OTHER_CREDENTIALS,
+      accounts: [STEAM_ID, OTHER_STEAM_ID],
+      notes: { A: NOTE },
+      summary: SUMMARY,
+    };
+
+    it('should say so and keep the account with everything of it when its notes cannot be removed', () => {
+      const { sut } = setupRefusingNotes();
+
+      const hasThrown = hasRefused(() => sut.removeAccount(OTHER_STEAM_ID));
+
+      expect({ hasThrown, held: inUseOf(sut) }).toEqual({
+        hasThrown: true,
+        held: BEFORE_THE_REMOVAL,
+      });
+    });
+
+    it('should still have the account when the folder is opened again after its notes could not be removed', () => {
+      const { sut, dir } = setupRefusingNotes();
+      hasRefused(() => sut.removeAccount(OTHER_STEAM_ID));
+
+      const reopened = new Store(dir);
+
+      expect(inUseOf(reopened)).toEqual(BEFORE_THE_REMOVAL);
+    });
+
+    it('should keep a read it could not write, and write it with the next one', () => {
+      const { sut, dir } = setup({ options: { cacheDelay: CACHE_DELAY } });
+      const takeWrites = refuseWrites(dir, 'cache.json');
+      sut.setSummaries({ 1: SUMMARY });
+      const hasThrown = hasRefused(() => sut.flush());
+      takeWrites();
+
+      sut.setSummaries({ 2: SUMMARY });
+      sut.flush();
+
+      const reopened = new Store(dir);
+      expect({
+        hasThrown,
+        held: sut.getSummary(1),
+        saved: [reopened.getSummary(1), reopened.getSummary(2)],
+      }).toEqual({ hasThrown: true, held: SUMMARY, saved: [SUMMARY, SUMMARY] });
+    });
   });
 
   describe('writing what was read from Steam after a delay', () => {

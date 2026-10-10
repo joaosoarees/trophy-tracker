@@ -99,11 +99,13 @@ export class KeyStatus {
     if (e instanceof SteamError) {
       return { status: STATUS_OF[e.kind], message: e.describe(this.messages) };
     }
-    this.logError(
-      'main: steam read',
-      e instanceof Error ? (e.stack ?? e.message) : String(e),
-    );
+    this.logError('main: steam read', KeyStatus.detailOf(e));
     return { status: undefined, message: this.messages.errors.unexpected };
+  }
+
+  /** What the error log keeps of a fault of the app. */
+  private static detailOf(e: unknown): string {
+    return e instanceof Error ? (e.stack ?? e.message) : String(e);
   }
 
   /** Asks Steam again about a saved account's key. Steam being unreachable changes nothing. */
@@ -124,11 +126,22 @@ export class KeyStatus {
     if (this.record(steamId, status)) this.onChange();
   }
 
-  /** Writes an account's key status down when it differs; answers whether it did. */
+  /**
+   * Writes an account's key status down when it differs; answers whether it
+   * did. A status the disk refuses is not kept (the store keeps nothing it
+   * could not write) and fails nothing: the read it was learnt from stands,
+   * with what Steam answered, the error log says the write failed, and the
+   * next answer from Steam tries again.
+   */
   private record(steamId: string | null, status: AccountStatus): boolean {
     const account = this.store.getAccounts().find((a) => a.steamId === steamId);
     if (!account || account.status === status) return false;
-    this.store.setAccountStatus(account.steamId, status);
+    try {
+      this.store.setAccountStatus(account.steamId, status);
+    } catch (e) {
+      this.logError('main: key status', KeyStatus.detailOf(e));
+      return false;
+    }
     return true;
   }
 }

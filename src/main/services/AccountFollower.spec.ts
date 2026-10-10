@@ -6,16 +6,23 @@ import { AccountFollower } from './AccountFollower';
 
 /**
  * The part of the store the follower uses, in memory: the saved accounts and
- * the one in use. As in the real one, only a saved account can be put in use.
+ * the one in use. As in the real one, only a saved account can be put in
+ * use, and an account the disk refuses to write (`refuseWrites`) is not
+ * taken: the call throws and the account in use stays.
  */
 function fakeAccountStore(saved: string[], initiallyInUse: string) {
   let inUse = initiallyInUse;
+  let isRefusing = false;
   return {
     getActiveSteamId: (): string | null => inUse,
     setActiveAccount: (steamId: string): boolean => {
       if (!saved.includes(steamId)) return false;
+      if (isRefusing) throw new Error('disk full');
       inUse = steamId;
       return true;
+    },
+    refuseWrites: (value = true): void => {
+      isRefusing = value;
     },
   };
 }
@@ -161,6 +168,42 @@ describe('AccountFollower', () => {
 
       expect(hasSwitched).toBe(false);
       expect(store.getActiveSteamId()).toBe(STEAM_ID);
+    });
+  });
+
+  describe('an account that could not be followed', () => {
+    it('should say so and announce nothing when the account signed in to Steam cannot be written', async () => {
+      const { sut, store, onFollowMock } = setup(OTHER_STEAM_ID);
+      store.refuseWrites();
+
+      const failure = await sut.onClientChange().catch((e: unknown) => e);
+
+      expect(failure).toEqual(new Error('disk full'));
+      expect(onFollowMock).not.toHaveBeenCalled();
+    });
+
+    it('should follow the account signed in to Steam at the next look when it could not be written at the first', async () => {
+      const { sut, store } = setup(OTHER_STEAM_ID);
+      store.refuseWrites();
+      await sut.onClientChange().catch(() => undefined);
+      store.refuseWrites(false);
+
+      const hasSwitched = await sut.onClientChange();
+
+      expect(hasSwitched).toBe(true);
+      expect(store.getActiveSteamId()).toBe(OTHER_STEAM_ID);
+    });
+
+    it('should follow the account signed in to Steam at the next look when it could not be written as its game started', async () => {
+      const { sut, store } = setup(OTHER_STEAM_ID);
+      store.refuseWrites();
+      await sut.forRunningGame().catch(() => undefined);
+      store.refuseWrites(false);
+
+      const hasSwitched = await sut.onClientChange();
+
+      expect(hasSwitched).toBe(true);
+      expect(store.getActiveSteamId()).toBe(OTHER_STEAM_ID);
     });
   });
 

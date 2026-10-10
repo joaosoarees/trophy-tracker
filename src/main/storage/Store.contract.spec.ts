@@ -1,3 +1,6 @@
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { makeGameView } from '@tests/factories/makeGameView';
@@ -55,7 +58,15 @@ interface IImplementation {
    * not there any more.
    */
   makeWithLostKeyring: () => ServiceStore;
+  /**
+   * A store with no account, and what makes the disk under it refuse, from
+   * then on, the accounts and the language: what a store writes at once.
+   */
+  makeRefusable: () => { sut: ServiceStore; refuseWrites: () => void };
 }
+
+/** The files the real store writes at once, of those the services change. */
+const WRITTEN_AT_ONCE = ['config.json', 'settings.json'];
 
 const IMPLEMENTATIONS: IImplementation[] = [
   {
@@ -66,6 +77,14 @@ const IMPLEMENTATIONS: IImplementation[] = [
       new Store(dir, CIPHER).setCredentials(CREDENTIALS, PROFILE);
       return new Store(dir);
     },
+    makeRefusable: () => {
+      const dir = makeTempDir();
+      // A folder where a file is first written: nothing can be written over
+      // it, on any system and whoever runs the tests.
+      const refuseWrites = (): void =>
+        WRITTEN_AT_ONCE.forEach((name) => mkdirSync(join(dir, `${name}.tmp`)));
+      return { sut: new Store(dir), refuseWrites };
+    },
   },
   {
     name: 'InMemoryStore',
@@ -75,6 +94,10 @@ const IMPLEMENTATIONS: IImplementation[] = [
       store.setCredentials(CREDENTIALS, PROFILE);
       store.loseKeyOf(STEAM_ID);
       return store;
+    },
+    makeRefusable: () => {
+      const sut = new InMemoryStore();
+      return { sut, refuseWrites: () => sut.refuseWrites() };
     },
   },
 ];
@@ -141,7 +164,7 @@ const ASKED_BY_OWNER = [
  */
 describe.each(IMPLEMENTATIONS)(
   'what the services rely on in $name',
-  ({ make, makeWithLostKeyring }) => {
+  ({ make, makeWithLostKeyring, makeRefusable }) => {
     /** A store with `STEAM_ID` saved, and in use. */
     function setupWithAccount() {
       const sut = make();
@@ -209,6 +232,22 @@ describe.each(IMPLEMENTATIONS)(
             { ...ACCOUNT, keyEnding: OTHER_KEY.slice(-4) },
             OTHER_ACCOUNT,
           ],
+        });
+      });
+
+      it('should give an account its new key and stay on the account in use when told not to follow it', () => {
+        const { sut } = setupWithTwoAccounts();
+
+        sut.setCredentials({ steamId: STEAM_ID, apiKey: OTHER_KEY }, PROFILE, {
+          shouldFollow: false,
+        });
+
+        expect({
+          inUse: sut.getActiveSteamId(),
+          saved: sut.getCredentialsOf(STEAM_ID),
+        }).toEqual({
+          inUse: OTHER_STEAM_ID,
+          saved: { steamId: STEAM_ID, apiKey: OTHER_KEY },
         });
       });
 
@@ -712,6 +751,128 @@ describe.each(IMPLEMENTATIONS)(
           schema: SCHEMA,
           art: ART,
         });
+      });
+    });
+
+    describe('a write the disk refuses', () => {
+      /**
+       * Two accounts with everything read, following `OTHER_STEAM_ID`, whose
+       * key Steam last rejected, over a disk that then refuses every write.
+       */
+      function setupRefusing() {
+        const { sut, refuseWrites } = makeRefusable();
+        sut.setCredentials(CREDENTIALS, PROFILE);
+        sut.setCredentials(OTHER_CREDENTIALS, OTHER_PROFILE);
+        sut.setAccountStatus(OTHER_STEAM_ID, 'rejected');
+        sut.setGame(VIEW, STEAM_ID);
+        sut.setSummaries({ 1: SUMMARY }, STEAM_ID);
+        sut.setSchema(1, [], 5);
+        refuseWrites();
+        return { sut };
+      }
+
+      /** Everything a refused write could have changed. */
+      const heldBy = (store: ServiceStore) => ({
+        ...accountsOf(store),
+        language: store.getLanguage(),
+        schema: store.getSchema(1),
+        summaryOfFirst: store.getSummary(1, STEAM_ID),
+      });
+
+      /** Whether the store said, by throwing, that it could not write. */
+      const hasRefused = (write: () => unknown): boolean => {
+        try {
+          write();
+          return false;
+        } catch {
+          return true;
+        }
+      };
+
+      it.each<[string, (store: ServiceStore) => unknown]>([
+        [
+          'a new account is saved',
+          (store) =>
+            store.setCredentials(
+              { steamId: UNKNOWN_STEAM_ID, apiKey: KEY },
+              { steamId: UNKNOWN_STEAM_ID, name: 'new', avatar: '' },
+            ),
+        ],
+        [
+          'a saved account is given another key',
+          (store) =>
+            store.setCredentials(
+              { steamId: STEAM_ID, apiKey: OTHER_KEY },
+              { ...PROFILE, name: 'renamed' },
+            ),
+        ],
+        [
+          'a key is replaced without following its account',
+          (store) =>
+            store.setCredentials(
+              { steamId: STEAM_ID, apiKey: OTHER_KEY },
+              { ...PROFILE, name: 'renamed' },
+              { shouldFollow: false },
+            ),
+        ],
+        [
+          'another account is followed',
+          (store) => store.setActiveAccount(STEAM_ID),
+        ],
+        [
+          'a key is given another status',
+          (store) => store.setAccountStatus(OTHER_STEAM_ID, 'valid'),
+        ],
+        [
+          'the account in use is removed',
+          (store) => store.removeAccount(OTHER_STEAM_ID),
+        ],
+        [
+          'an account that is not in use is removed',
+          (store) => store.removeAccount(STEAM_ID),
+        ],
+        ['the language changes', (store) => store.setLanguage('pt-BR')],
+      ])('should say so and change nothing when %s', (_change, write) => {
+        const { sut } = setupRefusing();
+
+        const hasThrown = hasRefused(() => write(sut));
+
+        expect({ hasThrown, held: heldBy(sut) }).toEqual({
+          hasThrown: true,
+          held: {
+            inUse: OTHER_STEAM_ID,
+            credentials: OTHER_CREDENTIALS,
+            profile: OTHER_PROFILE,
+            accounts: [ACCOUNT, { ...OTHER_ACCOUNT, status: 'rejected' }],
+            language: 'en',
+            schema: SCHEMA,
+            summaryOfFirst: SUMMARY,
+          },
+        });
+      });
+
+      it('should say nothing when asked to follow an account that was not saved', () => {
+        const { sut } = setupRefusing();
+
+        const hasFollowed = sut.setActiveAccount(UNKNOWN_STEAM_ID);
+
+        expect(hasFollowed).toBe(false);
+      });
+
+      it('should say nothing when the language chosen is the one it is in', () => {
+        const { sut } = setupRefusing();
+
+        sut.setLanguage('en');
+
+        expect(sut.getLanguage()).toBe('en');
+      });
+
+      it('should still take what is read from Steam, which is written later', () => {
+        const { sut } = setupRefusing();
+
+        sut.setGame(VIEW);
+
+        expect(sut.getGame(1)).toEqual(VIEW);
       });
     });
 

@@ -72,6 +72,12 @@ const blank = (): IAccountReads => ({ games: new Map(), summaries: new Map() });
  * in memory. It answers as the real one does, which
  * `src/main/storage/Store.contract.spec.ts` checks by running the same
  * assertions against both; a difference is fixed here.
+ *
+ * It can be made to refuse what the real one writes at once, the accounts
+ * and the language (`refuseWrites`): the call then throws and nothing
+ * changes, as with a disk that refuses the file. What was read from Steam is
+ * written later by the real one, so no caller hears of that write failing,
+ * and here it is always taken.
  */
 export class InMemoryStore implements ServiceStore {
   private accounts: ISavedAccount[] = [];
@@ -85,6 +91,25 @@ export class InMemoryStore implements ServiceStore {
     { fetchedAt: number; items: IRawSchemaAchievement[] }
   >();
   private art = new Map<number, IStoreArt>();
+  /** How many writes are still taken before every one is refused. */
+  private writesLeft = Infinity;
+
+  /**
+   * The disk stops taking what is written at once: every such write from now
+   * on throws and changes nothing, or every one after the next `after`, for
+   * a disk that gives out in the middle of a call.
+   */
+  refuseWrites(after = 0): void {
+    this.writesLeft = after;
+  }
+
+  /** Called by a write before it changes anything, as the real one writes first. */
+  private write(): void {
+    if (this.writesLeft === 0) {
+      throw new Error('InMemoryStore: the write was refused');
+    }
+    this.writesLeft -= 1;
+  }
 
   private find(steamId: string | undefined): ISavedAccount | null {
     return this.accounts.find((a) => a.steamId === steamId) ?? null;
@@ -129,7 +154,12 @@ export class InMemoryStore implements ServiceStore {
     return this.find(steamId) !== null;
   }
 
-  setCredentials({ steamId, apiKey }: ICredentials, profile: IProfile): void {
+  setCredentials(
+    { steamId, apiKey }: ICredentials,
+    profile: IProfile,
+    { shouldFollow = true } = {},
+  ): void {
+    this.write();
     const account: ISavedAccount = {
       steamId,
       apiKey,
@@ -140,21 +170,25 @@ export class InMemoryStore implements ServiceStore {
     const index = this.accounts.findIndex((a) => a.steamId === steamId);
     if (index === -1) this.accounts.push(account);
     else this.accounts[index] = account;
-    this.inUse = steamId;
+    if (shouldFollow) this.inUse = steamId;
   }
 
   setActiveAccount(steamId: string): boolean {
     if (!this.hasAccount(steamId)) return false;
+    this.write();
     this.inUse = steamId;
     return true;
   }
 
   setAccountStatus(steamId: string, status: AccountStatus): void {
     const account = this.find(steamId);
-    if (account) account.status = status;
+    if (!account) return;
+    this.write();
+    account.status = status;
   }
 
   removeAccount(steamId: string): void {
+    this.write();
     this.accounts = this.accounts.filter((a) => a.steamId !== steamId);
     if (this.inUse === steamId) this.inUse = this.accounts[0]?.steamId;
     this.reads.delete(steamId);
@@ -231,6 +265,7 @@ export class InMemoryStore implements ServiceStore {
   /** As in the real one, what Steam sent already translated is dropped. */
   setLanguage(language: Language): void {
     if (language === this.language) return;
+    this.write();
     this.language = language;
     for (const reads of this.reads.values()) reads.games.clear();
     this.schemas.clear();

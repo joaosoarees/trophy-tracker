@@ -103,7 +103,19 @@ function setup({
       },
     },
   });
-  return { sut, asked, state: () => accountSetup.getState() };
+  return { sut, store, asked, state: () => accountSetup.getState() };
+}
+
+const WRITE_REFUSED = new Error('InMemoryStore: the write was refused');
+
+/** What a call that must throw threw, or `null` when it did not. */
+function thrownBy(call: () => unknown): unknown {
+  try {
+    call();
+    return null;
+  } catch (e) {
+    return e;
+  }
 }
 
 /** The game each account played last, as its library would say. */
@@ -251,6 +263,23 @@ describe('Accounts', () => {
     });
   });
 
+  describe('add, when the account cannot be written', () => {
+    it('should say so, save nothing and ask nothing of the watcher', async () => {
+      const { sut, store, asked, state } = setup({ saved: [STEAM_ID] });
+      store.refuseWrites();
+
+      const failure = await sut
+        .add(OTHER_STEAM_ID, OTHER_KEY)
+        .catch((e: unknown) => e);
+
+      expect(failure).toEqual(WRITE_REFUSED);
+      expect(state().accounts.map((account) => account.steamId)).toEqual([
+        STEAM_ID,
+      ]);
+      expect(asked).toEqual([]);
+    });
+  });
+
   describe('add, with the real watcher and follower', () => {
     it("should show the running game as the added account's when it was on that account, which the app did not have", async () => {
       const { sut, watcher, announced, checked, run } =
@@ -317,13 +346,26 @@ describe('Accounts', () => {
   });
 
   describe('switchTo', () => {
-    it('should forget the game on screen before it switches when no game is being played', () => {
+    it('should forget the game on screen as it switches when no game is being played', () => {
       const { sut, asked } = setup();
 
       const state = sut.switchTo(OTHER_STEAM_ID);
 
       expect(state.activeSteamId).toBe(OTHER_STEAM_ID);
-      expect(asked).toEqual([`forget the game on screen, on ${STEAM_ID}`]);
+      expect(asked).toEqual([
+        `forget the game on screen, on ${OTHER_STEAM_ID}`,
+      ]);
+    });
+
+    it('should say so, stay on the account and forget nothing when the switch cannot be written', () => {
+      const { sut, store, asked, state } = setup();
+      store.refuseWrites();
+
+      const failure = thrownBy(() => sut.switchTo(OTHER_STEAM_ID));
+
+      expect(failure).toEqual(WRITE_REFUSED);
+      expect(state().activeSteamId).toBe(STEAM_ID);
+      expect(asked).toEqual([]);
     });
 
     it('should stay on the account and forget nothing when a game is being played', () => {
@@ -338,7 +380,7 @@ describe('Accounts', () => {
   });
 
   describe('remove', () => {
-    it('should forget the game on screen before it removes the account', () => {
+    it('should forget the game on screen as it removes the account', () => {
       const { sut, asked } = setup();
 
       const state = sut.remove(STEAM_ID);
@@ -347,7 +389,21 @@ describe('Accounts', () => {
       expect(state.accounts.map((account) => account.steamId)).toEqual([
         OTHER_STEAM_ID,
       ]);
-      expect(asked).toEqual([`forget the game on screen, on ${STEAM_ID}`]);
+      expect(asked).toEqual([
+        `forget the game on screen, on ${OTHER_STEAM_ID}`,
+      ]);
+    });
+
+    it('should say so, keep the account and forget nothing when the removal cannot be written', () => {
+      const { sut, store, asked, state } = setup();
+      const before = state();
+      store.refuseWrites();
+
+      const failure = thrownBy(() => sut.remove(STEAM_ID));
+
+      expect(failure).toEqual(WRITE_REFUSED);
+      expect(state()).toEqual(before);
+      expect(asked).toEqual([]);
     });
   });
 

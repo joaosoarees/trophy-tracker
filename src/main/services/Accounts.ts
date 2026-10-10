@@ -16,8 +16,10 @@ interface IAccountsDeps {
 
 /**
  * Every change of the account in use, in one place: the game on screen
- * belongs to the account that is left, so the watcher forgets it before
- * another account takes over.
+ * belongs to the account that is left, so the watcher forgets it as another
+ * account takes over, in the same turn and only once the change was taken: a
+ * change the disk refuses throws before anything is forgotten, and the app
+ * is left as it was.
  */
 export class Accounts {
   constructor(private readonly deps: IAccountsDeps) {}
@@ -47,14 +49,16 @@ export class Accounts {
     const { setup, watcher } = this.deps;
     // The account playing a game is not left while the game runs.
     if (watcher.isPlaying) return setup.getState();
+    const state = setup.setActiveAccount(steamId);
     this.forgetGame();
-    return setup.setActiveAccount(steamId);
+    return state;
   }
 
   /** Forgets an account, with everything kept for it. */
   remove(steamId: string): IAppState {
+    const state = this.deps.setup.removeAccount(steamId);
     this.forgetGame();
-    return this.deps.setup.removeAccount(steamId);
+    return state;
   }
 
   /** Puts the app on the account signed in to Steam when that one changed. */

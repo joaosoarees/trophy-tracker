@@ -129,6 +129,20 @@ export interface IStoreOptions {
   report?: (message: string) => void;
 }
 
+/**
+ * The four files of the data folder, each held in memory as it was last
+ * written. **Nothing is kept that could not be written:** a change to the
+ * accounts, the settings or the notes is written first and taken only then,
+ * so a write the disk refuses throws to whoever asked and leaves the store
+ * answering exactly what it answered before, which is also what the file
+ * holds. Never change `config`, `settings` or `userData` in place: build the
+ * next content and hand it to `saveConfig`, `saveSettings` or `saveUserData`.
+ *
+ * What was read from Steam is the exception (`saveCache`): it is taken at
+ * once and written later, so nobody can be told of a write that fails. Steam
+ * gives all of it back, and a file left behind in another language is dropped
+ * as the app opens.
+ */
 export class Store {
   private cacheDelay: number;
   private report: (message: string) => void;
@@ -258,8 +272,16 @@ export class Store {
     return accounts.find((a) => a.steamId === activeSteamId) ?? null;
   }
 
-  private saveConfig(): void {
-    this.write('config.json', this.config, 0o600);
+  /** Takes the accounts as given once the file holds them; throws, taking nothing, otherwise. */
+  private saveConfig(next: IConfigFile): void {
+    this.write('config.json', next, 0o600);
+    this.config = next;
+  }
+
+  /** The same for the settings. */
+  private saveSettings(next: ISettingsFile): void {
+    this.write('settings.json', next);
+    this.settings = next;
   }
 
   /** Credentials of the account in use. */
@@ -304,9 +326,15 @@ export class Store {
 
   /**
    * Saves an account whose key Steam has just accepted and starts following
-   * it. An account that was already there gets the new key and keeps the rest.
+   * it, unless told not to: a key that is only replaced leaves the app on the
+   * account in use, in the same write. An account that was already there gets
+   * the new key and keeps its place.
    */
-  setCredentials({ steamId, apiKey }: ICredentials, profile: IProfile): void {
+  setCredentials(
+    { steamId, apiKey }: ICredentials,
+    profile: IProfile,
+    { shouldFollow = true } = {},
+  ): void {
     const account: IStoredAccount = {
       steamId,
       ...(this.cipher
@@ -316,45 +344,68 @@ export class Store {
       profile,
       status: 'valid',
     };
-    const index = this.config.accounts.findIndex((a) => a.steamId === steamId);
-    if (index === -1) this.config.accounts.push(account);
-    else this.config.accounts[index] = account;
-    this.config.activeSteamId = steamId;
-    this.saveConfig();
+    const { accounts, activeSteamId } = this.config;
+    this.saveConfig({
+      ...this.config,
+      accounts: this.hasAccount(steamId)
+        ? accounts.map((a) => (a.steamId === steamId ? account : a))
+        : [...accounts, account],
+      activeSteamId: shouldFollow ? steamId : activeSteamId,
+    });
   }
 
   /** Starts following another saved account; answers whether there is one. */
   setActiveAccount(steamId: string): boolean {
     if (!this.hasAccount(steamId)) return false;
-    this.config.activeSteamId = steamId;
-    this.saveConfig();
+    this.saveConfig({ ...this.config, activeSteamId: steamId });
     return true;
   }
 
   /** Records what Steam last said about an account's key. */
   setAccountStatus(steamId: string, status: AccountStatus): void {
-    const account = this.config.accounts.find((a) => a.steamId === steamId);
-    if (!account) return;
-    account.status = status;
-    this.saveConfig();
+    if (!this.hasAccount(steamId)) return;
+    this.saveConfig({
+      ...this.config,
+      accounts: this.config.accounts.map((a) =>
+        a.steamId === steamId ? { ...a, status } : a,
+      ),
+    });
   }
 
   /**
    * Forgets an account for good: its key, what was read from Steam and what
    * the user wrote for it. If it was the one in use, another takes its place.
+   * Two files must take it, the accounts first. When the notes cannot be
+   * written the account is put back, so the removal that is refused leaves
+   * everything as it was and can be asked again: an account gone with its
+   * notes still in the file would get them back if it were added anew.
    */
   removeAccount(steamId: string): void {
-    this.config.accounts = this.config.accounts.filter(
-      (a) => a.steamId !== steamId,
-    );
-    if (this.config.activeSteamId === steamId) {
-      this.config.activeSteamId = this.config.accounts[0]?.steamId;
+    const before = this.config;
+    const accounts = before.accounts.filter((a) => a.steamId !== steamId);
+    this.saveConfig({
+      ...before,
+      accounts,
+      activeSteamId:
+        before.activeSteamId === steamId
+          ? accounts[0]?.steamId
+          : before.activeSteamId,
+    });
+    try {
+      const notes = { ...this.userData.accounts };
+      delete notes[steamId];
+      this.saveUserData({ ...this.userData, accounts: notes });
+    } catch (e) {
+      try {
+        this.saveConfig(before);
+      } catch {
+        // The disk took the removal and now refuses to undo it: the account
+        // stays removed, as its file says, and the caller is told all the same.
+      }
+      throw e;
     }
-    this.saveConfig();
     delete this.cache.accounts[steamId];
     this.saveCache();
-    delete this.userData.accounts[steamId];
-    this.saveUserData();
   }
 
   /**
@@ -369,6 +420,12 @@ export class Store {
     return (this.cache.accounts[steamId] ??= blank());
   }
 
+  /**
+   * What was read from Steam is already taken by the time this is called,
+   * and written after the delay: a write that fails then has no caller to
+   * tell, and what is in memory stays ahead of the file until a later one
+   * works. Nothing of the user's is lost by it.
+   */
   private saveCache(): void {
     if (this.cacheDelay === 0) {
       this.write('cache.json', this.cache);
@@ -444,8 +501,7 @@ export class Store {
   /** Changing the language drops what came from Steam already translated (achievements and art). */
   setLanguage(language: Language): void {
     if (language === this.getLanguage()) return;
-    this.settings.language = language;
-    this.write('settings.json', this.settings);
+    this.saveSettings({ ...this.settings, language });
     this.dropTranslatedCache();
   }
 
@@ -465,8 +521,10 @@ export class Store {
   }
 
   setAchievementSort(sort: IAchievementSort): void {
-    this.settings.achievementSort = parseAchievementSort(sort);
-    this.write('settings.json', this.settings);
+    this.saveSettings({
+      ...this.settings,
+      achievementSort: parseAchievementSort(sort),
+    });
   }
 
   getDashboardSort(): IDashboardSort {
@@ -474,8 +532,10 @@ export class Store {
   }
 
   setDashboardSort(sort: IDashboardSort): void {
-    this.settings.dashboardSort = parseDashboardSort(sort);
-    this.write('settings.json', this.settings);
+    this.saveSettings({
+      ...this.settings,
+      dashboardSort: parseDashboardSort(sort),
+    });
   }
 
   getUpdateAttempt(): string | null {
@@ -484,9 +544,10 @@ export class Store {
   }
 
   setUpdateAttempt(version: string | null): void {
-    if (version === null) delete this.settings.updateAttempt;
-    else this.settings.updateAttempt = version;
-    this.write('settings.json', this.settings);
+    const next = { ...this.settings };
+    if (version === null) delete next.updateAttempt;
+    else next.updateAttempt = version;
+    this.saveSettings(next);
   }
 
   getPreferences(): IPreferences {
@@ -500,10 +561,10 @@ export class Store {
     key: K,
     value: IPreferences[K],
   ): IPreferences {
-    this.settings[key] = value;
+    const next = { ...this.settings, [key]: value };
     // Not remembering means the last size is forgotten too, not kept for later.
-    if (key === 'rememberWindow' && !value) delete this.settings.windowBounds;
-    this.write('settings.json', this.settings);
+    if (key === 'rememberWindow' && !value) delete next.windowBounds;
+    this.saveSettings(next);
     return this.getPreferences();
   }
 
@@ -512,8 +573,7 @@ export class Store {
   }
 
   setWindowBounds(bounds: IBounds): void {
-    this.settings.windowBounds = bounds;
-    this.write('settings.json', this.settings);
+    this.saveSettings({ ...this.settings, windowBounds: bounds });
   }
 
   getAlwaysOnTop(): boolean {
@@ -521,32 +581,35 @@ export class Store {
   }
 
   setAlwaysOnTop(value: boolean): void {
-    this.settings.alwaysOnTop = value;
-    this.write('settings.json', this.settings);
+    this.saveSettings({ ...this.settings, alwaysOnTop: value });
   }
 
-  private saveUserData(): void {
-    this.write('userdata.json', this.userData);
+  /** The same as `saveConfig`, for what the user wrote. */
+  private saveUserData(next: IUserDataFile): void {
+    this.write('userdata.json', next);
+    this.userData = next;
   }
 
   /**
-   * What the user wrote for an account: the one in use, unless a write names
-   * the account it was made under. `null` with no account, and for an account
+   * Whose notes are meant: the account in use, unless a write names the
+   * account it was made under. `null` with no account, and for an account
    * that is not saved: a write that arrives after its account was removed
    * must not bring its notes back.
    */
-  private notesOf(owner = this.getActiveSteamId()): AccountUserData | null {
-    if (!owner || !this.hasAccount(owner)) return null;
-    return (this.userData.accounts[owner] ??= {});
+  private notesOwner(owner = this.getActiveSteamId()): string | null {
+    return owner && this.hasAccount(owner) ? owner : null;
   }
 
   getUserData(appid: number): GameUserData {
-    return this.notesOf()?.[appid] ?? {};
+    const owner = this.notesOwner();
+    return (owner && this.userData.accounts[owner]?.[appid]) || {};
   }
 
   /**
    * `owner` is the account the edit was made under: another one may be in use
-   * by the time the write arrives.
+   * by the time the write arrives. The interface puts a note that could not
+   * be saved back to the saved one, so a refused write must leave that one
+   * here too.
    */
   setUserData(
     appid: number,
@@ -554,16 +617,23 @@ export class Store {
     data: IAchievementUserData,
     owner?: string,
   ): void {
-    const notes = this.notesOf(owner);
+    const steamId = this.notesOwner(owner);
     // There is nobody to write for: nothing is kept.
-    if (!notes) return;
-    const game = (notes[appid] ??= {});
+    if (!steamId) return;
+    const notes = this.userData.accounts[steamId] ?? {};
+    const game = { ...notes[appid] };
     const isEmpty =
       data.note.trim() === '' &&
       !data.pinned &&
       (data.checklist?.length ?? 0) === 0;
     if (isEmpty) delete game[achievementId];
     else game[achievementId] = data;
-    this.saveUserData();
+    this.saveUserData({
+      ...this.userData,
+      accounts: {
+        ...this.userData.accounts,
+        [steamId]: { ...notes, [appid]: game },
+      },
+    });
   }
 }
