@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { type SyntheticEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { SettingsService } from '@app/services/SettingsService';
@@ -38,7 +38,6 @@ export function useOnboardingController({
   const saved = isAddingAccount ? state : setupState;
   /** The accounts verified in this visit, by SteamID. */
   const [addedHere, setAddedHere] = useState<string[]>([]);
-  const [isFinishing, setIsFinishing] = useState(false);
 
   const form = useForm<OnboardingFormData>({
     resolver: zodResolver(onboardingSchema),
@@ -72,24 +71,21 @@ export function useOnboardingController({
     if (added) setAddedHere((ids) => [...ids, added]);
   }
 
-  async function finish() {
+  /**
+   * Ends the setup, or the visit that added an account. The account step
+   * asks for it and waits: it is that step that is busy meanwhile.
+   */
+  async function handleFinish() {
+    if (saved.accounts.length === 0) return;
     await finishSetup();
     onDone();
-  }
-
-  function handleSubmit(event: SyntheticEvent) {
-    event.preventDefault();
-    if (saved.accounts.length === 0) return;
-    setIsFinishing(true);
-    void finish().finally(() => setIsFinishing(false));
   }
 
   return {
     form,
     accounts: saved.accounts,
     addedHere,
-    isFinishing,
-    handleSubmit,
+    handleFinish,
     handleAccountsChange,
   };
 }

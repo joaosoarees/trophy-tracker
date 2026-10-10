@@ -2,6 +2,7 @@ import {
   type ComponentPropsWithoutRef,
   type ReactNode,
   useCallback,
+  useContext,
   useMemo,
   useReducer,
 } from 'react';
@@ -11,8 +12,8 @@ import { Pressable } from '@ui/components/Pressable';
 import { Button } from '@ui/primitives/button';
 import { cn } from '@ui/utils/cn';
 
-import { StepperContext } from './StepperContext';
-import { createStepperState, stepperReducer } from './stepperState';
+import { StepperBusyContext, StepperContext } from './StepperContext';
+import { createStepperState, isBusy, stepperReducer } from './stepperState';
 import { useStepper } from './useStepper';
 
 /** A step's name under its bar, whether it can be clicked or not. */
@@ -36,6 +37,7 @@ export function Stepper({ steps }: IStepperProps) {
   );
 
   const { current, furthest, direction } = state;
+  const isStepBusy = isBusy(state);
 
   const previousStep = useCallback(() => dispatch({ type: 'previous' }), []);
   const nextStep = useCallback(() => dispatch({ type: 'next' }), []);
@@ -43,9 +45,19 @@ export function Stepper({ steps }: IStepperProps) {
     () => dispatch({ type: 'lockFollowing' }),
     [],
   );
+  // The stepper is told by the call itself, not by the step: a task that
+  // fails, or whose step is gone by then, still ends.
+  const whileBusy = useCallback(async (task: () => Promise<void>) => {
+    dispatch({ type: 'taskStarted' });
+    try {
+      await task();
+    } finally {
+      dispatch({ type: 'taskEnded' });
+    }
+  }, []);
   const context = useMemo(
-    () => ({ previousStep, nextStep, lockFollowingSteps }),
-    [previousStep, nextStep, lockFollowingSteps],
+    () => ({ previousStep, nextStep, lockFollowingSteps, whileBusy }),
+    [previousStep, nextStep, lockFollowingSteps, whileBusy],
   );
 
   return (
@@ -68,12 +80,13 @@ export function Stepper({ steps }: IStepperProps) {
                     {step.label}
                   </span>
                 ) : (
-                  // Reached steps can be revisited; the ones ahead stay locked.
+                  // Reached steps can be revisited; the ones ahead stay locked,
+                  // and so does every one while the current step is busy.
                   // The bar and the label change colour and nothing else: no
                   // wash and no push, which read as a box around the label.
                   <Pressable
                     aria-label={t.onboarding.goToStep(step.label)}
-                    disabled={!isReached}
+                    disabled={!isReached || isStepBusy}
                     onClick={() => dispatch({ type: 'goTo', step: index })}
                     className={cn(
                       STEP,
@@ -93,16 +106,18 @@ export function Stepper({ steps }: IStepperProps) {
           })}
         </ol>
 
-        <div
-          key={current}
-          className={
-            direction === 'forward'
-              ? 'animate-step-forward'
-              : 'animate-step-backward'
-          }
-        >
-          {steps[current].content}
-        </div>
+        <StepperBusyContext.Provider value={isStepBusy}>
+          <div
+            key={current}
+            className={
+              direction === 'forward'
+                ? 'animate-step-forward'
+                : 'animate-step-backward'
+            }
+          >
+            {steps[current].content}
+          </div>
+        </StepperBusyContext.Provider>
       </div>
     </StepperContext.Provider>
   );
@@ -116,10 +131,12 @@ export function StepperPreviousButton({
   variant = 'ghost',
   type = 'button',
   onClick,
+  disabled = false,
   children,
   ...props
 }: ComponentPropsWithoutRef<typeof Button>) {
   const { previousStep } = useStepper();
+  const isStepBusy = useContext(StepperBusyContext);
   const t = useT();
 
   return (
@@ -127,6 +144,8 @@ export function StepperPreviousButton({
       variant={variant}
       type={type}
       onClick={onClick ?? previousStep}
+      // A busy step is not left, whatever the button was given to do.
+      disabled={disabled || isStepBusy}
       {...props}
     >
       {children ?? t.common.back}
@@ -137,14 +156,21 @@ export function StepperPreviousButton({
 export function StepperNextButton({
   type = 'button',
   onClick,
+  disabled = false,
   children,
   ...props
 }: ComponentPropsWithoutRef<typeof Button>) {
   const { nextStep } = useStepper();
+  const isStepBusy = useContext(StepperBusyContext);
   const t = useT();
 
   return (
-    <Button type={type} onClick={onClick ?? nextStep} {...props}>
+    <Button
+      type={type}
+      onClick={onClick ?? nextStep}
+      disabled={disabled || isStepBusy}
+      {...props}
+    >
       {children ?? t.common.next}
     </Button>
   );

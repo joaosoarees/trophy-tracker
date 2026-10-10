@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createStepperState,
+  isBusy,
   type IStepperState,
+  type StepperAction,
   stepperReducer,
 } from './stepperState';
 
@@ -12,6 +14,7 @@ const makeState = (props: Partial<IStepperState> = {}): IStepperState => ({
   furthest: 0,
   direction: 'forward',
   stepCount: 3,
+  busyTasks: 0,
   ...props,
 });
 
@@ -27,6 +30,7 @@ describe('stepperState', () => {
         furthest: 0,
         direction: 'forward',
         stepCount: 3,
+        busyTasks: 0,
       });
     });
   });
@@ -43,6 +47,7 @@ describe('stepperState', () => {
           furthest: 1,
           direction: 'forward',
           stepCount: 3,
+          busyTasks: 0,
         });
       });
 
@@ -66,6 +71,7 @@ describe('stepperState', () => {
           furthest: 2,
           direction: 'backward',
           stepCount: 3,
+          busyTasks: 0,
         });
       });
 
@@ -89,6 +95,7 @@ describe('stepperState', () => {
           furthest: 2,
           direction: 'backward',
           stepCount: 3,
+          busyTasks: 0,
         });
       });
 
@@ -106,6 +113,7 @@ describe('stepperState', () => {
           furthest: 2,
           direction: 'forward',
           stepCount: 3,
+          busyTasks: 0,
         });
       });
 
@@ -140,6 +148,7 @@ describe('stepperState', () => {
           furthest: 1,
           direction: 'backward',
           stepCount: 3,
+          busyTasks: 0,
         });
       });
 
@@ -169,8 +178,107 @@ describe('stepperState', () => {
           furthest: 1,
           direction: 'backward',
           stepCount: 3,
+          busyTasks: 0,
         });
       });
+    });
+
+    describe('taskStarted', () => {
+      it('should count the task when the current step starts one', () => {
+        const state = makeState({ current: 1, furthest: 1 });
+
+        const busy = stepperReducer(state, { type: 'taskStarted' });
+
+        expect(busy).toEqual({
+          current: 1,
+          furthest: 1,
+          direction: 'forward',
+          stepCount: 3,
+          busyTasks: 1,
+        });
+      });
+
+      it.each<[string, StepperAction]>([
+        ['the next step', { type: 'next' }],
+        ['the previous step', { type: 'previous' }],
+        ['a step behind', { type: 'goTo', step: 0 }],
+        ['a step ahead that was reached', { type: 'goTo', step: 2 }],
+      ])(
+        'should refuse a move to %s when a task of the current step is running',
+        (_where, move) => {
+          const busy = makeState({ current: 1, furthest: 2, busyTasks: 1 });
+
+          const moved = stepperReducer(busy, move);
+
+          expect(moved).toBe(busy);
+        },
+      );
+
+      it('should still lock the following steps when a task of the current step is running', () => {
+        const busy = makeState({ current: 1, furthest: 2, busyTasks: 1 });
+
+        const locked = stepperReducer(busy, { type: 'lockFollowing' });
+
+        expect(locked).toEqual({
+          current: 1,
+          furthest: 1,
+          direction: 'forward',
+          stepCount: 3,
+          busyTasks: 1,
+        });
+      });
+    });
+
+    describe('taskEnded', () => {
+      it('should move again when the only task of the current step ended', () => {
+        const busy = makeState({ current: 1, furthest: 1, busyTasks: 1 });
+        const idle = stepperReducer(busy, { type: 'taskEnded' });
+
+        const moved = stepperReducer(idle, { type: 'previous' });
+
+        expect(moved).toEqual({
+          current: 0,
+          furthest: 1,
+          direction: 'backward',
+          stepCount: 3,
+          busyTasks: 0,
+        });
+      });
+
+      it('should still refuse a move when one of two tasks ended', () => {
+        const busy = makeState({ current: 1, furthest: 1, busyTasks: 2 });
+        const stillBusy = stepperReducer(busy, { type: 'taskEnded' });
+
+        const moved = stepperReducer(stillBusy, { type: 'previous' });
+
+        expect(moved).toBe(stillBusy);
+      });
+
+      it('should keep the state when no task is running', () => {
+        const state = makeState();
+
+        const ended = stepperReducer(state, { type: 'taskEnded' });
+
+        expect(ended).toBe(state);
+      });
+    });
+  });
+
+  describe('isBusy', () => {
+    it('should say the step is busy when one of its tasks is running', () => {
+      const state = makeState({ busyTasks: 1 });
+
+      const isStepBusy = isBusy(state);
+
+      expect(isStepBusy).toBe(true);
+    });
+
+    it('should say the step is not busy when none of its tasks is running', () => {
+      const state = makeState();
+
+      const isStepBusy = isBusy(state);
+
+      expect(isStepBusy).toBe(false);
     });
   });
 });

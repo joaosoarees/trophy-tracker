@@ -10,8 +10,8 @@ import { useFormContext } from 'react-hook-form';
 import { useT } from '@app/hooks/useT';
 import { explainFailedCall } from '@app/lib/failedCall';
 import { singleFlight } from '@app/lib/singleFlight';
-import { AccountsService } from '@app/services/AccountsService';
 import { OnboardingService } from '@app/services/OnboardingService';
+import { useStore } from '@app/store';
 import { type IAccount } from '@shared/types/Account';
 import { type IAppState } from '@shared/types/AppState';
 import { useStepper } from '@ui/screens/Onboarding/components/Stepper/useStepper';
@@ -30,16 +30,22 @@ interface IAccountStepOptions {
   isInitiallyOpen: boolean;
   /** Called with the state after an account was saved (its SteamID is given) or removed. */
   onChange: (state: IAppState, added?: string) => void;
+  /** Ends the setup, or the visit that added an account. */
+  onFinish: () => Promise<void>;
 }
 
 export function useAccountStepController({
   accounts,
   isInitiallyOpen,
   onChange,
+  onFinish,
 }: IAccountStepOptions) {
   const t = useT();
-  const { lockFollowingSteps } = useStepper();
+  const { lockFollowingSteps, whileBusy } = useStepper();
   const form = useFormContext<OnboardingFormData>();
+  const removeStepAccount = useStore(
+    (store) => store.settings.removeStepAccount,
+  );
 
   // Whether the form is open, whether it can be closed, and what is known of
   // the Steam client's account change together: one reducer holds the three.
@@ -53,6 +59,7 @@ export function useAccountStepController({
   // held down in a field asks again before that is drawn, and nothing in a
   // render can tell it: the guard is kept outside of them.
   const [verifyOnce] = useState(singleFlight);
+  const [isFinishing, setIsFinishing] = useState(false);
   /** Steam refused the key or the SteamID. */
   const [problem, setProblem] = useState<string | null>(null);
   /** The key works but Steam does not let the achievements be read. */
@@ -144,8 +151,10 @@ export function useAccountStepController({
     }
   }
 
+  // The step is not left while it waits for an answer: each call that waits
+  // goes through the stepper (`whileBusy`), which takes no move until it ends.
   function handleVerify() {
-    void verifyOnce(verify);
+    void verifyOnce(() => whileBusy(verify));
   }
 
   /** Enter in a field checks the account instead of submitting the whole form. */
@@ -156,13 +165,21 @@ export function useAccountStepController({
   }
 
   async function handleRemove(steamId: string) {
-    const next = await AccountsService.remove(steamId);
+    // A call that fails is said by the store, in a toast: the X has no line
+    // of its own. The list then follows what the main process was left with.
+    const next = await removeStepAccount(steamId);
+    if (!next) return;
     onChange(next);
     if (next.accounts.length > 0) return;
     // Back to the beginning: there is nothing for the next step to show.
     lockFollowingSteps();
     emptyForm();
     dispatch({ type: 'lastAccountRemoved' });
+  }
+
+  function handleFinish() {
+    setIsFinishing(true);
+    void whileBusy(onFinish).finally(() => setIsFinishing(false));
   }
 
   function handleOpenForm() {
@@ -185,6 +202,8 @@ export function useAccountStepController({
     isFormOpen: formState.isOpen,
     isFormOptional: formState.isOptional,
     isVerifying,
+    /** The setup is ending: nothing else can be asked for meanwhile. */
+    isFinishing,
     problem,
     privacyProblem,
     // Locked while it is the account found in the Steam client.
@@ -193,7 +212,9 @@ export function useAccountStepController({
     isSteamIdNotFound: formState.detection === 'none',
     handleVerify,
     handleEnter,
-    handleRemove: (steamId: string) => void handleRemove(steamId),
+    handleRemove: (steamId: string) =>
+      void whileBusy(() => handleRemove(steamId)),
+    handleFinish,
     handleOpenForm,
     handleCloseForm,
     handleEditSteamId,

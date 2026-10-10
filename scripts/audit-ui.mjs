@@ -718,15 +718,18 @@ async function auditOnboarding(page, steam, language) {
     await type(page, '[id$="-apiKey"]', 'FEDCBA9876543210FEDCBA9876540000');
 
     // While Steam is asked about one more account, the ones already listed
-    // cannot be removed: the X of a card waits for the answer, as "Cancel"
-    // does. Steam takes the request and does not answer it, so there is time
-    // to look; the app gives up by itself.
+    // cannot be removed and the step cannot be left: the X of a card and the
+    // name of the other step, in the bar of steps, wait for the answer, as
+    // "Cancel" does. Steam takes the request and does not answer it, so there
+    // is time to look; the app gives up by itself.
     const removeAndVerify = `JSON.stringify((() => {
       const shown = (el) => el.offsetParent !== null;
       const panel = document.querySelector('[id$="-steamId"]').closest('.rounded-lg.border');
       return {
         isRemoveDisabled: document.querySelector('main form ul[aria-label] > li button').disabled,
         isVerifyDisabled: [...panel.querySelectorAll('button')].filter(shown).at(-1).disabled,
+        isStepNameDisabled: document.querySelector('main form ol > li button').disabled,
+        step: document.querySelector('main form ol [aria-current="step"]').innerText.trim(),
       };
     })())`;
     steam.state.mode = 'hung';
@@ -738,13 +741,36 @@ async function auditOnboarding(page, steam, language) {
       asking.isVerifyDisabled && asking.isRemoveDisabled,
       `an account can be removed from the list while another is being verified (found: ${JSON.stringify(asking)})`,
     );
+    expectThat(
+      FLOW,
+      asking.isStepNameDisabled,
+      `the name of another step can be clicked while an account is being verified (found: ${JSON.stringify(asking)})`,
+    );
     await page.capture(`onboarding-verifying-${language}`);
+    // Clicked all the same, as a script can: the step stays where it is.
+    await page.evaluate(
+      `document.querySelector('main form ol > li button').click()`,
+    );
+    await sleep(400);
+    const clicked = await page.evaluate(
+      `document.querySelector('main form ol [aria-current="step"]').innerText.trim()`,
+    );
+    expectThat(
+      FLOW,
+      clicked === asking.step,
+      `the account step was left while an account was being verified (on "${asking.step}", then on "${clicked}")`,
+    );
     await waitFor(page, `!JSON.parse(${removeAndVerify}).isVerifyDisabled`);
     const answered = JSON.parse(await page.evaluate(removeAndVerify));
     expectThat(
       FLOW,
       !answered.isRemoveDisabled,
       'the X of an account card is not given back when the verification ends',
+    );
+    expectThat(
+      FLOW,
+      !answered.isStepNameDisabled,
+      'the name of the other step is not given back when the verification ends',
     );
     steam.state.mode = 'ok';
     expectThat(

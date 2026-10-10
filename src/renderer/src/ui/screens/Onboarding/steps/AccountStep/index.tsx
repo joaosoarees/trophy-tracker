@@ -31,8 +31,8 @@ interface IAccountStepProps {
   onChange: (state: IAppState, added?: string) => void;
   /** The step was opened to add an account: its form starts open. */
   isInitiallyOpen: boolean;
-  /** The setup is being finished: nothing else can be asked for meanwhile. */
-  isFinishing: boolean;
+  /** Ends the setup; nothing else can be asked for until it answers. */
+  onFinish: () => Promise<void>;
   /** The way out when the step was opened only to add an account. */
   onCancel?: () => void;
 }
@@ -48,7 +48,7 @@ export function AccountStep({
   addedHere,
   onChange,
   isInitiallyOpen,
-  isFinishing,
+  onFinish,
   onCancel,
 }: IAccountStepProps) {
   const t = useT();
@@ -60,6 +60,7 @@ export function AccountStep({
     isFormOpen,
     isFormOptional,
     isVerifying,
+    isFinishing,
     problem,
     privacyProblem,
     isSteamIdLocked,
@@ -67,10 +68,16 @@ export function AccountStep({
     handleVerify,
     handleEnter,
     handleRemove,
+    handleFinish,
     handleOpenForm,
     handleCloseForm,
     handleEditSteamId,
-  } = useAccountStepController({ accounts, isInitiallyOpen, onChange });
+  } = useAccountStepController({
+    accounts,
+    isInitiallyOpen,
+    onChange,
+    onFinish,
+  });
   const text = t.onboarding.account;
   const hasAccounts = accounts.length > 0;
   const verifyLabel = isVerifying
@@ -252,20 +259,23 @@ export function AccountStep({
             {t.common.cancel}
           </Button>
         ) : (
-          <StepperPreviousButton disabled={isVerifying || isFinishing} />
+          // Disabled by the stepper while an account is verified or the
+          // setup ends: the step is busy then.
+          <StepperPreviousButton />
         )}
         {isFormOpen && !isFormOptional ? (
           // The form is all there is to do here: verifying is the way forward.
-          <StepperNextButton disabled={isVerifying} onClick={handleVerify}>
+          <StepperNextButton onClick={handleVerify}>
             {verifyLabel}
           </StepperNextButton>
         ) : (
           // With an account in, the setup can end. While one more is being
           // typed, its own "Verify" is the action and this one steps back.
           <Button
-            type="submit"
+            type="button"
             variant={isFormOpen ? 'secondary' : 'default'}
             disabled={isVerifying || isFinishing}
+            onClick={handleFinish}
           >
             {isFinishing ? t.onboarding.finishing : t.onboarding.finish}
           </Button>

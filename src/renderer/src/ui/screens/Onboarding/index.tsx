@@ -24,14 +24,8 @@ export function Onboarding({
   onCancel,
 }: IOnboardingProps) {
   const t = useT();
-  const {
-    form,
-    accounts,
-    addedHere,
-    isFinishing,
-    handleSubmit,
-    handleAccountsChange,
-  } = useOnboardingController({ state, isAddingAccount, onDone });
+  const { form, accounts, addedHere, handleFinish, handleAccountsChange } =
+    useOnboardingController({ state, isAddingAccount, onDone });
 
   const accountStep = {
     label: t.onboarding.steps.account,
@@ -41,7 +35,7 @@ export function Onboarding({
         addedHere={addedHere}
         onChange={handleAccountsChange}
         isInitiallyOpen={isAddingAccount}
-        isFinishing={isFinishing}
+        onFinish={handleFinish}
         // Accounts are saved as they are verified: leaving keeps them.
         onCancel={onCancel}
       />
@@ -53,7 +47,8 @@ export function Onboarding({
       <WindowBar />
       <main className="mx-auto max-w-lg p-5">
         <FormProvider {...form}>
-          <form onSubmit={handleSubmit} noValidate>
+          {/* Nothing here submits: each step's button is its own "advance". */}
+          <form onSubmit={(event) => event.preventDefault()} noValidate>
             <Stepper
               steps={
                 isAddingAccount
