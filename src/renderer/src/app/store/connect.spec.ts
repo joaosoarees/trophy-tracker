@@ -2,12 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { type IApi } from '@shared/types/Api';
 import { type IAppState } from '@shared/types/AppState';
+import { type DashboardMode } from '@shared/types/Game';
 import { makeAchievement } from '@tests/factories/makeAchievement';
 import { makeAppState } from '@tests/factories/makeAppState';
 import { makeGameSummary } from '@tests/factories/makeGameSummary';
 import { makeGameView } from '@tests/factories/makeGameView';
 import { OTHER_STEAM_ID, STEAM_ID } from '@tests/helpers';
-import { makeAppStore } from '@tests/makeAppStore';
+import { deferred, makeAppStore } from '@tests/makeAppStore';
 
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn(), dismiss: vi.fn() }),
@@ -27,6 +28,9 @@ const turn = (): Promise<void> =>
     setImmediate(resolve);
   });
 
+/** What the main process answers a read of the dashboard with. */
+type DashboardAnswer = Awaited<ReturnType<IApi['getDashboard']>>;
+
 /** The events of the main process, each with whoever listens to it now. */
 type Listening = {
   [
@@ -43,8 +47,9 @@ type Listening = {
  * process that has one game on the dashboard, no current game and the note
  * "saved" on achievement A of every game. `listening` holds who listens to
  * each of its events, `saved` every write of user data it was asked for.
+ * `overrides` replaces what the main process answers to a call.
  */
-async function setup() {
+async function setup(overrides: Partial<IApi> = {}) {
   const listening: Listening = {};
   const saved: Parameters<IApi['setUserData']>[] = [];
   const api: Partial<IApi> = {
@@ -72,6 +77,7 @@ async function setup() {
       listening.onDashboardProgress = listener;
       return () => delete listening.onDashboardProgress;
     },
+    ...overrides,
   };
   const {
     sut: store,
@@ -87,6 +93,67 @@ async function setup() {
 describe('connectStore', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  describe('as it wires', () => {
+    it('should show the game the main process says is the current one', async () => {
+      const { sut, store } = await setup({
+        getCurrentAppId: () => Promise.resolve({ appid: 7, isRunning: false }),
+      });
+
+      sut();
+      await turn();
+
+      expect(store.getState().session.current).toEqual({
+        appid: 7,
+        isRunning: false,
+      });
+    });
+
+    it('should list the dashboard the main process answers', async () => {
+      const { sut, store } = await setup();
+
+      sut();
+      await turn();
+
+      expect(store.getState().dashboard.games).toEqual([
+        makeGameSummary({ appid: 10 }),
+      ]);
+    });
+
+    it('should ask the dashboard only for what the main process already has', async () => {
+      const modes: (DashboardMode | undefined)[] = [];
+      const { sut } = await setup({
+        getDashboard: (mode) => {
+          modes.push(mode);
+          return Promise.resolve({ ok: true, value: [] });
+        },
+      });
+
+      sut();
+      await turn();
+
+      expect(modes).toEqual(['cached']);
+    });
+
+    it('should drop the dashboard asked for before the store was wired again for the same account', async () => {
+      const answers: ReturnType<typeof deferred<DashboardAnswer>>[] = [];
+      const { sut, store } = await setup({
+        getDashboard: () => {
+          const answer = deferred<DashboardAnswer>();
+          answers.push(answer);
+          return answer.promise;
+        },
+      });
+      const disconnect = sut();
+      disconnect();
+      sut();
+
+      answers[0].resolve({ ok: true, value: [makeGameSummary({ appid: 10 })] });
+      await turn();
+
+      expect(store.getState().dashboard.games).toBeNull();
+    });
   });
 
   describe('while wired', () => {
