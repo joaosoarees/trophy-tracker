@@ -35,6 +35,7 @@ export function AccountDetails({ account }: IAccountDetailsProps) {
     setIsConfirmingRemoval,
     handleToggleReplacing,
     handleSaveKey,
+    handleKeyDown,
     handleRecheck,
     handleRemove,
   } = useAccountDetailsController(account);
@@ -96,9 +97,7 @@ export function AccountDetails({ account }: IAccountDetailsProps) {
             aria-invalid={problem !== null}
             placeholder={t.onboarding.account.key.placeholder}
             onChange={(event) => setKey(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') handleSaveKey();
-            }}
+            onKeyDown={handleKeyDown}
           />
           {problem && (
             <p role="alert" className="text-destructive text-xs">

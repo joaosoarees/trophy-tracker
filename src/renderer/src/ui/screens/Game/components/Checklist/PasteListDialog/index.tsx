@@ -1,7 +1,4 @@
-import { useState } from 'react';
-
 import { useT } from '@app/hooks/useT';
-import { parseChecklist } from '@shared/checklist';
 import { type IChecklistItem } from '@shared/types/UserData';
 import { Button } from '@ui/primitives/button';
 import {
@@ -13,6 +10,8 @@ import {
   DialogTitle,
 } from '@ui/primitives/dialog';
 import { Textarea } from '@ui/primitives/textarea';
+
+import { usePasteListDialogController } from './usePasteListDialogController';
 
 interface IPasteListDialogProps {
   open: boolean;
@@ -31,18 +30,14 @@ export function PasteListDialog({
   onConfirm,
 }: IPasteListDialogProps) {
   const t = useT();
-  const [text, setText] = useState('');
-  const newItems = parseChecklist(text, items).length;
-
-  function handleOpenChange(isOpen: boolean) {
-    onOpenChange(isOpen);
-    if (!isOpen) setText('');
-  }
-
-  function handleConfirm() {
-    onConfirm(text);
-    setText('');
-  }
+  const {
+    text,
+    newItemCount,
+    handleTextChange,
+    handleOpenChange,
+    handleCancel,
+    handleConfirm,
+  } = usePasteListDialogController({ items, onOpenChange, onConfirm });
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -59,16 +54,16 @@ export function PasteListDialog({
           value={text}
           placeholder={t.checklist.pastePlaceholder}
           className="max-h-[50vh] text-sm"
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => handleTextChange(event.target.value)}
         />
         <DialogFooter>
-          <Button variant="ghost" onClick={() => handleOpenChange(false)}>
+          <Button variant="ghost" onClick={handleCancel}>
             {t.common.cancel}
           </Button>
-          <Button disabled={newItems === 0} onClick={handleConfirm}>
-            {newItems === 0
+          <Button disabled={newItemCount === 0} onClick={handleConfirm}>
+            {newItemCount === 0
               ? t.checklist.addButton
-              : t.checklist.addCount(newItems)}
+              : t.checklist.addCount(newItemCount)}
           </Button>
         </DialogFooter>
       </DialogContent>

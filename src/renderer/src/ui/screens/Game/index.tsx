@@ -49,8 +49,8 @@ export const Game = memo(function Game({ appid, isRunning }: IGameProps) {
     isHiddenOnly,
     hiddenCount,
     handleToggleHiddenOnly,
-    setFilter,
-    setQuery,
+    handleFilterChange,
+    handleQueryChange,
     handleClearSearch,
     handleShowOtherList,
     handleShowUnlocked,
@@ -153,10 +153,10 @@ export const Game = memo(function Game({ appid, isRunning }: IGameProps) {
             unlocked={view.unlockedCount}
             isHiddenOnly={isHiddenOnly}
             hiddenCount={hiddenCount}
-            onFilterChange={setFilter}
+            onFilterChange={handleFilterChange}
             onHiddenOnlyToggle={handleToggleHiddenOnly}
             onSortChange={handleSortChange}
-            onQueryChange={setQuery}
+            onQueryChange={handleQueryChange}
           />
 
           {achievements.length === 0 && (

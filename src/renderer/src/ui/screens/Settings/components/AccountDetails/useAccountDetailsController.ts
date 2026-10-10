@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type KeyboardEvent, useState } from 'react';
 
 import { useT } from '@app/hooks/useT';
 import { singleFlight } from '@app/lib/singleFlight';
@@ -59,6 +59,15 @@ export function useAccountDetailsController(account: IAccount) {
     }
   }
 
+  function handleSaveKey() {
+    void saveOnce(saveKey);
+  }
+
+  /** Enter in the field is its own "Verify and save". */
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') handleSaveKey();
+  }
+
   async function handleRecheck() {
     setIsChecking(true);
     try {
@@ -83,7 +92,8 @@ export function useAccountDetailsController(account: IAccount) {
     setKey,
     setIsConfirmingRemoval,
     handleToggleReplacing,
-    handleSaveKey: () => void saveOnce(saveKey),
+    handleSaveKey,
+    handleKeyDown,
     handleRecheck: () => void handleRecheck(),
     handleRemove,
   };

@@ -33,8 +33,8 @@ export function Checklist({
     isDuplicate,
     isPasting,
     editingId,
-    setIsPasting,
-    setEditingId,
+    handlePastingChange,
+    handleEditingChange,
     handleDraftChange,
     handleAddDraft,
     handlePaste,
@@ -53,8 +53,8 @@ export function Checklist({
               item={item}
               isEditing={editingId === item.id}
               onToggle={(done) => handleToggle(item.id, done)}
-              onStartEditing={() => setEditingId(item.id)}
-              onCancelEditing={() => setEditingId(null)}
+              onStartEditing={() => handleEditingChange(item.id)}
+              onCancelEditing={() => handleEditingChange(null)}
               onRename={(text) => handleRename(item.id, text)}
               onRemove={() => handleRemove(item.id)}
             />
@@ -89,7 +89,7 @@ export function Checklist({
           size="sm"
           variant="secondary"
           className="h-7 text-xs"
-          onClick={() => setIsPasting(true)}
+          onClick={() => handlePastingChange(true)}
         >
           <ClipboardPaste />
           {t.checklist.paste}
@@ -104,7 +104,7 @@ export function Checklist({
         open={isPasting}
         achievement={achievement}
         items={items}
-        onOpenChange={setIsPasting}
+        onOpenChange={handlePastingChange}
         onConfirm={handlePaste}
       />
     </div>
