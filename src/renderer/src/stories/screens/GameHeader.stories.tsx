@@ -1,8 +1,8 @@
 import { type Meta, type StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 
-import { makeAchievement } from '@test/factories/makeAchievement';
-import { makeGameView } from '@test/factories/makeGameView';
+import { makeAchievement } from '@tests/factories/makeAchievement';
+import { makeGameView } from '@tests/factories/makeGameView';
 import { GameHeader } from '@ui/screens/Game/components/GameHeader';
 
 const achievements = Array.from({ length: 64 }, (_, index) =>

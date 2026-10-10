@@ -2,7 +2,7 @@ out
 dist
 node_modules
 pnpm-lock.yaml
-test/fixtures
+__tests__/fixtures
 coverage
 .audit-ui
 storybook-static

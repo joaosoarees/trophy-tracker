@@ -5,7 +5,7 @@
 //   pnpm audit:ui
 //
 // The app runs for real, against a fake Steam (scripts/fake-steam.mjs) that
-// answers from the real responses in test/fixtures, and a fake Steam client
+// answers from the real responses in __tests__/fixtures, and a fake Steam client
 // folder. Nothing of this computer's Trophy Tracker data, account or key is
 // read. The audit runs once per language, as a new user each time, so that
 // everything on screen (interface, errors, achievement names) is in that

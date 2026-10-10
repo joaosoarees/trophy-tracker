@@ -76,7 +76,7 @@ export default defineConfig(
           ],
           pathGroups: [
             {
-              pattern: '@{app,ui,shared,main,test,tests}/**',
+              pattern: '@{app,ui,shared,tests}/**',
               group: 'internal',
             },
           ],
@@ -130,7 +130,7 @@ export default defineConfig(
     files: [
       'src/main/**/*.ts',
       'src/preload/**/*.ts',
-      'test/**/*.ts',
+      '__tests__/**/*.ts',
       'src/**/*.spec.ts',
     ],
     languageOptions: { globals: globals.node },
@@ -210,7 +210,7 @@ export default defineConfig(
 
   {
     // Tests poke at untyped JSON and use fakes that are async only by signature.
-    files: ['test/**/*.ts', 'src/**/*.spec.ts'],
+    files: ['__tests__/**/*.ts', 'src/**/*.spec.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',

@@ -1,6 +1,6 @@
 // A stand-in for Steam, for `pnpm audit:ui`. It answers the Web API calls the
 // app makes, in the shape Steam answers them and in the language asked for,
-// from the real responses kept in test/fixtures, and lets the audit change
+// from the real responses kept in __tests__/fixtures, and lets the audit change
 // what "Steam" says: unlock an achievement, start a game, reject the key,
 // hide the profile, or go off the air. It also writes the two files of a
 // Steam client's folder that the app reads.
@@ -23,7 +23,7 @@ const schemaOf = (appid, language) =>
   JSON.parse(
     readFileSync(
       new URL(
-        `../test/fixtures/game-achievements-${appid}${FIXTURE_SUFFIX[language] ?? '.en'}.json`,
+        `../__tests__/fixtures/game-achievements-${appid}${FIXTURE_SUFFIX[language] ?? '.en'}.json`,
         import.meta.url,
       ),
       'utf8',

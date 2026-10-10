@@ -27,7 +27,7 @@ const config: StorybookConfig = {
           '@shared': resolve('src/shared'),
           '@app': resolve('src/renderer/src/app'),
           '@ui': resolve('src/renderer/src/ui'),
-          '@test': resolve('test'),
+          '@tests': resolve('__tests__'),
         },
       },
       plugins: [tailwindcss()],
