@@ -882,6 +882,107 @@ describe('settingsSlice', () => {
     });
   });
 
+  describe('finishSetup, when a call to the main process fails', () => {
+    /**
+     * The main process as the first setup ends with two accounts, on the
+     * second, while Steam is signed in to the first: who is signed in is
+     * asked, then the state, then the first account. `overrides` replaces
+     * the calls that fail.
+     */
+    function endingApi(overrides: Partial<IApi>): Partial<IApi> {
+      return {
+        detectSteamId: () => Promise.resolve(STEAM_ID),
+        getState: () => Promise.resolve(twoAccountsState(OTHER_STEAM_ID)),
+        setActiveAccount: () => Promise.resolve(twoAccountsState(STEAM_ID)),
+        logError: () => Promise.resolve(),
+        ...overrides,
+      };
+    }
+
+    const CALLS: (keyof IApi)[] = [
+      'detectSteamId',
+      'getState',
+      'setActiveAccount',
+    ];
+
+    it.each(CALLS)(
+      'should tell the user something went wrong when %s fails',
+      async (call) => {
+        const { sut, toastMock } = await setup(endingApi({ [call]: failing }));
+        sut.getState().settings.apply(notSetUpState());
+
+        await sut.getState().settings.finishSetup();
+
+        expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(UNEXPECTED);
+      },
+    );
+
+    it.each(CALLS)(
+      'should stay in the setup, taking nothing, when %s fails',
+      async (call) => {
+        const { sut } = await setup(endingApi({ [call]: failing }));
+        sut.getState().settings.apply(notSetUpState());
+
+        await sut.getState().settings.finishSetup();
+
+        expect(sut.getState().settings.appState).toEqual(notSetUpState());
+      },
+    );
+
+    it.each(CALLS)(
+      'should write the error to the log when %s fails',
+      async (call) => {
+        const logErrorMock = vi.fn<IApi['logError']>(() => Promise.resolve());
+        const failure = new Error('disk full');
+        failure.stack = 'Error: disk full\n    at saveConfig (Store.ts:1:1)';
+        const { sut } = await setup(
+          endingApi({
+            [call]: () => Promise.reject(failure),
+            logError: logErrorMock,
+          }),
+        );
+        sut.getState().settings.apply(notSetUpState());
+
+        await sut.getState().settings.finishSetup();
+
+        expect(logErrorMock).toHaveBeenCalledExactlyOnceWith(
+          'failed call',
+          failure.stack,
+        );
+      },
+    );
+
+    it('should say it in the language the setup is in', async () => {
+      const { sut, toastMock } = await setup(endingApi({ getState: failing }));
+      sut.getState().settings.apply({ ...notSetUpState(), language: 'pt-BR' });
+
+      await sut.getState().settings.finishSetup();
+
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(
+        'Erro inesperado. Tente de novo.',
+      );
+    });
+
+    it('should enter the app when asked again and the main process answers this time', async () => {
+      let isFailing = true;
+      const { sut } = await setup(
+        endingApi({
+          setActiveAccount: () =>
+            isFailing ? failing() : Promise.resolve(twoAccountsState(STEAM_ID)),
+        }),
+      );
+      sut.getState().settings.apply(notSetUpState());
+      await sut.getState().settings.finishSetup();
+      isFailing = false;
+
+      await sut.getState().settings.finishSetup();
+
+      expect(sut.getState().settings.appState).toEqual(
+        twoAccountsState(STEAM_ID),
+      );
+    });
+  });
+
   describe('initial state', () => {
     it('should remember the window when nothing was loaded yet', async () => {
       const { sut } = await setup();

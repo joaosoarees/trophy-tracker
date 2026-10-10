@@ -107,7 +107,8 @@ type SettingsActions = {
    * another account. With several accounts it ends on the one signed in to
    * Steam, or else on the first one added. With the app already set up there
    * is nothing to take: every answer of the step is in the store, and so is
-   * whatever the main process sent since.
+   * whatever the main process sent since. When a call fails the user is
+   * told and nothing is taken: the setup stays as it is, to be ended again.
    */
   finishSetup: () => Promise<void>;
 };
@@ -336,14 +337,24 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
   finishSetup: async () => {
     if (get().settings.appState?.isConfigured) return;
 
-    // The state is asked for last: it is the one the setup ends on.
-    const signedIn = await OnboardingService.detectSteamId();
-    let next = await SettingsService.getState();
-    const first =
-      next.accounts.find((account) => account.steamId === signedIn) ??
-      next.accounts.at(0);
-    if (first && first.steamId !== next.activeSteamId) {
-      next = await AccountsService.setActive(first.steamId);
+    let next: IAppState;
+    try {
+      // The state is asked for last: it is the one the setup ends on.
+      const signedIn = await OnboardingService.detectSteamId();
+      next = await SettingsService.getState();
+      const first =
+        next.accounts.find((account) => account.steamId === signedIn) ??
+        next.accounts.at(0);
+      if (first && first.steamId !== next.activeSteamId) {
+        next = await AccountsService.setActive(first.steamId);
+      }
+    } catch (error) {
+      // Taking the state without the account it should end on would enter
+      // the app on another one. The main process keeps nothing it could not
+      // write, so it is where it was, and asking again starts from there.
+      const m = messagesFor(get().session.language);
+      toast.error(explainFailedCall(error, m));
+      return;
     }
     get().settings.apply(next);
   },
