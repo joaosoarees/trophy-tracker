@@ -128,6 +128,11 @@ describe('Dashboard', () => {
         cached: entryOf({ playtime: 9 }),
         isCurrent: false,
       },
+      {
+        case: 'a game Steam now counts less playtime for',
+        cached: entryOf({ playtime: 11 }),
+        isCurrent: false,
+      },
     ])('should answer $isCurrent when it is $case', ({ cached, isCurrent }) => {
       const isStillCurrent = Dashboard.isCurrent(cached, game(1, 'Game', 10));
 
