@@ -101,7 +101,8 @@ src/shared/          the contract between the two sides: types and pure logic
   ipcEvents.ts         names of the events the main process pushes to the interface
   i18n/                index.ts (registry) and locales/ (one file per language)
   *.ts                 pure logic: checklist, achievementSort, dashboardSort, view (mergeView),
-                       version, updateFlow, validation (SteamID and key formats)
+                       completion (when a game was completed), version, updateFlow,
+                       validation (SteamID and key formats)
 src/main/            main process: the only part that talks to Steam and to the disk
   index.ts             composition root: builds each piece once and wires them together
   MainWindow.ts        the single window and the events pushed to it

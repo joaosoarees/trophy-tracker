@@ -1,3 +1,4 @@
+import { completedAt, lastUnlockOf } from '@shared/completion';
 import { type IGameSummary, type IGameView } from '@shared/types/Game';
 
 import {
@@ -35,35 +36,21 @@ export class Dashboard {
 
   /** What is kept of a game, from what Steam says the player has in it. */
   static entry(list: IRawPlayerAchievement[], playtime: number): ISummaryEntry {
-    return Dashboard.entryOf(
-      list.length,
-      list.filter((a) => a.achieved === 1).length,
-      list.map((a) => a.unlocktime),
+    return {
+      total: list.length,
+      unlocked: list.filter((a) => a.achieved === 1).length,
       playtime,
-    );
+      lastUnlockAt: Math.max(0, ...list.map((a) => a.unlocktime)),
+    };
   }
 
   /** The same, from a game that was read whole. */
   static entryOfView(view: IGameView, playtime: number): ISummaryEntry {
-    return Dashboard.entryOf(
-      view.total,
-      view.unlockedCount,
-      view.achievements.map((a) => a.unlockedAt ?? 0),
-      playtime,
-    );
-  }
-
-  private static entryOf(
-    total: number,
-    unlocked: number,
-    unlockTimes: number[],
-    playtime: number,
-  ): ISummaryEntry {
     return {
-      total,
-      unlocked,
+      total: view.total,
+      unlocked: view.unlockedCount,
       playtime,
-      lastUnlockAt: Math.max(0, ...unlockTimes),
+      lastUnlockAt: lastUnlockOf(view),
     };
   }
 
@@ -84,10 +71,7 @@ export class Dashboard {
       lastPlayed: game.rtime_last_played ?? 0,
       total: entry.total,
       unlocked: entry.unlocked,
-      completedAt:
-        entry.unlocked === entry.total && entry.lastUnlockAt
-          ? entry.lastUnlockAt
-          : null,
+      completedAt: completedAt(entry),
     };
   }
 

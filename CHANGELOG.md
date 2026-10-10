@@ -29,6 +29,8 @@ What changed in each version, for whoever uses the app. The section of a version
 - When an account passes "Verify" but is refused as it is saved (Steam answers differently the second time, or the account was added meanwhile), the form stays open with the SteamID and the key and says why. It used to close without a word, with the key gone and no account added.
 - An account picked by hand in Settings is no longer undone, some time later, when the app fails once to read which account is signed in to Steam.
 - Switching account while the app is still reading from Steam no longer mixes the two accounts: a game on the dashboard keeps its own account's playtime and progress, a game both accounts own is not shown with the other account's achievements, and a key Steam refuses is marked on the account it belongs to.
+- A game closed while the dashboard is still being read (the first read of a large library, or "refresh all") gets its new playtime as soon as that read ends. It used to keep the old one until the dashboard was read again.
+- A game finished while the app is open shows the date it was completed on the dashboard right away, and takes its place under "Recently completed". It used to be listed as complete with no date, in the last place, until the dashboard was read again.
 
 ## 1.0.0
 
