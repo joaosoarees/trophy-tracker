@@ -109,11 +109,6 @@ describe('Dashboard', () => {
         isCurrent: true,
       },
       {
-        case: 'a game in progress saved without the date of its last unlock',
-        cached: { total: 10, unlocked: 4, playtime: 10 },
-        isCurrent: true,
-      },
-      {
         case: 'a complete game saved with its completion date',
         cached: entryOf({ unlocked: 10 }),
         isCurrent: true,
@@ -131,11 +126,6 @@ describe('Dashboard', () => {
       {
         case: 'a game played since',
         cached: entryOf({ playtime: 9 }),
-        isCurrent: false,
-      },
-      {
-        case: 'a complete game saved without its completion date',
-        cached: { total: 10, unlocked: 10, playtime: 10 },
         isCurrent: false,
       },
     ])('should answer $isCurrent when it is $case', ({ cached, isCurrent }) => {
@@ -289,11 +279,6 @@ describe('Dashboard', () => {
       {
         case: 'complete and Steam gave no date for its unlocks',
         entry: entryOf({ unlocked: 10, lastUnlockAt: 0 }),
-        expected: null,
-      },
-      {
-        case: 'complete and saved without the date',
-        entry: { total: 10, unlocked: 10, playtime: 10 },
         expected: null,
       },
       {

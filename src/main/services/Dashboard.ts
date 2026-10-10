@@ -30,11 +30,7 @@ export class Dashboard {
 
   /** Whether what was kept of a game still says what Steam would say now. */
   static isCurrent(cached: ISummaryEntry, game: IRawOwnedGame): boolean {
-    return (
-      cached.playtime === game.playtime_forever &&
-      // Entries of complete games written before the completion date existed are read once more.
-      !(cached.unlocked === cached.total && cached.lastUnlockAt === undefined)
-    );
+    return cached.playtime === game.playtime_forever;
   }
 
   /** What is kept of a game, from what Steam says the player has in it. */
