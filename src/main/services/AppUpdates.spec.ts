@@ -34,6 +34,8 @@ interface ISetup {
   latest?: string | null;
   /** Version a previous run closed itself to install. */
   attempted?: string | null;
+  /** Whether the disk refuses to write the install attempt down. */
+  isAttemptRefused?: boolean;
 }
 
 function setup({
@@ -41,6 +43,7 @@ function setup({
   isBlocked = false,
   latest = '1.1.0',
   attempted = null,
+  isAttemptRefused = false,
 }: ISetup = {}) {
   const calls = {
     check: 0,
@@ -57,6 +60,8 @@ function setup({
   const net = { online: true, latest, canDownload: true };
   const changes: IAppInfo[] = [];
   const logged: string[] = [];
+  /** Where each logged error said it came from. */
+  const sources: string[] = [];
   const clock = { now: 0 };
   const attempt = { version: attempted };
   let listener: IAutoUpdaterListener | null = null;
@@ -98,10 +103,16 @@ function setup({
     },
     attempt: {
       get: () => attempt.version,
-      set: (version) => (attempt.version = version),
+      set: (version) => {
+        if (isAttemptRefused) throw new Error('disk full');
+        attempt.version = version;
+      },
     },
     onChange: (info) => changes.push(info),
-    logError: (_source, detail) => logged.push(detail),
+    logError: (source, detail) => {
+      sources.push(source);
+      logged.push(detail);
+    },
     now: () => clock.now,
   });
 
@@ -110,6 +121,7 @@ function setup({
     calls,
     changes,
     logged,
+    sources,
     clock,
     net,
     attempt,
@@ -139,6 +151,24 @@ describe('AppUpdates', () => {
       const { attempt } = setup({ attempted: '1.1.0' });
 
       expect(attempt.version).toBe('1.1.0');
+    });
+
+    it('should start all the same when the install attempt cannot be forgotten', async () => {
+      const { sut } = setup({ attempted: '1.0.0', isAttemptRefused: true });
+
+      const info = await sut.getAppInfo();
+
+      expect(info).toEqual(NOTHING);
+    });
+
+    it('should write to the error log that the install attempt could not be forgotten', () => {
+      const { sources, logged } = setup({
+        attempted: '1.0.0',
+        isAttemptRefused: true,
+      });
+
+      expect(sources).toEqual(['main: update attempt']);
+      expect(logged).toEqual([expect.stringContaining('disk full')]);
     });
   });
 
