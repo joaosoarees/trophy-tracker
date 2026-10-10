@@ -57,16 +57,24 @@ export class SetupService {
     };
   }
 
-  /** Adds an account, and starts following it, only if Steam accepts its key. */
-  async addAccount(steamId: string, apiKey: string): Promise<IAppState> {
+  /**
+   * Adds an account, and starts following it, only if Steam accepts its key.
+   * A refusal saves nothing and says why: the interface checked the pair
+   * before asking, but Steam may answer otherwise this time, and the account
+   * may have been saved meanwhile.
+   */
+  async addAccount(
+    steamId: string,
+    apiKey: string,
+  ): Promise<CheckResult<IAppState>> {
     const check = await this.checks.checkApiKey(steamId, apiKey);
-    if (check.ok) {
-      this.store.setCredentials(
-        { steamId: check.value.steamId, apiKey: apiKey.trim() },
-        check.value,
-      );
-    }
-    return this.getState();
+    if (!check.ok) return check;
+
+    this.store.setCredentials(
+      { steamId: check.value.steamId, apiKey: apiKey.trim() },
+      check.value,
+    );
+    return { ok: true, value: this.getState() };
   }
 
   /** Gives a saved account another key, if Steam accepts it for that account. */

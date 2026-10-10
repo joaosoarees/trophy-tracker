@@ -121,8 +121,15 @@ export function useAccountStepController({
         return;
       }
 
-      const next = await OnboardingService.addAccount(steamId, apiKey);
-      onChange(next, steamId.trim());
+      // Checked once more as it is saved. A refusal here is not a state to
+      // take: the form stays as it is, with the reason.
+      const added = await OnboardingService.addAccount(steamId, apiKey);
+      if (!added.ok) {
+        setProblem(added.error);
+        return;
+      }
+
+      onChange(added.value, steamId.trim());
       emptyForm();
       dispatch({ type: 'closed' });
     } finally {

@@ -606,6 +606,28 @@ async function auditOnboarding(page, steam, language) {
     'two different answers of Steam show the same error',
   );
 
+  if (isFirst) {
+    // Steam accepts the key when it is checked and rejects it as the account
+    // is saved: the form stays, with what was typed and the reason.
+    steam.state.profilesAsked = 0;
+    steam.state.mode = 'second-thoughts';
+    const refusal = await verify();
+    const kept = JSON.parse(
+      await page.evaluate(
+        `JSON.stringify({ cards: ${accountCards}, steamId: document.querySelector('#steamId')?.value ?? null, key: document.querySelector('#apiKey')?.value ?? null })`,
+      ),
+    );
+    expectThat(
+      FLOW,
+      /key/i.test(refusal) &&
+        kept.cards === 0 &&
+        kept.steamId === STEAM_ID &&
+        kept.key === KEY,
+      `an account refused as it is saved does not leave the form open with what was typed and the reason (shown: "${refusal}"; found: ${JSON.stringify({ ...kept, key: kept.key === KEY ? 'kept' : 'lost' })})`,
+    );
+    await audit(page, `onboarding-refused-as-saved-${language}`);
+  }
+
   steam.state.mode = 'ok';
   const alert = await verify();
   expectThat(

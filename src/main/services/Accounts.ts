@@ -1,4 +1,5 @@
 import { type IAppState } from '@shared/types/AppState';
+import { type CheckResult } from '@shared/types/Check';
 
 import { type AccountFollower } from './AccountFollower';
 import { type GameWatcher } from './GameWatcher';
@@ -25,17 +26,20 @@ export class Accounts {
    * Adds an account, which the app then follows, if Steam accepts its key.
    * The game on screen is forgotten only when the added account took over:
    * the account in use is then one the app did not have before. A refused
-   * add changes nothing, even if the app followed a saved account meanwhile.
+   * add changes nothing, even if the app followed a saved account meanwhile,
+   * and answers why it was refused. Either way the running game is checked
+   * again when the app has an account.
    */
-  async add(steamId: string, apiKey: string): Promise<IAppState> {
+  async add(steamId: string, apiKey: string): Promise<CheckResult<IAppState>> {
     const { setup, watcher } = this.deps;
     const saved = setup.getState().accounts.map((account) => account.steamId);
-    const state = await setup.addAccount(steamId, apiKey);
+    const result = await setup.addAccount(steamId, apiKey);
+    const state = result.ok ? result.value : setup.getState();
     const hasTakenOver =
       state.activeSteamId !== null && !saved.includes(state.activeSteamId);
     if (hasTakenOver) this.forgetGame();
     if (state.isConfigured) void watcher.checkRunningGame();
-    return state;
+    return result;
   }
 
   /** Follows another saved account, unless a game is being played. */
