@@ -17,9 +17,11 @@ import {
   SteamError,
 } from '../steam/SteamClient';
 
+import { AccountChecks } from './AccountChecks';
 import { AccountFollower } from './AccountFollower';
 import { Accounts } from './Accounts';
 import { GameWatcher } from './GameWatcher';
+import { KeyStatus } from './KeyStatus';
 import { SetupService } from './SetupService';
 
 /** Steam knows whoever is asked about, and calls them "player". */
@@ -67,14 +69,17 @@ function setup({
       { steamId, name: 'player', avatar: 'x' },
     );
   }
+  const client = fakeSteamClient({
+    summary: (credentials) => {
+      whileSteamAnswers(store);
+      return profileOf(credentials);
+    },
+  });
+  const keys = new KeyStatus(store, client);
   const accountSetup = new SetupService(
     store,
-    fakeSteamClient({
-      summary: (credentials) => {
-        whileSteamAnswers(store);
-        return profileOf(credentials);
-      },
-    }),
+    new AccountChecks(store, client, keys),
+    keys,
   );
   /** What the watcher was asked, in order. */
   const asked: string[] = [];
@@ -116,12 +121,15 @@ function setupWired(signedIn: string) {
     { steamId: STEAM_ID, apiKey: KEY },
     { steamId: STEAM_ID, name: 'player', avatar: 'x' },
   );
+  const client = fakeSteamClient({
+    summary: (credentials) =>
+      credentials.apiKey === KEY ? summary(credentials) : rejected(),
+  });
+  const keys = new KeyStatus(store, client);
   const accountSetup = new SetupService(
     store,
-    fakeSteamClient({
-      summary: (credentials) =>
-        credentials.apiKey === KEY ? summary(credentials) : rejected(),
-    }),
+    new AccountChecks(store, client, keys),
+    keys,
   );
   /** Every account the app was said to have started following. */
   const followed: string[] = [];

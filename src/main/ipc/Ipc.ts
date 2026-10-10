@@ -5,9 +5,11 @@ import { type IApi } from '@shared/types/Api';
 import { type LocalFolderId } from '@shared/types/Preferences';
 
 import { type MainWindow } from '../MainWindow';
+import { type AccountChecks } from '../services/AccountChecks';
 import { type Accounts } from '../services/Accounts';
 import { type AppUpdates } from '../services/AppUpdates';
 import { type GameWatcher } from '../services/GameWatcher';
+import { type KeyStatus } from '../services/KeyStatus';
 import { type SetupService } from '../services/SetupService';
 import { type Tracker } from '../services/Tracker';
 import { Achievements } from '../steam/Achievements';
@@ -36,6 +38,8 @@ type IpcHandlers = {
 
 interface IIpcDeps {
   setup: SetupService;
+  keys: KeyStatus;
+  checks: AccountChecks;
   accounts: Accounts;
   tracker: Tracker;
   watcher: GameWatcher;
@@ -55,6 +59,8 @@ export class Ipc {
   register(): void {
     const {
       setup,
+      keys,
+      checks,
       accounts,
       tracker,
       watcher,
@@ -70,8 +76,8 @@ export class Ipc {
     const handlers: IpcHandlers = {
       getState: () => setup.getState(),
       detectSteamId: () => local.getActiveSteamId(),
-      checkApiKey: (steamId, apiKey) => setup.checkApiKey(steamId, apiKey),
-      checkPrivacy: (steamId, apiKey) => setup.checkPrivacy(steamId, apiKey),
+      checkApiKey: (steamId, apiKey) => checks.checkApiKey(steamId, apiKey),
+      checkPrivacy: (steamId, apiKey) => checks.checkPrivacy(steamId, apiKey),
       addAccount: (steamId, apiKey) => accounts.add(steamId, apiKey),
       setActiveAccount: (steamId) => accounts.switchTo(steamId),
       removeAccount: (steamId) => accounts.remove(steamId),
@@ -80,7 +86,7 @@ export class Ipc {
 
       getCurrentAppId: () => watcher.refreshCurrent(),
       getGame: (appid, isForced) =>
-        setup.attempt(async () => {
+        keys.attempt(async () => {
           const view = isForced
             ? await tracker.getGame(appid, true)
             : await tracker.getGameStaleFirst(appid, {
@@ -89,14 +95,14 @@ export class Ipc {
                   watcher.remember(fresh);
                   window.send(IpcEvent.gameUpdated, fresh);
                 },
-                // Lets the setup notice a key that stopped working.
-                onError: (e) => void setup.noticeFailure(e),
+                // Lets the app notice a key that stopped working.
+                onError: (e) => void keys.noticeFailure(e),
               });
           watcher.remember(view);
           return view;
         }),
       getDashboard: (mode) =>
-        setup.attempt(() =>
+        keys.attempt(() =>
           tracker.getDashboard(mode, (done, total) =>
             window.send(IpcEvent.dashboardProgress, done, total),
           ),

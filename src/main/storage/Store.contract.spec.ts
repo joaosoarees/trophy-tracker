@@ -112,8 +112,8 @@ const PER_ACCOUNT = [
 ];
 
 /**
- * What `Tracker` and `SetupService` rely on in a store, asserted of the real
- * `Store` and of the fake their specs run over. A difference is a fault of
+ * What `Tracker`, `SetupService`, `AccountChecks` and `KeyStatus` rely on in
+ * a store, asserted of the real `Store` and of the fake their specs run over. A difference is a fault of
  * the fake.
  */
 describe.each(IMPLEMENTATIONS)(
