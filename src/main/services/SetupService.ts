@@ -8,6 +8,8 @@ import { API_KEY_PATTERN, isSteamId } from '@shared/validation';
 import { type SteamClient, SteamError } from '../steam/SteamClient';
 import { type Store } from '../storage/Store';
 
+import { Dashboard } from './Dashboard';
+
 /** What a failed read says about the key it was made with, when it says anything. */
 const STATUS_OF: Partial<Record<SteamError['kind'], AccountStatus>> = {
   'invalid-key': 'rejected',
@@ -132,11 +134,7 @@ export class SetupService {
     try {
       const games = await this.client.getOwnedGames(creds);
       if (games === null) return SetupService.fail(m.check.privacyBlocked);
-      const played = games
-        .filter((g) => g.playtime_forever > 0)
-        .sort(
-          (a, b) => (b.rtime_last_played ?? 0) - (a.rtime_last_played ?? 0),
-        );
+      const played = Dashboard.mostRecentFirst(Dashboard.played(games));
 
       // A game with no achievements proves nothing; try the most recent ones until one answers.
       for (const game of played.slice(0, 5)) {
