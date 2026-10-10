@@ -135,8 +135,10 @@ src/renderer/src/    the interface
                          toggle (the classes of a toggle that is on)
   stories/             Storybook stories
 __tests__/           what specs share
-  helpers.ts           fakeFetch, makeTempDir, makeDiskStore, the ids, keys and Steam answers specs reuse
-  steamLibrary.ts      Steam answers for a library: game, owned, player
+  helpers.ts           fakeFetch, makeTempDir, the ids, keys and Steam answers specs reuse
+  InMemoryStore.ts     the fake of `Store` the specs of the services run over
+  fakeSteamClient.ts   the fake of `SteamClient` for the same specs: answers values, writes down what was asked
+  steamLibrary.ts      a library as Steam describes it: game, achieved; owned and player are their HTTP answers
   makeAppStore.ts      a fresh interface store over a fake main process
   factories/           makeAchievement, makeAppInfo, makeAppState, makeGameSummary, makeGameView, makeStatSchema
   fixtures/            real API responses
@@ -170,8 +172,8 @@ ui (screens, components) → app/store and app/hooks → app/services → window
 
 - **What is tested:** main-process and `shared/` logic, the pure logic of the screens (`achievementList`, `gameList`, `gameDetails`, `format`, step schemas, `stepperState`, `saver`) and the store slices that hold logic (`navigationSlice`, `updatesSlice`, `settingsSlice`, `userDataSlice`). Views and controllers are validated by running the app.
 - **A behaviour change in a main-process service, `steam/SteamClient`, `storage/Store` or `shared/` comes with a test.**
-- **One spec per unit, beside it:** `src/main/services/Tracker.ts` is tested by `src/main/services/Tracker.spec.ts`. A new unit gets its own spec; do not append to a neighbour's. A spec that covers a folder's `index.ts` is `index.spec.ts`.
-- `__tests__/` holds only what specs share: helpers, factories and fixtures.
+- **One spec per unit, beside it:** `src/main/services/Tracker.ts` is tested by `src/main/services/Tracker.spec.ts`. A new unit gets its own spec; do not append to a neighbour's. A spec that covers a folder's `index.ts` is `index.spec.ts`. `Store` has a second one, `Store.contract.spec.ts` (see the fake of the store, below).
+- `__tests__/` holds only what specs share: helpers, fakes, factories and fixtures.
 - **Imports in a spec:** the unit and its neighbours relatively (`./Tracker`, `../storage/Store`); `@shared/*`, `@app/*` and `@ui/*` as in the code; `@tests/*` for helpers, factories and fixtures.
 - **One behaviour per test**, written as arrange, act, assert, with a blank line between the three. A test that needs a second scenario is two tests.
 - **The act is a statement of its own that keeps the result** (`const info = await sut.getAppInfo();`), never a call inside `expect(...)`.
@@ -179,13 +181,16 @@ ui (screens, components) → app/store and app/hooks → app/services → window
 - **The instance under test is `sut`**, built by a `setup()` function that each test calls, so no test sees another's state. `setup()` returns `sut` and what the test needs to drive its collaborators.
 - **Assert what was promised:** exact values, the whole object when the object is the result, and the message of an error or a refusal, not only that it failed.
 - **`it.each` for the same check over several inputs**, with the case in the name (`'should say which version of the format %s is in when it writes it'`).
-- **A temp folder comes from `makeTempDir()`**, which removes it when the test ends. The real `Store` over such a folder is for the specs whose subject is what is written to disk, and for the services not yet given a fake of it; `makeDiskStore()` builds one. Never call `mkdtempSync` in a spec.
+- **A temp folder comes from `makeTempDir()`**, which removes it when the test ends. The real `Store` over such a folder is for the specs whose subject is what is written to disk: `Store.spec.ts`, `Store.contract.spec.ts`, and the two tests of `SetupService.spec.ts` that read the time `config.json` was saved. Never call `mkdtempSync` in a spec.
 - **Factories in `__tests__/factories/`** (`makeAchievement`, `makeGameView`, `makeGameSummary`, `makeAppInfo`, `makeAppState`, `makeStatSchema`): each returns a valid object and takes only what the test is about. Do not rebuild these objects by hand in a test file. A file may wrap a factory when all its tests share a default (`rarity: 50`).
-- **Fakes, not mocks.** A service receives through the constructor a fake of the part of each collaborator it uses, the part its class names with a `Pick<…>` type (`RunningGame`, `AccountFollower`), as well as a fake updater or an injected clock. Tests assert on results, not on which method was called. No mocking library.
+- **Fakes, not mocks.** A service receives through the constructor a fake of the part of each collaborator it uses, the part its class names with a `Pick<…>` type (`Tracker`, `SetupService`, `RunningGame`, `AccountFollower`), as well as a fake updater or an injected clock. Tests assert on results, not on which method was called. No mocking library.
 - **A fake of a store keeps state in memory** (the account in use, the saved credentials), so a test reads back what the service did. It is written in the spec that uses it; one that two specs need goes under `__tests__/`, named for what it is.
+- **`InMemoryStore` (`__tests__/InMemoryStore.ts`) is the fake of `Store`** for `Tracker.spec.ts`, `SetupService.spec.ts` and `Accounts.spec.ts`. It implements only the methods `Tracker` and `SetupService` call, and keeps the accounts, the one in use, the language and what was read from Steam.
+- **`src/main/storage/Store.contract.spec.ts` keeps it equal to the real one:** it runs the same assertions over `Store` on a temp folder and over `InMemoryStore`. When a service comes to rely on something else in the store, add the method to the fake and the behaviour to that spec. A difference it finds is fixed in the fake, never by loosening the assertion.
+- **`fakeSteamClient` (`__tests__/fakeSteamClient.ts`) is the fake of `SteamClient`** for the same three specs. It is given what Steam answers as the values `SteamClient` returns, a failure being the `SteamError` the real client throws, and writes down every request in `asked`. A request the test gave no answer for throws. What `SteamClient` sends, and how it reads an answer, is tested in `SteamClient.spec.ts`.
 - `vi.fn` is fine for a callback whose calls are the result: name it `<name>Mock` and assert arguments and count together (`toHaveBeenCalledExactlyOnceWith`).
-- `fakeFetch` (`__tests__/helpers.ts`) is for the specs whose subject is what is asked of Steam or GitHub, and for the services still built over a real `SteamClient`. It throws on a request no route answers.
-- `__tests__/steamLibrary.ts` builds the Steam answers for a library (`game`, `owned`, `player`); use it instead of writing those answers by hand.
+- `fakeFetch` (`__tests__/helpers.ts`) is for the specs whose subject is what is asked of Steam or GitHub: `SteamClient.spec.ts`, `UpdateChecker.spec.ts`, and the one test of `SetupService.spec.ts` that sees a change of language reach a real client. It throws on a request no route answers.
+- `__tests__/steamLibrary.ts` builds a library as Steam describes it: `game` and `achieved` are the values a fake client answers, `owned` and `player` the HTTP answers that carry them. Use it instead of writing those by hand.
 - **Code that calls the system takes it as a dependency, defaulting to the real thing.** `Windows` takes the command runner in its constructor, `FileSteam` the disk, `RegistrySteam` the registry, and `SecureCipher.create` Electron's storage (`index.ts` passes the real one). New code that runs a command, reads the disk or uses an Electron API follows the same shape, so it can be tested on any machine.
 - **Store slices are tested against a fake main process.** `makeAppStore()` (`__tests__/makeAppStore.ts`) builds a fresh store with a fake `window.api` and `sessionStorage`; a call the test did not provide throws. These tests have their own TypeScript project (`tsconfig.webtest.json`), because the store uses browser types.
 - **`sonner` is the one module that is mocked**, to see what was announced to the user.

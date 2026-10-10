@@ -10,6 +10,31 @@ import { type Store } from '../storage/Store';
 
 import { Dashboard } from './Dashboard';
 
+/** The part of `Store` that keeps the accounts, the one in use and the language. */
+type SavedSetup = Pick<
+  Store,
+  | 'getLanguage'
+  | 'setLanguage'
+  | 'getCredentials'
+  | 'getCredentialsOf'
+  | 'getProfile'
+  | 'getAccounts'
+  | 'getActiveSteamId'
+  | 'hasAccount'
+  | 'setCredentials'
+  | 'setActiveAccount'
+  | 'setAccountStatus'
+  | 'removeAccount'
+  | 'getAchievementSort'
+  | 'getDashboardSort'
+>;
+
+/** The part of `SteamClient` that checks a key, its SteamID and what the profile shows. */
+type AccountChecks = Pick<
+  SteamClient,
+  'getPlayerSummary' | 'getOwnedGames' | 'getPlayerAchievements'
+>;
+
 /** What a failed read says about the key it was made with, when it says anything. */
 const STATUS_OF: Partial<Record<SteamError['kind'], AccountStatus>> = {
   'invalid-key': 'rejected',
@@ -30,8 +55,8 @@ interface IFailure {
  */
 export class SetupService {
   constructor(
-    private store: Store,
-    private client: SteamClient,
+    private store: SavedSetup,
+    private client: AccountChecks,
     /** Told when the state changes without the interface having asked for it. */
     private onChange: (state: IAppState) => void = () => {},
     private logError: (source: string, detail: string) => void = () => {},
