@@ -31,6 +31,7 @@ export default defineConfig({
         'src/shared/**/*.ts',
         'src/renderer/src/app/lib/saver.ts',
         'src/renderer/src/app/lib/singleFlight.ts',
+        'src/renderer/src/app/lib/failedCall.ts',
         'src/renderer/src/app/lib/namedLazyLoad.ts',
         'src/renderer/src/app/lib/reportUnhandledErrors.ts',
         // The store slices that hold logic, tested against a fake main

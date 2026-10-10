@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { toast } from 'sonner';
 import { useShallow } from 'zustand/react/shallow';
 
-import { useT } from '@app/hooks/useT';
 import { useStore } from '@app/store';
 import {
   createChecklistItem,
@@ -24,11 +22,10 @@ export function useChecklistController({
   items,
   onChange,
 }: IParams) {
-  const t = useT();
-  const { steamId, restoreItem } = useStore(
+  const { steamId, offerUndo } = useStore(
     useShallow((state) => ({
       steamId: state.settings.appState?.activeSteamId ?? null,
-      restoreItem: state.userData.restoreChecklistItem,
+      offerUndo: state.userData.offerChecklistUndo,
     })),
   );
 
@@ -82,14 +79,9 @@ export function useChecklistController({
 
     // The toast outlives this list (a collapsed card, a search, another game
     // or account), so the undo names where the item came from and the store
-    // puts it back into the list as it is at the click.
-    const from = { steamId, appid, achievementId };
-    toast(t.checklist.removed(removed.text), {
-      action: {
-        label: t.common.undo,
-        onClick: () => restoreItem(from, removed, index),
-      },
-    });
+    // offers it: it puts the item back into the list as it is at the click,
+    // and takes the offer back when the account is left.
+    offerUndo({ steamId, appid, achievementId }, removed, index);
   }
 
   return {
