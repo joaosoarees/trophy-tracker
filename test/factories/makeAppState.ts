@@ -17,7 +17,6 @@ export function makeAppState(props: Partial<IAppState> = {}): IAppState {
         keyEnding: 'CDEF',
         isKeyEncrypted: true,
         status: 'valid',
-        checkedAt: null,
       },
     ],
     activeSteamId: STEAM_ID,

@@ -16,6 +16,12 @@ import { KEY, OTHER_KEY, OTHER_STEAM_ID, STEAM_ID } from '@test/helpers';
 
 const tempDir = (): string => mkdtempSync(join(tmpdir(), 'stt-'));
 const profile = { steamId: STEAM_ID, name: 'player', avatar: '' };
+/** A data folder that already has an account: notes are always somebody's. */
+const accountDir = (): string => {
+  const dir = tempDir();
+  new Store(dir).setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
+  return dir;
+};
 
 describe('Store', () => {
   it('stores the key in a user-only file and reads it back', () => {
@@ -148,7 +154,7 @@ describe('Store', () => {
   });
 
   it('persists notes and pins', () => {
-    const dir = tempDir();
+    const dir = accountDir();
 
     new Store(dir).setUserData(10, 'A', {
       note: 'boss of the 3rd map',
@@ -161,7 +167,7 @@ describe('Store', () => {
   });
 
   it('removes an entry left with a blank note and no pin', () => {
-    const dir = tempDir();
+    const dir = accountDir();
     const store = new Store(dir);
     store.setUserData(10, 'B', { note: '', pinned: true });
 
@@ -171,7 +177,7 @@ describe('Store', () => {
   });
 
   it('keeps an entry that has only a checklist', () => {
-    const dir = tempDir();
+    const dir = accountDir();
     const checklist = [{ id: '1', text: 'Bridge Kodama', done: true }];
 
     new Store(dir).setUserData(10, 'A', { note: '', pinned: false, checklist });
@@ -182,7 +188,7 @@ describe('Store', () => {
   });
 
   it('removes the entry when its checklist is emptied', () => {
-    const dir = tempDir();
+    const dir = accountDir();
     const store = new Store(dir);
     const checklist = [{ id: '1', text: 'Bridge Kodama', done: true }];
     store.setUserData(10, 'A', { note: '', pinned: false, checklist });
@@ -241,12 +247,8 @@ describe('Store: several accounts', () => {
   /** Two accounts; the second one added is the one in use. */
   function withTwoAccounts(dir = tempDir()) {
     const store = new Store(dir);
-    store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile, 1000);
-    store.setCredentials(
-      { steamId: OTHER_STEAM_ID, apiKey: OTHER_KEY },
-      other,
-      2000,
-    );
+    store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
+    store.setCredentials({ steamId: OTHER_STEAM_ID, apiKey: OTHER_KEY }, other);
     return { store, dir };
   }
 
@@ -259,14 +261,12 @@ describe('Store: several accounts', () => {
         keyEnding: KEY.slice(-4),
         isKeyEncrypted: false,
         status: 'valid',
-        checkedAt: 1000,
       },
       {
         ...other,
         keyEnding: OTHER_KEY.slice(-4),
         isKeyEncrypted: false,
         status: 'valid',
-        checkedAt: 2000,
       },
     ]);
   });
@@ -379,12 +379,9 @@ describe('Store: several accounts', () => {
   it('records what Steam last said about a key', () => {
     const { store, dir } = withTwoAccounts();
 
-    store.setAccountStatus(STEAM_ID, 'rejected', 3000);
+    store.setAccountStatus(STEAM_ID, 'rejected');
 
-    expect(new Store(dir).getAccounts()[0]).toMatchObject({
-      status: 'rejected',
-      checkedAt: 3000,
-    });
+    expect(new Store(dir).getAccounts()[0].status).toBe('rejected');
   });
 });
 
@@ -393,7 +390,7 @@ describe('Store: files that cannot be used', () => {
   const summary = { 10: { total: 4, unlocked: 1, playtime: 10 } };
 
   it('leaves no half-written file behind', () => {
-    const dir = tempDir();
+    const dir = accountDir();
 
     new Store(dir).setUserData(10, 'A', note);
 
@@ -404,7 +401,7 @@ describe('Store: files that cannot be used', () => {
   });
 
   it('keeps a damaged file aside instead of treating it as empty', () => {
-    const dir = tempDir();
+    const dir = accountDir();
     writeFileSync(join(dir, 'userdata.json'), '{"accounts": {"7656');
     const reported: string[] = [];
 
@@ -422,7 +419,7 @@ describe('Store: files that cannot be used', () => {
   });
 
   it('keeps aside a file written by a later version of the app', () => {
-    const dir = tempDir();
+    const dir = accountDir();
     const later = JSON.stringify({ version: 99, accounts: 'another shape' });
     writeFileSync(join(dir, 'userdata.json'), later);
 
@@ -434,7 +431,7 @@ describe('Store: files that cannot be used', () => {
   });
 
   it('keeps aside a file from before the format had a version, instead of guessing at it', () => {
-    const dir = tempDir();
+    const dir = accountDir();
     const older = JSON.stringify({ 10: { A: note } });
     writeFileSync(join(dir, 'userdata.json'), older);
 
@@ -465,17 +462,8 @@ describe('Store: files that cannot be used', () => {
     expect(new Store(dir).getLanguage()).toBe('fr');
   });
 
-  it('keeps notes written with no account for the first account added', () => {
-    const store = new Store(tempDir());
-    store.setUserData(10, 'A', note);
-
-    store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
-
-    expect(store.getUserData(10)).toEqual({ A: note });
-  });
-
   it('sets nothing aside when the files are fine', () => {
-    const dir = tempDir();
+    const dir = accountDir();
     new Store(dir).setUserData(10, 'A', note);
 
     new Store(dir).setUserData(10, 'B', note);

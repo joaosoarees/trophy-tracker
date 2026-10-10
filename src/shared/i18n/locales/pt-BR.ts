@@ -66,7 +66,6 @@ export const ptBR: Messages = {
     back: 'Voltar',
     next: 'Próximo',
     clearSearch: 'Limpar busca',
-    openInBrowser: 'Abrir no navegador',
     sortBy: 'Ordenar por',
   },
 
@@ -197,10 +196,8 @@ export const ptBR: Messages = {
       valid: 'Chave funcionando',
       rejected: 'Chave recusada pela Steam',
       rateLimited: 'A Steam está limitando esta chave',
-      unchecked: 'Chave ainda não verificada',
     },
     keyEnding: (ending: string) => `Chave terminada em ${ending}`,
-    checkedOn: (date: string) => `Verificada em ${date}`,
     showKey: 'Mostrar chave',
     hideKey: 'Ocultar chave',
     key: 'Chave da Web API',
@@ -361,8 +358,6 @@ export const ptBR: Messages = {
       language: 'Idioma',
       howItWorks:
         'Abra um jogo na Steam e o app troca para ele sozinho. Sem jogo aberto, ele mostra o último que você jogou; o Painel lista todos.',
-      saveFailed:
-        'Não foi possível salvar a configuração. Volte e verifique a conta de novo.',
       finish: 'Entrar no app',
       saving: 'Salvando…',
     },

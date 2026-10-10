@@ -4,7 +4,7 @@ import { type IProfile } from './Profile';
  * What is known about an account's Web API key. Steam answers a revoked key
  * and a mistyped one the same way, so both are `rejected`.
  */
-export type AccountStatus = 'valid' | 'rejected' | 'rateLimited' | 'unchecked';
+export type AccountStatus = 'valid' | 'rejected' | 'rateLimited';
 
 /**
  * One Steam account the app can follow, as the interface sees it. The key
@@ -16,6 +16,4 @@ export interface IAccount extends IProfile {
   /** Whether the key is kept encrypted by the system's keyring; without one it is only private to the user. */
   isKeyEncrypted: boolean;
   status: AccountStatus;
-  /** When Steam was last asked about the key (epoch in milliseconds); `null` if never. */
-  checkedAt: number | null;
 }

@@ -50,7 +50,6 @@ interface IStoredAccount {
   keyEnding: string;
   profile: IProfile;
   status: AccountStatus;
-  checkedAt: number | null;
 }
 
 interface IConfigFile {
@@ -104,10 +103,8 @@ interface ISettingsFile {
 type AccountUserData = Record<string, GameUserData>;
 
 interface IUserDataFile {
-  /** By SteamID. An account that is erased and added again finds its notes here. */
+  /** By SteamID. */
   accounts: Record<string, AccountUserData>;
-  /** Written before any account existed; the first account takes them. */
-  unassigned?: AccountUserData;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -292,12 +289,11 @@ export class Store {
   /** Every account, as the interface may see it: without the key. */
   getAccounts(): IAccount[] {
     return this.config.accounts.map(
-      ({ profile, keyEnding, status, checkedAt, apiKeyEncrypted }) => ({
+      ({ profile, keyEnding, status, apiKeyEncrypted }) => ({
         ...profile,
         keyEnding,
         isKeyEncrypted: apiKeyEncrypted !== undefined,
         status,
-        checkedAt,
       }),
     );
   }
@@ -310,11 +306,7 @@ export class Store {
    * Saves an account whose key Steam has just accepted and starts following
    * it. An account that was already there gets the new key and keeps the rest.
    */
-  setCredentials(
-    { steamId, apiKey }: ICredentials,
-    profile: IProfile,
-    now = Date.now(),
-  ): void {
+  setCredentials({ steamId, apiKey }: ICredentials, profile: IProfile): void {
     const account: IStoredAccount = {
       steamId,
       ...(this.cipher
@@ -323,20 +315,12 @@ export class Store {
       keyEnding: apiKey.slice(-4),
       profile,
       status: 'valid',
-      checkedAt: now,
     };
     const index = this.config.accounts.findIndex((a) => a.steamId === steamId);
     if (index === -1) this.config.accounts.push(account);
     else this.config.accounts[index] = account;
     this.config.activeSteamId = steamId;
     this.saveConfig();
-
-    // Notes written before any account existed belong to the first one.
-    if (this.userData.unassigned) {
-      this.userData.accounts[steamId] ??= this.userData.unassigned;
-      delete this.userData.unassigned;
-      this.saveUserData();
-    }
   }
 
   /** Starts following another saved account; answers whether there is one. */
@@ -348,15 +332,10 @@ export class Store {
   }
 
   /** Records what Steam last said about an account's key. */
-  setAccountStatus(
-    steamId: string,
-    status: AccountStatus,
-    now = Date.now(),
-  ): void {
+  setAccountStatus(steamId: string, status: AccountStatus): void {
     const account = this.config.accounts.find((a) => a.steamId === steamId);
     if (!account) return;
     account.status = status;
-    account.checkedAt = now;
     this.saveConfig();
   }
 
@@ -548,16 +527,14 @@ export class Store {
     this.write('userdata.json', this.userData);
   }
 
-  /** What the user wrote for the account in use. */
-  private get notes(): AccountUserData {
+  /** What the user wrote for the account in use; `null` with no account. */
+  private get notes(): AccountUserData | null {
     const steamId = this.getActiveSteamId();
-    return steamId
-      ? (this.userData.accounts[steamId] ??= {})
-      : (this.userData.unassigned ??= {});
+    return steamId ? (this.userData.accounts[steamId] ??= {}) : null;
   }
 
   getUserData(appid: number): GameUserData {
-    return this.notes[appid] ?? {};
+    return this.notes?.[appid] ?? {};
   }
 
   setUserData(
@@ -565,7 +542,10 @@ export class Store {
     achievementId: string,
     data: IAchievementUserData,
   ): void {
-    const game = (this.notes[appid] ??= {});
+    const notes = this.notes;
+    // There is nobody to write for: no screen allows it, and nothing is kept.
+    if (!notes) return;
+    const game = (notes[appid] ??= {});
     const empty =
       data.note.trim() === '' &&
       !data.pinned &&

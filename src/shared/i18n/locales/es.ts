@@ -66,7 +66,6 @@ export const es: Messages = {
     back: 'Atrás',
     next: 'Siguiente',
     clearSearch: 'Borrar la búsqueda',
-    openInBrowser: 'Abrir en el navegador',
     sortBy: 'Ordenar por',
   },
 
@@ -198,10 +197,8 @@ export const es: Messages = {
       valid: 'Clave en funcionamiento',
       rejected: 'Clave rechazada por Steam',
       rateLimited: 'Steam está limitando esta clave',
-      unchecked: 'Clave aún sin verificar',
     },
     keyEnding: (ending: string) => `Clave terminada en ${ending}`,
-    checkedOn: (date: string) => `Verificada el ${date}`,
     showKey: 'Mostrar clave',
     hideKey: 'Ocultar clave',
     key: 'Clave de la Web API',
@@ -364,8 +361,6 @@ export const es: Messages = {
       language: 'Idioma',
       howItWorks:
         'Abre un juego en Steam y la aplicación cambia a él por sí sola. Sin ningún juego abierto muestra el último al que jugaste; el Panel los lista todos.',
-      saveFailed:
-        'No se ha podido guardar la configuración. Vuelve atrás y verifica la cuenta de nuevo.',
       finish: 'Entrar en la aplicación',
       saving: 'Guardando…',
     },
