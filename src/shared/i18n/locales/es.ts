@@ -11,6 +11,13 @@ export const es: Messages = {
     reload: 'Recargar',
   },
 
+  startup: {
+    cannotWrite: (folder) =>
+      `La aplicación no puede escribir en su carpeta de datos, por lo que no puede abrirse.\n\n${folder}\n\nComprueba que la carpeta existe y que tienes permiso para escribir en ella, y vuelve a abrir la aplicación.`,
+    failed: (log) =>
+      `La aplicación no ha podido abrirse. Los detalles se han guardado en el registro de errores.\n\n${log}`,
+  },
+
   errors: {
     invalidKey: 'Steam ha rechazado la clave de la Web API.',
     private: 'Los detalles de juego de tu perfil no son públicos.',

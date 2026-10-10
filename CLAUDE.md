@@ -117,7 +117,8 @@ src/main/            main process: the only part that talks to Steam and to the 
   steam/               SteamClient (Web API), Achievements (buildGameView, guideUrl), SteamLocal
                        (ISteamLocal), RegistrySteam, FileSteam, Windows, SteamFiles, TextVdf, BinaryVdf
   storage/             Store (JSON persistence), SecureCipher (key encryption)
-  system/              Browser, ErrorLog, LocalFolder, WindowBounds, WindowFrame, AutoUpdater, Releases
+  system/              Browser, DataFolder, ErrorLog, LocalFolder, WindowBounds, WindowFrame, AutoUpdater,
+                       Releases
 src/preload/         exposes `window.api` (contextBridge), typed by `IApi`
 src/renderer/src/    the interface
   app/                 everything that is not visual

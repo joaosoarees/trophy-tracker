@@ -1,7 +1,8 @@
 import { dirname, join } from 'node:path';
 
-import { app, safeStorage, screen } from 'electron';
+import { app, dialog, safeStorage, screen } from 'electron';
 
+import { messagesFor } from '@shared/i18n';
 import { IpcEvent } from '@shared/ipcEvents';
 
 import { Ipc } from './ipc/Ipc';
@@ -25,6 +26,7 @@ import { SecureCipher } from './storage/SecureCipher';
 import { Store } from './storage/Store';
 import { AutoUpdater } from './system/AutoUpdater';
 import { Browser } from './system/Browser';
+import { DataFolder } from './system/DataFolder';
 import { ErrorLog } from './system/ErrorLog';
 import { LocalFolder } from './system/LocalFolder';
 import { Releases } from './system/Releases';
@@ -38,7 +40,8 @@ if (!app.commandLine.hasSwitch('user-data-dir')) {
   app.setPath('userData', join(appData, 'trophy-tracker'));
 }
 
-const errorLogFile = join(app.getPath('userData'), 'logs', 'errors.log');
+const dataFolder = app.getPath('userData');
+const errorLogFile = join(dataFolder, 'logs', 'errors.log');
 const errorLog = new ErrorLog(errorLogFile);
 
 process.on('uncaughtException', (error) =>
@@ -48,13 +51,27 @@ process.on('unhandledRejection', (reason) =>
   errorLog.write('main: unhandledRejection', ErrorLog.detailOf(reason)),
 );
 
-// A second launch focuses the window that is already open instead of starting another app.
-if (!app.requestSingleInstanceLock()) app.quit();
+/**
+ * The app cannot open at all: says why and ends. A box is all Electron can
+ * show before there is a window, and nothing would otherwise tell the user
+ * why no window came. In the language the folder holds, when it can be read.
+ */
+const giveUp = (error: unknown): void => {
+  errorLog.write('main: startup', ErrorLog.detailOf(error));
+  const { appTitle, startup } = messagesFor(Store.languageIn(dataFolder));
+  dialog.showErrorBox(
+    appTitle,
+    DataFolder.canWrite(dataFolder)
+      ? startup.failed(errorLogFile)
+      : startup.cannotWrite(dataFolder),
+  );
+  app.exit(1);
+};
 
 // Composition root: builds each piece once and hands it what it depends on.
-void app.whenReady().then(async () => {
+const start = async (): Promise<void> => {
   const store = new Store(
-    app.getPath('userData'),
+    dataFolder,
     SecureCipher.create(safeStorage, process.platform),
     {
       cacheDelay: 1_000,
@@ -165,7 +182,7 @@ void app.whenReady().then(async () => {
     updates,
     browser,
     folders: {
-      data: new LocalFolder(app.getPath('userData')),
+      data: new LocalFolder(dataFolder),
       // The row shows the file; the button opens the folder it is in.
       errorLog: new LocalFolder(dirname(errorLogFile), errorLogFile),
     },
@@ -200,6 +217,20 @@ void app.whenReady().then(async () => {
         .catch(() => {}),
     60 * 60 * 1000,
   );
-});
+};
+
+// A second launch focuses the window that is already open instead of starting
+// another app, and wires nothing of its own. The lock is refused as well when
+// it cannot be kept in the data folder (one that cannot be created or written
+// to), and then there is no other app to focus: this one says why and ends.
+if (app.requestSingleInstanceLock()) {
+  void app.whenReady().then(start).catch(giveUp);
+} else if (DataFolder.canWrite(dataFolder)) {
+  app.quit();
+} else {
+  void app
+    .whenReady()
+    .then(() => giveUp(new Error(`${dataFolder} cannot be written to`)));
+}
 
 app.on('window-all-closed', () => app.quit());

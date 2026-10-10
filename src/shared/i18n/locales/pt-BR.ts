@@ -11,6 +11,13 @@ export const ptBR: Messages = {
     reload: 'Recarregar',
   },
 
+  startup: {
+    cannotWrite: (folder) =>
+      `O app não consegue gravar na sua pasta de dados, por isso não pode abrir.\n\n${folder}\n\nVerifique se a pasta existe e se você tem permissão para gravar nela, depois abra o app de novo.`,
+    failed: (log) =>
+      `O app não conseguiu abrir. Os detalhes foram gravados no registro de erros.\n\n${log}`,
+  },
+
   errors: {
     invalidKey: 'A Steam recusou a chave da Web API.',
     private: 'Os detalhes dos jogos do seu perfil não estão públicos.',

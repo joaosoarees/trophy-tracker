@@ -77,7 +77,7 @@ Transitions are CSS only (no animation library), short and small. The tokens are
 - One file per language in `src/shared/i18n/locales/`. `en.ts` is the reference: the `Messages` type comes from it, so a new key starts there and the compiler flags what is missing elsewhere.
 - Messages are strings, or functions (`left: (n) => ...`) for interpolation and plurals. There is no translation library.
 - **New language:** create the file and register it in `i18n/index.ts` with the name Steam uses (`steam`), the locale for dates and numbers (`locale`) and the store country.
-- **The language changes the whole app:** texts and error messages (the main process translates with `SetupService.messages`), achievement names, descriptions and game art (requested from Steam in that language), and the suffix of guide searches.
+- **The language changes the whole app:** texts and error messages (the main process translates with `SetupService.messages`; the box shown when the app cannot open, before there is a store, with `Store.languageIn`), achievement names, descriptions and game art (requested from Steam in that language), and the suffix of guide searches.
 - **No user-facing text is hard-coded.** In the interface use `const t = useT()`; in the main process take `Messages` as a parameter. `SteamError` carries only the kind of error; the text comes from `error.describe(messages)`.
 - The language lives in `settings.json`. Changing it drops the translated cache (games, achievement lists, art). `cache.json` records the language it was read in and is dropped on startup if it does not match.
 - In Settings, changing the language saves and **reloads the window**. In the onboarding the change is immediate, with no reload.
