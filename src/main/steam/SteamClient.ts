@@ -122,7 +122,8 @@ interface IStoreItem {
 export class SteamClient {
   constructor(
     private fetchImpl: Fetch = fetch,
-    public language: Language = DEFAULT_LANGUAGE,
+    /** Asked on each request, so a change of language reaches the next one. */
+    private getLanguage: () => Language = () => DEFAULT_LANGUAGE,
     /** Where the Web API is; only the interface audit points it elsewhere. */
     private apiBase: string = API,
   ) {}
@@ -203,7 +204,7 @@ export class SteamClient {
       IEnvelope<{ achievements?: IRawSchemaAchievement[] }>
     >('/IPlayerService/GetGameAchievements/v1/', {
       appid,
-      language: LANGUAGES[this.language].steam,
+      language: LANGUAGES[this.getLanguage()].steam,
     });
     return body.response?.achievements ?? [];
   }
@@ -212,12 +213,10 @@ export class SteamClient {
   async getStoreArt(appids: number[]): Promise<Map<number, IStoreArt>> {
     const art = new Map<number, IStoreArt>();
     for (let i = 0; i < appids.length; i += STORE_BATCH) {
+      const { steam, country } = LANGUAGES[this.getLanguage()];
       const input = {
         ids: appids.slice(i, i + STORE_BATCH).map((appid) => ({ appid })),
-        context: {
-          language: LANGUAGES[this.language].steam,
-          country_code: LANGUAGES[this.language].country,
-        },
+        context: { language: steam, country_code: country },
         data_request: { include_assets: true },
       };
       const body = await this.get<IEnvelope<{ store_items?: IStoreItem[] }>>(

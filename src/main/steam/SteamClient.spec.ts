@@ -22,14 +22,21 @@ interface ISetupOverrides {
   apiBase?: string;
 }
 
-/** A client in English whose Steam answers the given routes. */
+/**
+ * A client whose Steam answers the given routes. It is in English until
+ * `setLanguage` says otherwise.
+ */
 function setup(
   routes: Parameters<typeof fakeFetch>[0],
-  { language, apiBase }: ISetupOverrides = {},
+  { language = 'en', apiBase }: ISetupOverrides = {},
 ) {
+  let current = language;
   const fetchImpl = fakeFetch(routes);
-  const sut = new SteamClient(fetchImpl, language, apiBase);
-  return { sut, fetchImpl };
+  const sut = new SteamClient(fetchImpl, () => current, apiBase);
+  const setLanguage = (next: Language): void => {
+    current = next;
+  };
+  return { sut, fetchImpl, setLanguage };
 }
 
 describe('SteamClient', () => {
@@ -122,7 +129,8 @@ describe('SteamClient', () => {
     });
 
     it('should ask with no key and in English when no language was chosen', async () => {
-      const { sut, fetchImpl } = setup({ GetGameAchievements: { json: nioh } });
+      const fetchImpl = fakeFetch({ GetGameAchievements: { json: nioh } });
+      const sut = new SteamClient(fetchImpl);
 
       await sut.getGameAchievements(3681010);
 
@@ -131,9 +139,24 @@ describe('SteamClient', () => {
       ]);
     });
 
-    it('should ask in the new language when the language is changed', async () => {
-      const { sut, fetchImpl } = setup({ GetGameAchievements: { json: nioh } });
-      sut.language = 'pt-BR';
+    it('should ask in the language it is given when one was chosen', async () => {
+      const { sut, fetchImpl } = setup(
+        { GetGameAchievements: { json: nioh } },
+        { language: 'pt-BR' },
+      );
+
+      await sut.getGameAchievements(3681010);
+
+      expect(fetchImpl.calls).toEqual([
+        'https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=3681010&language=brazilian',
+      ]);
+    });
+
+    it('should ask in the new language when the language changes after the client was built', async () => {
+      const { sut, fetchImpl, setLanguage } = setup({
+        GetGameAchievements: { json: nioh },
+      });
+      setLanguage('pt-BR');
 
       await sut.getGameAchievements(3681010);
 

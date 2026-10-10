@@ -33,9 +33,7 @@ export class SetupService {
     /** Told when the state changes without the interface having asked for it. */
     private onChange: (state: IAppState) => void = () => {},
     private logError: (source: string, detail: string) => void = () => {},
-  ) {
-    this.client.language = this.store.getLanguage();
-  }
+  ) {}
 
   /** Messages in the user's language. */
   get messages(): Messages {
@@ -248,10 +246,12 @@ export class SetupService {
     return this.getState();
   }
 
-  /** Changing the language also changes what is asked of Steam from now on. */
+  /**
+   * Changing the language also changes what is asked of Steam from now on:
+   * the client asks the store for it on each request.
+   */
   setLanguage(language: Language): IAppState {
     this.store.setLanguage(language);
-    this.client.language = language;
     return this.getState();
   }
 }

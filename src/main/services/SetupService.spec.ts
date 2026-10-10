@@ -50,7 +50,7 @@ function setup(
   const dir = makeTempDir();
   const store = new Store(dir);
   const fetchImpl = fakeFetch(routes);
-  const client = new SteamClient(fetchImpl);
+  const client = new SteamClient(fetchImpl, () => store.getLanguage());
   const changes: IAppState[] = [];
   const logErrorMock = vi.fn<(source: string, detail: string) => void>();
   const sut = new SetupService(
@@ -249,12 +249,17 @@ describe('SetupService', () => {
       expect(state.language).toBe('pt-BR');
     });
 
-    it('should ask Steam in the new language from then on', () => {
-      const { sut, client } = setup();
+    it('should ask Steam in the new language from then on', async () => {
+      const { sut, client, fetchImpl } = setup({
+        GetGameAchievements: { json: { response: {} } },
+      });
 
       sut.setLanguage('pt-BR');
 
-      expect(client.language).toBe('pt-BR');
+      await client.getGameAchievements(1);
+      expect(fetchImpl.calls).toEqual([
+        'https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/?appid=1&language=brazilian',
+      ]);
     });
 
     it('should write its messages in the new language', () => {

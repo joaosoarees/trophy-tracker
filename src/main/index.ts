@@ -2,7 +2,6 @@ import { dirname, join } from 'node:path';
 
 import { app, safeStorage, screen } from 'electron';
 
-import { DEFAULT_LANGUAGE } from '@shared/i18n';
 import { IpcEvent } from '@shared/ipcEvents';
 
 import { Ipc } from './ipc/Ipc';
@@ -70,7 +69,7 @@ void app.whenReady().then(async () => {
   const fakeSteam = app.isPackaged
     ? undefined
     : process.env.TROPHY_TRACKER_FAKE_STEAM;
-  const client = new SteamClient(fetch, DEFAULT_LANGUAGE, fakeSteam);
+  const client = new SteamClient(fetch, () => store.getLanguage(), fakeSteam);
   const windows = new Windows();
   const browser = new Browser(windows);
   const window = new MainWindow(browser);
