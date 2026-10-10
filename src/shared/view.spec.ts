@@ -42,6 +42,24 @@ describe('view', () => {
       expect(merged).toEqual(after);
     });
 
+    it('should answer the achievements in the order of the new read when they only changed places', () => {
+      const before = view([ach('A'), ach('B')]);
+      const after = view([ach('B'), ach('A')], 2);
+
+      const merged = mergeView(before, after);
+
+      expect(merged.achievements.map((a) => a.id)).toEqual(['B', 'A']);
+    });
+
+    it('should reuse the achievements when they only changed places', () => {
+      const before = view([ach('A'), ach('B')]);
+      const after = view([ach('B'), ach('A')], 2);
+
+      const merged = mergeView(before, after);
+
+      expect(merged.achievements[0]).toBe(before.achievements[1]);
+    });
+
     it('should reuse the achievement that did not change when another one did', () => {
       const before = view([ach('A'), ach('B')]);
       const after = view(
