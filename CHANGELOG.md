@@ -2,49 +2,76 @@
 
 What changed in each version, for whoever uses the app. The section of a version is what its release shows on GitHub.
 
-## Unreleased
+## 1.1.0
+
+Mostly fixes: what the app shows when accounts are switched while Steam is still answering, the checklists, the setup, and what happens when something cannot be saved.
 
 ### Changed
 
 - Settings no longer has its own "Check for updates" button: the one in the bar at the top of the window does the same from any screen.
 - In Settings, the error log shows where its file is and has a button that opens its folder, as the data folder does.
 - The foot of Settings no longer repeats the version, which is in "About".
+- Adding an account from Settings moves the app to that account as it is added, not when the step is left.
 
 ### Fixed
+
+**Accounts**
 
 - With more than one account, starting a game that only the account signed in to Steam owns no longer shows "your profile's game details are not public". The app switches to the account that is playing, and stays on it while the game runs.
 - A game running on a Steam account that is not in the app is said to be so, with a way to add that account.
 - Adding an account no longer leaves the Game tab on the game of the account that was in use before: a game running on the added account is shown right away, and otherwise the tab opens on the game that account played last.
-- With Settings open, the field that replaces a key now opens by itself when Steam refuses that key (after "Check again", for one). It used to stay closed until Settings was left and opened again.
-- The notice about a key Steam refuses no longer goes away, or blinks, when you open a game or the dashboard the app already had: it stays until Steam accepts the key again.
-- When Steam takes a request and never answers it, the app gives up after 15 seconds and says it could not reach Steam, as it does when the connection drops. It used to wait for as long as Steam kept it waiting, with the game or the dashboard loading and no error.
-- When the dashboard fails halfway through a library (a connection that drops, for one), the app stops asking Steam about the remaining games, and the next attempt carries on from the games already read instead of reading them all again.
-- Undoing the removal of a checklist item puts that item back into the list as it is now. It used to bring back the list as it was when the item was removed, once the card had been closed, searched away or left for another list: an item checked or put back since then was lost again. An undo clicked after the app switched accounts no longer writes that list into the other account.
-- The "Undo" offered when a checklist item is removed goes away when the app leaves the account the item was removed in. It used to stay on screen under the other account, where it could not put anything back.
-- When verifying an account, saving a replaced key or "Check again" fails for a reason that is not Steam's answer (the key could not be written to disk, for one), the app now says that something unexpected happened, under the field, or for "Check again" in a message at the bottom of the window. It used to give the button back and say nothing.
-- The same goes for switching account, removing one (in Settings or in the setup) and changing the language: when the app cannot carry it out (the change could not be written to disk, for one), it now says that something unexpected happened, in a message at the bottom of the window, and the accounts shown are the ones the app is really left with. A language that could not be saved is not changed to. It used to say nothing.
-- When the setup cannot end (the account to open on could not be written to disk, for one), the app now says that something unexpected happened, in a message at the bottom of the window, and stays on the setup so that it can be ended again. It used to give the button back and say nothing.
-- When a change cannot be written to disk, the app no longer carries on as if it had been saved. After a failed switch it stays on the account it was on, instead of showing the other one until the next restart; an account that could not be removed is still there, with its notes; a setting, a list order or a note that could not be saved no longer comes back by itself later, saved along with the next change that worked.
-- A game or the dashboard no longer fails to load with "Unexpected error" only because the app could not write down what Steam said about the key.
-- When the app cannot use its data folder at all (it cannot be created, or you are not allowed to write to it), it now says so in a message that names the folder. It used to close at once, or never show a window, without a word.
-- The app opens when it cannot write to its data folder at that moment (a full disk, for one). It used to stay running with no window and no message when it could not save, as it opened, the switch to the account signed in to Steam or, after an update, that the update was done; opening it again did nothing either.
-- In the setup, an account can no longer be removed from the list while another one is being verified. Removing the only account at that moment emptied the form under the verification, and an answer from Steam was then shown over a form that no longer held what had been typed.
-- In the setup, the step names at the top no longer lead away from the account step while an account is being verified or removed, or while the setup is ending. Leaving at that moment lost Steam's answer when it refused the account: the form came back as typed, with no reason given, and could be sent a second time beside the first.
-- A checklist's "already on the list" warning goes away as soon as it stops being true, when the item that had the text is removed or renamed. It no longer stays on the empty field after the text is added.
-- A note, pin or checklist edited just before the app switches by itself to the account signed in to Steam is saved in the account it was written in, not in the other one.
+- Leaving "Add account" no longer puts the app back on the account that was in use when it was opened, if the app switched to the account signed in to Steam meanwhile.
+- An account picked by hand in Settings is no longer undone, some time later, when the app fails once to read which account is signed in to Steam.
+- Switching account while the app is still reading from Steam no longer mixes the two accounts: a game on the dashboard keeps its own account's playtime and progress, a game both accounts own is not shown with the other account's achievements, and a key Steam refuses is marked on the account it belongs to.
 - Switching accounts while Steam is still answering no longer shows the previous account's game, dashboard, progress count or last played game under the new account.
 - Switching to another account and back while the dashboard is still being read no longer ends its loading early, lets ↻ start a second read beside it, or puts an older list over the one just read.
-- Leaving "Add account" no longer puts the app back on the account that was in use when it was opened, if the app switched to the account signed in to Steam meanwhile.
-- Settings no longer goes on saying a version is downloading when its download failed and that version was then withdrawn: asking for a check says the app is up to date.
+- A note, pin or checklist edited just before the app switches by itself to the account signed in to Steam is saved in the account it was written in, not in the other one.
+
+**Web API keys**
+
+- With Settings open, the field that replaces a key now opens by itself when Steam refuses that key (after "Check again", for one). It used to stay closed until Settings was left and opened again.
+- The notice about a key Steam refuses no longer goes away, or blinks, when you open a game or the dashboard the app already had: it stays until Steam accepts the key again.
+- Holding Enter in the Web API key field, in the setup or when replacing a key in Settings, checks the key with Steam once instead of once per repeat of the key.
+- When an account passes "Verify" but is refused as it is saved (Steam answers differently the second time, or the account was added meanwhile), the form stays open with the SteamID and the key and says why. It used to close without a word, with the key gone and no account added.
+
+**The setup**
+
 - In the first setup, changing the language after an account was added no longer leaves the app in the previous language when the setup ends.
 - In the first setup, removing the only account while "Add another account" is open no longer leaves a "Finish" button that does nothing, nor an empty step after "Cancel": the form is the first account's again, empty, and offers the account signed in to Steam once more.
 - After "Use another account", the setup no longer says it could not find an account signed in to the Steam client when it had found one.
-- Holding Enter in the Web API key field, in the setup or when replacing a key in Settings, checks the key with Steam once instead of once per repeat of the key.
-- When an account passes "Verify" but is refused as it is saved (Steam answers differently the second time, or the account was added meanwhile), the form stays open with the SteamID and the key and says why. It used to close without a word, with the key gone and no account added.
-- An account picked by hand in Settings is no longer undone, some time later, when the app fails once to read which account is signed in to Steam.
-- Switching account while the app is still reading from Steam no longer mixes the two accounts: a game on the dashboard keeps its own account's playtime and progress, a game both accounts own is not shown with the other account's achievements, and a key Steam refuses is marked on the account it belongs to.
+- In the setup, an account can no longer be removed from the list while another one is being verified. Removing the only account at that moment emptied the form under the verification, and an answer from Steam was then shown over a form that no longer held what had been typed.
+- In the setup, the step names at the top no longer lead away from the account step while an account is being verified or removed, or while the setup is ending. Leaving at that moment lost Steam's answer when it refused the account: the form came back as typed, with no reason given, and could be sent a second time beside the first.
+
+**Checklists**
+
+- Undoing the removal of a checklist item puts that item back into the list as it is now. It used to bring back the list as it was when the item was removed, once the card had been closed, searched away or left for another list: an item checked or put back since then was lost again. An undo clicked after the app switched accounts no longer writes that list into the other account.
+- The "Undo" offered when a checklist item is removed goes away when the app leaves the account the item was removed in. It used to stay on screen under the other account, where it could not put anything back.
+- A checklist's "already on the list" warning goes away as soon as it stops being true, when the item that had the text is removed or renamed. It no longer stays on the empty field after the text is added.
+
+**The dashboard and reading from Steam**
+
+- When Steam takes a request and never answers it, the app gives up after 15 seconds and says it could not reach Steam, as it does when the connection drops. It used to wait for as long as Steam kept it waiting, with the game or the dashboard loading and no error.
+- When the dashboard fails halfway through a library (a connection that drops, for one), the app stops asking Steam about the remaining games, and the next attempt carries on from the games already read instead of reading them all again.
 - A game closed while the dashboard is still being read (the first read of a large library, or "refresh all") gets its new playtime as soon as that read ends. It used to keep the old one until the dashboard was read again.
 - A game finished while the app is open shows the date it was completed on the dashboard right away, and takes its place under "Recently completed". It used to be listed as complete with no date, in the last place, until the dashboard was read again.
+
+**When the app cannot save**
+
+- When a change cannot be written to disk, the app no longer carries on as if it had been saved. After a failed switch it stays on the account it was on, instead of showing the other one until the next restart; an account that could not be removed is still there, with its notes; a setting, a list order or a note that could not be saved no longer comes back by itself later, saved along with the next change that worked.
+- When verifying an account, saving a replaced key or "Check again" fails for a reason that is not Steam's answer (the key could not be written to disk, for one), the app now says that something unexpected happened, under the field, or for "Check again" in a message at the bottom of the window. It used to give the button back and say nothing.
+- The same goes for switching account, removing one (in Settings or in the setup) and changing the language: when the app cannot carry it out (the change could not be written to disk, for one), it now says that something unexpected happened, in a message at the bottom of the window, and the accounts shown are the ones the app is really left with. A language that could not be saved is not changed to. It used to say nothing.
+- When the setup cannot end (the account to open on could not be written to disk, for one), the app now says that something unexpected happened, in a message at the bottom of the window, and stays on the setup so that it can be ended again. It used to give the button back and say nothing.
+- A game or the dashboard no longer fails to load with "Unexpected error" only because the app could not write down what Steam said about the key.
+- When the app cannot use its data folder at all (it cannot be created, or you are not allowed to write to it), it now says so in a message that names the folder. It used to close at once, or never show a window, without a word.
+- The app opens when it cannot write to its data folder at that moment (a full disk, for one). It used to stay running with no window and no message when it could not save, as it opened, the switch to the account signed in to Steam or, after an update, that the update was done; opening it again did nothing either.
+
+**Updates**
+
+- Settings no longer goes on saying a version is downloading when its download failed and that version was then withdrawn: asking for a check says the app is up to date.
+
+### Known limits
+
+- The two fixes about opening when the data folder cannot be written to, or cannot be used at all, were checked on Linux only. On Windows and macOS they were not tried.
 
 ## 1.0.0
 
