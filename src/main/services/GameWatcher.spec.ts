@@ -51,6 +51,20 @@ function setup(overrides: Partial<IGameWatcherDeps> = {}) {
   };
 }
 
+/** A scheduler that runs nothing and tells which repetitions are still going. */
+function fakeEvery() {
+  const going: number[] = [];
+
+  return {
+    every: (_run: () => void, ms: number) => {
+      going.push(ms);
+      return () => void going.splice(going.indexOf(ms), 1);
+    },
+    /** The interval of each repetition that was started and not stopped. */
+    repeating: () => [...going],
+  };
+}
+
 describe('GameWatcher', () => {
   describe('refreshCurrent', () => {
     it('should show the last played game when no game is running', async () => {
@@ -377,6 +391,69 @@ describe('GameWatcher', () => {
 
       expect(pollGameMock).toHaveBeenCalledTimes(2);
       expect(pollGameMock).toHaveBeenLastCalledWith(42);
+    });
+
+    it('should not double the checks when it is started twice', () => {
+      const { every, repeating } = fakeEvery();
+      const { sut } = setup({ every });
+      sut.start();
+
+      sut.start();
+
+      expect(repeating()).toEqual([10_000, 60_000]);
+    });
+
+    it('should run both checks again when it is started after being stopped', () => {
+      const { every, repeating } = fakeEvery();
+      const { sut } = setup({ every });
+      sut.start();
+      sut.stop();
+
+      sut.start();
+
+      expect(repeating()).toEqual([10_000, 60_000]);
+    });
+  });
+
+  describe('stop', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should no longer look for the running game when it is stopped', async () => {
+      const { sut, getRunningAppIdMock } = setup();
+      sut.start();
+      sut.stop();
+
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(getRunningAppIdMock).not.toHaveBeenCalled();
+    });
+
+    it('should no longer read the running game when it is stopped', async () => {
+      const { sut, pollGameMock, run } = setup();
+      run(42);
+      await sut.refreshCurrent();
+      sut.start();
+      sut.stop();
+
+      await vi.advanceTimersByTimeAsync(120_000);
+
+      expect(pollGameMock).not.toHaveBeenCalled();
+    });
+
+    it('should end both repetitions of the scheduler it was given when it is stopped', () => {
+      const { every, repeating } = fakeEvery();
+      const { sut } = setup({ every });
+      sut.start();
+
+      sut.stop();
+
+      expect(repeating()).toEqual([]);
     });
   });
 });

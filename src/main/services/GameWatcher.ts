@@ -20,6 +20,11 @@ export interface IGameWatcherDeps {
   onGameUpdated: (view: IGameView) => void;
   /** How often each check runs, in milliseconds; the defaults are what users get. */
   intervals?: { running: number; unlocks: number };
+  /**
+   * Runs `run` every `ms` milliseconds and answers the function that stops
+   * it; the default is the system's timer.
+   */
+  every?: (run: () => void, ms: number) => () => void;
 }
 
 /**
@@ -35,15 +40,30 @@ export class GameWatcher {
   /** The game last seen running since the app opened. */
   private lastSeenRunning: number | null = null;
 
+  /** What stops each periodic check; empty while the watcher is stopped. */
+  private stops: (() => void)[] = [];
+
   constructor(private deps: IGameWatcherDeps) {}
 
+  /** Starts the two periodic checks; does nothing when they already run. */
   start(): void {
+    if (this.stops.length > 0) return;
+
     const { running, unlocks } = this.deps.intervals ?? {
       running: RUNNING_CHECK_MS,
       unlocks: UNLOCK_CHECK_MS,
     };
-    setInterval(() => void this.checkRunningGame(), running);
-    setInterval(() => void this.checkUnlocks(), unlocks);
+    const every = this.deps.every ?? GameWatcher.everyInterval;
+    this.stops = [
+      every(() => void this.checkRunningGame(), running),
+      every(() => void this.checkUnlocks(), unlocks),
+    ];
+  }
+
+  /** Ends the two periodic checks; `start` begins them again. */
+  stop(): void {
+    for (const stop of this.stops) stop();
+    this.stops = [];
   }
 
   /**
@@ -135,6 +155,15 @@ export class GameWatcher {
 
     this.lastView = view;
     this.deps.onGameUpdated(view);
+  }
+
+  private static everyInterval(
+    this: void,
+    run: () => void,
+    ms: number,
+  ): () => void {
+    const handle = setInterval(run, ms);
+    return () => clearInterval(handle);
   }
 
   /** Whether the interface has to be told about another current game. */
