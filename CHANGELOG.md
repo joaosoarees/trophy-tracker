@@ -2,6 +2,19 @@
 
 What changed in each version, for whoever uses the app. The section of a version is what its release shows on GitHub.
 
+## Unreleased
+
+### Fixed
+
+**The dashboard and reading from Steam**
+
+- Achievements unlocked in the last minute of a game are no longer left out when the window is reloaded (the "Reload" button of the error screen) within ten seconds of the game closing. They used to stay out until the game was read again (↻, for one).
+
+**When the app cannot save**
+
+- When a game starts on a saved account the app is not on, and the app cannot save the switch to it, the error log is told once, not every ten seconds for as long as it lasts. Meanwhile the Game tab stays on the game the account in use played last, and the app switches to the account that is playing, and shows its game, as soon as it can save again.
+- "Check again" in Settings says "Unexpected error. Try again." when what Steam answered about the key cannot be saved. It used to end without a word, with the card still showing the old status.
+
 ## 1.1.0
 
 Mostly fixes: what the app shows when accounts are switched while Steam is still answering, the checklists, the setup, and what happens when something cannot be saved.

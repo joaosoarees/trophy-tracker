@@ -10,9 +10,11 @@ export interface IGameWatcherDeps {
   lastPlayedAppId: () => Promise<number | null>;
   /**
    * A game has started: puts the app on the account that is playing it.
-   * Answers `other` when that account is not one the app has.
+   * Answers `other` when that account is not one the app has, and `refused`
+   * when it is one the app could not be put on (the disk refused the write).
+   * It does not reject: a check has nobody to tell.
    */
-  followRunningGame?: () => Promise<'followed' | 'other'>;
+  followRunningGame?: () => Promise<'followed' | 'other' | 'refused'>;
   /** Light re-read of a game while it is being played. */
   pollGame: (appid: number) => Promise<CheckResult<IGameView>>;
   isConfigured: () => boolean;
@@ -84,7 +86,10 @@ export class GameWatcher {
   /**
    * Game open on Steam or, with no game open, the last one played. Not a plain
    * query: when a game starts it puts the app on the account playing it, and
-   * it records the game seen running as the last one played.
+   * it records the game seen running as the last one played. A game whose
+   * account the app could not be put on is not the game of the account in
+   * use: that account is answered for as with no game open, and since the
+   * game is not taken as running, the next look asks whose it is again.
    */
   private async observe(): Promise<CurrentGame> {
     const running = await this.deps.getRunningAppId();
@@ -92,15 +97,18 @@ export class GameWatcher {
       // Whose game it is only has to be asked when the game starts.
       const isSameGame =
         this.current?.isRunning === true && this.current.appid === running;
+      const whose = isSameGame ? null : await this.deps.followRunningGame?.();
       const isOnAnotherAccount = isSameGame
         ? this.current?.isOnAnotherAccount === true
-        : (await this.deps.followRunningGame?.()) === 'other';
+        : whose === 'other';
       // Not this account's game: it is not what was "last played" here.
       if (isOnAnotherAccount) {
         return { appid: running, isRunning: true, isOnAnotherAccount: true };
       }
-      this.lastSeenRunning = running;
-      return { appid: running, isRunning: true };
+      if (whose !== 'refused') {
+        this.lastSeenRunning = running;
+        return { appid: running, isRunning: true };
+      }
     }
     if (!this.deps.isConfigured()) return null;
     // A game seen closing is the last one played, whatever the library read
@@ -121,12 +129,25 @@ export class GameWatcher {
     return this.current?.isRunning === true && !this.current.isOnAnotherAccount;
   }
 
-  /** Resolves the current game and remembers it without announcing a change. */
+  /**
+   * Resolves the current game and remembers it without announcing a change:
+   * whoever asked is told by the answer. A game that closed is the
+   * exception. It is answered as closed at once, but not remembered here:
+   * the check would then see no change, and the close would get neither its
+   * last read nor its announcement, which is what makes the interface read
+   * the playtime again. The close is left to a check, started now, which is
+   * the one in flight when there is one: it is read and announced once,
+   * whoever saw it first.
+   */
   async refreshCurrent(): Promise<CurrentGame> {
     const forgotten = this.forgotten;
     const current = await this.observe();
     // Another account took over meanwhile: its game is the one to answer.
     if (forgotten !== this.forgotten) return this.refreshCurrent();
+    if (GameWatcher.hasStoppedPlaying(this.current, current)) {
+      void this.checkRunningGame();
+      return current;
+    }
     this.current = current;
     return this.current;
   }

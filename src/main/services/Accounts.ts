@@ -12,7 +12,7 @@ interface IAccountsDeps {
     SetupService,
     'addAccount' | 'setActiveAccount' | 'removeAccount' | 'getState'
   >;
-  follower: Pick<AccountFollower, 'onClientChange'>;
+  follower: Pick<AccountFollower, 'onClientChange' | 'forRunningGame'>;
   watcher: Pick<GameWatcher, 'isPlaying' | 'forget' | 'checkRunningGame'>;
   logError?: (source: string, detail: string) => void;
 }
@@ -25,8 +25,12 @@ interface IAccountsDeps {
  * is left as it was.
  */
 export class Accounts {
-  /** Whether the last look at the client's account ended in a write the disk refused. */
-  private hasFailedToFollow = false;
+  /**
+   * The looks whose last try ended in a write the disk refused. Each kind
+   * has its own run of refusals: the look made every 30 s finds nothing to
+   * do, and so works, while the one made as a game starts is still refused.
+   */
+  private readonly refused = new Set<'client' | 'game'>();
 
   constructor(private readonly deps: IAccountsDeps) {}
 
@@ -75,14 +79,46 @@ export class Accounts {
    * at every look.
    */
   async followClient(): Promise<void> {
+    const hasSwitched = await this.unlessRefused('client', () =>
+      this.deps.follower.onClientChange(),
+    );
+    if (hasSwitched === true) this.forgetGame();
+  }
+
+  /**
+   * A game has started: puts the app on the account playing it, for the
+   * watcher, which asks at each of its checks until it is told whose game it
+   * is. Nobody asked for this either, so it never rejects: an account the
+   * disk refuses is answered as `refused`, the app stays where it was, and
+   * the error log is told once for as long as check after check is refused.
+   * The watcher is in the middle of looking at that game, so nothing is
+   * forgotten here.
+   */
+  followRunningGame(): Promise<'followed' | 'other' | 'refused'> {
+    return this.unlessRefused('game', () =>
+      this.deps.follower.forRunningGame(),
+    );
+  }
+
+  /**
+   * Runs a look the app makes by itself and answers `refused` when it
+   * rejects, having told the error log if the look of that kind before it
+   * had not been refused too.
+   */
+  private async unlessRefused<T>(
+    look: 'client' | 'game',
+    follow: () => Promise<T>,
+  ): Promise<T | 'refused'> {
     try {
-      if (await this.deps.follower.onClientChange()) this.forgetGame();
-      this.hasFailedToFollow = false;
+      const answer = await follow();
+      this.refused.delete(look);
+      return answer;
     } catch (e) {
-      if (!this.hasFailedToFollow) {
+      if (!this.refused.has(look)) {
         this.deps.logError?.('main: follow account', ErrorLog.detailOf(e));
       }
-      this.hasFailedToFollow = true;
+      this.refused.add(look);
+      return 'refused';
     }
   }
 

@@ -155,12 +155,12 @@ const start = async (): Promise<void> => {
     store,
     interval: fakeSteam ? 1_000 : undefined,
   });
-  const watcher = new GameWatcher({
+  const watcher: GameWatcher = new GameWatcher({
     getRunningAppId: () => runningGame.getAppId(),
     // The audit cannot wait a minute for each check; a user's app always can.
     intervals: fakeSteam ? { running: 2_000, unlocks: 3_000 } : undefined,
     lastPlayedAppId: () => tracker.lastPlayedAppId(),
-    followRunningGame: () => follower.forRunningGame(),
+    followRunningGame: () => accounts.followRunningGame(),
     pollGame: (appid) =>
       keys.attempt((onAnswer) => tracker.getGame(appid, 'poll', onAnswer)),
     isConfigured: () => setup.isConfigured,

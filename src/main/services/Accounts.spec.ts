@@ -90,7 +90,10 @@ function setup({
   const inUse = (): string => store.getActiveSteamId() ?? 'no account';
   const sut = new Accounts({
     setup: accountSetup,
-    follower: { onClientChange: () => Promise.resolve(hasClientSwitched) },
+    follower: {
+      onClientChange: () => Promise.resolve(hasClientSwitched),
+      forRunningGame: () => Promise.resolve('followed'),
+    },
     watcher: {
       isPlaying,
       forget: ({ isCurrentIncluded = false } = {}) => {
@@ -125,18 +128,22 @@ const LAST_PLAYED: Record<string, number> = {
 };
 
 /**
- * The app as `index.ts` wires it, following `STEAM_ID`, its only account:
- * the real setup, follower and watcher. Only the edges are fake: the store,
- * which is in memory, Steam's answers, who is signed in to the client
- * (`signedIn`), the running game (`run`) and each account's library
- * (`LAST_PLAYED`). Steam accepts `KEY` and no other.
+ * The app as `index.ts` wires it, following `STEAM_ID`, its only account
+ * unless `saved` names more: the real setup, follower and watcher. Only the
+ * edges are fake: the store, which is in memory and which a test makes
+ * refuse what is written (`store.refuseWrites`), Steam's answers, who is
+ * signed in to the client (`signedIn`), the running game (`run`) and each
+ * account's library (`LAST_PLAYED`). Steam accepts `KEY` and no other.
+ * `logged` is what reached the error log.
  */
-function setupWired(signedIn: string) {
+function setupWired(signedIn: string, saved = [STEAM_ID]) {
   const store = new InMemoryStore();
-  store.setCredentials(
-    { steamId: STEAM_ID, apiKey: KEY },
-    { steamId: STEAM_ID, name: 'player', avatar: 'x' },
-  );
+  for (const steamId of [...saved].reverse()) {
+    store.setCredentials(
+      { steamId, apiKey: KEY },
+      { steamId, name: 'player', avatar: 'x' },
+    );
+  }
   const client = fakeSteamClient({
     summary: (credentials) =>
       credentials.apiKey === KEY ? summary(credentials) : rejected(),
@@ -157,11 +164,11 @@ function setupWired(signedIn: string) {
   let running: number | null = null;
   /** Every current game the interface was told about. */
   const announced: CurrentGame[] = [];
-  const watcher = new GameWatcher({
+  const watcher: GameWatcher = new GameWatcher({
     getRunningAppId: () => Promise.resolve(running),
     lastPlayedAppId: () =>
       Promise.resolve(LAST_PLAYED[store.getActiveSteamId() ?? ''] ?? null),
-    followRunningGame: () => follower.forRunningGame(),
+    followRunningGame: () => sut.followRunningGame(),
     pollGame: () => Promise.resolve({ ok: false, error: 'not read here' }),
     isConfigured: () => accountSetup.isConfigured,
     onCurrentChanged: (current) => announced.push(current),
@@ -169,6 +176,8 @@ function setupWired(signedIn: string) {
   });
   // An add does not wait for the check it starts; a test has to.
   let lastCheck = Promise.resolve();
+  /** What reached the error log. */
+  const logged: { source: string; detail: string }[] = [];
   const sut = new Accounts({
     setup: accountSetup,
     follower,
@@ -179,6 +188,7 @@ function setupWired(signedIn: string) {
       forget: (options) => watcher.forget(options),
       checkRunningGame: () => (lastCheck = watcher.checkRunningGame()),
     },
+    logError: (source, detail) => logged.push({ source, detail }),
   });
   return {
     sut,
@@ -186,6 +196,7 @@ function setupWired(signedIn: string) {
     watcher,
     announced,
     followed,
+    logged,
     checked: () => lastCheck,
     /** A game starts or closes on Steam, and the watcher's next check sees it. */
     run: (appid: number | null) => {
@@ -386,6 +397,102 @@ describe('Accounts', () => {
       expect(announced).toEqual([
         { appid: 42, isRunning: true, isOnAnotherAccount: true },
       ]);
+    });
+  });
+
+  describe('a game that starts on a saved account that cannot be written', () => {
+    /** Both accounts saved, the app on `STEAM_ID`, the client on the other. */
+    const setupOnTheOtherAccount = () =>
+      setupWired(OTHER_STEAM_ID, [STEAM_ID, OTHER_STEAM_ID]);
+
+    it('should end the check without failing, on the account the app was on', async () => {
+      const { store, run } = setupOnTheOtherAccount();
+      store.refuseWrites();
+
+      const outcome = await run(42).then(
+        () => 'ended',
+        (e: unknown) => `rejected: ${String(e)}`,
+      );
+
+      expect(outcome).toBe('ended');
+      expect(store.getActiveSteamId()).toBe(STEAM_ID);
+    });
+
+    it('should show the game the account in use played last, and none as running', async () => {
+      const { store, announced, run } = setupOnTheOtherAccount();
+      store.refuseWrites();
+
+      await run(42);
+
+      expect(announced).toEqual([{ appid: 7, isRunning: false }]);
+    });
+
+    it('should write the refusal to the error log', async () => {
+      const { store, logged, run } = setupOnTheOtherAccount();
+      store.refuseWrites();
+
+      await run(42);
+
+      expect(logged).toEqual([
+        {
+          source: 'main: follow account',
+          detail: expect.stringContaining(WRITE_REFUSED.message) as string,
+        },
+      ]);
+    });
+
+    it('should log it once when check after check is refused', async () => {
+      const { store, logged, run } = setupOnTheOtherAccount();
+      store.refuseWrites();
+      await run(42);
+
+      await run(42);
+
+      expect(logged).toHaveLength(1);
+    });
+
+    it('should follow the account playing the game at the next check when the disk takes it by then', async () => {
+      const { store, announced, followed, run } = setupOnTheOtherAccount();
+      store.refuseWrites();
+      await run(42);
+      store.refuseWrites(Infinity);
+
+      await run(42);
+
+      expect(store.getActiveSteamId()).toBe(OTHER_STEAM_ID);
+      expect(followed).toEqual([OTHER_STEAM_ID]);
+      expect(announced).toEqual([
+        { appid: 7, isRunning: false },
+        { appid: 42, isRunning: true },
+      ]);
+    });
+
+    it('should log a refusal again when it comes after a game whose account was followed', async () => {
+      const { sut, store, logged, run } = setupOnTheOtherAccount();
+      store.refuseWrites();
+      await run(42);
+      store.refuseWrites(Infinity);
+      await run(42);
+      await run(null);
+      sut.switchTo(STEAM_ID);
+      store.refuseWrites();
+
+      await run(43);
+
+      expect(logged).toHaveLength(2);
+    });
+
+    it("should still log it once when a look at the client's account in between found nothing to follow", async () => {
+      const { sut, store, logged, run } = setupOnTheOtherAccount();
+      await sut.followClient();
+      sut.switchTo(STEAM_ID);
+      store.refuseWrites();
+      await run(42);
+      await sut.followClient();
+
+      await run(42);
+
+      expect(logged).toHaveLength(1);
     });
   });
 

@@ -61,7 +61,7 @@ export class AccountFollower {
   }
 
   /** Who is signed in to the client; `undefined` when it could not be read. */
-  private signedIn(): Promise<string | null | undefined> {
+  private async signedIn(): Promise<string | null | undefined> {
     return this.deps.getSignedInSteamId().catch(() => undefined);
   }
 

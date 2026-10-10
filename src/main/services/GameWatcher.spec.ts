@@ -358,6 +358,106 @@ describe('GameWatcher', () => {
     expect(onCurrentChangedMock).not.toHaveBeenCalled();
   });
 
+  describe('a game whose account could not be followed', () => {
+    it('should show the game the account in use played last when the game that started is on an account the app could not be put on', async () => {
+      const { sut, run } = setup({
+        followRunningGame: () => Promise.resolve('refused'),
+      });
+      run(42);
+
+      const current = await sut.refreshCurrent();
+
+      expect(current).toEqual({ appid: 7, isRunning: false });
+    });
+
+    it('should announce nothing when the game that started is on an account the app could not be put on', async () => {
+      const { sut, onCurrentChangedMock, run } = setup({
+        followRunningGame: () => Promise.resolve('refused'),
+      });
+      await sut.refreshCurrent();
+      run(42);
+
+      await sut.checkRunningGame();
+
+      expect(onCurrentChangedMock).not.toHaveBeenCalled();
+    });
+
+    it('should ask again whose game it is at the next check when the app could not be put on its account', async () => {
+      const followRunningGameMock = vi.fn(() =>
+        Promise.resolve('refused' as const),
+      );
+      const { sut, run } = setup({ followRunningGame: followRunningGameMock });
+      run(42);
+      await sut.checkRunningGame();
+
+      await sut.checkRunningGame();
+
+      expect(followRunningGameMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('should announce the game as running when a later check puts the app on its account', async () => {
+      const answers = ['refused', 'followed'] as const;
+      let asked = 0;
+      const { sut, onCurrentChangedMock, run } = setup({
+        followRunningGame: () => Promise.resolve(answers[asked++]),
+      });
+      await sut.refreshCurrent();
+      run(42);
+      await sut.checkRunningGame();
+
+      await sut.checkRunningGame();
+
+      expect(onCurrentChangedMock).toHaveBeenCalledExactlyOnceWith({
+        appid: 42,
+        isRunning: true,
+      });
+    });
+
+    it('should not take the game as being played when the app could not be put on its account', async () => {
+      const { sut, run } = setup({
+        followRunningGame: () => Promise.resolve('refused'),
+      });
+      run(42);
+      await sut.checkRunningGame();
+
+      const isPlaying = sut.isPlaying;
+
+      expect(isPlaying).toBe(false);
+    });
+
+    it('should not keep the game as the last one played when it closes without the app having been put on its account', async () => {
+      const { sut, run } = setup({
+        followRunningGame: () => Promise.resolve('refused'),
+      });
+      run(42);
+      await sut.checkRunningGame();
+      run(null);
+
+      const current = await sut.refreshCurrent();
+
+      expect(current).toEqual({ appid: 7, isRunning: false });
+    });
+
+    it('should announce that the game being played closed when another starts on an account the app could not be put on', async () => {
+      const answers = ['followed', 'refused'] as const;
+      let asked = 0;
+      const { sut, onCurrentChangedMock, run } = setup({
+        followRunningGame: () => Promise.resolve(answers[asked++]),
+      });
+      run(42);
+      await sut.checkRunningGame();
+      onCurrentChangedMock.mockClear();
+      run(43);
+
+      await sut.checkRunningGame();
+
+      expect(onCurrentChangedMock).toHaveBeenCalledExactlyOnceWith({
+        appid: 42,
+        isRunning: false,
+      });
+    });
+  });
+
   describe('checkUnlocks', () => {
     it('should hand over the new view when something was unlocked', async () => {
       const { sut, onGameUpdatedMock, run, poll } = setup();
@@ -638,6 +738,125 @@ describe('GameWatcher', () => {
       expect(onCurrentChangedMock).toHaveBeenCalledExactlyOnceWith({
         appid: 42,
         isRunning: true,
+      });
+    });
+  });
+
+  describe('a close the interface is the first to notice', () => {
+    it('should announce that the game closed when the interface asked for the current game before a check saw it close', async () => {
+      const { every, tick } = manualEvery();
+      const { sut, onCurrentChangedMock, run } = setup({ every });
+      run(42);
+      await sut.checkRunningGame();
+      onCurrentChangedMock.mockClear();
+      sut.start();
+      run(null);
+      await sut.refreshCurrent();
+
+      tick(10_000);
+      await turn();
+
+      expect(onCurrentChangedMock).toHaveBeenCalledExactlyOnceWith({
+        appid: 42,
+        isRunning: false,
+      });
+    });
+
+    it('should read the game one last time when the interface asked for the current game before a check saw it close', async () => {
+      const { every, tick } = manualEvery();
+      const { sut, pollGameMock, run } = setup({ every });
+      run(42);
+      await sut.checkRunningGame();
+      sut.start();
+      run(null);
+      await sut.refreshCurrent();
+
+      tick(10_000);
+      await turn();
+
+      expect(pollGameMock).toHaveBeenCalledExactlyOnceWith(42);
+    });
+
+    it('should hand over what was unlocked at the very end before announcing the close when the interface was the first to see it', async () => {
+      const events: unknown[] = [];
+      const { sut, run, poll } = setup({
+        onGameUpdated: (updated) =>
+          events.push(['updated', updated.unlockedCount]),
+        onCurrentChanged: (current) => events.push(['changed', current]),
+      });
+      run(42);
+      await sut.refreshCurrent();
+      sut.remember(view(42, ['a']));
+      poll(view(42, ['a', 'b', 'c']));
+      run(null);
+      await sut.refreshCurrent();
+
+      await sut.checkRunningGame();
+
+      expect(events).toEqual([
+        ['updated', 3],
+        ['changed', { appid: 42, isRunning: false }],
+      ]);
+    });
+
+    it('should answer the game as closed without waiting for its last read when the interface is the first to see it close', async () => {
+      const { sut, run } = setup({
+        pollGame: () => held<CheckResult<IGameView>>().promise,
+      });
+      run(42);
+      await sut.refreshCurrent();
+      run(null);
+
+      const current = await sut.refreshCurrent();
+
+      expect(current).toEqual({ appid: 42, isRunning: false });
+    });
+
+    it('should announce once that the game closed when the interface asks for the current game during its last read', async () => {
+      const read = held<CheckResult<IGameView>>();
+      const pollGameMock = vi.fn((_appid: number) => read.promise);
+      const { every, tick } = manualEvery();
+      const { sut, onCurrentChangedMock, run } = setup({
+        every,
+        pollGame: pollGameMock,
+      });
+      run(42);
+      await sut.refreshCurrent();
+      sut.start();
+      run(null);
+      tick(10_000);
+      await turn();
+      await sut.refreshCurrent();
+      tick(10_000);
+      await turn();
+      read.resolve({ ok: false, error: 'Steam did not answer.' });
+
+      await turn();
+
+      expect(onCurrentChangedMock).toHaveBeenCalledExactlyOnceWith({
+        appid: 42,
+        isRunning: false,
+      });
+      expect(pollGameMock).toHaveBeenCalledExactlyOnceWith(42);
+    });
+
+    it('should announce once that the game closed when the interface asks for the current game twice before a check comes round', async () => {
+      const { every, tick } = manualEvery();
+      const { sut, onCurrentChangedMock, run } = setup({ every });
+      run(42);
+      await sut.checkRunningGame();
+      onCurrentChangedMock.mockClear();
+      sut.start();
+      run(null);
+      await sut.refreshCurrent();
+      await sut.refreshCurrent();
+
+      tick(10_000);
+      await turn();
+
+      expect(onCurrentChangedMock).toHaveBeenCalledExactlyOnceWith({
+        appid: 42,
+        isRunning: false,
       });
     });
   });
