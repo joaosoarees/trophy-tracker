@@ -1,3 +1,5 @@
+import { type IRawPlayerAchievement } from '../src/main/steam/SteamClient';
+
 import { type IRoute } from './helpers';
 
 /** One game of a library, as `GetOwnedGames` lists it. */
@@ -20,18 +22,22 @@ export const owned = (...games: ReturnType<typeof game>[]): IRoute => ({
 });
 
 /**
- * The answer of `GetPlayerAchievements` for a game with `total` achievements,
- * named `A0`, `A1` and so on, of which the first `unlocked` are unlocked.
+ * What a player has in a game with `total` achievements, named `A0`, `A1` and
+ * so on, of which the first `unlocked` are unlocked.
  */
+export const achieved = (
+  unlocked: number,
+  total: number,
+): IRawPlayerAchievement[] =>
+  Array.from({ length: total }, (_, i) => ({
+    apiname: `A${i}`,
+    achieved: i < unlocked ? 1 : 0,
+    unlocktime: 0,
+  }));
+
+/** The answer of `GetPlayerAchievements` for that same game. */
 export const player = (unlocked: number, total: number): IRoute => ({
   json: {
-    playerstats: {
-      success: true,
-      achievements: Array.from({ length: total }, (_, i) => ({
-        apiname: `A${i}`,
-        achieved: i < unlocked ? 1 : 0,
-        unlocktime: 0,
-      })),
-    },
+    playerstats: { success: true, achievements: achieved(unlocked, total) },
   },
 });

@@ -12,10 +12,30 @@ import {
   NOT_PUBLIC,
   STEAM_ID,
 } from '@tests/helpers';
+import { achieved, game, owned, player } from '@tests/steamLibrary';
 
 import { SteamClient, SteamError } from './SteamClient';
 
 const CREDENTIALS = { steamId: STEAM_ID, apiKey: KEY };
+const ASSETS = 'https://shared.fastly.steamstatic.com/store_item_assets';
+
+/** The store's answer about the game 1, which has art, and no other game. */
+const STORE_WITH_ART_OF_GAME_1 = {
+  json: {
+    response: {
+      store_items: [
+        {
+          appid: 1,
+          assets: {
+            asset_url_format: 'steam/apps/1/${FILENAME}?t=9',
+            header: 'abc/header.jpg',
+            small_capsule: 'def/capsule_231x87.jpg',
+          },
+        },
+      ],
+    },
+  },
+};
 
 interface ISetupOverrides {
   language?: Language;
@@ -41,6 +61,22 @@ function setup(
 
 describe('SteamClient', () => {
   describe('getPlayerSummary', () => {
+    it('should answer the profile when Steam knows the SteamID', async () => {
+      const profile = {
+        steamid: STEAM_ID,
+        personaname: 'player',
+        avatarfull: 'https://avatars.example/full.jpg',
+        gameid: '3681010',
+      };
+      const { sut } = setup({
+        GetPlayerSummaries: { json: { response: { players: [profile] } } },
+      });
+
+      const summary = await sut.getPlayerSummary(CREDENTIALS);
+
+      expect(summary).toEqual(profile);
+    });
+
     it('should refuse with invalid-key when Steam rejects the key', async () => {
       const { sut } = setup({ GetPlayerSummaries: FORBIDDEN_HTML });
 
@@ -97,9 +133,206 @@ describe('SteamClient', () => {
         await expect(achievementsPromise).rejects.toThrow(new SteamError(kind));
       },
     );
+
+    it('should answer what the player has in the game when Steam lists it', async () => {
+      const { sut } = setup({ GetPlayerAchievements: player(1, 3) });
+
+      const achievements = await sut.getPlayerAchievements(CREDENTIALS, 7);
+
+      expect(achievements).toEqual(achieved(1, 3));
+    });
+
+    it('should answer nothing when Steam sends no list for the game', async () => {
+      const { sut } = setup({
+        GetPlayerAchievements: { json: { playerstats: { success: true } } },
+      });
+
+      const achievements = await sut.getPlayerAchievements(CREDENTIALS, 7);
+
+      expect(achievements).toEqual([]);
+    });
+
+    it('should ask about the game with the key and the SteamID of the account', async () => {
+      const { sut, fetchImpl } = setup({ GetPlayerAchievements: player(1, 3) });
+
+      await sut.getPlayerAchievements(CREDENTIALS, 7);
+
+      expect(fetchImpl.calls).toEqual([
+        `https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/?key=${KEY}&steamid=${STEAM_ID}&appid=7`,
+      ]);
+    });
+
+    it('should refuse with invalid-key when Steam rejects the key', async () => {
+      const { sut } = setup({ GetPlayerAchievements: FORBIDDEN_HTML });
+
+      const achievementsPromise = sut.getPlayerAchievements(CREDENTIALS, 7);
+
+      await expect(achievementsPromise).rejects.toThrow(
+        new SteamError('invalid-key'),
+      );
+    });
+  });
+
+  describe('getUserStats', () => {
+    it('should answer the counters by name when the game has them', async () => {
+      const { sut } = setup({
+        GetUserStatsForGame: {
+          json: {
+            playerstats: {
+              stats: [
+                { name: 'ACH_001_PROGRESS', value: 12 },
+                { name: 'KILLS', value: 340 },
+              ],
+            },
+          },
+        },
+      });
+
+      const stats = await sut.getUserStats(CREDENTIALS, 7);
+
+      expect(stats).toEqual({ ACH_001_PROGRESS: 12, KILLS: 340 });
+    });
+
+    it('should answer no counters when Steam sends none for the game', async () => {
+      const { sut } = setup({
+        GetUserStatsForGame: { json: { playerstats: {} } },
+      });
+
+      const stats = await sut.getUserStats(CREDENTIALS, 7);
+
+      expect(stats).toEqual({});
+    });
+
+    it('should ask about the game with the key and the SteamID of the account', async () => {
+      const { sut, fetchImpl } = setup({
+        GetUserStatsForGame: { json: { playerstats: {} } },
+      });
+
+      await sut.getUserStats(CREDENTIALS, 7);
+
+      expect(fetchImpl.calls).toEqual([
+        `https://api.steampowered.com/ISteamUserStats/GetUserStatsForGame/v2/?key=${KEY}&steamid=${STEAM_ID}&appid=7`,
+      ]);
+    });
+
+    it('should refuse with unknown and the status when Steam fails without saying why', async () => {
+      const { sut } = setup({
+        GetUserStatsForGame: { status: 500, text: 'error' },
+      });
+
+      const statsPromise = sut.getUserStats(CREDENTIALS, 7);
+
+      await expect(statsPromise).rejects.toMatchObject({
+        kind: 'unknown',
+        status: 500,
+        detail: '',
+      });
+    });
+  });
+
+  describe('getStoreArt', () => {
+    it('should answer the header and the capsule of a game at the address the store gives', async () => {
+      const { sut } = setup({ GetItems: STORE_WITH_ART_OF_GAME_1 });
+
+      const art = await sut.getStoreArt([1]);
+
+      expect(art).toEqual(
+        new Map([
+          [
+            1,
+            {
+              header: `${ASSETS}/steam/apps/1/abc/header.jpg?t=9`,
+              capsule: `${ASSETS}/steam/apps/1/def/capsule_231x87.jpg?t=9`,
+            },
+          ],
+        ]),
+      );
+    });
+
+    it('should leave out a game the store does not list', async () => {
+      const { sut } = setup({ GetItems: STORE_WITH_ART_OF_GAME_1 });
+
+      const art = await sut.getStoreArt([1, 2]);
+
+      expect([...art.keys()]).toEqual([1]);
+    });
+
+    it('should answer empty addresses for a game the store lists without art', async () => {
+      const { sut } = setup({
+        GetItems: { json: { response: { store_items: [{ appid: 1 }] } } },
+      });
+
+      const art = await sut.getStoreArt([1]);
+
+      expect(art).toEqual(new Map([[1, { header: '', capsule: '' }]]));
+    });
+
+    it('should answer no art when the store sends no list', async () => {
+      const { sut } = setup({ GetItems: { json: { response: {} } } });
+
+      const art = await sut.getStoreArt([1]);
+
+      expect(art).toEqual(new Map());
+    });
+
+    it('should ask for the art of the games with no key, in the language and the country of the app', async () => {
+      const { sut, fetchImpl } = setup(
+        { GetItems: STORE_WITH_ART_OF_GAME_1 },
+        { language: 'pt-BR' },
+      );
+
+      await sut.getStoreArt([1, 2]);
+
+      const asked = new URL(fetchImpl.calls[0]);
+      expect([...asked.searchParams.keys()]).toEqual(['input_json']);
+      expect(JSON.parse(asked.searchParams.get('input_json') ?? '')).toEqual({
+        ids: [{ appid: 1 }, { appid: 2 }],
+        context: { language: 'brazilian', country_code: 'BR' },
+        data_request: { include_assets: true },
+      });
+    });
+
+    it('should refuse with unknown when the store fails', async () => {
+      const { sut } = setup({ GetItems: { status: 500, text: 'error' } });
+
+      const artPromise = sut.getStoreArt([1]);
+
+      await expect(artPromise).rejects.toMatchObject({
+        kind: 'unknown',
+        status: 500,
+      });
+    });
   });
 
   describe('getOwnedGames', () => {
+    it('should answer the games of the library when it is visible', async () => {
+      const { sut } = setup({
+        GetOwnedGames: owned(game(1, 'A', 10, 900), game(2, 'B', 0)),
+      });
+
+      const games = await sut.getOwnedGames(CREDENTIALS);
+
+      expect(games).toEqual([game(1, 'A', 10, 900), game(2, 'B', 0)]);
+    });
+
+    it('should ask for the names and the free games played, with the key and the SteamID', async () => {
+      const { sut, fetchImpl } = setup({ GetOwnedGames: owned() });
+
+      await sut.getOwnedGames(CREDENTIALS);
+
+      expect(fetchImpl.calls).toEqual([
+        `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${KEY}&steamid=${STEAM_ID}&include_appinfo=1&include_played_free_games=1`,
+      ]);
+    });
+
+    it('should refuse with invalid-key when Steam rejects the key', async () => {
+      const { sut } = setup({ GetOwnedGames: FORBIDDEN_HTML });
+
+      const gamesPromise = sut.getOwnedGames(CREDENTIALS);
+
+      await expect(gamesPromise).rejects.toThrow(new SteamError('invalid-key'));
+    });
+
     it('should answer null when the library is not visible', async () => {
       const { sut } = setup({ GetOwnedGames: { json: { response: {} } } });
 
@@ -126,6 +359,16 @@ describe('SteamClient', () => {
       const achievements = await sut.getGameAchievements(3681010);
 
       expect(achievements).toEqual(nioh.response.achievements);
+    });
+
+    it('should answer no achievements when Steam lists none for the game', async () => {
+      const { sut } = setup({
+        GetGameAchievements: { json: { response: {} } },
+      });
+
+      const achievements = await sut.getGameAchievements(7);
+
+      expect(achievements).toEqual([]);
     });
 
     it('should ask with no key and in English when no language was chosen', async () => {
