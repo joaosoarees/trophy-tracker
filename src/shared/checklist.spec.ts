@@ -4,6 +4,7 @@ import { makeAchievement } from '@tests/factories/makeAchievement';
 
 import {
   createChecklistItem,
+  isOnChecklist,
   parseChecklist,
   restoreChecklistItem,
   shownProgress,
@@ -183,6 +184,32 @@ describe('checklist', () => {
       const item = createChecklistItem('bridge kodama', existing);
 
       expect(item).toBe('duplicate');
+    });
+  });
+
+  describe('isOnChecklist', () => {
+    it('should answer true when an item has the text in another case, with spaces around', () => {
+      const items = [bridge, cave];
+
+      const isOn = isOnChecklist('  CAVE ', items);
+
+      expect(isOn).toBe(true);
+    });
+
+    it('should answer false when the item that had the text is no longer on the list', () => {
+      const items = [bridge];
+
+      const isOn = isOnChecklist('cave', items);
+
+      expect(isOn).toBe(false);
+    });
+
+    it('should answer false when the text is blank', () => {
+      const items = [bridge, cave];
+
+      const isOn = isOnChecklist('   ', items);
+
+      expect(isOn).toBe(false);
     });
   });
 

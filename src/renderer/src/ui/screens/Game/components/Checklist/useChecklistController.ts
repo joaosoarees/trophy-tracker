@@ -4,7 +4,11 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { useT } from '@app/hooks/useT';
 import { useStore } from '@app/store';
-import { createChecklistItem, parseChecklist } from '@shared/checklist';
+import {
+  createChecklistItem,
+  isOnChecklist,
+  parseChecklist,
+} from '@shared/checklist';
 import { type IChecklistItem } from '@shared/types/UserData';
 
 interface IParams {
@@ -29,7 +33,11 @@ export function useChecklistController({
   );
 
   const [draft, setDraft] = useState('');
-  const [isDuplicate, setIsDuplicate] = useState(false);
+  // The text an add was refused for. The warning is not kept: it is true only
+  // while that text is still in the field and still on the list, and the list
+  // changes under it (the row is removed or renamed).
+  const [refusedDraft, setRefusedDraft] = useState<string | null>(null);
+  const isDuplicate = draft === refusedDraft && isOnChecklist(draft, items);
   const [isPasting, setIsPasting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -39,17 +47,12 @@ export function useChecklistController({
     );
   }
 
-  function handleDraftChange(value: string) {
-    setDraft(value);
-    setIsDuplicate(false);
-  }
-
   /** If the item already exists, the text stays in the field with a warning. */
   function handleAddDraft() {
     const item = createChecklistItem(draft, items);
     if (item === 'blank') return;
     if (item === 'duplicate') {
-      setIsDuplicate(true);
+      setRefusedDraft(draft);
       return;
     }
 
@@ -98,7 +101,7 @@ export function useChecklistController({
     editingId,
     setIsPasting,
     setEditingId,
-    handleDraftChange,
+    handleDraftChange: setDraft,
     handleAddDraft,
     handlePaste,
     handleRename,

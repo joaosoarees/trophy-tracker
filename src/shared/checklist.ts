@@ -74,7 +74,7 @@ export function createChecklistItem(
 }
 
 /** A list holds a text once, whatever its case and the spaces around it. */
-function isOnChecklist(text: string, items: IChecklistItem[]): boolean {
+export function isOnChecklist(text: string, items: IChecklistItem[]): boolean {
   const key = text.trim().toLowerCase();
   return items.some((item) => item.text.toLowerCase() === key);
 }
