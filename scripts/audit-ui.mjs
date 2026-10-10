@@ -621,9 +621,7 @@ async function auditOnboarding(page, steam, language) {
     await audit(page, `onboarding-two-accounts-${language}`);
   }
 
-  await page.evaluate(advance);
-  await sleep(1000);
-  await audit(page, `onboarding-done-${language}`);
+  // The account step ends the setup: its forward button enters the app.
   await page.evaluate(advance);
   const isInTheApp = await waitFor(
     page,
@@ -923,9 +921,9 @@ async function auditAccounts(page, steam, home) {
   expectThat(
     FLOW,
     (await page.evaluate(
-      `document.querySelector('main ol').children.length`,
-    )) === 2,
-    'adding an account from the app goes through the language step again',
+      `[...document.querySelectorAll('main form > div > ol > li')].filter((el) => el.offsetParent !== null).length`,
+    )) === 0,
+    'adding an account from the app shows steps, when there is only one thing to do',
   );
   await sleep(600);
   await audit(page, 'flow-add-account');

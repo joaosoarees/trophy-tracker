@@ -287,7 +287,6 @@ export const ptBR: Messages = {
     steps: {
       language: 'Idioma',
       account: 'Conta',
-      done: 'Pronto',
     },
     goToStep: (step) => `Ir para ${step}`,
 
@@ -349,17 +348,9 @@ export const ptBR: Messages = {
       verifying: 'Verificando…',
     },
 
-    done: {
-      title: 'Pronto',
-      description: 'A configuração está completa.',
-      found: (n) =>
-        `Encontrei ${n} ${n === 1 ? 'jogo já jogado' : 'jogos já jogados'} na sua conta.`,
-      account: 'Conta',
-      language: 'Idioma',
-      howItWorks:
-        'Abra um jogo na Steam e o app troca para ele sozinho. Sem jogo aberto, ele mostra o último que você jogou; o Painel lista todos.',
-      finish: 'Entrar no app',
-      saving: 'Salvando…',
-    },
+    howItWorks:
+      'Abra um jogo na Steam e o app troca para ele sozinho. Sem jogo aberto, ele mostra o último que você jogou; o Painel lista todos.',
+    finish: 'Entrar no app',
+    finishing: 'Salvando…',
   },
 };

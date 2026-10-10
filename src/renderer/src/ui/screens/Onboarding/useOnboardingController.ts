@@ -26,8 +26,8 @@ export function useOnboardingController({
   const setLanguage = useStore((store) => store.session.setLanguage);
   /** What the main process has saved: accounts are saved as they are verified. */
   const [saved, setSaved] = useState(state);
-  /** Played games found for each account verified in this visit. */
-  const [gamesFound, setGamesFound] = useState<Record<string, number>>({});
+  /** The accounts verified in this visit, by SteamID. */
+  const [addedHere, setAddedHere] = useState<string[]>([]);
   const [isFinishing, setIsFinishing] = useState(false);
 
   const form = useForm<OnboardingFormData>({
@@ -55,13 +55,10 @@ export function useOnboardingController({
     };
   }, [form, setLanguage]);
 
-  /** An account was saved or removed in the account step. */
-  function handleAccountsChange(next: IAppState, games?: number) {
+  /** An account was saved (`added`) or removed in the account step. */
+  function handleAccountsChange(next: IAppState, added?: string) {
     setSaved(next);
-    if (games !== undefined && next.activeSteamId) {
-      // Saving follows the account that was saved.
-      setGamesFound((found) => ({ ...found, [next.activeSteamId!]: games }));
-    }
+    if (added) setAddedHere((ids) => [...ids, added]);
   }
 
   async function finish() {
@@ -88,16 +85,11 @@ export function useOnboardingController({
     void finish().finally(() => setIsFinishing(false));
   }
 
-  const [only] = saved.accounts;
-
   return {
     form,
     saved,
     accounts: saved.accounts,
-    gamesFound,
-    /** For the summary: only said when there is one account and it was just verified. */
-    gamesFoundOnOnly:
-      saved.accounts.length === 1 ? (gamesFound[only.steamId] ?? null) : null,
+    addedHere,
     isFinishing,
     handleSubmit,
     handleAccountsChange,

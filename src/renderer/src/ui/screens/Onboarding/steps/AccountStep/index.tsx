@@ -25,11 +25,13 @@ import { useAccountStepController } from './useAccountStepController';
 interface IAccountStepProps {
   /** The accounts the app already has: verified, saved, shown above the form. */
   accounts: IAccount[];
-  /** Played games found for the accounts verified in this visit, by SteamID. */
-  gamesFound: Record<string, number>;
-  onChange: (state: IAppState, games?: number) => void;
+  /** SteamIDs of the accounts verified in this visit. */
+  addedHere: string[];
+  onChange: (state: IAppState, added?: string) => void;
   /** The step was opened to add an account: its form starts open. */
   startsOpen: boolean;
+  /** The setup is being finished: nothing else can be asked for meanwhile. */
+  isFinishing: boolean;
   /** The way out when the step was opened only to add an account. */
   onCancel?: () => void;
 }
@@ -37,13 +39,15 @@ interface IAccountStepProps {
 /**
  * Everything about accounts happens here: the ones already verified are
  * listed, and one more can be verified below them. A verified account is
- * saved at once, so there is nothing left to confirm in a later step.
+ * saved at once, so the step ends the setup: there is nothing left to
+ * confirm after it.
  */
 export function AccountStep({
   accounts,
-  gamesFound,
+  addedHere,
   onChange,
   startsOpen,
+  isFinishing,
   onCancel,
 }: IAccountStepProps) {
   const t = useT();
@@ -54,7 +58,6 @@ export function AccountStep({
     isVerifying,
     problem,
     privacyProblem,
-    isMissingAccount,
     steamIdSource,
     isSteamIdLocked,
     handleVerify,
@@ -62,7 +65,6 @@ export function AccountStep({
     handleOpenForm,
     handleCloseForm,
     handleEditSteamId,
-    handleNext,
   } = useAccountStepController({ accounts, startsOpen, onChange });
   const text = t.onboarding.account;
   const hasAccounts = accounts.length > 0;
@@ -98,7 +100,7 @@ export function AccountStep({
               action={
                 // Only what was added in this visit is undone here, in one
                 // click: an older account has notes, and Settings asks first.
-                account.steamId in gamesFound && (
+                addedHere.includes(account.steamId) && (
                   <IconButton
                     type="button"
                     label={t.accounts.removeNamed(
@@ -238,10 +240,8 @@ export function AccountStep({
         </Button>
       )}
 
-      {isMissingAccount && !hasAccounts && (
-        <p role="alert" className="text-destructive mt-4">
-          {t.validation.verificationRequired}
-        </p>
+      {hasAccounts && !isFormOpen && (
+        <p className="text-muted-foreground mt-5">{t.onboarding.howItWorks}</p>
       )}
 
       <StepperFooter>
@@ -250,7 +250,7 @@ export function AccountStep({
             {t.common.cancel}
           </Button>
         ) : (
-          <StepperPreviousButton disabled={isVerifying} />
+          <StepperPreviousButton disabled={isVerifying || isFinishing} />
         )}
         {isFormOpen && !isFormOptional ? (
           // The form is all there is to do here: verifying is the way forward.
@@ -258,12 +258,15 @@ export function AccountStep({
             {verifyLabel}
           </StepperNextButton>
         ) : (
-          <StepperNextButton
-            // With one more account being typed, its "Verify" is the action.
+          // With an account in, the setup can end. While one more is being
+          // typed, its own "Verify" is the action and this one steps back.
+          <Button
+            type="submit"
             variant={isFormOpen ? 'secondary' : 'default'}
-            disabled={isVerifying}
-            onClick={handleNext}
-          />
+            disabled={isVerifying || isFinishing}
+          >
+            {isFinishing ? t.onboarding.finishing : t.onboarding.finish}
+          </Button>
         )}
       </StepperFooter>
     </div>

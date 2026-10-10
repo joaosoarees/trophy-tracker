@@ -12,6 +12,7 @@ With the app in its final shape, what had lost its reason was removed rather tha
 - **The date beside the key** ("Checked on…"). It was only written when the status changed, so it showed when the account was added while claiming to be when the key was last checked.
 - **The "Code signing policy" section of the README**, written for the SignPath application.
 - `saveConfig` became `addAccount`, which is what it does.
+- **The last step of the setup.** Once everything about accounts happened in the account step, "Done" was two lines of summary and a button. The account step now ends the setup, and its sentence about how the app works moved there.
 
 ## No migration code
 
@@ -63,6 +64,10 @@ With one account, a key Steam refused sent the user back to the onboarding. With
 A Web API key can read any public profile, so a second key is not technically needed. Each account still has its own, because that is how Steam issues them and "each account with its key" is the model a user can explain. Support for other platforms was considered and dropped: the other platforms' achievement APIs are too different to design for before there is a second real case.
 
 A saved key is never revealed or copied: whoever needs it has it on Steam's page, and the interface never receives more than its last four characters.
+
+## Following the Steam account on every system
+
+It was Windows only at first, out of caution: there the registry says who is signed in. The Steam client's own files say the same on macOS and Linux, the app already read them to offer the SteamID in the setup, and the audit had been following an account through those files all along. So the restriction was removed. On macOS and Linux it was checked through the audit's fake client folder, not on a real Steam install.
 
 ## No title bar on Windows and macOS
 

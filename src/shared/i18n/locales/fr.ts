@@ -289,7 +289,6 @@ export const fr: Messages = {
     steps: {
       language: 'Langue',
       account: 'Compte',
-      done: 'Terminé',
     },
     goToStep: (step) => `Aller à ${step}`,
 
@@ -352,17 +351,9 @@ export const fr: Messages = {
       verifying: 'Vérification…',
     },
 
-    done: {
-      title: 'Tout est prêt',
-      description: 'La configuration est terminée.',
-      found: (n) =>
-        `J’ai trouvé ${n} ${n === 1 ? 'jeu joué' : 'jeux joués'} sur votre compte.`,
-      account: 'Compte',
-      language: 'Langue',
-      howItWorks:
-        'Ouvrez un jeu sur Steam et l’application bascule dessus toute seule. Sans jeu ouvert, elle montre le dernier auquel vous avez joué ; le Tableau de bord les liste tous.',
-      finish: 'Entrer dans l’application',
-      saving: 'Enregistrement…',
-    },
+    howItWorks:
+      'Ouvrez un jeu sur Steam et l’application bascule dessus toute seule. Sans jeu ouvert, elle montre le dernier auquel vous avez joué ; le Tableau de bord les liste tous.',
+    finish: 'Entrer dans l’application',
+    finishing: 'Enregistrement…',
   },
 };

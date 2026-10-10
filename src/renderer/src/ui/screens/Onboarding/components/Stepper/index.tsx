@@ -64,7 +64,8 @@ export function Stepper({ steps }: IStepperProps) {
   return (
     <StepperContext.Provider value={context}>
       <div>
-        <ol className="mb-6 flex gap-1.5">
+        {/* With a single step there is nowhere else to be: no bar is drawn. */}
+        <ol className={cn('mb-6 flex gap-1.5', steps.length === 1 && 'hidden')}>
           {steps.map((step, index) => {
             const isCurrent = index === current;
             const isReached = index <= furthest;

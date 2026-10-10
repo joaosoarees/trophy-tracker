@@ -6,7 +6,6 @@ import { WindowBar } from '@ui/components/WindowBar';
 
 import { Stepper } from './components/Stepper';
 import { AccountStep } from './steps/AccountStep';
-import { DoneStep } from './steps/DoneStep';
 import { LanguageStep } from './steps/LanguageStep';
 import { useOnboardingController } from './useOnboardingController';
 
@@ -29,39 +28,26 @@ export function Onboarding({
     form,
     saved,
     accounts,
-    gamesFound,
-    gamesFoundOnOnly,
+    addedHere,
     isFinishing,
     handleSubmit,
     handleAccountsChange,
   } = useOnboardingController({ state, isAddingAccount, onDone });
 
-  const accountSteps = [
-    {
-      label: t.onboarding.steps.account,
-      content: (
-        <AccountStep
-          accounts={accounts}
-          gamesFound={gamesFound}
-          onChange={handleAccountsChange}
-          startsOpen={isAddingAccount}
-          // Accounts are saved as they are verified: leaving keeps them.
-          onCancel={onCancel ? () => onDone(saved) : undefined}
-        />
-      ),
-    },
-    {
-      label: t.onboarding.steps.done,
-      content: (
-        <DoneStep
-          accounts={accounts}
-          gamesFound={gamesFoundOnOnly}
-          showLanguage={!isAddingAccount}
-          isFinishing={isFinishing}
-        />
-      ),
-    },
-  ];
+  const accountStep = {
+    label: t.onboarding.steps.account,
+    content: (
+      <AccountStep
+        accounts={accounts}
+        addedHere={addedHere}
+        onChange={handleAccountsChange}
+        startsOpen={isAddingAccount}
+        isFinishing={isFinishing}
+        // Accounts are saved as they are verified: leaving keeps them.
+        onCancel={onCancel ? () => onDone(saved) : undefined}
+      />
+    ),
+  };
 
   return (
     <>
@@ -72,13 +58,13 @@ export function Onboarding({
             <Stepper
               steps={
                 isAddingAccount
-                  ? accountSteps
+                  ? [accountStep]
                   : [
                       {
                         label: t.onboarding.steps.language,
                         content: <LanguageStep />,
                       },
-                      ...accountSteps,
+                      accountStep,
                     ]
               }
             />
