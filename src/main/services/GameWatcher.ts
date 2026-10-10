@@ -20,6 +20,11 @@ export interface IGameWatcherDeps {
   onGameUpdated: (view: IGameView) => void;
   /** How often each check runs, in milliseconds; the defaults are what users get. */
   intervals?: { running: number; unlocks: number };
+  /**
+   * Runs `run` every `ms` milliseconds and answers the function that stops
+   * it; the default is the system's timer.
+   */
+  every?: (run: () => void, ms: number) => () => void;
 }
 
 /**
@@ -35,19 +40,38 @@ export class GameWatcher {
   /** The game last seen running since the app opened. */
   private lastSeenRunning: number | null = null;
 
+  /** What stops each periodic check; empty while the watcher is stopped. */
+  private stops: (() => void)[] = [];
+
   constructor(private deps: IGameWatcherDeps) {}
 
+  /** Starts the two periodic checks; does nothing when they already run. */
   start(): void {
+    if (this.stops.length > 0) return;
+
     const { running, unlocks } = this.deps.intervals ?? {
       running: RUNNING_CHECK_MS,
       unlocks: UNLOCK_CHECK_MS,
     };
-    setInterval(() => void this.checkRunningGame(), running);
-    setInterval(() => void this.checkUnlocks(), unlocks);
+    const every = this.deps.every ?? GameWatcher.everyInterval;
+    this.stops = [
+      every(() => void this.checkRunningGame(), running),
+      every(() => void this.checkUnlocks(), unlocks),
+    ];
   }
 
-  /** Game open on Steam or, with no game open, the last one played. */
-  async resolveCurrent(): Promise<CurrentGame> {
+  /** Ends the two periodic checks; `start` begins them again. */
+  stop(): void {
+    for (const stop of this.stops) stop();
+    this.stops = [];
+  }
+
+  /**
+   * Game open on Steam or, with no game open, the last one played. Not a plain
+   * query: when a game starts it puts the app on the account playing it, and
+   * it records the game seen running as the last one played.
+   */
+  private async observe(): Promise<CurrentGame> {
     const running = await this.deps.getRunningAppId();
     if (running !== null) {
       // Whose game it is only has to be asked when the game starts.
@@ -84,7 +108,7 @@ export class GameWatcher {
 
   /** Resolves the current game and remembers it without announcing a change. */
   async refreshCurrent(): Promise<CurrentGame> {
-    this.current = await this.resolveCurrent();
+    this.current = await this.observe();
     return this.current;
   }
 
@@ -103,19 +127,14 @@ export class GameWatcher {
   }
 
   async checkRunningGame(): Promise<void> {
-    const next = await this.resolveCurrent();
+    const next = await this.observe();
     const previous = this.current;
-    if (
-      next?.appid === previous?.appid &&
-      next?.isRunning === previous?.isRunning &&
-      next?.isOnAnotherAccount === previous?.isOnAnotherAccount
-    ) {
-      return;
-    }
+    if (!GameWatcher.hasChanged(previous, next)) return;
 
     // The game was closed: one last read catches what was unlocked in the final minute.
-    const isStillRunning = next?.isRunning && next.appid === previous?.appid;
-    if (previous?.isRunning && !isStillRunning) await this.checkUnlocks();
+    if (GameWatcher.hasStoppedPlaying(previous, next)) {
+      await this.checkUnlocks();
+    }
 
     this.current = next;
     this.lastView = null;
@@ -136,5 +155,33 @@ export class GameWatcher {
 
     this.lastView = view;
     this.deps.onGameUpdated(view);
+  }
+
+  private static everyInterval(
+    this: void,
+    run: () => void,
+    ms: number,
+  ): () => void {
+    const handle = setInterval(run, ms);
+    return () => clearInterval(handle);
+  }
+
+  /** Whether the interface has to be told about another current game. */
+  private static hasChanged(previous: CurrentGame, next: CurrentGame): boolean {
+    return (
+      next?.appid !== previous?.appid ||
+      next?.isRunning !== previous?.isRunning ||
+      next?.isOnAnotherAccount !== previous?.isOnAnotherAccount
+    );
+  }
+
+  /** Whether the game that was running is no longer the one being played. */
+  private static hasStoppedPlaying(
+    previous: CurrentGame,
+    next: CurrentGame,
+  ): boolean {
+    const isStillRunning =
+      next?.isRunning === true && next.appid === previous?.appid;
+    return previous?.isRunning === true && !isStillRunning;
   }
 }
