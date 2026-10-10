@@ -72,6 +72,11 @@ export class Tracker {
   private now: () => number;
   private inflight = new Map<string, Promise<unknown>>();
   private statMaps = new Map<number, Map<string, string>>();
+  /**
+   * The library answer (its `fetchedAt`) that was found not to list a game,
+   * by account and game.
+   */
+  private unlisted = new Map<string, number>();
 
   constructor(deps: ITrackerDeps) {
     this.store = deps.store;
@@ -160,14 +165,33 @@ export class Tracker {
     return result;
   }
 
+  /**
+   * The name the library gives a game. A game the library on hand does not
+   * list may have joined it since, so the library is asked for again, but
+   * once per answer: one that was just read, or was already found not to
+   * list the game, is not asked for anew until it is no longer fresh.
+   */
   private async gameName(owner: string, appid: number): Promise<string> {
     const find = (games: IRawOwnedGame[]): string | undefined =>
       games.find((g) => g.appid === appid)?.name;
-    return (
-      find(await this.libraryOf(owner)) ??
-      find(await this.libraryOf(owner, true)) ??
-      `App ${appid}`
-    );
+    const answerOnHand = (): number | undefined =>
+      this.store.getLibrary(owner)?.fetchedAt;
+    const key = `${owner}:${appid}`;
+
+    const before = answerOnHand();
+    let name = find(await this.libraryOf(owner));
+    const isWorthAskingAgain =
+      answerOnHand() === before && this.unlisted.get(key) !== before;
+    if (name === undefined && isWorthAskingAgain)
+      name = find(await this.libraryOf(owner, true));
+
+    if (name !== undefined) {
+      this.unlisted.delete(key);
+      return name;
+    }
+    const answer = answerOnHand();
+    if (answer !== undefined) this.unlisted.set(key, answer);
+    return `App ${appid}`;
   }
 
   private async schema(

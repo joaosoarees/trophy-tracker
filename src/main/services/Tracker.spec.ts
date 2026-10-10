@@ -168,6 +168,28 @@ function setupNioh() {
   return { ...made, unlock };
 }
 
+/**
+ * A library that does not list the game 7, which the player has all the
+ * same, as the code allows. `acquire` makes the library list it from then on.
+ */
+function setupUnlistedGame() {
+  let isListed = false;
+  const made = setup({
+    owned: () => [game(1, 'A', 10), ...(isListed ? [game(7, 'Game', 5)] : [])],
+    achievements: noAchievementList,
+    player: () => achieved(0, 0),
+  });
+  const acquire = (): void => {
+    isListed = true;
+  };
+  /** The periodic check of the game 7, a minute after the read before it. */
+  const poll = (): Promise<IGameView> => {
+    made.advance(60_000);
+    return made.sut.getGame(7, 'poll');
+  };
+  return { ...made, acquire, poll };
+}
+
 /** A library with the games 1 and 2, the first with `playtime` minutes. */
 function setupTwoGames() {
   let playtime = 10;
@@ -512,6 +534,7 @@ describe('Tracker', () => {
         achievements: noAchievementList,
         player: () => achieved(0, 0),
       });
+      await sut.library();
       const reading = sut.getGame(7);
       store.setActiveAccount(OTHER_STEAM_ID);
 
@@ -524,6 +547,57 @@ describe('Tracker', () => {
             : [],
         ),
       ).toEqual([STEAM_ID, STEAM_ID]);
+    });
+
+    it('should ask for the library once when the periodic check keeps reading a game it does not list', async () => {
+      const { sut, client, poll } = setupUnlistedGame();
+      await sut.getGame(7);
+      await poll();
+      await poll();
+
+      await poll();
+
+      expect(requestsTo(client, 'getOwnedGames')).toBe(1);
+    });
+
+    it('should ask for the library once more when the one it had does not list the game', async () => {
+      const { sut, client, poll } = setupUnlistedGame();
+      await sut.library();
+      await sut.getGame(7);
+      await poll();
+
+      await poll();
+
+      expect(requestsTo(client, 'getOwnedGames')).toBe(2);
+    });
+
+    it('should ask for the library again when the answer that did not list the game is over ten minutes old', async () => {
+      const { sut, client, advance, poll } = setupUnlistedGame();
+      await sut.getGame(7);
+      advance(11 * 60_000);
+      await poll();
+
+      await poll();
+
+      expect(requestsTo(client, 'getOwnedGames')).toBe(2);
+    });
+
+    it('should name a game that joined the library after the library was read', async () => {
+      const { sut, acquire } = setupUnlistedGame();
+      await sut.library();
+      acquire();
+
+      const view = await sut.getGame(7);
+
+      expect(view.name).toBe('Game');
+    });
+
+    it('should name a game after its appid when the library does not list it', async () => {
+      const { sut } = setupUnlistedGame();
+
+      const view = await sut.getGame(7);
+
+      expect(view.name).toBe('App 7');
     });
 
     it('should attach the header the store has for the game', async () => {
