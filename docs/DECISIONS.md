@@ -2,6 +2,10 @@
 
 Why things are the way they are, for the choices that are not obvious from the code. `CLAUDE.md` and the other files of this folder hold the rules; this file holds the reasons and what was tried before. Newest first. Add an entry when a choice is made that someone could reasonably want to undo.
 
+## No React Compiler
+
+Measured on 2026-10-10 (React 19.3.0, `babel-plugin-react-compiler` 1.0.0) against a rule set beforehand: adopt only if a scenario gains 20% outside the noise, none gets worse, and every check passes. Typing a note, checking a checklist and the dashboard gained 30% to 90%, which is a few milliseconds at most; clearing the achievement search got slower in most runs at the size of a typical game, and the bundle grew 8%. One condition failed, so it stayed off. The numbers and the way to measure again are in `docs/store.md`.
+
 ## Cleared out before 1.0
 
 With the app in its final shape, what had lost its reason was removed rather than carried into 1.0:
