@@ -52,11 +52,11 @@ function setup(overrides: Partial<IGameWatcherDeps> = {}) {
 }
 
 describe('GameWatcher', () => {
-  describe('resolveCurrent', () => {
+  describe('refreshCurrent', () => {
     it('should show the last played game when no game is running', async () => {
       const { sut } = setup();
 
-      const current = await sut.resolveCurrent();
+      const current = await sut.refreshCurrent();
 
       expect(current).toEqual({ appid: 7, isRunning: false });
     });
@@ -65,7 +65,7 @@ describe('GameWatcher', () => {
       const { sut, run } = setup();
       run(42);
 
-      const current = await sut.resolveCurrent();
+      const current = await sut.refreshCurrent();
 
       expect(current).toEqual({ appid: 42, isRunning: true });
     });
@@ -73,10 +73,10 @@ describe('GameWatcher', () => {
     it('should keep showing a game that was closed when the library names another as last played', async () => {
       const { sut, run } = setup();
       run(42);
-      await sut.resolveCurrent();
+      await sut.refreshCurrent();
       run(null);
 
-      const current = await sut.resolveCurrent();
+      const current = await sut.refreshCurrent();
 
       expect(current).toEqual({ appid: 42, isRunning: false });
     });
@@ -87,7 +87,7 @@ describe('GameWatcher', () => {
       });
       run(42);
 
-      const current = await sut.resolveCurrent();
+      const current = await sut.refreshCurrent();
 
       expect(current).toEqual({
         appid: 42,
@@ -104,7 +104,7 @@ describe('GameWatcher', () => {
       await sut.refreshCurrent();
       run(null);
 
-      const current = await sut.resolveCurrent();
+      const current = await sut.refreshCurrent();
 
       expect(current).toEqual({ appid: 7, isRunning: false });
     });
@@ -112,7 +112,7 @@ describe('GameWatcher', () => {
     it('should show no game when the app is not set up', async () => {
       const { sut } = setup({ isConfigured: () => false });
 
-      const current = await sut.resolveCurrent();
+      const current = await sut.refreshCurrent();
 
       expect(current).toBeNull();
     });
@@ -122,7 +122,7 @@ describe('GameWatcher', () => {
         isConfigured: () => false,
       });
 
-      await sut.resolveCurrent();
+      await sut.refreshCurrent();
 
       expect(lastPlayedAppIdMock).not.toHaveBeenCalled();
     });
@@ -132,7 +132,7 @@ describe('GameWatcher', () => {
         lastPlayedAppId: () => Promise.reject(new Error('offline')),
       });
 
-      const current = await sut.resolveCurrent();
+      const current = await sut.refreshCurrent();
 
       expect(current).toBeNull();
     });
