@@ -46,10 +46,10 @@ export function listGames(
 
 /** How many games each list has, and how many of them match the search. */
 export function countGames(games: IGameSummary[], query: string) {
-  const count = (filter: DashboardFilter, matching: boolean): number =>
+  const count = (filter: DashboardFilter, isMatching: boolean): number =>
     games.filter(
       (game) =>
-        inList(game, filter) && (!matching || matches(query, game.name)),
+        inList(game, filter) && (!isMatching || matches(query, game.name)),
     ).length;
 
   return {

@@ -33,7 +33,7 @@ function OnboardingFallback() {
 function Content() {
   const {
     appState,
-    showOnboarding,
+    isOnboardingShown,
     isAddingAccount,
     handleOnboardingDone,
     handleOnboardingCancel,
@@ -63,7 +63,7 @@ function Content() {
     />
   );
 
-  if (showOnboarding) {
+  if (isOnboardingShown) {
     return (
       <>
         <Suspense fallback={<OnboardingFallback />}>

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Tracker } from '@main/services/Tracker';
-import { SteamClient } from '@main/steam/client';
+import { SteamClient } from '@main/steam/SteamClient';
 import { Store } from '@main/storage/Store';
 import nioh from '@test/fixtures/game-achievements-3681010.json';
 import {
@@ -244,17 +244,17 @@ describe('Tracker', () => {
   });
 
   it('reports a failed background refresh without failing the answer', async () => {
-    let broken = false;
+    let isBroken = false;
     const { tracker, advance } = setup({
       GetOwnedGames: owned(game(7, 'Game', 5)),
       GetGameAchievements: { json: { response: { achievements: [] } } },
-      GetPlayerAchievements: () => (broken ? FORBIDDEN_HTML : player(0, 0)),
+      GetPlayerAchievements: () => (isBroken ? FORBIDDEN_HTML : player(0, 0)),
     });
     const onFresh = vi.fn();
     const onError = vi.fn();
     const first = await tracker.getGameStaleFirst(7, { onFresh, onError });
 
-    broken = true;
+    isBroken = true;
     advance(5 * 60_000);
     expect(await tracker.getGameStaleFirst(7, { onFresh, onError })).toBe(
       first,

@@ -45,12 +45,12 @@ export function AppShell() {
         aria-label={t.nav.label}
         className="window-drag window-buttons-inset flex items-center gap-1 border-b"
       >
-        <TabButton active={tab === 'game'} onClick={() => goTo('game')}>
+        <TabButton isActive={tab === 'game'} onClick={() => goTo('game')}>
           <Trophy />
           {t.nav.game}
         </TabButton>
         <TabButton
-          active={tab === 'dashboard'}
+          isActive={tab === 'dashboard'}
           onClick={() => goTo('dashboard')}
         >
           <LayoutGrid />
@@ -127,7 +127,11 @@ export function AppShell() {
               onRetry={handleRetryLibrary}
             />
           ) : (
-            <Game key={game.appid} appid={game.appid} running={game.running} />
+            <Game
+              key={game.appid}
+              appid={game.appid}
+              isRunning={game.isRunning}
+            />
           )}
         </div>
 

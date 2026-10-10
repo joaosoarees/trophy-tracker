@@ -41,7 +41,7 @@ export function Onboarding({
         accounts={accounts}
         addedHere={addedHere}
         onChange={handleAccountsChange}
-        startsOpen={isAddingAccount}
+        isInitiallyOpen={isAddingAccount}
         isFinishing={isFinishing}
         // Accounts are saved as they are verified: leaving keeps them.
         onCancel={onCancel ? () => onDone(saved) : undefined}

@@ -15,14 +15,14 @@ interface IAccountStepOptions {
   /** The accounts the app already has. */
   accounts: IAccount[];
   /** The step was opened to add an account: its form is what the user came for. */
-  startsOpen: boolean;
+  isInitiallyOpen: boolean;
   /** Called with the state after an account was saved (its SteamID is given) or removed. */
   onChange: (state: IAppState, added?: string) => void;
 }
 
 export function useAccountStepController({
   accounts,
-  startsOpen,
+  isInitiallyOpen,
   onChange,
 }: IAccountStepOptions) {
   const { lockFollowingSteps } = useStepper();
@@ -30,7 +30,7 @@ export function useAccountStepController({
 
   // With no account yet the form is the step; afterwards it opens on request.
   const [isFormOpen, setIsFormOpen] = useState(
-    accounts.length === 0 || startsOpen,
+    accounts.length === 0 || isInitiallyOpen,
   );
   /** Opened with "Add another account": it can be closed again without adding. */
   const [isFormOptional, setIsFormOptional] = useState(false);
@@ -48,10 +48,10 @@ export function useAccountStepController({
   // has it or something is in the field. Again each time the form opens.
   useEffect(() => {
     if (!isFormOpen) return;
-    let active = true;
+    let isActive = true;
 
     void OnboardingService.detectSteamId().then((steamId) => {
-      if (!active || !steamId) return;
+      if (!isActive || !steamId) return;
       if (accounts.some((account) => account.steamId === steamId)) return;
 
       const current = form.getValues('accountStep.steamId');
@@ -60,7 +60,7 @@ export function useAccountStepController({
     });
 
     return () => {
-      active = false;
+      isActive = false;
     };
     // Only opening the form asks; the list changing under it does not.
     // eslint-disable-next-line react-hooks/exhaustive-deps

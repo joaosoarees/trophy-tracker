@@ -24,8 +24,8 @@ const NOTHING = makeAppInfo({ updateStatus: 'downloading' });
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 interface ISetup {
-  withAuto?: boolean;
-  blocked?: boolean;
+  hasAuto?: boolean;
+  isBlocked?: boolean;
   /** What the automatic check finds. */
   latest?: string | null;
   /** Version a previous run closed itself to install. */
@@ -33,8 +33,8 @@ interface ISetup {
 }
 
 function setup({
-  withAuto = true,
-  blocked = false,
+  hasAuto = true,
+  isBlocked = false,
   latest = '1.1.0',
   attempted = null,
 }: ISetup = {}) {
@@ -62,7 +62,7 @@ function setup({
   };
   const updates = new AppUpdates({
     currentVersion: '1.0.0',
-    auto: withAuto ? auto : null,
+    auto: hasAuto ? auto : null,
     checker: {
       getAppInfo: () => {
         calls.manual++;
@@ -73,7 +73,7 @@ function setup({
         return Promise.resolve(net.online);
       },
     },
-    isInstallBlocked: () => Promise.resolve(blocked),
+    isInstallBlocked: () => Promise.resolve(isBlocked),
     attempt: {
       get: () => attempt.version,
       set: (version) => (attempt.version = version),
@@ -97,7 +97,7 @@ function setup({
 
 describe('AppUpdates', () => {
   it('points to the download page where the app cannot update itself', async () => {
-    const { updates, calls } = setup({ withAuto: false });
+    const { updates, calls } = setup({ hasAuto: false });
     expect(await updates.getAppInfo()).toEqual(MANUAL);
     expect(await updates.checkNow()).toEqual({ ok: true, info: MANUAL });
     updates.install();
@@ -272,7 +272,7 @@ describe('AppUpdates', () => {
   });
 
   it('only tells about a version the system would refuse to install', async () => {
-    const { updates, calls } = setup({ blocked: true });
+    const { updates, calls } = setup({ isBlocked: true });
     const blockedInfo = { ...MANUAL, updateStatus: 'blocked' };
 
     expect(await updates.getAppInfo()).toEqual(blockedInfo);

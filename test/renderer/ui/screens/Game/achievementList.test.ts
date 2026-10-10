@@ -123,7 +123,7 @@ describe('listAchievements', () => {
       achievement('d', { unlocked: true, unlockedAt: 9 }),
     ]);
     expect(
-      ids(listAchievements(mixed, {}, { ...base, hiddenOnly: true })),
+      ids(listAchievements(mixed, {}, { ...base, isHiddenOnly: true })),
     ).toEqual(['a']);
     expect(
       ids(
@@ -134,7 +134,7 @@ describe('listAchievements', () => {
             ...base,
             filter: 'unlocked',
             sort: 'recent',
-            hiddenOnly: true,
+            isHiddenOnly: true,
           },
         ),
       ),

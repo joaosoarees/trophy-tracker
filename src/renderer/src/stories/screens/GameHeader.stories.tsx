@@ -22,7 +22,7 @@ const meta = {
   component: GameHeader,
   args: {
     view,
-    running: false,
+    isRunning: false,
     pending: 44,
     percent: 31,
     isComplete: false,
@@ -33,7 +33,7 @@ const meta = {
     onToggleDetails: fn(),
   },
   argTypes: {
-    running: { control: 'boolean', table: { category: 'State' } },
+    isRunning: { control: 'boolean', table: { category: 'State' } },
     isComplete: { control: 'boolean', table: { category: 'State' } },
     isLoading: { control: 'boolean', table: { category: 'State' } },
     isDetailsOpen: { control: 'boolean', table: { category: 'State' } },
@@ -59,7 +59,7 @@ type Story = StoryObj<typeof meta>;
 export const LastPlayed: Story = {};
 
 /** The game is open on Steam: a green dot that pulses, the one thing in the app that loops. */
-export const Running: Story = { args: { running: true } };
+export const Running: Story = { args: { isRunning: true } };
 
 /** A refresh is on its way: the button spins and is disabled. */
 export const Refreshing: Story = { args: { isLoading: true } };

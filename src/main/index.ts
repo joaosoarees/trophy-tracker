@@ -1,31 +1,32 @@
 import { join } from 'node:path';
 
-import { app, screen } from 'electron';
+import { app, safeStorage, screen } from 'electron';
 
 import { DEFAULT_LANGUAGE } from '@shared/i18n';
 import { IpcEvent } from '@shared/ipcEvents';
 
-import { registerIpc } from './ipc/registerIpc';
-import { createAccountFollower } from './services/accountFollower';
+import { Ipc } from './ipc/Ipc';
+import { MainWindow } from './MainWindow';
+import { AccountFollower } from './services/AccountFollower';
 import { AppUpdates } from './services/AppUpdates';
 import { GameWatcher } from './services/GameWatcher';
-import { RELEASES_REPOSITORY } from './services/releases';
-import { createRunningGameSource } from './services/runningGame';
+import { RunningGame } from './services/RunningGame';
 import { SetupService } from './services/SetupService';
 import { Tracker } from './services/Tracker';
 import { UpdateChecker } from './services/UpdateChecker';
-import { SteamClient } from './steam/client';
-import { createSteamLocal } from './steam/local';
-import { createCipher } from './storage/createCipher';
+import { FileSteam } from './steam/FileSteam';
+import { RegistrySteam } from './steam/RegistrySteam';
+import { SteamClient } from './steam/SteamClient';
+import { type ISteamLocal } from './steam/SteamLocal';
+import { Windows } from './steam/Windows';
+import { SecureCipher } from './storage/SecureCipher';
 import { Store } from './storage/Store';
-import {
-  createAutoUpdater,
-  isInstallBlockedBySystem,
-} from './system/autoUpdate';
-import { createDataFolderAccess } from './system/dataFolder';
-import { logError } from './system/errorLog';
-import { restoreBounds } from './system/windowBounds';
-import { MainWindow, MINIMUM_SIZE } from './window';
+import { AutoUpdater } from './system/AutoUpdater';
+import { Browser } from './system/Browser';
+import { DataFolder } from './system/DataFolder';
+import { ErrorLog } from './system/ErrorLog';
+import { Releases } from './system/Releases';
+import { WindowBounds } from './system/WindowBounds';
 
 // One data folder name on every system, whatever the product is called on screen.
 // An explicit --user-data-dir (used to run against a throwaway copy) is respected.
@@ -35,16 +36,15 @@ if (!app.commandLine.hasSwitch('user-data-dir')) {
   app.setPath('userData', join(appData, 'trophy-tracker'));
 }
 
-const errorLog = (): string =>
-  join(app.getPath('userData'), 'logs', 'errors.log');
-const log = (source: string, detail: string): void =>
-  logError(errorLog(), source, detail);
+const errorLog = new ErrorLog(
+  join(app.getPath('userData'), 'logs', 'errors.log'),
+);
 
 process.on('uncaughtException', (error) =>
-  log('main: uncaughtException', error.stack ?? error.message),
+  errorLog.write('main: uncaughtException', error.stack ?? error.message),
 );
 process.on('unhandledRejection', (reason) =>
-  log(
+  errorLog.write(
     'main: unhandledRejection',
     reason instanceof Error ? (reason.stack ?? reason.message) : String(reason),
   ),
@@ -55,10 +55,14 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 // Composition root: builds each piece once and hands it what it depends on.
 void app.whenReady().then(async () => {
-  const store = new Store(app.getPath('userData'), createCipher(), {
-    cacheDelay: 1_000,
-    report: (message) => log('storage', message),
-  });
+  const store = new Store(
+    app.getPath('userData'),
+    SecureCipher.create(safeStorage, process.platform),
+    {
+      cacheDelay: 1_000,
+      report: (message) => errorLog.write('storage', message),
+    },
+  );
   app.on('before-quit', () => store.flush());
   // Development only: `pnpm audit:ui` points the app at a fake Steam, so it
   // can be driven through unlocks, errors and outages with no real account.
@@ -68,69 +72,73 @@ void app.whenReady().then(async () => {
     ? undefined
     : process.env.TROPHY_TRACKER_FAKE_STEAM;
   const client = new SteamClient(fetch, DEFAULT_LANGUAGE, fakeSteam);
-  const window = new MainWindow();
+  const windows = new Windows();
+  const browser = new Browser(windows);
+  const window = new MainWindow(browser);
   const setup = new SetupService(store, client, (state) =>
     window.send(IpcEvent.stateChanged, state, false),
   );
   // With a fake Steam the local client is fake too: a folder the audit fills
   // in, read the way a Linux install is, or no client at all.
   const fakeSteamHome = process.env.TROPHY_TRACKER_FAKE_STEAM_HOME;
-  const local = !fakeSteam
-    ? createSteamLocal()
-    : createSteamLocal({
-        hasWindows: false,
+  const local: ISteamLocal = fakeSteam
+    ? new FileSteam({
         platform: 'linux',
         ...(fakeSteamHome ? { home: fakeSteamHome } : { exists: () => false }),
-      });
+      })
+    : Windows.hasWindows
+      ? new RegistrySteam(windows)
+      : new FileSteam();
   const tracker = new Tracker({
     store,
     client,
-    readStatMap: local.readStatMap,
+    readStatMap: (appid) => local.readStatMap(appid),
   });
   const updates = new AppUpdates({
     currentVersion: app.getVersion(),
-    auto: createAutoUpdater(),
+    auto: AutoUpdater.create(),
     checker: new UpdateChecker({
       currentVersion: app.getVersion(),
-      repository: RELEASES_REPOSITORY,
+      repository: Releases.REPOSITORY,
       apiBase: fakeSteam ? `${fakeSteam}/github` : undefined,
     }),
-    isInstallBlocked: isInstallBlockedBySystem,
+    isInstallBlocked: () => AutoUpdater.isInstallBlocked(windows),
     attempt: {
       get: () => store.getUpdateAttempt(),
       set: (version) => store.setUpdateAttempt(version),
     },
     onChange: (info) => window.send(IpcEvent.appInfoChanged, info),
-    logError: log,
+    logError: (source, detail) => errorLog.write(source, detail),
   });
 
   // The game that is running is always the Steam client's account's, so the
   // app follows that account on every system: the registry says who it is on
   // Windows, the client's own files elsewhere.
-  const follower = createAccountFollower({
-    getSignedInSteamId: local.getActiveSteamId,
+  const follower = new AccountFollower({
+    getSignedInSteamId: () => local.getActiveSteamId(),
     store,
     onFollow: () => window.send(IpcEvent.stateChanged, setup.getState(), true),
   });
 
+  const runningGame = new RunningGame({
+    local,
+    client,
+    store,
+    interval: fakeSteam ? 1_000 : undefined,
+  });
   const watcher = new GameWatcher({
-    getRunningAppId: createRunningGameSource({
-      local,
-      client,
-      store,
-      interval: fakeSteam ? 1_000 : undefined,
-    }),
+    getRunningAppId: () => runningGame.getAppId(),
     // The audit cannot wait a minute for each check; a user's app always can.
     intervals: fakeSteam ? { running: 2_000, unlocks: 3_000 } : undefined,
     lastPlayedAppId: () => tracker.lastPlayedAppId(),
-    followRunningGame: follower.forRunningGame,
+    followRunningGame: () => follower.forRunningGame(),
     pollGame: (appid) => setup.attempt(() => tracker.getGame(appid, 'poll')),
     isConfigured: () => setup.isConfigured,
     onCurrentChanged: (current) => window.send(IpcEvent.gameChanged, current),
     onGameUpdated: (view) => window.send(IpcEvent.gameUpdated, view),
   });
 
-  registerIpc({
+  new Ipc({
     setup,
     tracker,
     watcher,
@@ -138,20 +146,22 @@ void app.whenReady().then(async () => {
     window,
     local,
     updates,
-    dataFolder: createDataFolderAccess(app.getPath('userData')),
-    logError: log,
-  });
+    browser,
+    dataFolder: new DataFolder(app.getPath('userData')),
+    errorLog,
+  }).register();
   // Before the window opens, so it opens on the right account.
-  if (await follower.onClientChange()) watcher.forget({ current: true });
+  if (await follower.onClientChange())
+    watcher.forget({ isCurrentIncluded: true });
   app.on('second-instance', () => window.focus());
   window.open({
     title: setup.messages.appTitle,
     alwaysOnTop: store.getAlwaysOnTop(),
     bounds: store.getPreferences().rememberWindow
-      ? restoreBounds(
+      ? WindowBounds.restore(
           store.getWindowBounds(),
           screen.getAllDisplays().map((display) => display.workArea),
-          MINIMUM_SIZE,
+          MainWindow.MINIMUM_SIZE,
         )
       : null,
     onClose: (bounds) => {
@@ -161,9 +171,9 @@ void app.whenReady().then(async () => {
   watcher.start();
   setInterval(
     () =>
-      void follower.onClientChange().then((switched) => {
+      void follower.onClientChange().then((hasSwitched) => {
         // The game on screen belonged to the account that was left.
-        if (switched) watcher.forget({ current: true });
+        if (hasSwitched) watcher.forget({ isCurrentIncluded: true });
       }),
     fakeSteam ? 2_000 : 30_000,
   );

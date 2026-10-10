@@ -17,12 +17,12 @@ import { useGameController } from './useGameController';
 
 interface IGameProps {
   appid: number;
-  running: boolean;
+  isRunning: boolean;
 }
 
 // Memoised: the shell around the screens redraws for its own reasons (the
 // tab, a toggle in the bar), and none of them is this screen's business.
-export const Game = memo(function Game({ appid, running }: IGameProps) {
+export const Game = memo(function Game({ appid, isRunning }: IGameProps) {
   const t = useT();
   const {
     view,
@@ -46,7 +46,7 @@ export const Game = memo(function Game({ appid, running }: IGameProps) {
     filter,
     sort,
     query,
-    hiddenOnly,
+    isHiddenOnly,
     hiddenCount,
     handleToggleHiddenOnly,
     setFilter,
@@ -93,7 +93,7 @@ export const Game = memo(function Game({ appid, running }: IGameProps) {
     <section className="relative flex-1 overflow-y-auto">
       <GameHeader
         view={view}
-        running={running}
+        isRunning={isRunning}
         pending={pending}
         percent={percent}
         isComplete={isComplete}
@@ -151,7 +151,7 @@ export const Game = memo(function Game({ appid, running }: IGameProps) {
             query={query}
             pending={pending}
             unlocked={view.unlockedCount}
-            hiddenOnly={hiddenOnly}
+            isHiddenOnly={isHiddenOnly}
             hiddenCount={hiddenCount}
             onFilterChange={setFilter}
             onHiddenOnlyToggle={handleToggleHiddenOnly}

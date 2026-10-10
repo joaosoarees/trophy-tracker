@@ -11,7 +11,7 @@ interface IRemoteImageProps {
   /** Size and shape of the box; the image fills it. */
   className?: string;
   /** Pulse while loading. Turn off for decorative images such as backgrounds. */
-  showSkeleton?: boolean;
+  hasSkeleton?: boolean;
 }
 
 /**
@@ -23,7 +23,7 @@ export function RemoteImage({
   src,
   fallback,
   className,
-  showSkeleton = true,
+  hasSkeleton = true,
 }: IRemoteImageProps) {
   const [hasFailed, setHasFailed] = useState(!src);
 
@@ -38,7 +38,7 @@ export function RemoteImage({
       <AvatarFallback className="rounded-[inherit]">
         {hasFailed
           ? fallback
-          : showSkeleton && <Skeleton className="size-full rounded-none" />}
+          : hasSkeleton && <Skeleton className="size-full rounded-none" />}
       </AvatarFallback>
     </Avatar>
   );

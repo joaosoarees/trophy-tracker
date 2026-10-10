@@ -82,7 +82,7 @@
 
   /*
    * Where the system draws only its buttons over the app (Windows and macOS,
-   * see main/system/windowFrame.ts), it says where they are; elsewhere the
+   * see main/system/WindowFrame.ts), it says where they are; elsewhere the
    * fallbacks leave everything as it is.
    */
   :root {

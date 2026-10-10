@@ -29,7 +29,7 @@ export function useDashboardController() {
   } = useStore(
     useShallow((state) => ({
       games: state.dashboard.games,
-      isLoading: state.dashboard.loading,
+      isLoading: state.dashboard.isLoading,
       error: state.dashboard.error,
       progress: state.dashboard.progress,
       filter: state.navigation.dashboardFilter,

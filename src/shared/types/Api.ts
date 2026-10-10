@@ -85,10 +85,10 @@ export interface IApi {
 
   /**
    * The state changed without the interface asking: a key was refused, or the
-   * app started following the account signed in to Steam (`followed`).
+   * app started following the account signed in to Steam (`hasFollowed`).
    */
   onStateChanged: (
-    cb: (state: IAppState, followed: boolean) => void,
+    cb: (state: IAppState, hasFollowed: boolean) => void,
   ) => () => void;
   onGameChanged: (cb: (current: CurrentGame) => void) => () => void;
   onGameUpdated: (cb: (view: IGameView) => void) => () => void;

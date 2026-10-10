@@ -13,9 +13,9 @@ type NavigationStore = {
   /** Which list the game screen shows; the same for every game. */
   achievementFilter: AchievementFilter;
   /** Whether the game screen shows only hidden achievements. */
-  hiddenOnly: boolean;
+  isHiddenOnly: boolean;
   /** Whether the game header shows its details; the same for every game. */
-  gameDetailsOpen: boolean;
+  isGameDetailsOpen: boolean;
   /** Which list the dashboard shows. */
   dashboardFilter: DashboardFilter;
   /** Game picked in the dashboard; holds until a game is opened on Steam. */
@@ -76,8 +76,8 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
   tab: safeSessionStorageGetItem<Tab>(KEYS.tab) ?? 'game',
   achievementFilter: savedFilter(),
   dashboardFilter: savedDashboardFilter(),
-  hiddenOnly: safeSessionStorageGetItem<unknown>(KEYS.hiddenOnly) === true,
-  gameDetailsOpen:
+  isHiddenOnly: safeSessionStorageGetItem<unknown>(KEYS.hiddenOnly) === true,
+  isGameDetailsOpen:
     safeSessionStorageGetItem<unknown>(KEYS.gameDetailsOpen) === true,
   pickedAppId: safeSessionStorageGetItem<number>(KEYS.pickedAppId),
   seenRunningAppId: safeSessionStorageGetItem<number>(KEYS.seenRunningAppId),
@@ -117,11 +117,11 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
   },
 
   toggleHiddenOnly: () => {
-    const hiddenOnly = !get().navigation.hiddenOnly;
-    remember('hiddenOnly', hiddenOnly);
+    const isHiddenOnly = !get().navigation.isHiddenOnly;
+    remember('hiddenOnly', isHiddenOnly);
     set(
       (prevState) => {
-        prevState.navigation.hiddenOnly = hiddenOnly;
+        prevState.navigation.isHiddenOnly = isHiddenOnly;
       },
       false,
       'navigation/toggleHiddenOnly',
@@ -129,11 +129,11 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
   },
 
   toggleGameDetails: () => {
-    const gameDetailsOpen = !get().navigation.gameDetailsOpen;
-    remember('gameDetailsOpen', gameDetailsOpen);
+    const isGameDetailsOpen = !get().navigation.isGameDetailsOpen;
+    remember('gameDetailsOpen', isGameDetailsOpen);
     set(
       (prevState) => {
-        prevState.navigation.gameDetailsOpen = gameDetailsOpen;
+        prevState.navigation.isGameDetailsOpen = isGameDetailsOpen;
       },
       false,
       'navigation/toggleGameDetails',
@@ -150,7 +150,7 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
         prevState.navigation.tab = 'game';
         // A filter the user turned on for another game would leave this one
         // looking empty for no reason they can see.
-        prevState.navigation.hiddenOnly = false;
+        prevState.navigation.isHiddenOnly = false;
       },
       false,
       'navigation/pickGame',
@@ -172,7 +172,7 @@ export const createNavigationSlice: StoreSlice<NavigationSlice> = (
         prevState.navigation.pickedAppId = null;
         prevState.navigation.tab = 'game';
         // The app switched games by itself: see `pickGame`.
-        prevState.navigation.hiddenOnly = false;
+        prevState.navigation.isHiddenOnly = false;
       },
       false,
       'navigation/followRunningGame',

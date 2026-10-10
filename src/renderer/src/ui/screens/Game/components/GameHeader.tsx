@@ -11,7 +11,7 @@ import { cn } from '@ui/utils/cn';
 
 interface IGameHeaderProps {
   view: IGameView;
-  running: boolean;
+  isRunning: boolean;
   pending: number;
   percent: number;
   isComplete: boolean;
@@ -26,7 +26,7 @@ interface IGameHeaderProps {
 
 export function GameHeader({
   view,
-  running,
+  isRunning,
   pending,
   percent,
   isComplete,
@@ -49,7 +49,7 @@ export function GameHeader({
         <RemoteImage
           src={view.header}
           fallback={null}
-          showSkeleton={false}
+          hasSkeleton={false}
           // A finished game shows its art clearly; until then it stays back.
           className={cn(
             'absolute inset-0 size-full rounded-none',
@@ -64,7 +64,7 @@ export function GameHeader({
           <h1 className="min-w-0 flex-1 truncate text-xl font-semibold">
             {view.name}
           </h1>
-          {running && (
+          {isRunning && (
             <span className="text-success flex items-center gap-1.5 text-xs font-medium">
               <span className="bg-success size-1.5 animate-pulse rounded-full" />
               {t.game.running}

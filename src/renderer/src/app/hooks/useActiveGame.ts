@@ -5,7 +5,7 @@ import { useStore } from '@app/store';
 /** The game on screen: the one picked in the dashboard or, without a pick, the current one. */
 export function useActiveGame(): {
   appid: number | null;
-  running: boolean;
+  isRunning: boolean;
   /** The running game belongs to a Steam account the app does not have. */
   isOnAnotherAccount: boolean;
 } {
@@ -18,8 +18,8 @@ export function useActiveGame(): {
 
       return {
         appid,
-        running: isCurrent && current.running,
-        isOnAnotherAccount: isCurrent && current.otherAccount === true,
+        isRunning: isCurrent && current.isRunning,
+        isOnAnotherAccount: isCurrent && current.isOnAnotherAccount === true,
       };
     }),
   );

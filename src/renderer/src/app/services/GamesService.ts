@@ -11,9 +11,9 @@ export class GamesService extends Service {
 
   static getGame(
     appid: number,
-    force = false,
+    isForced = false,
   ): Promise<CheckResult<IGameView>> {
-    return this.api.getGame(appid, force);
+    return this.api.getGame(appid, isForced);
   }
 
   /** Returns the function that stops listening. */

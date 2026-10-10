@@ -43,16 +43,14 @@ export default defineConfig({
         // Texts and constants: nothing to execute.
         'src/shared/i18n/locales/**',
         'src/shared/ipcEvents.ts',
-        'src/main/services/releases.ts',
         // Wiring that only runs inside Electron; it is exercised by running
         // the app and by the package test in a container.
         'src/main/index.ts',
-        'src/main/window.ts',
+        'src/main/MainWindow.ts',
         'src/main/ipc/**',
-        'src/main/system/autoUpdate.ts',
-        'src/main/system/browser.ts',
-        'src/main/storage/createCipher.ts',
-        'src/main/system/dataFolder.ts',
+        'src/main/system/AutoUpdater.ts',
+        'src/main/system/Browser.ts',
+        'src/main/system/DataFolder.ts',
       ],
       // `lcovonly` (the report as one file, no pages) is what the coverage badge of the README is made from (CI sends
       // the report to Codecov).

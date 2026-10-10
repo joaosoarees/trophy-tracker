@@ -24,18 +24,18 @@ export function mergeView(
 ): IGameView {
   if (!previous || previous.appid !== next.appid) return next;
   const before = new Map(previous.achievements.map((a) => [a.id, a]));
-  let changed = previous.achievements.length !== next.achievements.length;
+  let hasChanged = previous.achievements.length !== next.achievements.length;
   const achievements = next.achievements.map((a, i) => {
     const old = before.get(a.id);
     if (old && sameAchievement(old, a)) {
-      if (previous.achievements[i] !== old) changed = true;
+      if (previous.achievements[i] !== old) hasChanged = true;
       return old;
     }
-    changed = true;
+    hasChanged = true;
     return a;
   });
   if (
-    !changed &&
+    !hasChanged &&
     previous.name === next.name &&
     previous.header === next.header
   )

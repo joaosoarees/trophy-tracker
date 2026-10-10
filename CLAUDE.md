@@ -16,7 +16,7 @@ pnpm test            # Vitest, once (test:coverage also measures coverage, as CI
 pnpm test:watch      # re-runs the tests affected by each file you save
 pnpm test:verbose    # lists every test by name, grouped by file
 pnpm typecheck   # tsc on both projects (main process and interface)
-pnpm lint        # ESLint (lint:fix to auto-fix)
+pnpm lint        # ESLint, then knip (lint:fix to auto-fix)
 pnpm format      # Prettier (format:check to only verify)
 pnpm screenshots # retakes the pictures of the README (docs/screenshots/), from the app on demonstration data
 pnpm audit:ui    # builds the app, runs it against a fake Steam and audits every screen and flow
@@ -37,16 +37,20 @@ Enforced by tooling; do not work around it.
 
 - **Formatting:** Prettier with `{ "singleQuote": true }`: single quotes, semicolons, 80 columns, trailing commas. `.editorconfig` covers indentation and line endings.
 - **Lint:** ESLint 9 flat config in `eslint.config.mjs`: typescript-eslint type-checked rules, React, React Hooks, jsx-a11y and import ordering. `src/renderer/src/ui/primitives` (generated shadcn/ui) is formatted but not linted. Exceptions for tests, config files and async JSX handlers are written down in the config with the reason.
+- **File names:** a file that holds a class, a component or only types is named after it, capitalised (`Tracker.ts`, `AccountCard.tsx`, `SteamLocal.ts`); a file of functions or a hook starts in lower case (`checklist.ts`, `useT.ts`). Entry points are `index.ts(x)` and `main.tsx`.
+- **The main process is written in classes.** Something with state or dependencies is a class that receives them in the constructor (`AccountFollower`, `RunningGame`, `Windows`, `DataFolder`); stateless helpers are static methods of a class named for their subject (`Achievements.buildGameView`, `TextVdf.parse`, `WindowBounds.restore`, `Releases.downloadUrl`), not loose functions. A class that may not exist on this system has a static `create` that answers `null` (`AutoUpdater.create`, `SecureCipher.create`). `shared/` and the interface keep plain functions and hooks.
+- **A boolean is named `is…`, `has…`, `can…` or `should…`** (`isRunning`, `hasSkeleton`, `canTrackRunningGame`), whether a variable, a parameter, a property or a prop; `@typescript-eslint/naming-convention` enforces it. The exceptions are listed, with the reason for each, at the top of `eslint.config.mjs`: names written to the user's files or sent by Steam (`hidden`, `unlocked`, `done`, `pinned`, `alwaysOnTop`, `rememberWindow`), the native attribute a prop stands for (`open`, `checked`, `disabled`, `readOnly`), `ok` and a setter's `value`.
+- **Nothing unused stays:** `knip` (part of `pnpm lint`, of the commit hook and of CI) fails on a file nothing imports, an export nothing uses and a dependency nothing needs. Its few exceptions are in `knip.jsonc`, each with its reason. A change removes what it leaves unused.
 - **Interfaces start with `I`** (`IAchievement`, `IGameView`, `IStepperProps`); the rule is `@typescript-eslint/naming-convention`. Type aliases (`type X = ...`) have no prefix. The global `Window` augmentation is the only exception.
 - **Imports** are grouped (builtin, external, internal `@app`/`@ui`/`@shared`, parent, sibling, index), alphabetised, with a blank line between groups, and type imports are inline (`import { type X }`). `pnpm lint:fix` sorts them.
 - **Function-typed members** use property syntax (`onClick: () => void`), not method syntax.
-- **No untyped JSON:** responses from Steam are typed where they are read (`Envelope<T>`, `PlayerStats<T>` in `steam/client.ts`).
+- **No untyped JSON:** responses from Steam are typed where they are read (`Envelope<T>`, `PlayerStats<T>` in `steam/SteamClient.ts`).
 - **TypeScript projects:** `tsconfig.node.json` (main, preload, shared, tests; no DOM) and `tsconfig.web.json` (interface and shared; no Node types), both extending `tsconfig.base.json`. Using a browser API in the main process, or a Node API in the interface, is a compile error.
 - **Version pins with a reason:** TypeScript stays on 6.0 because typescript-eslint does not support 7 yet, and ESLint stays on 9 because the React and jsx-a11y plugins do not support 10 yet. Revisit both when the plugins catch up.
 
 ## Platforms
 
-The same code runs on Windows, macOS, Linux and, for development, WSL. What differs per system is isolated in `main/steam/` (`local.ts`, `windows.ts`, `steamFiles.ts`), `main/system/` and `storage/createCipher.ts`; services, IPC handlers and the interface never test `process.platform`.
+The same code runs on Windows, macOS, Linux and, for development, WSL. What differs per system is isolated in `main/steam/` (`RegistrySteam.ts`, `FileSteam.ts`, `Windows.ts`, `SteamFiles.ts`), `main/system/` and `storage/SecureCipher.ts`; services, IPC handlers and the interface never test `process.platform`.
 
 | What                            | Windows (and WSL)                                  | macOS and Linux                                             |
 | ------------------------------- | -------------------------------------------------- | ----------------------------------------------------------- |
@@ -55,14 +59,14 @@ The same code runs on Windows, macOS, Linux and, for development, WSL. What diff
 | Steam folder (counter stat map) | registry, `SteamPath`                              | the known install paths, first one that exists              |
 | Opening links                   | Electron (`rundll32.exe` on WSL)                   | Electron                                                    |
 
-- `steam/local.ts` builds `ISteamLocal` (registry or files) once; services receive it and never ask which system they are on. `services/runningGame.ts` picks the registry when there is one and the Web API otherwise, reusing the last answer when a call fails so a network hiccup does not look like the game closing. When a game closes, `GameWatcher` keeps it as the last one played instead of asking the library, whose cached copy still names the game played before it.
-- `steam/windows.ts` is the Windows side. On WSL it calls the same `.exe` files through interop (`reg.exe`, `rundll32.exe`, `powershell.exe`); WSL is recognised by the kernel name **and** `WSL_DISTRO_NAME`, so a container on a WSL host counts as plain Linux.
-- `system/browser.ts` hides the WSL detour: links must open in the Windows browser.
+- `ISteamLocal` (`steam/SteamLocal.ts`) is what the installed Steam client tells; `index.ts` builds it once, as a `RegistrySteam` or a `FileSteam`, and services receive it and never ask which system they are on. `services/RunningGame.ts` picks the registry when there is one and the Web API otherwise, reusing the last answer when a call fails so a network hiccup does not look like the game closing. When a game closes, `GameWatcher` keeps it as the last one played instead of asking the library, whose cached copy still names the game played before it.
+- `steam/Windows.ts` is the Windows side. On WSL it calls the same `.exe` files through interop (`reg.exe`, `rundll32.exe`, `powershell.exe`); WSL is recognised by the kernel name **and** `WSL_DISTRO_NAME`, so a container on a WSL host counts as plain Linux.
+- `system/Browser.ts` hides the WSL detour: links must open in the Windows browser.
 - **The app raises no system notification.** Steam already announces an unlocked achievement; the app says what was unlocked, and how many are left, in the notice at the top of the list. A notification of its own was removed as redundant (and it needed a PowerShell detour on WSL).
 - The Web API only reports the running game when the profile shows it; on macOS and Linux a profile that hides the game status simply never switches games on its own.
 - The data folder is `trophy-tracker` on every system (set in `main/index.ts`).
 - A second launch focuses the open window (`requestSingleInstanceLock`).
-- **Windows and macOS have no title bar** (`system/windowFrame.ts`): the system draws only its own buttons, over the app's tab bar, so snapping and the maximise menu keep working. The interface never asks which system it is on: CSS learns where the buttons are from `env(titlebar-area-*)` (the `window-drag`, `window-buttons-inset`, `window-bar` and `h-below-window-bar` utilities in `ui/styles/index.css`), and the fallbacks leave Linux, which keeps the system's title bar, as it was. The tab bar drags the window; a screen without it (onboarding, update, crash) starts with `ui/components/WindowBar`, the strip the window is dragged by. Whatever is added to the tab bar must fit beside the system's buttons at 480 px in French, the tightest case (138 px of buttons on Windows).
+- **Windows and macOS have no title bar** (`system/WindowFrame.ts`): the system draws only its own buttons, over the app's tab bar, so snapping and the maximise menu keep working. The interface never asks which system it is on: CSS learns where the buttons are from `env(titlebar-area-*)` (the `window-drag`, `window-buttons-inset`, `window-bar` and `h-below-window-bar` utilities in `ui/styles/index.css`), and the fallbacks leave Linux, which keeps the system's title bar, as it was. The tab bar drags the window; a screen without it (onboarding, update, crash) starts with `ui/components/WindowBar`, the strip the window is dragged by. Whatever is added to the tab bar must fit beside the system's buttons at 480 px in French, the tightest case (138 px of buttons on Windows).
 
 ## Packaging and releases
 
@@ -71,14 +75,14 @@ How it all works, and why, is in `docs/releases.md`: **read it before touching**
 - **Nothing is pushed, tagged or published without an explicit request.** A `v*.*.*` tag publishes a release by itself (`release.yml`), and installed apps update from it.
 - To release: write the version's section in `CHANGELOG.md` (what changed for whoever uses the app, not what changed in the code; the release shows it, and a version with no section is not published), bump `version` in `package.json`, commit, push, wait for CI, then tag `vX.Y.Z` (it must match `version`) and push the tag.
 - **No `node_modules` go into the package**: everything is bundled into `out/`. A package imported by `src/` goes into `dependencies`, tooling into `devDependencies`.
-- **Installer names say the system** and are set in three places that change together: `electron-builder.yml`, `scripts/publish-release.sh` and `downloadUrl` in `services/releases.ts`.
+- **Installer names say the system** and are set in three places that change together: `electron-builder.yml`, `scripts/publish-release.sh` and `Releases.downloadUrl` in `system/Releases.ts`.
 - **The app never restarts by itself while in use**: only as it opens, before anything was shown; otherwise it asks. An install that failed is never tried automatically again (`updateAttempt`).
 - **Installers are not signed yet.** Windows with Smart App Control refuses them, so there the app does not download (`updateStatus: 'blocked'`); macOS only gets a notice with the download.
 - `ci.yml` runs format, lint, types, tests with coverage and the build on Linux, and the tests again on Windows and macOS. A test must not assume a path separator or permission bits.
 
 ## Production behaviour
 
-- **Errors are logged locally, never sent anywhere:** `system/errorLog.ts` writes to `logs/errors.log` in the data folder (rotated at 512 KB). The main process logs uncaught exceptions and rejections; the interface reports its own through `SystemService.logError` (`app/lib/reportUnhandledErrors.ts` and `ui/components/ErrorBoundary`).
+- **Errors are logged locally, never sent anywhere:** `system/ErrorLog.ts` writes to `logs/errors.log` in the data folder (rotated at 512 KB). The main process logs uncaught exceptions and rejections; the interface reports its own through `SystemService.logError` (`app/lib/reportUnhandledErrors.ts` and `ui/components/ErrorBoundary`).
 - **A render error does not leave a blank window:** `ErrorBoundary` wraps the app and shows `CrashScreen` with a reload button.
 - **Code only needed sometimes is loaded lazily:** the onboarding is loaded with `app/lib/namedLazyLoad.ts` inside `Suspense`.
 - The interface bundle is minified (`electron.vite.config.ts`). Its main file is about 510 kB, roughly half of it `react-dom`; the size warning is set to 800 kB because the file is read from disk, not downloaded. If the warning shows again, find out what grew before raising the limit.
@@ -104,25 +108,26 @@ src/shared/            the contract between the two sides: types and pure logic
 
 src/main/              main process: the only part that talks to Steam and to the disk
   index.ts               composition root: builds each piece once and wires them together
-  window.ts              MainWindow: the single window and the events pushed to it
-  ipc/registerIpc.ts     answers IApi; handlers only route, the work lives in the services
+  MainWindow.ts          the single window and the events pushed to it
+  ipc/Ipc.ts             answers IApi; handlers only route, the work lives in the services
   services/
     Tracker.ts             reads games and the dashboard: cache, deduplication, art
     SetupService.ts        setup state, language, the accounts and the checks that get one in
-    accountFollower.ts     keeps the app on the account signed in to the Steam client
+    AccountFollower.ts     keeps the app on the account signed in to the Steam client
     GameWatcher.ts         follows the running game and keeps its view fresh while it is played
-    runningGame.ts         which game is running: registry, or the Web API where there is none
+    RunningGame.ts         which game is running: registry, or the Web API where there is none
     UpdateChecker.ts       asks GitHub whether a newer version was released
     AppUpdates.ts          self-update where the system allows it, the notice elsewhere
-    onboardingChecks.ts    key + SteamID and privacy checks against Steam
-  steam/                 client.ts (Web API), achievements.ts (buildGameView, guideUrl),
-                         local.ts (ISteamLocal: what the installed Steam client tells),
-                         windows.ts (registry and WSL interop), steamFiles.ts and textVdf.ts
-                         (Steam folder on macOS and Linux), vdf.ts (binary cache reader)
-  storage/               Store.ts (JSON persistence), secureCipher.ts and createCipher.ts (key encryption),
-  system/                browser.ts (links), errorLog.ts (local log), dataFolder.ts, windowBounds.ts,
-                         windowFrame.ts (title bar or only the system's buttons, per system),
-                         autoUpdate.ts (electron-updater, where the app can replace itself)
+  steam/                 SteamClient.ts (Web API), Achievements.ts (buildGameView, guideUrl),
+                         SteamLocal.ts (ISteamLocal: what the installed Steam client tells) and its
+                         two forms, RegistrySteam.ts (Windows) and FileSteam.ts (macOS and Linux),
+                         Windows.ts (registry and WSL interop), SteamFiles.ts (the client's folder),
+                         TextVdf.ts and BinaryVdf.ts (Valve's two file formats)
+  storage/               Store.ts (JSON persistence), SecureCipher.ts (key encryption)
+  system/                Browser.ts (links), ErrorLog.ts (local log), DataFolder.ts, WindowBounds.ts,
+                         WindowFrame.ts (title bar or only the system's buttons, per system),
+                         AutoUpdater.ts (electron-updater, where the app can replace itself),
+                         Releases.ts (the repository and the download link of a version)
 
 src/preload/           exposes `window.api` (contextBridge), typed by `IApi`
 
@@ -162,8 +167,8 @@ ui (screens, components) → app/store and app/hooks → app/services → window
 
 - A screen or component never calls `window.api`; a lint rule enforces it. It reads the store, calls a store action, or (for one-off requests such as opening a link or an onboarding check) calls a service.
 - Services hold no state: they are typed doors to the main process. State lives in the store.
-- In the main process, `registerIpc` holds no logic and services receive what they depend on through the constructor (see `index.ts`), which is what makes them testable without Electron.
-- To add a call: a method on `IApi` (`shared/types/Api.ts`), a handler in `main/ipc/registerIpc.ts`, the name in the list in `preload/index.ts`, and a method on the matching class in `app/services`.
+- In the main process, `Ipc` holds no logic and services receive what they depend on through the constructor (see `index.ts`), which is what makes them testable without Electron.
+- To add a call: a method on `IApi` (`shared/types/Api.ts`), a handler in `main/ipc/Ipc.ts`, the name in the list in `preload/index.ts`, and a method on the matching class in `app/services`.
 
 ### Screens and components
 
@@ -197,8 +202,8 @@ The app keeps several Steam accounts and follows one at a time. An account is a 
 - **The key never reaches the interface.** `IAccount` carries its last four characters (`keyEnding`) and nothing else; `ui/components/MaskedKey` is the only way a saved key is shown. There is no reveal and no copy. A key goes in through `KeyField` and is forgotten by the interface as soon as it is saved.
 - **Status of a key** (`AccountStatus`): `valid`, `rejected`, `rateLimited`. Steam answers a revoked key and a mistyped one the same way (403 as HTML), so there is one "rejected". `SetupService.attempt` records what each read says about the key in use and tells the interface (`state-changed`) only when it is news. **A rejected key no longer sends the user back to the setup:** the app stays open with what it had, `AppShell` shows `KeyTroubleNotice` over the Game and the Dashboard, and "Replace key" in Settings fixes it. The onboarding only shows when there is no account at all.
 - **Switching** (`settings.switchAccount`) flushes pending note edits first, since they belong to the account being left. `useAppController` runs `connectStore` again for each account: what was read for one goes off the screen and the other is loaded, instantly when it has a cache.
-- **The app follows the account signed in to Steam**, on every system (`services/accountFollower.ts`). The Steam client says who that is (the registry on Windows, `loginusers.vdf` elsewhere), and the app switches, with a toast, in two moments: when the client's account changes (asked as the app opens and every 30 s), and **when a game starts**, whatever account was picked by hand. An account picked by hand therefore stands until a game starts.
-- **The running game is always the client's account's.** It is never shown with another account's data: `GameWatcher` asks the follower whose game it is when a game starts. Off Windows, the running game is asked about on the profile of the client's account when the app has it (`runningGame.ts`), not on the one in use. **While a game runs, the account playing it cannot be left** (`GameWatcher.isPlaying`: Settings draws the other cards as not clickable and says why, and the main process refuses the switch). If the client's account is one the app does not have, the Game tab says so and offers to add it (`CurrentGame.otherAccount`, `AppShell/GameOnAnotherAccount`), and that game is neither read nor remembered as the last one played.
+- **The app follows the account signed in to Steam**, on every system (`services/AccountFollower.ts`). The Steam client says who that is (the registry on Windows, `loginusers.vdf` elsewhere), and the app switches, with a toast, in two moments: when the client's account changes (asked as the app opens and every 30 s), and **when a game starts**, whatever account was picked by hand. An account picked by hand therefore stands until a game starts.
+- **The running game is always the client's account's.** It is never shown with another account's data: `GameWatcher` asks the follower whose game it is when a game starts. Off Windows, the running game is asked about on the profile of the client's account when the app has it (`RunningGame.ts`), not on the one in use. **While a game runs, the account playing it cannot be left** (`GameWatcher.isPlaying`: Settings draws the other cards as not clickable and says why, and the main process refuses the switch). If the client's account is one the app does not have, the Game tab says so and offers to add it (`CurrentGame.isOnAnotherAccount`, `AppShell/GameOnAnotherAccount`), and that game is neither read nor remembered as the last one played.
 - **One card per account.** Settings lists the accounts as `AccountCard`s: the one in use has the accent border and opens, inside the card, its masked key with "Replace key" and "Remove account" (`Settings/components/AccountDetails`); any other card is one button that switches to it. Nothing about an account is drawn outside its card.
 - **A card keeps its shape when the account in use changes.** `AccountCard` is drawn the same way in use or not; what makes another account clickable is a button laid under the card's content. The same goes for anything whose state flips between "is a button" and "is not": change what is inside, not the element.
 - **Adding and removing.** The dashed card at the end of the list opens the onboarding with only its account and final steps (`navigation.isAddingAccount`), the form already open; the account just added becomes the one in use. A SteamID that is already saved is refused. Removing an account deletes its key, its cache and its notes, and the dialog says so by name; removing the last one leads back to the onboarding.
@@ -230,7 +235,7 @@ Things that have already cost time:
 - One file per language in `src/shared/i18n/locales/`. `en.ts` is the reference: the `Messages` type comes from it, so a new key starts there and the compiler flags whatever is missing elsewhere. Messages are strings or functions (`left: (n) => ...`) for interpolation and plurals; there is no translation library.
 - New language: create the file and register it in `i18n/index.ts` with the name Steam uses (`steam`), the locale for dates and numbers (`locale`) and the store country.
 - The language changes **the whole app**: texts and error messages (the main process translates with `SetupService.messages`), achievement names and descriptions and game art (requested from Steam in that language), and the suffix of guide searches.
-- No user-facing text is hard-coded: in the interface use `const t = useT()`; in the main process, take `Messages` as a parameter. `SteamError` carries only the kind of error; the text comes from `steamErrorMessage(m, e)`.
+- No user-facing text is hard-coded: in the interface use `const t = useT()`; in the main process, take `Messages` as a parameter. `SteamError` carries only the kind of error; the text comes from `error.describe(messages)`.
 - The language lives in `settings.json`. Changing it drops the translated cache (games, achievement lists, art); `cache.json` records which language it was read in and is dropped on startup if it does not match.
 - In Settings, changing the language saves and **reloads the window**. In the onboarding the change is immediate, with no reload, because there is no Steam data on screen yet.
 - The tab, the picked game and the already-seen running game are kept in `sessionStorage` by `navigationSlice` so the reload does not lose them.
@@ -366,11 +371,11 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 - **`it.each` for the same check over several inputs**, with the case in the name (`'sorts the pending list by $sort'`).
 - **Factories in `test/factories/`** (`makeAchievement`, `makeGameView`, `makeGameSummary`, `makeAppInfo`): each returns a valid object and takes only what the test is about. Do not rebuild these objects by hand in a test file; a file may wrap a factory when all its tests share a default (`rarity: 50`).
 - **Fakes, not mocks:** services receive fakes through the constructor (`fakeFetch` in `test/helpers.ts`, a fake updater, an injected clock) and tests assert on results, not on which method was called. No mocking library. `vi.fn` is fine for a callback whose calls are the result.
-- **Code that calls the system takes it as a dependency, defaulting to the real thing:** the functions of `steam/windows.ts` take the command runner as their last argument, `createSteamLocal` takes the disk and the registry, and `storage/secureCipher.ts` takes Electron's storage (`createCipher.ts` is the one-line wrapper that passes it). New code that runs a command, reads the disk or uses an Electron API follows the same shape, so it can be tested on any machine.
+- **Code that calls the system takes it as a dependency, defaulting to the real thing:** `Windows` takes the command runner in its constructor, `FileSteam` the disk, `RegistrySteam` the registry, and `SecureCipher.create` Electron's storage (`index.ts` passes the real one). New code that runs a command, reads the disk or uses an Electron API follows the same shape, so it can be tested on any machine.
 - **Store slices are tested against a fake main process:** `test/renderer/app/store/makeStore.ts` builds a fresh store with a fake `window.api` and `sessionStorage`; a call the test did not provide throws. These tests have their own TypeScript project (`tsconfig.webtest.json`), because the store uses browser types. `sonner` is the one module that is mocked, to see what was announced to the user.
 - **Fixtures are real responses** (`test/fixtures`: Nioh 3 and Onimusha: Way of the Sword). The achievement lists exist in the four languages (`.en`, `.es`, `.fr`; the file without a suffix is Brazilian Portuguese), which is what lets the fake Steam of the audit answer in the app's language.
-- **Coverage:** `pnpm test:coverage` measures what is listed above (the Electron-only wiring and the texts are excluded in `vitest.config.ts`, with the reason). CI fails under the thresholds set there; they sit a little below the current numbers and only go up. The commit hook runs the tests without measuring; the push hook runs `pnpm test:coverage`, so a drop in coverage is stopped before it leaves the machine.
-- **100% is not the goal.** Coverage shows where there is no test at all; it does not show whether a test checks anything. What to test follows risk: code that decides something for the user (what is saved, when the app restarts, what is announced) comes first. A branch that can only be reached by breaking the machine is left alone rather than covered with an artificial test. Known and accepted: the rare numeric types of `steam/vdf.ts`, until a game uses them.
+- **Coverage:** `pnpm test:coverage` measures what is listed above (the Electron-only wiring and the texts are excluded in `vitest.config.ts`, with the reason). CI fails under the thresholds set there; they sit a little below the current numbers and only go up. The commit hook runs the tests without measuring; the push hook runs `pnpm test:coverage`, so a drop in coverage is stopped before it leaves the machine. On a pull request, Codecov goes red only when the changed lines are under 90% covered or the whole drops more than half a point (`codecov.yml`).
+- **100% is not the goal.** Coverage shows where there is no test at all; it does not show whether a test checks anything. What to test follows risk: code that decides something for the user (what is saved, when the app restarts, what is announced) comes first. A branch that can only be reached by breaking the machine is left alone rather than covered with an artificial test. Known and accepted: the rare numeric types of `steam/BinaryVdf.ts`, until a game uses them.
 - **Console output** of passing tests is hidden (`--silent=passed-only`); a failing test shows everything it printed. `test:watch` hides nothing, since that is where `console.log` is used to debug.
 - **Module cache:** a run made by hand reuses transformed modules (`fsModuleCache`, stored in `node_modules/.vitest-cache`). The hooks and the CI set `CI`, which turns the cache off, so nothing is committed or pushed on the strength of a stale cache. If a manual run behaves oddly, delete that folder.
 
@@ -378,5 +383,5 @@ Transitions are CSS only (no animation library), short and small: the app sits n
 
 - **Every change is made on its own branch and reaches `main` through a pull request.** Never commit on `main` and never push it. Branch from an up-to-date `main`, commit there (one commit per change, without asking), push the branch and open the pull request with `gh pr create`; the owner merges. A release tag still needs its own explicit request.
 - Conventional Commits in English: `feat: achievement checklist`, `fix: ...`, `chore: ...`, `docs: ...`, `refactor: ...`, `perf: ...`, `style: ...`, `test: ...`. commitlint checks it; header and body lines stay within 100 characters.
-- Husky hooks run on every commit: lint-staged (ESLint with auto-fix, then Prettier, on the staged files), then `pnpm typecheck` and `pnpm test` for the whole project, then commitlint on the message. Another hook runs `pnpm test:coverage` before every push. Never skip them with `--no-verify`; fix what they report.
+- Husky hooks run on every commit: lint-staged (ESLint with auto-fix, then Prettier, on the staged files), `knip`, then `pnpm typecheck` and `pnpm test` for the whole project, then commitlint on the message. Another hook runs `pnpm test:coverage` before every push. Never skip them with `--no-verify`; fix what they report.
 - Purely mechanical commits (mass formatting, import sorting) go into `.git-blame-ignore-revs`.

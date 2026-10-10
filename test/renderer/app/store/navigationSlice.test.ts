@@ -19,7 +19,7 @@ describe('navigation: the hidden-only filter', () => {
     navigation().showAchievements('unlocked');
     navigation().goTo('dashboard');
 
-    expect(navigation().hiddenOnly).toBe(true);
+    expect(navigation().isHiddenOnly).toBe(true);
   });
 
   it('is turned off when the user picks another game', async () => {
@@ -28,7 +28,7 @@ describe('navigation: the hidden-only filter', () => {
 
     navigation().pickGame(105600);
 
-    expect(navigation().hiddenOnly).toBe(false);
+    expect(navigation().isHiddenOnly).toBe(false);
     expect(storage.get('view-hidden-only')).toBe('false');
   });
 
@@ -38,7 +38,7 @@ describe('navigation: the hidden-only filter', () => {
 
     navigation().followRunningGame(2638890);
 
-    expect(navigation().hiddenOnly).toBe(false);
+    expect(navigation().isHiddenOnly).toBe(false);
   });
 
   it('is kept when the running game closes, since the game on screen stays', async () => {
@@ -48,13 +48,13 @@ describe('navigation: the hidden-only filter', () => {
 
     navigation().followRunningGame(null);
 
-    expect(navigation().hiddenOnly).toBe(true);
+    expect(navigation().isHiddenOnly).toBe(true);
   });
 
   it('survives a window reload', async () => {
     const { navigation } = await setup({ 'view-hidden-only': 'true' });
 
-    expect(navigation().hiddenOnly).toBe(true);
+    expect(navigation().isHiddenOnly).toBe(true);
   });
 });
 
@@ -62,7 +62,7 @@ describe('navigation: the game details', () => {
   it('start closed', async () => {
     const { navigation } = await setup();
 
-    expect(navigation().gameDetailsOpen).toBe(false);
+    expect(navigation().isGameDetailsOpen).toBe(false);
   });
 
   it('stay open across games once opened', async () => {
@@ -71,12 +71,12 @@ describe('navigation: the game details', () => {
 
     navigation().pickGame(105600);
 
-    expect(navigation().gameDetailsOpen).toBe(true);
+    expect(navigation().isGameDetailsOpen).toBe(true);
   });
 
   it('survive a window reload', async () => {
     const { navigation } = await setup({ 'view-game-details': 'true' });
 
-    expect(navigation().gameDetailsOpen).toBe(true);
+    expect(navigation().isGameDetailsOpen).toBe(true);
   });
 });

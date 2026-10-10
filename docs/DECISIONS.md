@@ -117,6 +117,12 @@ With no game running the app shows the last one played, read from a library cach
 
 The first rule required the prefix `7656119`. A SteamID64 is a base number plus a 32-bit account number, so the leading digits roll over as accounts are created; the rule now accepts the whole range.
 
+## One way to write the main process, and names checked by tooling
+
+The main process had grown two styles: classes that receive what they depend on (`Tracker`, `Store`), and factory functions returning objects or closures (`createAccountFollower`, `createRunningGameSource`, `createSteamLocal`), plus files of loose functions. Both work; having both meant every new file was a choice, and the choices drifted. It is now classes throughout: constructor-injected when there is state or a dependency, static methods grouped by subject when there is neither (`TextVdf.parse`, `WindowBounds.restore`). A class of static methods is a namespace and nothing more; it was chosen over loose functions so that a helper is always found under the name of its subject, and so that there is one answer to "where does this go". `shared/` and the interface are not part of this: pure functions and hooks are what React and the store expect.
+
+File names and boolean names were drifting the same way, and a rule kept in someone's head had already failed, so both are enforced: the boolean prefix by `@typescript-eslint/naming-convention`, unused code by `knip`. The boolean exceptions are the names that are part of a file format or of Steam's answers; renaming those in memory only would have given one thing two names.
+
 ## Not done on purpose
 
 - **Docker Compose for development**: tried and reverted. The app is a desktop window; a container complicated something still experimental.

@@ -36,8 +36,8 @@ export const createSessionSlice: StoreSlice<SessionSlice> = (set, get) => ({
   },
 
   setCurrent: (current) => {
-    const closed =
-      get().session.current?.running === true && current?.running !== true;
+    const hasClosed =
+      get().session.current?.isRunning === true && current?.isRunning !== true;
     set(
       (prevState) => {
         prevState.session.current = current;
@@ -46,6 +46,6 @@ export const createSessionSlice: StoreSlice<SessionSlice> = (set, get) => ({
       'session/setCurrent',
     );
     // Playtime has just changed; re-read only the games that changed.
-    if (closed) void get().dashboard.load('changed');
+    if (hasClosed) void get().dashboard.load('changed');
   },
 });

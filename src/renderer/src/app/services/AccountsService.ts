@@ -29,7 +29,7 @@ export class AccountsService extends Service {
 
   /** Returns the function that stops listening. */
   static onStateChanged(
-    listener: (state: IAppState, followed: boolean) => void,
+    listener: (state: IAppState, hasFollowed: boolean) => void,
   ): () => void {
     return this.api.onStateChanged(listener);
   }
