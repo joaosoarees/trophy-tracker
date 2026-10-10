@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { statSync, utimesSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { describe, expect, it, vi } from 'vitest';
 
 import { type Language } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
@@ -6,7 +9,7 @@ import {
   fakeFetch,
   FORBIDDEN_HTML,
   KEY,
-  makeDiskStore,
+  makeTempDir,
   NO_STATS,
   NOT_PUBLIC,
   OTHER_KEY,
@@ -16,6 +19,7 @@ import {
 import { game, owned, player } from '@tests/steamLibrary';
 
 import { SteamClient, SteamError } from '../steam/SteamClient';
+import { Store } from '../storage/Store';
 
 import { SetupService } from './SetupService';
 
@@ -43,13 +47,20 @@ function setup(
   routes: Parameters<typeof fakeFetch>[0] = {},
   language?: Language,
 ) {
-  const store = makeDiskStore();
+  const dir = makeTempDir();
+  const store = new Store(dir);
   const fetchImpl = fakeFetch(routes);
   const client = new SteamClient(fetchImpl);
   const changes: IAppState[] = [];
-  const sut = new SetupService(store, client, (state) => changes.push(state));
+  const logErrorMock = vi.fn<(source: string, detail: string) => void>();
+  const sut = new SetupService(
+    store,
+    client,
+    (state) => changes.push(state),
+    logErrorMock,
+  );
   if (language) sut.setLanguage(language);
-  return { store, client, sut, changes, fetchImpl };
+  return { dir, store, client, sut, changes, fetchImpl, logErrorMock };
 }
 
 /** The app with one account, `STEAM_ID`, which it follows. */
@@ -201,7 +212,7 @@ describe('SetupService', () => {
     });
 
     it('should hide the details of an unexpected error', async () => {
-      const { sut, changes } = await withOneAccount();
+      const { sut, changes, logErrorMock } = await withOneAccount();
 
       const result = await sut.attempt(() => Promise.reject(new Error('boom')));
 
@@ -211,7 +222,22 @@ describe('SetupService', () => {
       });
       expect(sut.getState().accounts[0].status).toBe('valid');
       expect(changes).toEqual([]);
+      expect(logErrorMock).toHaveBeenCalledExactlyOnceWith(
+        'main: steam read',
+        expect.stringContaining('boom'),
+      );
     });
+
+    it.each(['invalid-key', 'network'] as const)(
+      'should log nothing when the read fails with %s, which Steam is known to answer',
+      async (kind) => {
+        const { sut, logErrorMock } = await withOneAccount();
+
+        await sut.attempt(() => Promise.reject(new SteamError(kind)));
+
+        expect(logErrorMock).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe('setLanguage', () => {
@@ -388,6 +414,29 @@ describe('SetupService', () => {
       const state = await sut.recheckAccount(STEAM_ID);
 
       expect(state.accounts[0].status).toBe('valid');
+    });
+
+    it('should leave the saved file alone when Steam answers what was already known', async () => {
+      const { sut, dir } = await withOneAccount();
+      const file = join(dir, 'config.json');
+      const before = new Date('2020-01-01T00:00:00Z');
+      utimesSync(file, before, before);
+
+      await sut.recheckAccount(STEAM_ID);
+
+      expect(statSync(file).mtime).toEqual(before);
+    });
+
+    it('should save the new status when Steam answers something else', async () => {
+      const { sut, dir, store } = await withOneAccount();
+      store.setAccountStatus(STEAM_ID, 'rejected');
+      const file = join(dir, 'config.json');
+      const before = new Date('2020-01-01T00:00:00Z');
+      utimesSync(file, before, before);
+
+      await sut.recheckAccount(STEAM_ID);
+
+      expect(statSync(file).mtime).not.toEqual(before);
     });
   });
 
