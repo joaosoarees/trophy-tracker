@@ -14,7 +14,8 @@ One Zustand store in `app/store/`, split into namespaced slices.
 - **Where state lives depends on how long it should last:** only while a screen is mounted → `useState`; across a window reload → `navigationSlice` (mirrored in `sessionStorage`); across restarts → a preference saved by the main process.
 - Store slices reach the main process through `@app/services`, never through `window.api`. Who calls whom is in Layers, in `CLAUDE.md`.
 - `connectStore` wires the store for the account in use; what was read from Steam for one account is dropped when another is followed.
-- **An answer is taken only while its account is still in use.** No answer from the main process names its account, and a request made under one account may answer after another took over. A slice action that awaits a read (`games.load`, `dashboard.load`, `session.loadCurrent`, `userData.load`) calls `sameAccount(get)` (`app/store/sameAccount.ts`) before it asks and drops the answer when the function says the account changed, touching nothing, not even its loading flag. Dropping is safe: `connectStore` asks again for the account that took over. A new read follows the same shape.
+- **An answer is taken only in the stay on the account it was asked in.** No answer from the main process names its account, and a request made under one account may answer after another took over, or after that account was left and followed again (A, B, A), when the same read has been asked a second time. A slice action that awaits a read (`games.load`, `dashboard.load`, `session.loadCurrent`, `userData.load`) calls `sameAccount(get)` (`app/store/sameAccount.ts`) before it asks and drops the answer when the function says the stay ended, touching nothing, not even its loading flag: that flag belongs to the read asked since. Dropping is safe: `connectStore` asks again each time it wires the store. A new read follows the same shape.
+- **A stay is the SteamID in use and a count of how many times `connectStore` wired the store** (`nextStay`, called before it asks anything). The SteamID alone cannot tell two stays on the same account apart; the count alone would take an answer between the change of account and the store being wired again. The count is kept in `sameAccount.ts`, not in the store: no screen reads it. A guard that only asks which account is in use (the rollback of a note that was not saved, the undo of a checklist item) compares the SteamID itself, since it acts on what the store holds at that moment, not on an answer.
 
 ### Optimistic UI
 
@@ -48,7 +49,7 @@ store/
   Store.ts              the Store type (one field per slice) and the StoreSlice<T> type
   index.ts              create() with the devtools (dev only) and immer middlewares
   connect.ts            wires the store to the main process events once the app is set up
-  sameAccount.ts        whether the account a read was asked under is still the one in use
+  sameAccount.ts        whether a read's answer arrives in the stay on the account it was asked in
   slices/
     sessionSlice.ts       language and current game
     settingsSlice.ts      app state from the main process, always on top, preferences, data folder,

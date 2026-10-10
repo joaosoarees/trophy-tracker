@@ -23,6 +23,7 @@ What changed in each version, for whoever uses the app. The section of a version
 - A checklist's "already on the list" warning goes away as soon as it stops being true, when the item that had the text is removed or renamed. It no longer stays on the empty field after the text is added.
 - A note, pin or checklist edited just before the app switches by itself to the account signed in to Steam is saved in the account it was written in, not in the other one.
 - Switching accounts while Steam is still answering no longer shows the previous account's game, dashboard, progress count or last played game under the new account.
+- Switching to another account and back while the dashboard is still being read no longer ends its loading early, lets ↻ start a second read beside it, or puts an older list over the one just read.
 - Leaving "Add account" no longer puts the app back on the account that was in use when it was opened, if the app switched to the account signed in to Steam meanwhile.
 - Settings no longer goes on saying a version is downloading when its download failed and that version was then withdrawn: asking for a check says the app is up to date.
 - In the first setup, changing the language after an account was added no longer leaves the app in the previous language when the setup ends.

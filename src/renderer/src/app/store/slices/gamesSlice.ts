@@ -60,7 +60,6 @@ export const createGamesSlice: StoreSlice<GamesSlice> = (set, get) => ({
 
     set(
       (prevState) => {
-        // The entry is gone when its account was left and followed again.
         const entry = (prevState.games.entries[appid] ??= emptyEntry());
         entry.isLoading = false;
         entry.error = result.error;

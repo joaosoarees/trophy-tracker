@@ -98,6 +98,21 @@ describe('userDataSlice', () => {
       expect(sut.getState().userData.byGame).toEqual({});
     });
 
+    it('should not take the notes asked for before the account was left and followed again when they arrive late', async () => {
+      const answer = deferred<GameUserData>();
+      const { sut, follow, getUserDataMock } = await setup();
+      getUserDataMock.mockReturnValueOnce(answer.promise);
+      follow(makeAppState());
+      const loading = sut.getState().userData.load(10);
+      follow(otherAccountState());
+      follow(makeAppState());
+      answer.resolve({ A: { note: 'boss of the 3rd map', pinned: true } });
+
+      await loading;
+
+      expect(sut.getState().userData.byGame).toEqual({});
+    });
+
     it('should ask for a game only once when it is loaded again', async () => {
       const { sut, getUserDataMock } = await setup();
       await sut.getState().userData.load(10);
