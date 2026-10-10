@@ -24,8 +24,17 @@ export function useOnboardingController({
   onDone,
 }: IOnboardingOptions) {
   const setLanguage = useStore((store) => store.session.setLanguage);
-  /** What the main process has saved: accounts are saved as they are verified. */
-  const [saved, setSaved] = useState(state);
+  const acceptAccountStep = useStore(
+    (store) => store.settings.acceptAccountStep,
+  );
+  /**
+   * What the first setup has saved so far: accounts are saved as they are
+   * verified, and the store only hears of them when the setup ends.
+   */
+  const [setupState, setSetupState] = useState(state);
+  // With the app set up the store is told of each account as it is saved and
+  // of what the main process changes meanwhile, so `state` is the one copy.
+  const saved = isAddingAccount ? state : setupState;
   /** The accounts verified in this visit, by SteamID. */
   const [addedHere, setAddedHere] = useState<string[]>([]);
   const [isFinishing, setIsFinishing] = useState(false);
@@ -57,7 +66,8 @@ export function useOnboardingController({
 
   /** An account was saved (`added`) or removed in the account step. */
   function handleAccountsChange(next: IAppState, added?: string) {
-    setSaved(next);
+    setSetupState(next);
+    acceptAccountStep(next);
     if (added) setAddedHere((ids) => [...ids, added]);
   }
 
@@ -87,7 +97,6 @@ export function useOnboardingController({
 
   return {
     form,
-    saved,
     accounts: saved.accounts,
     addedHere,
     isFinishing,

@@ -26,7 +26,6 @@ export function Onboarding({
   const t = useT();
   const {
     form,
-    saved,
     accounts,
     addedHere,
     isFinishing,
@@ -44,7 +43,7 @@ export function Onboarding({
         isInitiallyOpen={isAddingAccount}
         isFinishing={isFinishing}
         // Accounts are saved as they are verified: leaving keeps them.
-        onCancel={onCancel ? () => onDone(saved) : undefined}
+        onCancel={onCancel}
       />
     ),
   };
