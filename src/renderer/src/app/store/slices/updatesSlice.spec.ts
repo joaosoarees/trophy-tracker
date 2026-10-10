@@ -81,6 +81,11 @@ async function setup({ session, known = NOTHING }: ISetupOptions = {}) {
       check.resolve(result);
       await vi.advanceTimersByTimeAsync(0);
     },
+    /** The main process fails the check made as the app opens. */
+    fail: async () => {
+      check.reject(new Error('the main process is gone'));
+      await vi.advanceTimersByTimeAsync(0);
+    },
     /** The main process announces a change by itself. */
     announce: (info: IAppInfo) => onAppInfoChanged(info),
     /** The user clicks the button of the last toast shown. */
@@ -251,6 +256,22 @@ describe('updatesSlice', () => {
       },
     );
 
+    it('should ask the main process once when it is started again before the check is answered', async () => {
+      const { sut, checkForUpdatesMock } = await open();
+
+      sut.getState().updates.start();
+
+      expect(checkForUpdatesMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('should open the app when the main process fails the check', async () => {
+      const { sut, fail } = await open();
+
+      await fail();
+
+      expect(sut.getState().updates.startup).toBe('done');
+    });
+
     it('should open the app when the check cannot be made', async () => {
       const { sut, answer } = await open();
 
@@ -297,6 +318,14 @@ describe('updatesSlice', () => {
       await vi.advanceTimersByTimeAsync(STARTUP_WAIT);
 
       expect(sut.getState().updates.startup).toBe('done');
+    });
+
+    it('should still hold the first screen when just under four seconds have passed', async () => {
+      const { sut } = await open();
+
+      await vi.advanceTimersByTimeAsync(STARTUP_WAIT - 1);
+
+      expect(sut.getState().updates.startup).toBe('checking');
     });
 
     it('should not go back to the update screen when the version arrives late', async () => {
