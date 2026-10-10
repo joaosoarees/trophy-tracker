@@ -264,6 +264,40 @@ describe('Tracker', () => {
       expect(second.achievements[5]).toBe(first.achievements[5]);
     });
 
+    it('should say Steam answered when the game was read', async () => {
+      const { sut } = setupGame7();
+      const onAnswerMock = vi.fn<() => void>();
+
+      await sut.getGame(7, false, onAnswerMock);
+
+      expect(onAnswerMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('should not say Steam answered when the game comes from the cache', async () => {
+      const { sut } = setupGame7();
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.getGame(7);
+
+      await sut.getGame(7, false, onAnswerMock);
+
+      expect(onAnswerMock).not.toHaveBeenCalled();
+    });
+
+    it('should say Steam answered to each request when they share one read', async () => {
+      const { sut, client } = setupGame7();
+      const onFirstAnswerMock = vi.fn<() => void>();
+      const onSecondAnswerMock = vi.fn<() => void>();
+
+      await Promise.all([
+        sut.getGame(7, false, onFirstAnswerMock),
+        sut.getGame(7, false, onSecondAnswerMock),
+      ]);
+
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(1);
+      expect(onFirstAnswerMock).toHaveBeenCalledExactlyOnceWith();
+      expect(onSecondAnswerMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
     it('should share one read between identical simultaneous requests', async () => {
       const { sut, client } = setup({
         owned: () => [game(1, 'A', 10), game(2, 'B', 10)],
@@ -363,6 +397,52 @@ describe('Tracker', () => {
         ),
       );
       expect(onErrorMock).not.toHaveBeenCalled();
+    });
+
+    it('should not say Steam answered when the cached game is recent', async () => {
+      const { sut } = setupNioh();
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.getGameStaleFirst(NIOH, unheard);
+
+      await sut.getGameStaleFirst(NIOH, { ...unheard, onAnswer: onAnswerMock });
+
+      expect(onAnswerMock).not.toHaveBeenCalled();
+    });
+
+    it('should say Steam answered when the refresh of a stale game ends', async () => {
+      const { sut, advance } = setupNioh();
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.getGameStaleFirst(NIOH, unheard);
+      advance(5 * 60_000);
+
+      await sut.getGameStaleFirst(NIOH, { ...unheard, onAnswer: onAnswerMock });
+      // Joins the refresh still in flight, so what follows sees how it ended.
+      await sut.getGame(NIOH);
+
+      expect(onAnswerMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('should not say Steam answered when the refresh of a stale game fails', async () => {
+      let isBroken = false;
+      const { sut, advance } = setup({
+        owned: () => [game(7, 'Game', 5)],
+        achievements: noAchievementList,
+        player: () => (isBroken ? failing('invalid-key')() : achieved(0, 0)),
+      });
+      const onAnswerMock = vi.fn<() => void>();
+      const onErrorMock = vi.fn<(e: unknown) => void>();
+      await sut.getGameStaleFirst(7, unheard);
+      isBroken = true;
+      advance(5 * 60_000);
+
+      await sut.getGameStaleFirst(7, {
+        ...unheard,
+        onError: onErrorMock,
+        onAnswer: onAnswerMock,
+      });
+      await vi.waitFor(() => expect(onErrorMock).toHaveBeenCalledOnce());
+
+      expect(onAnswerMock).not.toHaveBeenCalled();
     });
 
     it('should report a failed refresh without failing the answer', async () => {
@@ -496,6 +576,69 @@ describe('Tracker', () => {
       await Promise.all([sut.getDashboard(), sut.getDashboard()]);
 
       expect(requestsTo(client, 'getPlayerAchievements')).toBe(2);
+    });
+
+    it('should say Steam answered when a game was read for the dashboard', async () => {
+      const { sut } = setupTwoGames();
+      const onAnswerMock = vi.fn<() => void>();
+
+      await sut.getDashboard('cached', undefined, onAnswerMock);
+
+      expect(onAnswerMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('should say Steam answered when only the library was read again', async () => {
+      const { sut, client, advance } = setupTwoGames();
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.getDashboard();
+      advance(11 * 60_000);
+
+      await sut.getDashboard('cached', undefined, onAnswerMock);
+
+      expect(requestsTo(client, 'getOwnedGames')).toBe(2);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(2);
+      expect(onAnswerMock).toHaveBeenCalledExactlyOnceWith();
+    });
+
+    it('should not say Steam answered when the library and every game come from the cache', async () => {
+      const { sut, client } = setupTwoGames();
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.getDashboard();
+      const askedBefore = client.asked.length;
+
+      await sut.getDashboard('cached', undefined, onAnswerMock);
+
+      expect(client.asked).toHaveLength(askedBefore);
+      expect(onAnswerMock).not.toHaveBeenCalled();
+    });
+
+    it('should not say Steam answered when only the art, which needs no key, was asked for', async () => {
+      const { sut, client } = setup({
+        owned: () => [game(1, 'A', 10)],
+        player: () => achieved(1, 4),
+        art: storeDown,
+      });
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.getDashboard();
+
+      await sut.getDashboard('cached', undefined, onAnswerMock);
+
+      expect(requestsTo(client, 'getStoreArt')).toBe(2);
+      expect(requestsTo(client, 'getPlayerAchievements')).toBe(1);
+      expect(onAnswerMock).not.toHaveBeenCalled();
+    });
+
+    it('should not say Steam answered when the only game read has no stats', async () => {
+      const { sut } = setup({
+        owned: () => [game(4, 'No achievements', 10)],
+        player: failing('no-stats'),
+      });
+      const onAnswerMock = vi.fn<() => void>();
+      await sut.library();
+
+      await sut.getDashboard('cached', undefined, onAnswerMock);
+
+      expect(onAnswerMock).not.toHaveBeenCalled();
     });
 
     it('should read every played game the first time', async () => {

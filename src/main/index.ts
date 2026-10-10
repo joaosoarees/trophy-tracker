@@ -140,7 +140,8 @@ void app.whenReady().then(async () => {
     intervals: fakeSteam ? { running: 2_000, unlocks: 3_000 } : undefined,
     lastPlayedAppId: () => tracker.lastPlayedAppId(),
     followRunningGame: () => follower.forRunningGame(),
-    pollGame: (appid) => keys.attempt(() => tracker.getGame(appid, 'poll')),
+    pollGame: (appid) =>
+      keys.attempt((onAnswer) => tracker.getGame(appid, 'poll', onAnswer)),
     isConfigured: () => setup.isConfigured,
     onCurrentChanged: (current) => window.send(IpcEvent.gameChanged, current),
     onGameUpdated: (view) => window.send(IpcEvent.gameUpdated, view),

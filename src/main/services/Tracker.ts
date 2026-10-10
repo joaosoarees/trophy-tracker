@@ -51,6 +51,13 @@ type SteamReads = Pick<
   | 'getStoreArt'
 >;
 
+/**
+ * Called by a read when Steam answered a request made with the account's key
+ * while it ran, and the read worked. A read answered from the cache, or one
+ * that only asked what needs no key (an achievement list, art), never calls it.
+ */
+type OnAnswer = () => void;
+
 export interface ITrackerDeps {
   store: ReadCache;
   client: SteamReads;
@@ -89,17 +96,22 @@ export class Tracker {
     return creds;
   }
 
-  async library(isForced = false): Promise<IRawOwnedGame[]> {
+  async library(
+    isForced = false,
+    onAnswer?: OnAnswer,
+  ): Promise<IRawOwnedGame[]> {
     const cached = this.store.getLibrary();
     if (cached && !isForced && this.now() - cached.fetchedAt < LIBRARY_TTL)
       return cached.games;
-    return this.once('library', async () => {
+    const games = await this.once('library', async () => {
       const creds = this.credentials();
-      const games = await this.client.getOwnedGames(creds);
-      if (games === null) throw new SteamError('private');
-      this.store.setLibrary(games, this.now(), creds.steamId);
-      return games;
+      const owned = await this.client.getOwnedGames(creds);
+      if (owned === null) throw new SteamError('private');
+      this.store.setLibrary(owned, this.now(), creds.steamId);
+      return owned;
     });
+    onAnswer?.();
+    return games;
   }
 
   /** Most recently played game, for when no game is open. */
@@ -169,32 +181,43 @@ export class Tracker {
   async getGame(
     appid: number,
     mode: boolean | 'poll' = false,
+    onAnswer?: OnAnswer,
   ): Promise<IGameView> {
     const cached = this.store.getGame(appid);
     if (cached && mode === false && this.now() - cached.fetchedAt < GAME_TTL)
       return cached;
-    return this.once(`game:${appid}:${mode}`, () =>
+    const view = await this.once(`game:${appid}:${mode}`, () =>
       this.readGame(appid, mode === true, cached),
     );
+    // A game is never read without asking what the player has in it.
+    onAnswer?.();
+    return view;
   }
 
   /**
    * Optimistic read: answers at once with the last known view, however old,
    * and when it is stale refreshes it behind the scenes. `onFresh` gets the
    * new view only if something changed. With nothing cached it is a normal read.
+   * `onAnswer` is called by whichever read asked Steam: the normal one, or the
+   * refresh, after this has answered.
    */
   async getGameStaleFirst(
     appid: number,
     {
       onFresh,
       onError,
-    }: { onFresh: (view: IGameView) => void; onError: (e: unknown) => void },
+      onAnswer,
+    }: {
+      onFresh: (view: IGameView) => void;
+      onError: (e: unknown) => void;
+      onAnswer?: OnAnswer;
+    },
   ): Promise<IGameView> {
     const cached = this.store.getGame(appid);
-    if (!cached) return this.getGame(appid);
+    if (!cached) return this.getGame(appid, false, onAnswer);
 
     if (this.now() - cached.fetchedAt >= GAME_TTL) {
-      void this.getGame(appid).then((fresh) => {
+      void this.getGame(appid, false, onAnswer).then((fresh) => {
         if (fresh !== cached) onFresh(fresh);
       }, onError);
     }
@@ -255,21 +278,31 @@ export class Tracker {
   }
 
   /** Played games that have achievements, from closest to 100% to furthest; complete ones last. */
-  getDashboard(
+  async getDashboard(
     mode: DashboardMode = 'cached',
     onProgress?: (done: number, total: number) => void,
+    onAnswer?: OnAnswer,
   ): Promise<IGameSummary[]> {
-    return this.once(`dashboard:${mode}`, () =>
+    const { games, hasAnswer } = await this.once(`dashboard:${mode}`, () =>
       this.readDashboard(mode, onProgress),
     );
+    if (hasAnswer) onAnswer?.();
+    return games;
   }
 
+  /** The dashboard, and whether Steam answered a request made with the key for it. */
   private async readDashboard(
     mode: DashboardMode,
     onProgress?: (done: number, total: number) => void,
-  ): Promise<IGameSummary[]> {
+  ): Promise<{ games: IGameSummary[]; hasAnswer: boolean }> {
     const creds = this.credentials();
-    const played = Dashboard.played(await this.library(mode !== 'cached'));
+    let hasAnswer = false;
+    const onAnswer = (): void => {
+      hasAnswer = true;
+    };
+    const played = Dashboard.played(
+      await this.library(mode !== 'cached', onAnswer),
+    );
 
     const entries = new Map<number, ISummaryEntry>();
     const pending: IRawOwnedGame[] = [];
@@ -284,7 +317,11 @@ export class Tracker {
     const fresh: Record<string, ISummaryEntry> = {};
     try {
       await Tracker.pool(pending, CONCURRENCY, async (game) => {
-        const { entry, isLasting } = await this.readSummary(creds, game);
+        const { entry, isLasting } = await this.readSummary(
+          creds,
+          game,
+          onAnswer,
+        );
         entries.set(game.appid, entry);
         if (isLasting) fresh[game.appid] = entry;
         onProgress?.(++done, pending.length);
@@ -297,11 +334,12 @@ export class Tracker {
       (game) => (entries.get(game.appid)?.total ?? 0) > 0,
     );
     const art = await this.art(listed.map((game) => game.appid));
-    return Dashboard.closestFirst(
+    const games = Dashboard.closestFirst(
       listed.map((game) =>
         Dashboard.summary(game, entries.get(game.appid)!, art.get(game.appid)),
       ),
     );
+    return { games, hasAnswer };
   }
 
   /**
@@ -311,9 +349,11 @@ export class Tracker {
   private async readSummary(
     creds: ICredentials,
     game: IRawOwnedGame,
+    onAnswer: OnAnswer,
   ): Promise<{ entry: ISummaryEntry; isLasting: boolean }> {
     try {
       const list = await this.client.getPlayerAchievements(creds, game.appid);
+      onAnswer();
       return {
         entry: Dashboard.entry(list, game.playtime_forever),
         isLasting: true,

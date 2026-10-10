@@ -86,10 +86,12 @@ export class Ipc {
 
       getCurrentAppId: () => watcher.refreshCurrent(),
       getGame: (appid, isForced) =>
-        keys.attempt(async () => {
+        keys.attempt(async (onAnswer) => {
           const view = isForced
-            ? await tracker.getGame(appid, true)
+            ? await tracker.getGame(appid, true, onAnswer)
             : await tracker.getGameStaleFirst(appid, {
+                // Steam accepted the key, now or in the refresh behind the scenes.
+                onAnswer,
                 // The refresh that ran behind the scenes found something new.
                 onFresh: (fresh) => {
                   watcher.remember(fresh);
@@ -102,9 +104,12 @@ export class Ipc {
           return view;
         }),
       getDashboard: (mode) =>
-        keys.attempt(() =>
-          tracker.getDashboard(mode, (done, total) =>
-            window.send(IpcEvent.dashboardProgress, done, total),
+        keys.attempt((onAnswer) =>
+          tracker.getDashboard(
+            mode,
+            (done, total) =>
+              window.send(IpcEvent.dashboardProgress, done, total),
+            onAnswer,
           ),
         ),
       getUserData: (appid) => store.getUserData(appid),

@@ -53,12 +53,20 @@ export class KeyStatus {
     return messagesFor(this.store.getLanguage());
   }
 
-  /** Runs a read against Steam and turns a failure into a message for the user. */
-  async attempt<T>(run: () => Promise<T>): Promise<CheckResult<T>> {
+  /**
+   * Runs a read and turns a failure into a message for the user. A read that
+   * works says nothing about the key by itself, since it may have been
+   * answered from the cache: the read calls `onAnswer` when Steam answered a
+   * request made with the key, and only then is the account marked `valid`.
+   * It is the account the read started for, and the call may come after this
+   * has answered, from a refresh that goes on behind the scenes.
+   */
+  async attempt<T>(
+    run: (onAnswer: () => void) => Promise<T>,
+  ): Promise<CheckResult<T>> {
     const steamId = this.store.getActiveSteamId();
     try {
-      const value = await run();
-      this.mark(steamId, 'valid');
+      const value = await run(() => this.mark(steamId, 'valid'));
       return { ok: true, value };
     } catch (e) {
       return { ok: false, error: this.noticeFailure(e, steamId) };
