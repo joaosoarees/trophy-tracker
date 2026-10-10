@@ -61,7 +61,7 @@ A Steam lista as conquistas que faltam sem dizer como consegui-las, esconde as o
   <tr>
     <td width="50%" valign="top">
       <h3>Várias contas</h3>
-      <p>Adicione mais de uma conta Steam e troque entre elas com um clique; cada uma guarda a própria chave, notas e checklists. No Windows, o app acompanha a conta que estiver conectada na Steam.</p>
+      <p>Adicione mais de uma conta Steam e troque entre elas com um clique; cada uma guarda a própria chave, notas e checklists. O app acompanha a conta que estiver conectada na Steam.</p>
       <h3>No seu idioma</h3>
       <p>Inglês, português do Brasil, espanhol e francês. O idioma muda o app inteiro, inclusive os nomes das conquistas enviados pela Steam.</p>
     </td>

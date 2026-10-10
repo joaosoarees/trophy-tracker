@@ -65,6 +65,10 @@ A Web API key can read any public profile, so a second key is not technically ne
 
 A saved key is never revealed or copied: whoever needs it has it on Steam's page, and the interface never receives more than its last four characters.
 
+## Following the Steam account on every system
+
+It was Windows only at first, out of caution: there the registry says who is signed in. The Steam client's own files say the same on macOS and Linux, the app already read them to offer the SteamID in the setup, and the audit had been following an account through those files all along. So the restriction was removed. On macOS and Linux it was checked through the audit's fake client folder, not on a real Steam install.
+
 ## No title bar on Windows and macOS
 
 The system draws only its own buttons over the tab bar. Buttons drawn by the app, as the Steam client does, would lose the Windows 11 snap menu and make maximise, restore and their accessibility our code. Linux keeps the system's title bar: what a frameless window does there depends on the desktop, and it could only be tried under WSLg.
