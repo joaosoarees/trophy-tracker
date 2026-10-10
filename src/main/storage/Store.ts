@@ -359,8 +359,9 @@ export class Store {
 
   /**
    * What was read for an account: the one in use, unless a read that started
-   * for another one is only now handing in its result. A result for an
-   * account that is gone lands nowhere.
+   * for another one is only now handing in its result, or asking for what it
+   * needs to finish. A result for an account that is gone lands nowhere, and
+   * nothing is answered for it.
    */
   private cacheOf(steamId = this.getActiveSteamId() ?? ''): IAccountCache {
     const blank = (): IAccountCache => ({ games: {}, summaries: {} });
@@ -384,8 +385,9 @@ export class Store {
     this.write('cache.json', this.cache);
   }
 
-  getLibrary(): IAccountCache['library'] {
-    return this.cacheOf().library;
+  /** The library of the account in use, or of the one a read started for. */
+  getLibrary(owner?: string): IAccountCache['library'] {
+    return this.cacheOf(owner).library;
   }
 
   setLibrary(games: IRawOwnedGame[], now = Date.now(), owner?: string): void {
@@ -402,8 +404,8 @@ export class Store {
     this.saveCache();
   }
 
-  getSummary(appid: number): ISummaryEntry | null {
-    return this.cacheOf().summaries[appid] ?? null;
+  getSummary(appid: number, owner?: string): ISummaryEntry | null {
+    return this.cacheOf(owner).summaries[appid] ?? null;
   }
 
   setSummaries(entries: Record<string, ISummaryEntry>, owner?: string): void {

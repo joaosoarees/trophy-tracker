@@ -29,7 +29,7 @@ How a read reaches the screen (the last known view first, skeletons on first loa
 
 Do not fire requests for nothing.
 
-- **Opening a game** serves the cached view at once; a view older than 60 s triggers one background refresh.
+- **Opening a game** serves the cached view at once; a view older than 60 s triggers one background refresh. What that refresh finds reaches the interface only while the account it was read for is still in use (`docs/accounts.md`).
 - **Game open:** every 60 s it re-reads only the player state (and counters, if the game has them). The achievement list is cached for 24 h. The ↻ button forces everything.
 - **No change, no event:** `Tracker.getGame` returns the same object when nothing changed, and the main process emits `game-updated` only when the object is a different one.
 - **Dashboard:** loads on startup, on ↻ (`all`) and when a game closes (`changed`: only games whose playtime changed).

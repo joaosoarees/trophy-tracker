@@ -8,11 +8,12 @@ import {
   type SteamRequest,
 } from '@tests/fakeSteamClient';
 import nioh from '@tests/fixtures/game-achievements-3681010.json';
-import { KEY, STEAM_ID } from '@tests/helpers';
+import { KEY, OTHER_KEY, OTHER_STEAM_ID, STEAM_ID } from '@tests/helpers';
 import { InMemoryStore } from '@tests/InMemoryStore';
 import { achieved, game } from '@tests/steamLibrary';
 
 import {
+  type ICredentials,
   type IRawPlayerAchievement,
   type IStoreArt,
   SteamError,
@@ -99,6 +100,47 @@ function setup(answers: ISteamAnswers, statMap = new Map<string, string>()) {
     now += ms;
   };
   return { sut, client, store, advance };
+}
+
+/** An answer of Steam that arrives when the test says so. */
+function held<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+/** Whether a request was made with the key of `STEAM_ID`. */
+const isMine = ({ steamId }: ICredentials): boolean => steamId === STEAM_ID;
+
+/**
+ * The same tracker in an app that also has `OTHER_STEAM_ID`, with `STEAM_ID`
+ * still the one in use. `keptFor` answers what the store keeps for an account
+ * about a game, whichever account is in use.
+ */
+function setupSecondAccount(answers: ISteamAnswers) {
+  const made = setup(answers);
+  const { store } = made;
+  store.setCredentials(
+    { steamId: OTHER_STEAM_ID, apiKey: OTHER_KEY },
+    { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' },
+  );
+  store.setActiveAccount(STEAM_ID);
+  const keptFor = (steamId: string, appid: number) => {
+    const inUse = store.getActiveSteamId();
+    store.setActiveAccount(steamId);
+    const kept = {
+      library: store.getLibrary()?.games ?? null,
+      game: store.getGame(appid),
+      summary: store.getSummary(appid),
+    };
+    if (inUse) store.setActiveAccount(inUse);
+    return kept;
+  };
+  return { ...made, keptFor };
 }
 
 /** A library with the game 7, which has no achievements. */
@@ -415,6 +457,75 @@ describe('Tracker', () => {
       expect(requestsTo(client, 'getOwnedGames')).toBe(1);
     });
 
+    it('should file a game under the account it was read for when another is in use by the time Steam answers', async () => {
+      const answer = held<IRawPlayerAchievement[]>();
+      const { sut, store, keptFor } = setupSecondAccount({
+        owned: () => [game(NIOH, 'Nioh 3', 500)],
+        achievements: () => nioh.response.achievements,
+        player: () => answer.promise,
+      });
+      const reading = sut.getGame(NIOH);
+      await turn();
+      store.setActiveAccount(OTHER_STEAM_ID);
+      answer.resolve(niohUnlocked(1));
+
+      const view = await reading;
+
+      expect({
+        mine: keptFor(STEAM_ID, NIOH).game,
+        theirs: keptFor(OTHER_STEAM_ID, NIOH).game,
+      }).toEqual({ mine: view, theirs: null });
+    });
+
+    it('should give the summary of a game the playtime of the account it was read for when another is in use by the time Steam answers', async () => {
+      const answer = held<IRawPlayerAchievement[]>();
+      const { sut, store, keptFor } = setupSecondAccount({
+        owned: (credentials) => [
+          game(NIOH, 'Nioh 3', isMine(credentials) ? 500 : 99),
+        ],
+        achievements: () => nioh.response.achievements,
+        player: () => answer.promise,
+      });
+      store.setActiveAccount(OTHER_STEAM_ID);
+      await sut.library();
+      store.setActiveAccount(STEAM_ID);
+      const reading = sut.getGame(NIOH);
+      await turn();
+      store.setActiveAccount(OTHER_STEAM_ID);
+      answer.resolve(niohUnlocked(1));
+
+      await reading;
+
+      expect({
+        mine: keptFor(STEAM_ID, NIOH).summary,
+        theirs: keptFor(OTHER_STEAM_ID, NIOH).summary,
+      }).toEqual({
+        mine: { total: 64, unlocked: 1, playtime: 500, lastUnlockAt: 9 },
+        theirs: null,
+      });
+    });
+
+    it('should ask only for the library of the account a game is read for when another is in use by then', async () => {
+      const { sut, store, client } = setupSecondAccount({
+        owned: (credentials) =>
+          isMine(credentials) ? [] : [game(7, 'Game of the other', 5)],
+        achievements: noAchievementList,
+        player: () => achieved(0, 0),
+      });
+      const reading = sut.getGame(7);
+      store.setActiveAccount(OTHER_STEAM_ID);
+
+      await reading;
+
+      expect(
+        client.asked.flatMap((request) =>
+          request.method === 'getOwnedGames'
+            ? [request.credentials.steamId]
+            : [],
+        ),
+      ).toEqual([STEAM_ID, STEAM_ID]);
+    });
+
     it('should attach the header the store has for the game', async () => {
       const { sut } = setup({
         owned: () => [game(1, 'A', 10)],
@@ -500,6 +611,50 @@ describe('Tracker', () => {
         ),
       );
       expect(onErrorMock).not.toHaveBeenCalled();
+    });
+
+    it('should not hand over the new view when another account is in use by the time the refresh ends', async () => {
+      let answer: ReturnType<typeof held<IRawPlayerAchievement[]>> | null =
+        null;
+      const { sut, store, advance } = setupSecondAccount({
+        owned: () => [game(NIOH, 'Nioh 3', 500)],
+        achievements: () => nioh.response.achievements,
+        player: () => answer?.promise ?? niohUnlocked(1),
+      });
+      const onFreshMock = vi.fn<(view: IGameView) => void>();
+      await sut.getGameStaleFirst(NIOH, unheard);
+      advance(5 * 60_000);
+      answer = held();
+      await sut.getGameStaleFirst(NIOH, { ...unheard, onFresh: onFreshMock });
+      store.setActiveAccount(OTHER_STEAM_ID);
+
+      answer.resolve(niohUnlocked(3));
+      await turn();
+
+      expect(onFreshMock).not.toHaveBeenCalled();
+    });
+
+    it('should keep the new view for its account when another is in use by the time the refresh ends', async () => {
+      let answer: ReturnType<typeof held<IRawPlayerAchievement[]>> | null =
+        null;
+      const { sut, store, advance, keptFor } = setupSecondAccount({
+        owned: () => [game(NIOH, 'Nioh 3', 500)],
+        achievements: () => nioh.response.achievements,
+        player: () => answer?.promise ?? niohUnlocked(1),
+      });
+      await sut.getGameStaleFirst(NIOH, unheard);
+      advance(5 * 60_000);
+      answer = held();
+      await sut.getGameStaleFirst(NIOH, unheard);
+      store.setActiveAccount(OTHER_STEAM_ID);
+
+      answer.resolve(niohUnlocked(3));
+      await turn();
+
+      expect({
+        mine: keptFor(STEAM_ID, NIOH).game?.unlockedCount,
+        theirs: keptFor(OTHER_STEAM_ID, NIOH).game,
+      }).toEqual({ mine: 3, theirs: null });
     });
 
     it('should not say Steam answered when the cached game is recent', async () => {
@@ -679,6 +834,51 @@ describe('Tracker', () => {
       await Promise.all([sut.getDashboard(), sut.getDashboard()]);
 
       expect(requestsTo(client, 'getPlayerAchievements')).toBe(2);
+    });
+
+    it('should file the dashboard under the account it was read for when another is in use by the time Steam answers', async () => {
+      const { sut, store, keptFor } = setupSecondAccount({
+        owned: () => [game(1, 'A', 10)],
+        player: () => achieved(1, 4),
+      });
+      const reading = sut.getDashboard();
+      store.setActiveAccount(OTHER_STEAM_ID);
+
+      await reading;
+
+      expect({
+        mine: keptFor(STEAM_ID, 1),
+        theirs: keptFor(OTHER_STEAM_ID, 1),
+      }).toEqual({
+        mine: {
+          library: [game(1, 'A', 10)],
+          game: null,
+          summary: { total: 4, unlocked: 1, playtime: 10, lastUnlockAt: 0 },
+        },
+        theirs: { library: null, game: null, summary: null },
+      });
+    });
+
+    it('should answer the dashboard of the account it was asked for when another is in use by the time the library arrives', async () => {
+      const { sut, store, advance } = setupSecondAccount({
+        owned: () => [game(1, 'A', 10), game(2, 'B', 20)],
+        player: (_appid, credentials) =>
+          achieved(isMine(credentials) ? 1 : 3, 4),
+      });
+      await sut.getDashboard();
+      store.setActiveAccount(OTHER_STEAM_ID);
+      await sut.getDashboard();
+      store.setActiveAccount(STEAM_ID);
+      advance(11 * 60_000);
+      const reading = sut.getDashboard();
+      store.setActiveAccount(OTHER_STEAM_ID);
+
+      const list = await reading;
+
+      expect(list.map(({ appid, unlocked }) => ({ appid, unlocked }))).toEqual([
+        { appid: 1, unlocked: 1 },
+        { appid: 2, unlocked: 1 },
+      ]);
     });
 
     it('should say Steam answered when a game was read for the dashboard', async () => {

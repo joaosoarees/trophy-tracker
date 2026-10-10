@@ -28,7 +28,7 @@ const CONCURRENCY = 4;
 type ReadCache = Pick<
   Store,
   | 'getActiveSteamId'
-  | 'getCredentials'
+  | 'getCredentialsOf'
   | 'getLibrary'
   | 'setLibrary'
   | 'getGame'
@@ -80,9 +80,22 @@ export class Tracker {
     this.now = deps.now ?? (() => Date.now());
   }
 
+  /**
+   * Whose read this is: the account in use as the read starts. Everything the
+   * read takes from the store or hands to it afterwards names this account,
+   * since another one may be in use by the time Steam answers.
+   */
+  private owner(): string {
+    return this.store.getActiveSteamId() ?? '';
+  }
+
   /** Identical reads for the same account share one request. */
-  private once<T>(name: string, run: () => Promise<T>): Promise<T> {
-    const key = `${this.store.getActiveSteamId() ?? ''}:${name}`;
+  private once<T>(
+    owner: string,
+    name: string,
+    run: () => Promise<T>,
+  ): Promise<T> {
+    const key = `${owner}:${name}`;
     const running = this.inflight.get(key) as Promise<T> | undefined;
     if (running) return running;
     const promise = run().finally(() => this.inflight.delete(key));
@@ -90,24 +103,29 @@ export class Tracker {
     return promise;
   }
 
-  private credentials(): ICredentials {
-    const creds = this.store.getCredentials();
+  private credentials(owner: string): ICredentials {
+    const creds = this.store.getCredentialsOf(owner);
     if (!creds) throw new SteamError('not-configured');
     return creds;
   }
 
-  async library(
+  /** The library of the account in use. */
+  library(isForced = false, onAnswer?: OnAnswer): Promise<IRawOwnedGame[]> {
+    return this.libraryOf(this.owner(), isForced, onAnswer);
+  }
+
+  private async libraryOf(
+    owner: string,
     isForced = false,
     onAnswer?: OnAnswer,
   ): Promise<IRawOwnedGame[]> {
-    const cached = this.store.getLibrary();
+    const cached = this.store.getLibrary(owner);
     if (cached && !isForced && this.now() - cached.fetchedAt < LIBRARY_TTL)
       return cached.games;
-    const games = await this.once('library', async () => {
-      const creds = this.credentials();
-      const owned = await this.client.getOwnedGames(creds);
+    const games = await this.once(owner, 'library', async () => {
+      const owned = await this.client.getOwnedGames(this.credentials(owner));
       if (owned === null) throw new SteamError('private');
-      this.store.setLibrary(owned, this.now(), creds.steamId);
+      this.store.setLibrary(owned, this.now(), owner);
       return owned;
     });
     onAnswer?.();
@@ -142,12 +160,12 @@ export class Tracker {
     return result;
   }
 
-  private async gameName(appid: number): Promise<string> {
+  private async gameName(owner: string, appid: number): Promise<string> {
     const find = (games: IRawOwnedGame[]): string | undefined =>
       games.find((g) => g.appid === appid)?.name;
     return (
-      find(await this.library()) ??
-      find(await this.library(true)) ??
+      find(await this.libraryOf(owner)) ??
+      find(await this.libraryOf(owner, true)) ??
       `App ${appid}`
     );
   }
@@ -183,11 +201,12 @@ export class Tracker {
     mode: boolean | 'poll' = false,
     onAnswer?: OnAnswer,
   ): Promise<IGameView> {
+    const owner = this.owner();
     const cached = this.store.getGame(appid);
     if (cached && mode === false && this.now() - cached.fetchedAt < GAME_TTL)
       return cached;
-    const view = await this.once(`game:${appid}:${mode}`, () =>
-      this.readGame(appid, mode === true, cached),
+    const view = await this.once(owner, `game:${appid}:${mode}`, () =>
+      this.readGame(owner, appid, mode === true, cached),
     );
     // A game is never read without asking what the player has in it.
     onAnswer?.();
@@ -197,9 +216,11 @@ export class Tracker {
   /**
    * Optimistic read: answers at once with the last known view, however old,
    * and when it is stale refreshes it behind the scenes. `onFresh` gets the
-   * new view only if something changed. With nothing cached it is a normal read.
-   * `onAnswer` is called by whichever read asked Steam: the normal one, or the
-   * refresh, after this has answered.
+   * new view only if something changed and the account it was read for is
+   * still the one in use: the view is kept for its account either way, but it
+   * is not the game of whoever is on screen now. With nothing cached it is a
+   * normal read. `onAnswer` is called by whichever read asked Steam: the
+   * normal one, or the refresh, after this has answered.
    */
   async getGameStaleFirst(
     appid: number,
@@ -213,25 +234,27 @@ export class Tracker {
       onAnswer?: OnAnswer;
     },
   ): Promise<IGameView> {
+    const owner = this.owner();
     const cached = this.store.getGame(appid);
     if (!cached) return this.getGame(appid, false, onAnswer);
 
     if (this.now() - cached.fetchedAt >= GAME_TTL) {
       void this.getGame(appid, false, onAnswer).then((fresh) => {
-        if (fresh !== cached) onFresh(fresh);
+        if (fresh !== cached && this.owner() === owner) onFresh(fresh);
       }, onError);
     }
     return cached;
   }
 
   private async readGame(
+    owner: string,
     appid: number,
     isFresh: boolean,
     cached: IGameView | null,
   ): Promise<IGameView> {
-    const creds = this.credentials();
+    const creds = this.credentials(owner);
     const [name, schema, player, art] = await Promise.all([
-      this.gameName(appid),
+      this.gameName(owner, appid),
       this.schema(appid, isFresh),
       this.client.getPlayerAchievements(creds, appid),
       this.art([appid]),
@@ -261,19 +284,20 @@ export class Tracker {
     const view = mergeView(cached, read);
     if (view === cached) {
       cached.fetchedAt = read.fetchedAt;
-      this.store.setGame(cached, creds.steamId);
+      this.store.setGame(cached, owner);
       return cached;
     }
-    this.store.setGame(view, creds.steamId);
+    this.store.setGame(view, owner);
     this.store.setSummaries(
-      { [appid]: Dashboard.entryOfView(view, this.playtimeOf(appid)) },
-      creds.steamId,
+      { [appid]: Dashboard.entryOfView(view, this.playtimeOf(owner, appid)) },
+      owner,
     );
     return view;
   }
 
-  private playtimeOf(appid: number): number {
-    const game = this.store.getLibrary()?.games.find((g) => g.appid === appid);
+  private playtimeOf(owner: string, appid: number): number {
+    const library = this.store.getLibrary(owner);
+    const game = library?.games.find((g) => g.appid === appid);
     return game?.playtime_forever ?? 0;
   }
 
@@ -283,8 +307,11 @@ export class Tracker {
     onProgress?: (done: number, total: number) => void,
     onAnswer?: OnAnswer,
   ): Promise<IGameSummary[]> {
-    const { games, hasAnswer } = await this.once(`dashboard:${mode}`, () =>
-      this.readDashboard(mode, onProgress),
+    const owner = this.owner();
+    const { games, hasAnswer } = await this.once(
+      owner,
+      `dashboard:${mode}`,
+      () => this.readDashboard(owner, mode, onProgress),
     );
     if (hasAnswer) onAnswer?.();
     return games;
@@ -292,22 +319,23 @@ export class Tracker {
 
   /** The dashboard, and whether Steam answered a request made with the key for it. */
   private async readDashboard(
+    owner: string,
     mode: DashboardMode,
     onProgress?: (done: number, total: number) => void,
   ): Promise<{ games: IGameSummary[]; hasAnswer: boolean }> {
-    const creds = this.credentials();
+    const creds = this.credentials(owner);
     let hasAnswer = false;
     const onAnswer = (): void => {
       hasAnswer = true;
     };
     const played = Dashboard.played(
-      await this.library(mode !== 'cached', onAnswer),
+      await this.libraryOf(owner, mode !== 'cached', onAnswer),
     );
 
     const entries = new Map<number, ISummaryEntry>();
     const pending: IRawOwnedGame[] = [];
     for (const game of played) {
-      const cached = this.store.getSummary(game.appid);
+      const cached = this.store.getSummary(game.appid, owner);
       if (cached && mode !== 'all' && Dashboard.isCurrent(cached, game))
         entries.set(game.appid, cached);
       else pending.push(game);
@@ -329,7 +357,7 @@ export class Tracker {
         onProgress?.(++done, pending.length);
       });
     } finally {
-      this.store.setSummaries(fresh, creds.steamId);
+      this.store.setSummaries(fresh, owner);
     }
 
     const listed = played.filter(

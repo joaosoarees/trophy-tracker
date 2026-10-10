@@ -4,13 +4,22 @@ import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import { type IAccount } from '@shared/types/Account';
+import { type IGameView } from '@shared/types/Game';
 import { fakeSteamClient } from '@tests/fakeSteamClient';
-import { KEY, makeTempDir, STEAM_ID } from '@tests/helpers';
+import nioh from '@tests/fixtures/game-achievements-3681010.json';
+import {
+  KEY,
+  makeTempDir,
+  OTHER_KEY,
+  OTHER_STEAM_ID,
+  STEAM_ID,
+} from '@tests/helpers';
 import { InMemoryStore } from '@tests/InMemoryStore';
 import { achieved, game } from '@tests/steamLibrary';
 
 import {
   type ICredentials,
+  type IRawPlayerAchievement,
   type IRawPlayerSummary,
   SteamError,
 } from '../steam/SteamClient';
@@ -115,6 +124,92 @@ async function setupRevokedKey() {
       isRevoked = false;
     },
   };
+}
+
+const NIOH = 3681010;
+
+/** What a player has in Nioh 3: the first `count` achievements of the list. */
+const niohUnlocked = (count: number): IRawPlayerAchievement[] =>
+  nioh.response.achievements.slice(0, count).map((a) => ({
+    apiname: a.internal_name,
+    achieved: 1,
+    unlocktime: 9,
+  }));
+
+/** One turn of the event loop: whatever was ready to run has run. */
+const turn = (): Promise<void> =>
+  new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+
+/**
+ * An app with two accounts whose keys Steam accepts, `STEAM_ID` in use, and
+ * the real `Tracker` reading for it. Nioh 3 was read for `STEAM_ID` long
+ * enough ago to be stale, so asking for it starts a refresh behind the
+ * scenes, which Steam answers only when the test says how: `unlock` or
+ * `refuseKey`. `open` asks for the game as the `getGame` handler of `Ipc`
+ * does; `onFreshMock` is what that handler would send to the interface.
+ */
+async function setupStaleGame() {
+  const store = new InMemoryStore();
+  store.setCredentials(
+    { steamId: OTHER_STEAM_ID, apiKey: OTHER_KEY },
+    { steamId: OTHER_STEAM_ID, name: 'other', avatar: 'x' },
+  );
+  store.setCredentials(
+    { steamId: STEAM_ID, apiKey: KEY },
+    { steamId: STEAM_ID, name: 'player', avatar: 'x' },
+  );
+  let refresh: {
+    resolve: (list: IRawPlayerAchievement[]) => void;
+    reject: (e: unknown) => void;
+  } | null = null;
+  let isStale = false;
+  const client = fakeSteamClient({
+    summary,
+    owned: () => [game(NIOH, 'Nioh 3', 500)],
+    achievements: () => nioh.response.achievements,
+    player: () =>
+      isStale
+        ? new Promise<IRawPlayerAchievement[]>((resolve, reject) => {
+            refresh = { resolve, reject };
+          })
+        : niohUnlocked(1),
+  });
+  let now = 1_000_000;
+  const tracker = new Tracker({
+    store,
+    client,
+    readStatMap: () => Promise.resolve(new Map<string, string>()),
+    now: () => now,
+  });
+  const sut = new KeyStatus(store, client);
+  await tracker.getGame(NIOH);
+  now += 5 * 60_000;
+  isStale = true;
+  const onFreshMock = vi.fn<(view: IGameView) => void>();
+  const open = () =>
+    sut.attempt((onAnswer, onFailure) =>
+      tracker.getGameStaleFirst(NIOH, {
+        onAnswer,
+        onFresh: onFreshMock,
+        onError: onFailure,
+      }),
+    );
+  /** Steam answers the refresh, then everything that follows from it runs. */
+  const unlock = async (count: number): Promise<void> => {
+    refresh?.resolve(niohUnlocked(count));
+    await turn();
+  };
+  const refuseKey = async (): Promise<void> => {
+    refresh?.reject(new SteamError('invalid-key'));
+    await turn();
+  };
+  const statuses = (): Record<string, string> =>
+    Object.fromEntries(
+      store.getAccounts().map(({ steamId, status }) => [steamId, status]),
+    );
+  return { sut, store, open, unlock, refuseKey, statuses, onFreshMock };
 }
 
 describe('KeyStatus', () => {
@@ -225,15 +320,16 @@ describe('KeyStatus', () => {
     it('should keep a rejected key marked throughout when the refresh behind a stale game fails', async () => {
       const { sut, store, client, tracker, changes, advance } =
         await setupRevokedKey();
-      const onErrorMock = vi.fn<(e: unknown) => void>((e) => {
-        sut.noticeFailure(e);
-      });
+      const onErrorMock = vi.fn<(e: unknown) => void>();
       advance(5 * 60_000);
 
-      const result = await sut.attempt((onAnswer) =>
+      const result = await sut.attempt((onAnswer, onFailure) =>
         tracker.getGameStaleFirst(7, {
           onFresh: () => undefined,
-          onError: onErrorMock,
+          onError: (e) => {
+            onErrorMock(e);
+            onFailure(e);
+          },
           onAnswer,
         }),
       );
@@ -249,6 +345,40 @@ describe('KeyStatus', () => {
       ]);
       expect(store.getAccounts()[0].status).toBe('rejected');
       expect(changes).toEqual([]);
+    });
+
+    it('should mark the account a stale game was read for when its refresh fails after another account took over', async () => {
+      const { store, open, refuseKey, statuses } = await setupStaleGame();
+      await open();
+      store.setActiveAccount(OTHER_STEAM_ID);
+
+      await refuseKey();
+
+      expect(statuses()).toEqual({
+        [STEAM_ID]: 'rejected',
+        [OTHER_STEAM_ID]: 'valid',
+      });
+    });
+
+    it('should not hand the interface the view a refresh found when another account took over meanwhile', async () => {
+      const { store, open, unlock, onFreshMock } = await setupStaleGame();
+      await open();
+      store.setActiveAccount(OTHER_STEAM_ID);
+
+      await unlock(3);
+
+      expect(onFreshMock).not.toHaveBeenCalled();
+    });
+
+    it('should hand the interface the view a refresh found when the account is still in use', async () => {
+      const { open, unlock, onFreshMock } = await setupStaleGame();
+      await open();
+
+      await unlock(3);
+
+      expect(onFreshMock).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ appid: NIOH, unlockedCount: 3 }),
+      );
     });
 
     it('should announce nothing when a read only confirms what was known', async () => {

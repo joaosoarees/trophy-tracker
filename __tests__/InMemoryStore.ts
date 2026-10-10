@@ -162,7 +162,8 @@ export class InMemoryStore implements ServiceStore {
 
   /**
    * What was read for an account: the one in use, unless a read hands in its
-   * result for another. A result for an account that is gone lands nowhere.
+   * result for another, or asks for what it needs of it. A result for an
+   * account that is gone lands nowhere, and nothing is answered for it.
    */
   private readsOf(steamId = this.getActiveSteamId() ?? ''): IAccountReads {
     if (steamId !== '' && !this.hasAccount(steamId)) return blank();
@@ -174,8 +175,8 @@ export class InMemoryStore implements ServiceStore {
     return reads;
   }
 
-  getLibrary(): IAccountReads['library'] {
-    return this.readsOf().library;
+  getLibrary(owner?: string): IAccountReads['library'] {
+    return this.readsOf(owner).library;
   }
 
   setLibrary(games: IRawOwnedGame[], now = Date.now(), owner?: string): void {
@@ -190,8 +191,8 @@ export class InMemoryStore implements ServiceStore {
     this.readsOf(owner).games.set(view.appid, view);
   }
 
-  getSummary(appid: number): ISummaryEntry | null {
-    return this.readsOf().summaries.get(String(appid)) ?? null;
+  getSummary(appid: number, owner?: string): ISummaryEntry | null {
+    return this.readsOf(owner).summaries.get(String(appid)) ?? null;
   }
 
   setSummaries(entries: Record<string, ISummaryEntry>, owner?: string): void {
