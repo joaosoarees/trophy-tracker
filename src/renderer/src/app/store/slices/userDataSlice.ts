@@ -4,10 +4,12 @@ import { createSaver } from '@app/lib/saver';
 import { UserDataService } from '@app/services/UserDataService';
 import { sameAccount } from '@app/store/sameAccount';
 import type { StoreSlice } from '@app/store/Store';
+import { restoreChecklistItem } from '@shared/checklist';
 import { messagesFor } from '@shared/i18n';
 import {
   type GameUserData,
   type IAchievementUserData,
+  type IChecklistItem,
 } from '@shared/types/UserData';
 
 type UserDataStore = {
@@ -22,17 +24,32 @@ type UserDataActions = {
     achievementId: string,
     patch: Partial<IAchievementUserData>,
   ) => void;
+  /**
+   * Takes back the removal of a checklist item: `item` returns to the list it
+   * left (`from`), as that list is now, at `index` (see `restoreChecklistItem`
+   * in `@shared/checklist`). Nothing happens when that list is not at hand:
+   * another account is in use, or the game was not read again.
+   */
+  restoreChecklistItem: (
+    from: ChecklistPlace,
+    item: IChecklistItem,
+    index: number,
+  ) => void;
   /** Writes right away what is still waiting for the typing pause. */
   flush: () => void;
 };
 
 export type UserDataSlice = UserDataStore & UserDataActions;
 
-type Edit = {
+/** One achievement's user data, of one game, of one account. */
+type ChecklistPlace = {
   /** The account the edit was made under, which is where it is saved. */
   steamId: string;
   appid: number;
   achievementId: string;
+};
+
+type Edit = ChecklistPlace & {
   /** `undefined` when the achievement had no user data before the edit. */
   data: IAchievementUserData | undefined;
 };
@@ -107,6 +124,21 @@ export const createUserDataSlice: StoreSlice<UserDataSlice> = (set, get) => {
         { steamId, appid, achievementId, data },
         { steamId, appid, achievementId, data: previous },
       );
+    },
+
+    restoreChecklistItem: ({ steamId, appid, achievementId }, item, index) => {
+      // The undo outlives the list it was offered on: it is resolved here, at
+      // the click, against what the store holds, and only for its own account.
+      if (get().settings.appState?.activeSteamId !== steamId) return;
+      // Not read again since the account came back: an empty list here would
+      // be saved over the real one.
+      const game = get().userData.byGame[appid];
+      if (!game) return;
+
+      const current = game[achievementId]?.checklist ?? [];
+      const checklist = restoreChecklistItem(current, item, index);
+      if (checklist === current) return;
+      get().userData.update(appid, achievementId, { checklist });
     },
 
     flush: () => saver.flush(),

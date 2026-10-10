@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type IApi } from '@shared/types/Api';
-import { type GameUserData } from '@shared/types/UserData';
+import { type GameUserData, type IChecklistItem } from '@shared/types/UserData';
 import { makeAppState } from '@tests/factories/makeAppState';
 import { OTHER_STEAM_ID, STEAM_ID } from '@tests/helpers';
 import { deferred, makeAppStore } from '@tests/makeAppStore';
@@ -16,6 +16,18 @@ const otherAccountState = () =>
     activeSteamId: OTHER_STEAM_ID,
     profile: { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' },
   });
+
+const bridge: IChecklistItem = { id: 'b', text: 'Bridge', done: false };
+const cave: IChecklistItem = { id: 'c', text: 'Cave', done: false };
+const tower: IChecklistItem = { id: 't', text: 'Tower', done: false };
+
+/** What the main process has for a game: achievement A with this checklist. */
+const savedList = (checklist: IChecklistItem[]): GameUserData => ({
+  A: { note: '', pinned: false, checklist },
+});
+
+/** Where an item was removed from: achievement A of game 10, first account. */
+const FROM = { steamId: STEAM_ID, appid: 10, achievementId: 'A' };
 
 /** How long the store waits after the last edit before writing it. */
 const PAUSE = 500;
@@ -165,6 +177,111 @@ describe('userDataSlice', () => {
       sut.getState().userData.update(10, 'A', { note: 'bridge' });
 
       expect(sut.getState().userData.byGame).toEqual({});
+    });
+  });
+
+  describe('restoreChecklistItem', () => {
+    it('should put both items back when two removals are undone, the older one last', async () => {
+      const { sut } = await setup(savedList([tower]));
+      await sut.getState().userData.load(10);
+      sut.getState().userData.restoreChecklistItem(FROM, cave, 0);
+
+      sut.getState().userData.restoreChecklistItem(FROM, bridge, 0);
+
+      expect(sut.getState().userData.byGame[10]).toEqual(
+        savedList([bridge, cave, tower]),
+      );
+    });
+
+    it('should keep an item checked after the removal when the removed one is put back', async () => {
+      const { sut } = await setup(savedList([cave, tower]));
+      await sut.getState().userData.load(10);
+      sut.getState().userData.update(10, 'A', {
+        checklist: [{ ...cave, done: true }, tower],
+      });
+
+      sut.getState().userData.restoreChecklistItem(FROM, bridge, 0);
+
+      expect(sut.getState().userData.byGame[10]).toEqual(
+        savedList([bridge, { ...cave, done: true }, tower]),
+      );
+    });
+
+    it('should save the list with the item back when the typing pause passes', async () => {
+      const { sut, setUserDataMock } = await setup(savedList([tower]));
+      await sut.getState().userData.load(10);
+      sut.getState().userData.restoreChecklistItem(FROM, bridge, 0);
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(setUserDataMock).toHaveBeenCalledExactlyOnceWith(
+        10,
+        'A',
+        { note: '', pinned: false, checklist: [bridge, tower] },
+        STEAM_ID,
+      );
+    });
+
+    it('should make it the only item when the achievement has nothing saved any more', async () => {
+      const { sut } = await setup();
+      await sut.getState().userData.load(10);
+
+      sut.getState().userData.restoreChecklistItem(FROM, bridge, 0);
+
+      expect(sut.getState().userData.byGame[10]).toEqual(savedList([bridge]));
+    });
+
+    it('should put the item back in the game it was removed from when another game was edited since', async () => {
+      const { sut } = await setup(savedList([tower]));
+      await sut.getState().userData.load(10);
+      await sut.getState().userData.load(20);
+      sut.getState().userData.update(20, 'A', { checklist: [cave] });
+
+      sut.getState().userData.restoreChecklistItem(FROM, bridge, 0);
+
+      expect(sut.getState().userData.byGame).toEqual({
+        10: savedList([bridge, tower]),
+        20: savedList([cave]),
+      });
+    });
+
+    it('should leave the list of the account in use alone when the item was removed under the account that was left', async () => {
+      const { sut, follow } = await setup(savedList([tower]));
+      follow(otherAccountState());
+      await sut.getState().userData.load(10);
+
+      sut.getState().userData.restoreChecklistItem(FROM, bridge, 0);
+
+      expect(sut.getState().userData.byGame[10]).toEqual(savedList([tower]));
+    });
+
+    it('should save nothing when the item was removed under the account that was left', async () => {
+      const { sut, follow, setUserDataMock } = await setup(savedList([tower]));
+      follow(otherAccountState());
+      await sut.getState().userData.load(10);
+      sut.getState().userData.restoreChecklistItem(FROM, bridge, 0);
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(setUserDataMock).not.toHaveBeenCalled();
+    });
+
+    it('should take nothing when the lists of the game were not read yet', async () => {
+      const { sut } = await setup(savedList([tower]));
+
+      sut.getState().userData.restoreChecklistItem(FROM, bridge, 0);
+
+      expect(sut.getState().userData.byGame).toEqual({});
+    });
+
+    it('should save nothing when the item is already on the list', async () => {
+      const { sut, setUserDataMock } = await setup(savedList([bridge, tower]));
+      await sut.getState().userData.load(10);
+      sut.getState().userData.restoreChecklistItem(FROM, bridge, 0);
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(setUserDataMock).not.toHaveBeenCalled();
     });
   });
 
