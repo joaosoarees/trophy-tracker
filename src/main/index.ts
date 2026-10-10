@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import { app, safeStorage, screen } from 'electron';
 
@@ -23,8 +23,8 @@ import { SecureCipher } from './storage/SecureCipher';
 import { Store } from './storage/Store';
 import { AutoUpdater } from './system/AutoUpdater';
 import { Browser } from './system/Browser';
-import { DataFolder } from './system/DataFolder';
 import { ErrorLog } from './system/ErrorLog';
+import { LocalFolder } from './system/LocalFolder';
 import { Releases } from './system/Releases';
 import { WindowBounds } from './system/WindowBounds';
 
@@ -36,9 +36,8 @@ if (!app.commandLine.hasSwitch('user-data-dir')) {
   app.setPath('userData', join(appData, 'trophy-tracker'));
 }
 
-const errorLog = new ErrorLog(
-  join(app.getPath('userData'), 'logs', 'errors.log'),
-);
+const errorLogFile = join(app.getPath('userData'), 'logs', 'errors.log');
+const errorLog = new ErrorLog(errorLogFile);
 
 process.on('uncaughtException', (error) =>
   errorLog.write('main: uncaughtException', error.stack ?? error.message),
@@ -147,7 +146,11 @@ void app.whenReady().then(async () => {
     local,
     updates,
     browser,
-    dataFolder: new DataFolder(app.getPath('userData')),
+    folders: {
+      data: new LocalFolder(app.getPath('userData')),
+      // The row shows the file; the button opens the folder it is in.
+      errorLog: new LocalFolder(dirname(errorLogFile), errorLogFile),
+    },
     errorLog,
   }).register();
   // Before the window opens, so it opens on the right account.

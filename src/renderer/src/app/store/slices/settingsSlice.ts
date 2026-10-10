@@ -19,7 +19,8 @@ import { type Language, messagesFor } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
 import {
   DEFAULT_PREFERENCES,
-  type IDataFolder,
+  type ILocalFolder,
+  type LocalFolderId,
   type IPreferences,
 } from '@shared/types/Preferences';
 
@@ -30,7 +31,8 @@ type SettingsStore = {
   /** Choices the main process acts on: the unlock notification, the window. */
   preferences: IPreferences;
   /** Where the app keeps its files; `null` until read. */
-  dataFolder: IDataFolder | null;
+  /** The folders shown in Settings; `null` until asked. */
+  folders: Record<LocalFolderId, ILocalFolder> | null;
   /** Order chosen for each list of a game; kept across games and restarts. */
   achievementSort: IAchievementSort;
   /** Order chosen for each list of the dashboard; kept across restarts. */
@@ -47,7 +49,7 @@ type SettingsActions = {
     value: IPreferences[K],
   ) => Promise<void>;
   /** Opens the data folder, or copies its path where it cannot be opened. */
-  openDataFolder: () => Promise<void>;
+  openFolder: (id: LocalFolderId) => Promise<void>;
   setDashboardSort: (
     filter: DashboardFilter,
     sort: DashboardSort,
@@ -78,23 +80,25 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
   appState: null,
   alwaysOnTop: false,
   preferences: DEFAULT_PREFERENCES,
-  dataFolder: null,
+  folders: null,
   achievementSort: DEFAULT_ACHIEVEMENT_SORT,
   dashboardSort: DEFAULT_DASHBOARD_SORT,
 
   load: async () => {
-    const [appState, alwaysOnTop, preferences, dataFolder] = await Promise.all([
-      SettingsService.getState(),
-      SettingsService.getAlwaysOnTop(),
-      SettingsService.getPreferences(),
-      SettingsService.getDataFolder(),
-    ]);
+    const [appState, alwaysOnTop, preferences, data, errorLog] =
+      await Promise.all([
+        SettingsService.getState(),
+        SettingsService.getAlwaysOnTop(),
+        SettingsService.getPreferences(),
+        SettingsService.getFolder('data'),
+        SettingsService.getFolder('errorLog'),
+      ]);
     get().settings.apply(appState);
     set(
       (prevState) => {
         prevState.settings.alwaysOnTop = alwaysOnTop;
         prevState.settings.preferences = preferences;
-        prevState.settings.dataFolder = dataFolder;
+        prevState.settings.folders = { data, errorLog };
       },
       false,
       'settings/load',
@@ -162,10 +166,10 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
     }
   },
 
-  openDataFolder: async () => {
+  openFolder: async (id) => {
     const m = messagesFor(get().session.language);
     try {
-      const done = await SettingsService.openDataFolder();
+      const done = await SettingsService.openFolder(id);
       if (done === 'copied') toast(m.settings.pathCopied);
     } catch {
       toast.error(m.errors.unexpected);

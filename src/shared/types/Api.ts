@@ -12,7 +12,11 @@ import {
   type IGameView,
 } from './Game';
 import { type ExternalPage, type GuideSite } from './Guide';
-import { type IDataFolder, type IPreferences } from './Preferences';
+import {
+  type ILocalFolder,
+  type IPreferences,
+  type LocalFolderId,
+} from './Preferences';
 import { type IProfile } from './Profile';
 import { type GameUserData, type IAchievementUserData } from './UserData';
 
@@ -63,9 +67,9 @@ export interface IApi {
     value: IPreferences[K],
   ) => Promise<IPreferences>;
 
-  getDataFolder: () => Promise<IDataFolder>;
+  getFolder: (id: LocalFolderId) => Promise<ILocalFolder>;
   /** Opens the data folder or, where that cannot be done, copies its path. */
-  openDataFolder: () => Promise<'opened' | 'copied'>;
+  openFolder: (id: LocalFolderId) => Promise<'opened' | 'copied'>;
 
   openGuide: (
     site: GuideSite,

@@ -7,6 +7,8 @@ What changed in each version, for whoever uses the app. The section of a version
 ### Changed
 
 - Settings no longer has its own "Check for updates" button: the one in the bar at the top of the window does the same from any screen.
+- In Settings, the error log shows where its file is and has a button that opens its folder, as the data folder does.
+- The foot of Settings no longer repeats the version, which is in "About".
 
 ### Fixed
 

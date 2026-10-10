@@ -50,7 +50,7 @@ export default defineConfig({
         'src/main/ipc/**',
         'src/main/system/AutoUpdater.ts',
         'src/main/system/Browser.ts',
-        'src/main/system/DataFolder.ts',
+        'src/main/system/LocalFolder.ts',
       ],
       // `lcovonly` (the report as one file, no pages) is what the coverage badge of the README is made from (CI sends
       // the report to Codecov).

@@ -5,6 +5,7 @@ import { useStore } from '@app/store';
 import { isLanguage } from '@shared/i18n';
 import { type IAccount } from '@shared/types/Account';
 import { type ExternalPage } from '@shared/types/Guide';
+import { type LocalFolderId } from '@shared/types/Preferences';
 
 /** A stable value for the selector while the state is still unknown. */
 const NO_ACCOUNTS: IAccount[] = [];
@@ -18,14 +19,14 @@ export function useSettingsController() {
     appInfo,
     alwaysOnTop,
     preferences,
-    dataFolder,
+    folders,
     changeLanguage,
     switchAccount,
     startAddingAccount,
     restartToUpdate,
     toggleAlwaysOnTop,
     setPreference,
-    openDataFolder,
+    openFolder,
   } = useStore(
     useShallow((state) => ({
       accounts: state.settings.appState?.accounts ?? NO_ACCOUNTS,
@@ -42,14 +43,14 @@ export function useSettingsController() {
       appInfo: state.updates.appInfo,
       alwaysOnTop: state.settings.alwaysOnTop,
       preferences: state.settings.preferences,
-      dataFolder: state.settings.dataFolder,
+      folders: state.settings.folders,
       changeLanguage: state.settings.changeLanguage,
       switchAccount: state.settings.switchAccount,
       startAddingAccount: state.navigation.startAddingAccount,
       restartToUpdate: state.updates.restart,
       toggleAlwaysOnTop: state.settings.toggleAlwaysOnTop,
       setPreference: state.settings.setPreference,
-      openDataFolder: state.settings.openDataFolder,
+      openFolder: state.settings.openFolder,
     })),
   );
 
@@ -65,14 +66,14 @@ export function useSettingsController() {
     appInfo,
     alwaysOnTop,
     preferences,
-    dataFolder,
+    folders,
     handleChangeLanguage,
     handleSwitchAccount: (steamId: string) => void switchAccount(steamId),
     handleAddAccount: startAddingAccount,
     handleToggleAlwaysOnTop: () => void toggleAlwaysOnTop(),
     handleRememberWindowChange: (value: boolean) =>
       void setPreference('rememberWindow', value),
-    handleOpenDataFolder: () => void openDataFolder(),
+    handleOpenFolder: (id: LocalFolderId) => void openFolder(id),
     handleInstallUpdate: restartToUpdate,
     handleOpenPage: (page: ExternalPage) =>
       void SystemService.openExternal(page),

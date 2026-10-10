@@ -25,8 +25,8 @@ describe('settings: loading', () => {
       getState: () => Promise.resolve(makeAppState()),
       getAlwaysOnTop: () => Promise.resolve(true),
       getPreferences: () => Promise.resolve({ rememberWindow: false }),
-      getDataFolder: () =>
-        Promise.resolve({ path: '/home/me/data', canOpen: true }),
+      getFolder: (id) =>
+        Promise.resolve({ path: `/home/me/${id}`, canOpen: true }),
     });
 
     await settings().load();
@@ -34,7 +34,10 @@ describe('settings: loading', () => {
     expect(settings().appState?.isConfigured).toBe(true);
     expect(settings().alwaysOnTop).toBe(true);
     expect(settings().preferences.rememberWindow).toBe(false);
-    expect(settings().dataFolder?.path).toBe('/home/me/data');
+    expect(settings().folders).toEqual({
+      data: { path: '/home/me/data', canOpen: true },
+      errorLog: { path: '/home/me/errorLog', canOpen: true },
+    });
   });
 
   it('makes the interface follow the saved language and list orders', async () => {
@@ -283,23 +286,23 @@ describe('settings: preferences', () => {
   });
 });
 
-describe('settings: the data folder', () => {
+describe('settings: opening a folder', () => {
   it('says nothing when the folder was opened', async () => {
     const { settings, toast } = await setup({
-      openDataFolder: () => Promise.resolve('opened'),
+      openFolder: () => Promise.resolve('opened'),
     });
 
-    await settings().openDataFolder();
+    await settings().openFolder('data');
 
     expect(toast).not.toHaveBeenCalled();
   });
 
   it('says the path was copied where the folder cannot be opened', async () => {
     const { settings, toast } = await setup({
-      openDataFolder: () => Promise.resolve('copied'),
+      openFolder: () => Promise.resolve('copied'),
     });
 
-    await settings().openDataFolder();
+    await settings().openFolder('errorLog');
 
     expect(toast).toHaveBeenCalledWith('Path copied.');
   });
