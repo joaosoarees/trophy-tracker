@@ -35,7 +35,7 @@ export function useAccountStepController({
   /** Opened with "Add another account": it can be closed again without adding. */
   const [isFormOptional, setIsFormOptional] = useState(false);
   // Only a SteamID found in the Steam client is locked. Anything else in the
-  // field was typed by the user (and kept by the draft), and stays theirs.
+  // field was typed by the user, and stays theirs.
   const [source, setSource] = useState<SteamIdSource>('typed');
   const [isEditingSteamId, setIsEditingSteamId] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -108,7 +108,7 @@ export function useAccountStepController({
       return;
     }
 
-    const next = await OnboardingService.saveConfig(steamId, apiKey);
+    const next = await OnboardingService.addAccount(steamId, apiKey);
     setIsVerifying(false);
     onChange(next, privacy.value.gamesWithPlaytime);
     setIsMissingAccount(false);

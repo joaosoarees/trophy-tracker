@@ -9,12 +9,11 @@ import { useStore } from '@app/store';
 import { isLanguage } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
 
-import { clearDraft, loadDraft, loadStep, saveDraft, saveStep } from './draft';
 import { type OnboardingFormData, onboardingSchema } from './schema';
 
 interface IOnboardingOptions {
   state: IAppState;
-  /** Opened from the app, only to add an account: no language step and no draft. */
+  /** Opened from the app, only to add an account: no language step. */
   isAddingAccount: boolean;
   onDone: (state: IAppState) => void;
 }
@@ -25,9 +24,6 @@ export function useOnboardingController({
   onDone,
 }: IOnboardingOptions) {
   const setLanguage = useStore((store) => store.session.setLanguage);
-  // Read once: the draft only seeds the form.
-  const [draft] = useState(() => (isAddingAccount ? null : loadDraft()));
-  const [initialStep] = useState(() => (isAddingAccount ? 0 : loadStep()));
   /** What the main process has saved: accounts are saved as they are verified. */
   const [saved, setSaved] = useState(state);
   /** Played games found for each account verified in this visit. */
@@ -38,21 +34,14 @@ export function useOnboardingController({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       languageStep: {
-        language: isLanguage(draft?.language) ? draft.language : state.language,
+        language: state.language,
       },
-      accountStep: { steamId: draft?.steamId ?? '', apiKey: '' },
+      accountStep: { steamId: '', apiKey: '' },
     },
   });
 
   useEffect(() => {
     const { unsubscribe } = form.watch((formData, { name }) => {
-      if (!isAddingAccount) {
-        saveDraft({
-          language: formData.languageStep?.language,
-          steamId: formData.accountStep?.steamId,
-        });
-      }
-
       // Picking the language switches the screen right away, with no reload.
       const language = formData.languageStep?.language;
       if (name === 'languageStep.language' && isLanguage(language)) {
@@ -64,7 +53,7 @@ export function useOnboardingController({
     return () => {
       unsubscribe();
     };
-  }, [form, setLanguage, isAddingAccount]);
+  }, [form, setLanguage]);
 
   /** An account was saved or removed in the account step. */
   function handleAccountsChange(next: IAppState, games?: number) {
@@ -89,7 +78,6 @@ export function useOnboardingController({
       }
     }
 
-    if (!isAddingAccount) clearDraft();
     onDone(next);
   }
 
@@ -104,7 +92,6 @@ export function useOnboardingController({
 
   return {
     form,
-    initialStep,
     saved,
     accounts: saved.accounts,
     gamesFound,
@@ -114,6 +101,5 @@ export function useOnboardingController({
     isFinishing,
     handleSubmit,
     handleAccountsChange,
-    handleStepChange: isAddingAccount ? undefined : saveStep,
   };
 }
