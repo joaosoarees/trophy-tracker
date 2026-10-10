@@ -10,7 +10,6 @@ export function useAppController() {
   const {
     appState,
     language,
-    failures,
     current,
     isAddingAccount,
     load,
@@ -27,7 +26,6 @@ export function useAppController() {
     useShallow((state) => ({
       appState: state.settings.appState,
       language: state.session.language,
-      failures: state.session.failures,
       current: state.session.current,
       isAddingAccount: state.navigation.isAddingAccount,
       load: state.settings.load,
@@ -62,11 +60,6 @@ export function useAppController() {
   useEffect(() => {
     if (configured) return connectStore();
   }, [configured, activeSteamId]);
-
-  // A read failed: see what the main process now says about the key.
-  useEffect(() => {
-    if (failures > 0) void load();
-  }, [failures, load]);
 
   // `undefined` while the current game is still unknown.
   const runningAppId =

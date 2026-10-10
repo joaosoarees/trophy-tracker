@@ -36,7 +36,6 @@ export function connectStore(): () => void {
       state.userData = initial.userData;
       state.dashboard = initial.dashboard;
       state.session.current = null;
-      state.session.failures = 0;
     });
   };
 }

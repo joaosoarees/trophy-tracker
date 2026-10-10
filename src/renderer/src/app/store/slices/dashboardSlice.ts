@@ -49,7 +49,6 @@ export const createDashboardSlice: StoreSlice<DashboardSlice> = (set, get) => ({
       false,
       result.ok ? 'dashboard/loaded' : 'dashboard/loadFailed',
     );
-    if (!result.ok) get().session.reportFailure();
   },
 
   setProgress: (done, total) =>
