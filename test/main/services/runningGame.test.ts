@@ -26,12 +26,14 @@ describe('createRunningGameSource', () => {
     let now = 0;
     let signedIn: string | null = null;
     const source = createRunningGameSource({
-      local: localWithoutTracking,
+      local: {
+        ...localWithoutTracking,
+        getActiveSteamId: () => Promise.resolve(signedIn),
+      },
       client: new SteamClient(fetchImpl),
       store,
       now: () => now,
       interval,
-      getSignedInSteamId: () => Promise.resolve(signedIn),
     });
     const configure = () =>
       store.setCredentials(

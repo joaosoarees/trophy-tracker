@@ -119,7 +119,6 @@ void app.whenReady().then(async () => {
       client,
       store,
       interval: fakeSteam ? 1_000 : undefined,
-      getSignedInSteamId: local.getActiveSteamId,
     }),
     // The audit cannot wait a minute for each check; a user's app always can.
     intervals: fakeSteam ? { running: 2_000, unlocks: 3_000 } : undefined,

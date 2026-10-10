@@ -12,8 +12,6 @@ interface IRunningGameDeps {
   now?: () => number;
   /** How long an answer from the Web API is reused, in milliseconds. */
   interval?: number;
-  /** SteamID64 of the account signed in to the Steam client, or `null`. */
-  getSignedInSteamId?: () => Promise<string | null>;
 }
 
 /**
@@ -30,7 +28,6 @@ export function createRunningGameSource({
   store,
   now = () => Date.now(),
   interval = API_INTERVAL,
-  getSignedInSteamId = () => Promise.resolve(null),
 }: IRunningGameDeps): () => Promise<number | null> {
   if (local.tracksRunningGame) return local.getRunningAppId;
 
@@ -42,7 +39,7 @@ export function createRunningGameSource({
     const inUse = store.getCredentials();
     if (!inUse) return null;
 
-    const signedIn = await getSignedInSteamId().catch(() => null);
+    const signedIn = await local.getActiveSteamId().catch(() => null);
     const credentials =
       (signedIn ? store.getCredentialsOf(signedIn) : null) ?? inUse;
     const isSameAccount = credentials.steamId === askedFor;
