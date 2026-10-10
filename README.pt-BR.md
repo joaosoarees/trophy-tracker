@@ -129,7 +129,7 @@ pnpm dist          # instaladores do sistema em que você está, em dist/
 pnpm screenshots   # as imagens desta página
 ```
 
-Como o código é organizado e as regras que ele segue estão em [CLAUDE.md](CLAUDE.md); como funcionam as versões e a auditoria, em [docs/](docs). O código, os comentários e a documentação do repositório são em inglês.
+Como o código é organizado e as regras que toda mudança segue estão em [CLAUDE.md](CLAUDE.md); as regras de cada área, e como funcionam as versões e a auditoria, em [docs/](docs). O código, os comentários e a documentação do repositório são em inglês.
 
 ## Licença
 

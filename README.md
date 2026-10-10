@@ -127,7 +127,7 @@ pnpm dist          # installers for the system you are on, into dist/
 pnpm screenshots   # the pictures of this page
 ```
 
-How the code is organised and the rules it follows are in [CLAUDE.md](CLAUDE.md); how releases and the audit work, in [docs/](docs).
+How the code is organised and the rules every change follows are in [CLAUDE.md](CLAUDE.md); the rules of each area, and how releases and the audit work, in [docs/](docs).
 
 ## License
 

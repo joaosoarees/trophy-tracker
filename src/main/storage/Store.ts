@@ -113,8 +113,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 /**
  * The shape of the files this version writes. A file in any other shape is
  * not read: there is no code here to convert an older one (see "Migrations"
- * in CLAUDE.md for when that would be worth writing). Version 1 is what the
- * versions before 0.7.0 wrote, which carried no number.
+ * in docs/local-data.md for when that would be worth writing). Version 1 is
+ * what the versions before 0.7.0 wrote, which carried no number.
  */
 const FILE_VERSION = 2;
 

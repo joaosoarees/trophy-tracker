@@ -28,7 +28,8 @@ export class MainWindow {
 
   open({ title, alwaysOnTop, bounds, onClose }: IMainWindowOptions): void {
     const win = new BrowserWindow({
-      // Wide enough for the toolbars in the longest language (see CLAUDE.md).
+      // Wide enough for the toolbars in the longest language (see
+      // docs/interface.md).
       width: 600,
       height: 860,
       ...bounds,

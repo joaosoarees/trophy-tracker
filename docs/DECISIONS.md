@@ -1,6 +1,6 @@
 # Decisions
 
-Why things are the way they are, for the choices that are not obvious from the code. `CLAUDE.md` holds the rules; this file holds the reasons and what was tried before. Newest first. Add an entry when a choice is made that someone could reasonably want to undo.
+Why things are the way they are, for the choices that are not obvious from the code. `CLAUDE.md` and the other files of this folder hold the rules; this file holds the reasons and what was tried before. Newest first. Add an entry when a choice is made that someone could reasonably want to undo.
 
 ## Cleared out before 1.0
 

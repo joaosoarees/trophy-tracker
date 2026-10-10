@@ -1,6 +1,16 @@
 # Storybook
 
-How the catalogue of components is set up and how a story is written. The rules that follow from this are in `CLAUDE.md`; read this before writing a story or changing `.storybook/`.
+The rules below are binding; `CLAUDE.md` sends you here before you write a story, add a component or a state to `ui/components`, or change `.storybook/`.
+
+## Rules
+
+- **A new component in `ui/components`, or a new state of one, comes with its story**, in `src/renderer/src/stories/` (apart from the components), one state per story.
+- A component with real guidance gets a hand-written `.mdx` page whose text comes from `DESIGN.md`, and `tags: ['!autodocs']` on its meta so there is one page, not two.
+- Data comes from the test factories. There is no main process: a stand-in answers with nothing.
+- Lint and `pnpm typecheck` cover the stories, and CI builds the catalogue.
+- **Storybook does not replace `pnpm audit:ui`:** a story shows a component alone, the audit shows the app.
+
+## How the catalogue is set up and how a story is written
 
 `pnpm storybook` opens the catalogue of the interface's building blocks: each one alone, in every state, outside the app. It is where a component is looked at before it is put on a screen, and where a state that is hard to reach in the app (a refused key, a finished game, a name too long) is one click away.
 
@@ -20,8 +30,8 @@ src/renderer/src/stories/
 - **Stories live apart from the components**, in `src/renderer/src/stories/`, one `<Name>.stories.tsx` per component, titled `Primitives/…`, `Components/…` or `Screens/<Screen>/…`. The folders of `ui/` hold only what ships.
 - **A story file** has a `meta` (`satisfies Meta<typeof X>`) with the default `args`, and `argTypes` that sort the props into categories (`Appearance`, `State`, `Accessibility`, `Event Listeners`, `Slots`) and give enums their options. Handlers are `fn()` from `storybook/test`, so each call shows in the Actions panel. Each story is one state, named for what it shows (`KeyRefused`, `WithAChecklist`), with a comment when the reason for the state is not obvious. A component that needs state to be seen working gets a `render` named `Render` with `useState`.
 - **Every component gets a page**: generated from the stories and the props by default (`tags: ['autodocs']` in the preview), with what it is for in `parameters.docs.description.component`. A component with real guidance (when to use, anatomy, do and don't) has a hand-written `<Name>.mdx` beside its stories instead, and its meta carries `tags: ['!autodocs']` so there is one page, not two. The text comes from `DESIGN.md`, which stays the source: change the rule there and bring the page along.
-- **Data comes from the test factories** (`makeAchievement`, `makeGameView`, `makeGameSummary`, through `@test`), as in the tests. Only those three are compiled for the interface; a factory that pulls in main-process code cannot be used in a story.
+- **Data comes from the test factories** (`makeAchievement`, `makeGameView`, `makeGameSummary`, through `@tests/*`, which points at `__tests__/`), as in the tests. Only those three are compiled for the interface; a factory that pulls in main-process code cannot be used in a story.
 - **There is no main process in Storybook.** `preview.tsx` puts a stand-in at `window.api` that shows each call in the Actions panel and answers with nothing; events never arrive. A component that reads the store sees its initial state, plus the language of the toolbar. Screens that only make sense with a loaded store are not in the catalogue: the audit covers them.
 - **The toolbar has what breaks layouts here:** the language (the four of the app) and the window width (480 and 600). There is no light theme to switch to. The accessibility panel runs axe on the story on screen.
 - **Versions:** Storybook 10, where `addon-essentials` and `@storybook/blocks` no longer exist: controls, actions and viewport are part of `storybook` itself, and the documentation blocks come from `@storybook/addon-docs/blocks`. Its telemetry is turned off (`core.disableTelemetry`).
-- **A new component in `ui/components`, or a new state of one, comes with its story.** Lint covers the stories (`eslint-plugin-storybook`), `pnpm typecheck` compiles them, and CI builds the catalogue (`pnpm build-storybook`), so a story that stops compiling fails the build. Storybook does not replace `pnpm audit:ui`: a story shows a component alone, the audit shows the app.
+- **What checks the stories:** lint through `eslint-plugin-storybook`, `pnpm typecheck` by compiling them, and CI by building the catalogue with `pnpm build-storybook`, so a story that stops compiling fails the build.
