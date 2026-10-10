@@ -2,7 +2,11 @@ import { type IAchievementSort } from '@shared/achievementSort';
 import { type IDashboardSort } from '@shared/dashboardSort';
 import { type Language } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
-import { type IDataFolder, type IPreferences } from '@shared/types/Preferences';
+import {
+  type ILocalFolder,
+  type IPreferences,
+  type LocalFolderId,
+} from '@shared/types/Preferences';
 
 import { Service } from './Service';
 
@@ -43,12 +47,12 @@ export class SettingsService extends Service {
     return this.api.setPreference(key, value);
   }
 
-  static getDataFolder(): Promise<IDataFolder> {
-    return this.api.getDataFolder();
+  static getFolder(id: LocalFolderId): Promise<ILocalFolder> {
+    return this.api.getFolder(id);
   }
 
   /** Opens the data folder or, where that cannot be done, copies its path. */
-  static openDataFolder(): Promise<'opened' | 'copied'> {
-    return this.api.openDataFolder();
+  static openFolder(id: LocalFolderId): Promise<'opened' | 'copied'> {
+    return this.api.openFolder(id);
   }
 }

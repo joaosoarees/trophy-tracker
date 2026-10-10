@@ -248,13 +248,10 @@ export const ptBR: Messages = {
     copyPath: 'Copiar caminho',
     pathCopied: 'Caminho copiado.',
     errorLog: 'Registro de erros',
-    errorLogHint:
-      'Fica em logs/errors.log, dentro da pasta de dados. Nunca é enviado a lugar algum.',
     versionLabel: 'Versão',
     source: 'Código-fonte',
     reportIssue: 'Relatar um problema',
     license: 'Licença',
-    version: (version) => `Versão ${version}`,
     updateAvailable: (version) => `A versão ${version} está disponível`,
     updateHint: 'Baixe e instale por cima desta; seus dados são mantidos.',
     download: 'Baixar',

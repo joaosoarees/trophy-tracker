@@ -248,13 +248,10 @@ export const fr: Messages = {
     copyPath: 'Copier le chemin',
     pathCopied: 'Chemin copié.',
     errorLog: 'Journal des erreurs',
-    errorLogHint:
-      'Il se trouve dans logs/errors.log, dans le dossier des données. Il n’est jamais envoyé.',
     versionLabel: 'Version',
     source: 'Code source',
     reportIssue: 'Signaler un problème',
     license: 'Licence',
-    version: (version) => `Version ${version}`,
     updateAvailable: (version) => `La version ${version} est disponible`,
     updateHint:
       'Téléchargez-la et installez-la par-dessus celle-ci ; vos données sont conservées.',

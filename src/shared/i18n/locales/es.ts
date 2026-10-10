@@ -249,13 +249,10 @@ export const es: Messages = {
     copyPath: 'Copiar ruta',
     pathCopied: 'Ruta copiada.',
     errorLog: 'Registro de errores',
-    errorLogHint:
-      'Está en logs/errors.log, dentro de la carpeta de datos. Nunca se envía a ningún sitio.',
     versionLabel: 'Versión',
     source: 'Código fuente',
     reportIssue: 'Informar de un problema',
     license: 'Licencia',
-    version: (version) => `Versión ${version}`,
     updateAvailable: (version) => `La versión ${version} está disponible`,
     updateHint: 'Descárgala e instálala sobre esta; tus datos se conservan.',
     download: 'Descargar',

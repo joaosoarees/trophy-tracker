@@ -246,13 +246,10 @@ export const en = {
     copyPath: 'Copy path',
     pathCopied: 'Path copied.',
     errorLog: 'Error log',
-    errorLogHint:
-      'Kept in logs/errors.log inside the data folder. It is never sent anywhere.',
     versionLabel: 'Version',
     source: 'Source code',
     reportIssue: 'Report a problem',
     license: 'License',
-    version: (version: string) => `Version ${version}`,
     updateAvailable: (version: string) => `Version ${version} is available`,
     updateHint: 'Download it and install over this one; your data is kept.',
     download: 'Download',

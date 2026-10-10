@@ -7,9 +7,9 @@ import { AccountCard, AddAccountCard } from '@ui/components/AccountCard';
 import { DetailGroup, DetailRow } from '@ui/components/DetailList';
 import { OptionSelect } from '@ui/components/OptionSelect';
 import { Switch } from '@ui/components/Switch';
-import { Button } from '@ui/primitives/button';
 
 import { AccountDetails } from './components/AccountDetails';
+import { FolderRow } from './components/FolderRow';
 import { UpdateNotice } from './components/UpdateNotice';
 import { useSettingsController } from './useSettingsController';
 
@@ -26,13 +26,13 @@ export const Settings = memo(function Settings() {
     appInfo,
     alwaysOnTop,
     preferences,
-    dataFolder,
+    folders,
     handleChangeLanguage,
     handleSwitchAccount,
     handleAddAccount,
     handleToggleAlwaysOnTop,
     handleRememberWindowChange,
-    handleOpenDataFolder,
+    handleOpenFolder,
     handleInstallUpdate,
     handleOpenPage,
   } = useSettingsController();
@@ -121,26 +121,20 @@ export const Settings = memo(function Settings() {
 
       <DetailGroup title={t.settings.groups.data}>
         <DetailRow label={t.settings.privacy} />
-        {dataFolder && (
-          <DetailRow
-            label={t.settings.dataFolder}
-            description={
-              <span className="break-all select-text">{dataFolder.path}</span>
-            }
-          >
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleOpenDataFolder}
-            >
-              {dataFolder.canOpen ? t.settings.openFolder : t.settings.copyPath}
-            </Button>
-          </DetailRow>
+        {folders && (
+          <>
+            <FolderRow
+              label={t.settings.dataFolder}
+              folder={folders.data}
+              onOpen={() => handleOpenFolder('data')}
+            />
+            <FolderRow
+              label={t.settings.errorLog}
+              folder={folders.errorLog}
+              onOpen={() => handleOpenFolder('errorLog')}
+            />
+          </>
         )}
-        <DetailRow
-          label={t.settings.errorLog}
-          description={t.settings.errorLogHint}
-        />
       </DetailGroup>
 
       <DetailGroup title={t.settings.groups.about}>
@@ -169,9 +163,7 @@ export const Settings = memo(function Settings() {
       </DetailGroup>
 
       <footer className="text-muted-foreground mt-auto pt-2 text-center text-xs">
-        {t.appTitle}
-        {appInfo && ` · ${t.settings.version(appInfo.version)}`} ·{' '}
-        {t.notAffiliated}
+        {t.appTitle} · {t.notAffiliated}
       </footer>
     </section>
   );

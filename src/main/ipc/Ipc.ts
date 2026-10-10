@@ -2,6 +2,7 @@ import { ipcMain } from 'electron';
 
 import { IpcEvent } from '@shared/ipcEvents';
 import { type IApi } from '@shared/types/Api';
+import { type LocalFolderId } from '@shared/types/Preferences';
 
 import { type MainWindow } from '../MainWindow';
 import { type AppUpdates } from '../services/AppUpdates';
@@ -12,8 +13,8 @@ import { Achievements } from '../steam/Achievements';
 import { type ISteamLocal } from '../steam/SteamLocal';
 import { type Store } from '../storage/Store';
 import { type Browser } from '../system/Browser';
-import { type DataFolder } from '../system/DataFolder';
 import { type ErrorLog } from '../system/ErrorLog';
+import { type LocalFolder } from '../system/LocalFolder';
 import { Releases } from '../system/Releases';
 
 type Invokable = Omit<
@@ -41,7 +42,7 @@ interface IIpcDeps {
   local: ISteamLocal;
   updates: AppUpdates;
   browser: Browser;
-  dataFolder: DataFolder;
+  folders: Record<LocalFolderId, LocalFolder>;
   errorLog: ErrorLog;
 }
 
@@ -59,7 +60,7 @@ export class Ipc {
       local,
       updates,
       browser,
-      dataFolder,
+      folders,
       errorLog,
     } = this.deps;
 
@@ -134,8 +135,8 @@ export class Ipc {
       getPreferences: () => store.getPreferences(),
       setPreference: (key, value) => store.setPreference(key, value),
 
-      getDataFolder: () => dataFolder.describe(),
-      openDataFolder: () => dataFolder.open(),
+      getFolder: (id) => folders[id].describe(),
+      openFolder: (id) => folders[id].open(),
 
       openGuide: (site, appid, game, achievement) =>
         browser.open(
