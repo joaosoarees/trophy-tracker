@@ -103,6 +103,105 @@ describe('dashboardSlice', () => {
       expect(modes).toEqual(['cached']);
     });
 
+    it('should read again the games that changed once the read in flight ends when that was asked during it', async () => {
+      const { sut, asked, modes } = await setup();
+      void sut.getState().dashboard.load('changed');
+      asked[0].resolve({ ok: true, value: [] });
+
+      await turn();
+
+      expect(modes).toEqual(['cached', 'changed']);
+    });
+
+    it('should list what the read asked for during another one answers when both have ended', async () => {
+      const { sut, asked } = await setup();
+      void sut.getState().dashboard.load('changed');
+      asked[0].resolve({
+        ok: true,
+        value: [makeGameSummary({ appid: 10, playtimeMinutes: 10 })],
+      });
+      await turn();
+      asked[1].resolve({
+        ok: true,
+        value: [makeGameSummary({ appid: 10, playtimeMinutes: 95 })],
+      });
+
+      await turn();
+
+      expect(sut.getState().dashboard).toMatchObject({
+        games: [makeGameSummary({ appid: 10, playtimeMinutes: 95 })],
+        isLoading: false,
+        error: null,
+      });
+    });
+
+    it('should read the dashboard once more when it is asked for several times during a read', async () => {
+      const { sut, asked, modes } = await setup();
+      void sut.getState().dashboard.load('changed');
+      void sut.getState().dashboard.load('changed');
+      asked[0].resolve({ ok: true, value: [] });
+      await turn();
+      asked[1].resolve({ ok: true, value: [] });
+
+      await turn();
+
+      expect(modes).toEqual(['cached', 'changed']);
+    });
+
+    it('should read everything again once the read in flight ends when that was also asked during it', async () => {
+      const { sut, asked, modes } = await setup();
+      void sut.getState().dashboard.load('all');
+      void sut.getState().dashboard.load('changed');
+      asked[0].resolve({ ok: true, value: [] });
+
+      await turn();
+
+      expect(modes).toEqual(['cached', 'all']);
+    });
+
+    it('should not read the dashboard again when what was asked during a read is what the main process already has', async () => {
+      const { sut, asked, modes } = await setup();
+      void sut.getState().dashboard.load();
+      asked[0].resolve({ ok: true, value: [] });
+
+      await turn();
+
+      expect(modes).toEqual(['cached']);
+    });
+
+    it('should not read again for the account that was left when its read ends after a read was asked during it', async () => {
+      const { sut, asked, modes, follow } = await setup();
+      void sut.getState().dashboard.load('changed');
+      follow(otherAccountState());
+      asked[0].resolve({ ok: true, value: [] });
+      asked[1].resolve({ ok: true, value: [] });
+
+      await turn();
+
+      expect(modes).toEqual(['cached', 'cached']);
+    });
+
+    it('should not read again by itself when the read in flight fails after a read was asked during it', async () => {
+      const { sut, asked, modes } = await setup();
+      void sut.getState().dashboard.load('changed');
+      asked[0].resolve({ ok: false, error: 'Steam did not answer.' });
+
+      await turn();
+
+      expect(modes).toEqual(['cached']);
+    });
+
+    it('should read again the games that changed when the dashboard is asked for after the read that failed, during which that was asked', async () => {
+      const { sut, asked, modes } = await setup();
+      void sut.getState().dashboard.load('changed');
+      asked[0].resolve({ ok: false, error: 'Steam did not answer.' });
+      await turn();
+
+      void sut.getState().dashboard.load();
+
+      expect(modes).toEqual(['cached', 'changed']);
+    });
+
     it('should forget the progress of the read before when another read starts', async () => {
       const { sut, asked } = await setup();
       asked[0].resolve({ ok: false, error: 'Steam did not answer.' });
