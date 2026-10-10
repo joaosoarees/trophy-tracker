@@ -226,11 +226,15 @@ export class AppUpdates {
     return this.status;
   }
 
+  /**
+   * What the automatic path knows. After a failure the answer is the
+   * checker's (`manual`), never this one, so `failed` has no status of its own.
+   */
   private info(): IAppInfo {
     return {
       version: this.currentVersion,
       newVersion: this.newVersion,
-      updateStatus: this.status === 'ready' ? 'ready' : 'downloading',
+      updateStatus: this.status === 'failed' ? 'idle' : this.status,
       downloadPercent: this.status === 'downloading' ? this.percent : null,
     };
   }

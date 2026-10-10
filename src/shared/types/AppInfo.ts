@@ -1,9 +1,11 @@
 /**
  * How a newer version reaches the user: `manual` means they download it from
- * the release page; `downloading` and `ready` belong to systems where the app
- * updates itself; `blocked` means the system would refuse to install it.
+ * the release page; `idle`, `downloading` and `ready` belong to systems where
+ * the app updates itself (`idle`: it has no version to fetch right now);
+ * `blocked` means the system would refuse to install it.
  */
-export type UpdateStatus = 'manual' | 'downloading' | 'ready' | 'blocked';
+export type UpdateStatus =
+  'manual' | 'idle' | 'downloading' | 'ready' | 'blocked';
 
 /** Answer to a check the user asked for. */
 export interface IUpdateCheck {

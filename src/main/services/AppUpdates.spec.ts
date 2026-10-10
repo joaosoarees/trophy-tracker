@@ -20,7 +20,7 @@ const downloading = (percent: number, newVersion = '1.1.0') =>
   });
 const READY = makeAppInfo({ newVersion: '1.1.0', updateStatus: 'ready' });
 /** The automatic path with nothing found. */
-const NOTHING = makeAppInfo({ updateStatus: 'downloading' });
+const NOTHING = makeAppInfo({ updateStatus: 'idle' });
 /** A version the system would refuse to install. */
 const BLOCKED = makeAppInfo({ newVersion: '1.1.0', updateStatus: 'blocked' });
 
@@ -148,6 +148,15 @@ describe('AppUpdates', () => {
       await settle();
 
       expect(calls).toMatchObject({ check: 0, download: 0 });
+    });
+
+    it('should answer that nothing is being fetched when no version was found', async () => {
+      const { sut } = setup({ latest: null });
+      await sut.checkNow();
+
+      const info = await sut.getAppInfo();
+
+      expect(info).toEqual(NOTHING);
     });
 
     it('should answer the version as ready when its download has finished', async () => {

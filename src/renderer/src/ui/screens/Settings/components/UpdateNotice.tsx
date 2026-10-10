@@ -7,7 +7,8 @@ import { Button } from '@ui/primitives/button';
 
 interface IUpdateNoticeProps {
   version: string;
-  status: UpdateStatus;
+  /** A version was found, so the app is past `idle`. */
+  status: Exclude<UpdateStatus, 'idle'>;
   onDownload: () => void;
   onInstall: () => void;
   onLearnMore: () => void;
