@@ -370,6 +370,73 @@ describe('gamesSlice', () => {
       ]);
     });
 
+    it('should date the completion of the dashboard row by the last unlock when the new read shows the game complete', async () => {
+      const { sut } = await setup([
+        makeGameSummary({ appid: 10, unlocked: 1, total: 2 }),
+      ]);
+
+      sut
+        .getState()
+        .games.accept(
+          game([
+            makeAchievement({ id: 'A', unlocked: true, unlockedAt: 900 }),
+            makeAchievement({ id: 'B', unlocked: true, unlockedAt: 700 }),
+          ]),
+        );
+
+      expect(sut.getState().dashboard.games).toEqual([
+        makeGameSummary({ appid: 10, unlocked: 2, total: 2, completedAt: 900 }),
+      ]);
+    });
+
+    it('should give the dashboard row no completion date when the new read shows the complete game without a dated unlock', async () => {
+      const { sut } = await setup([
+        makeGameSummary({ appid: 10, unlocked: 1, total: 2 }),
+      ]);
+
+      sut
+        .getState()
+        .games.accept(
+          game([
+            makeAchievement({ id: 'A', unlocked: true }),
+            makeAchievement({ id: 'B', unlocked: true }),
+          ]),
+        );
+
+      expect(sut.getState().dashboard.games).toEqual([
+        makeGameSummary({
+          appid: 10,
+          unlocked: 2,
+          total: 2,
+          completedAt: null,
+        }),
+      ]);
+    });
+
+    it('should take the completion date off the dashboard row when the new read shows the game gained an achievement', async () => {
+      const { sut } = await setup([
+        makeGameSummary({ appid: 10, unlocked: 1, total: 1, completedAt: 900 }),
+      ]);
+
+      sut
+        .getState()
+        .games.accept(
+          game([
+            makeAchievement({ id: 'A', unlocked: true, unlockedAt: 900 }),
+            makeAchievement({ id: 'B' }),
+          ]),
+        );
+
+      expect(sut.getState().dashboard.games).toEqual([
+        makeGameSummary({
+          appid: 10,
+          unlocked: 1,
+          total: 2,
+          completedAt: null,
+        }),
+      ]);
+    });
+
     it('should add no row to the dashboard when the game read is not listed there', async () => {
       const { sut } = await setup([makeGameSummary({ appid: 20 })]);
 

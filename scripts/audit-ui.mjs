@@ -1231,6 +1231,25 @@ async function auditPlaying(page, steam) {
   );
   await audit(page, 'flow-game-finished');
 
+  // On the dashboard before the game closes: closing reads the dashboard
+  // again, and the date has to be on the row without that.
+  await page.evaluate(navButton(1));
+  await sleep(800);
+  await page.evaluate(showList('Complete'));
+  await sleep(700);
+  const finishedRow = await page.evaluate(
+    `[...document.querySelectorAll('ul button')].filter((el) => el.offsetParent !== null).find((el) => el.innerText.includes(${JSON.stringify(game.name)}))?.querySelector('small')?.innerText ?? ''`,
+  );
+  expectThat(
+    FLOW,
+    finishedRow.includes(' · '),
+    `the game that was just finished has no completion date on the dashboard (its row says: "${finishedRow}")`,
+  );
+  await audit(page, 'flow-game-finished-dashboard');
+  await page.evaluate(showList('In progress'));
+  await page.evaluate(navButton(0));
+  await sleep(800);
+
   steam.quit();
   const closed = await waitFor(page, `!/running/i.test(${headerText})`);
   expectThat(

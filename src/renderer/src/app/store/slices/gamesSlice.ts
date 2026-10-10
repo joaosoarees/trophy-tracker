@@ -1,6 +1,7 @@
 import { GamesService } from '@app/services/GamesService';
 import { sameAccount } from '@app/store/sameAccount';
 import type { StoreSlice } from '@app/store/Store';
+import { completedAt, lastUnlockOf } from '@shared/completion';
 import { type IGameView } from '@shared/types/Game';
 import { mergeView } from '@shared/view';
 
@@ -98,6 +99,13 @@ export const createGamesSlice: StoreSlice<GamesSlice> = (set, get) => ({
         if (row) {
           row.unlocked = view.unlockedCount;
           row.total = view.total;
+          // The date the next read of the dashboard answers: the main process
+          // keeps the same one as it reads this game.
+          row.completedAt = completedAt({
+            total: view.total,
+            unlocked: view.unlockedCount,
+            lastUnlockAt: lastUnlockOf(view),
+          });
         }
       },
       false,
