@@ -14,7 +14,7 @@ import {
 } from '@tests/helpers';
 import { achieved, game, owned, player } from '@tests/steamLibrary';
 
-import { SteamClient, SteamError } from './SteamClient';
+import { type Fetch, SteamClient, SteamError } from './SteamClient';
 
 const CREDENTIALS = { steamId: STEAM_ID, apiKey: KEY };
 const ASSETS = 'https://shared.fastly.steamstatic.com/store_item_assets';
@@ -40,6 +40,7 @@ const STORE_WITH_ART_OF_GAME_1 = {
 interface ISetupOverrides {
   language?: Language;
   apiBase?: string;
+  timeout?: () => AbortSignal;
 }
 
 /**
@@ -48,18 +49,128 @@ interface ISetupOverrides {
  */
 function setup(
   routes: Parameters<typeof fakeFetch>[0],
-  { language = 'en', apiBase }: ISetupOverrides = {},
+  { language = 'en', apiBase, timeout }: ISetupOverrides = {},
 ) {
   let current = language;
   const fetchImpl = fakeFetch(routes);
-  const sut = new SteamClient(fetchImpl, () => current, apiBase);
+  const sut = new SteamClient(fetchImpl, () => current, apiBase, timeout);
   const setLanguage = (next: Language): void => {
     current = next;
   };
   return { sut, fetchImpl, setLanguage };
 }
 
+/**
+ * Steam taking a request and never answering it. As with the real `fetch`,
+ * the request ends only when the signal it was given gives up, and fails with
+ * the reason of that signal.
+ */
+const neverAnswers: Fetch = (_input, init) =>
+  new Promise((_resolve, reject) => {
+    const signal = init?.signal;
+    signal?.addEventListener('abort', () => reject(signal.reason as Error));
+  });
+
+/**
+ * Steam starting an answer and never ending it: the status arrives, and the
+ * text fails when the signal of the request gives up.
+ */
+const stopsHalfway: Fetch = (_input, init) =>
+  Promise.resolve(
+    new Response(
+      new ReadableStream({
+        start(controller) {
+          const signal = init?.signal;
+          controller.enqueue(new TextEncoder().encode('{"response":'));
+          signal?.addEventListener('abort', () =>
+            controller.error(signal.reason),
+          );
+        },
+      }),
+    ),
+  );
+
+/**
+ * A client whose requests are given up on after a millisecond, the way the
+ * real limit gives up on them, so no test waits for the real one.
+ */
+function setupShortLimit(fetchImpl: Fetch) {
+  const sut = new SteamClient(
+    fetchImpl,
+    () => 'en',
+    undefined,
+    () => AbortSignal.timeout(1),
+  );
+  return { sut };
+}
+
+/** Every call the client offers, each of which asks Steam. */
+const CALLS: { call: string; ask: (sut: SteamClient) => Promise<unknown> }[] = [
+  {
+    call: 'getPlayerSummary',
+    ask: (sut) => sut.getPlayerSummary(CREDENTIALS),
+  },
+  { call: 'getOwnedGames', ask: (sut) => sut.getOwnedGames(CREDENTIALS) },
+  { call: 'getGameAchievements', ask: (sut) => sut.getGameAchievements(1) },
+  { call: 'getStoreArt', ask: (sut) => sut.getStoreArt([1]) },
+  {
+    call: 'getPlayerAchievements',
+    ask: (sut) => sut.getPlayerAchievements(CREDENTIALS, 1),
+  },
+  { call: 'getUserStats', ask: (sut) => sut.getUserStats(CREDENTIALS, 1) },
+];
+
 describe('SteamClient', () => {
+  describe('a request Steam does not answer', () => {
+    it.each(CALLS)(
+      'should refuse with network when Steam leaves $call unanswered until the limit passes',
+      async ({ ask }) => {
+        const { sut } = setupShortLimit(neverAnswers);
+
+        const answerPromise = ask(sut);
+
+        await expect(answerPromise).rejects.toThrow(new SteamError('network'));
+      },
+    );
+
+    it('should refuse with network when an answer that started is not over as the limit passes', async () => {
+      const { sut } = setupShortLimit(stopsHalfway);
+
+      const gamesPromise = sut.getOwnedGames(CREDENTIALS);
+
+      await expect(gamesPromise).rejects.toThrow(new SteamError('network'));
+    });
+
+    it('should give each request a limit of its own when a call asks Steam more than once', async () => {
+      const limits: AbortSignal[] = [];
+      const { sut, fetchImpl } = setup(
+        { GetItems: STORE_WITH_ART_OF_GAME_1 },
+        {
+          timeout: () => {
+            limits.push(new AbortController().signal);
+            return limits[limits.length - 1];
+          },
+        },
+      );
+      const moreThanOneBatch = Array.from({ length: 51 }, (_, i) => i + 1);
+
+      await sut.getStoreArt(moreThanOneBatch);
+
+      expect(limits).toHaveLength(2);
+      expect(fetchImpl.inits[0]?.signal).toBe(limits[0]);
+      expect(fetchImpl.inits[1]?.signal).toBe(limits[1]);
+    });
+
+    it('should limit a request when it was built with no limit of its own', async () => {
+      const fetchImpl = fakeFetch({ GetOwnedGames: owned() });
+      const sut = new SteamClient(fetchImpl);
+
+      await sut.getOwnedGames(CREDENTIALS);
+
+      expect(fetchImpl.inits[0]?.signal).toBeInstanceOf(AbortSignal);
+    });
+  });
+
   describe('getPlayerSummary', () => {
     it('should answer the profile when Steam knows the SteamID', async () => {
       const profile = {

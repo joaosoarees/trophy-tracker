@@ -299,6 +299,18 @@ function setupDozenGames() {
     await ended;
   };
 
+  /**
+   * Steam answers none of the games in flight, and the client gives up on all
+   * of them as their time limits pass; resolves once the dashboard ended.
+   */
+  const leaveUnanswered = async (ended: Promise<void>): Promise<void> => {
+    for (const [appid, { reject }] of [...waiting]) {
+      waiting.delete(appid);
+      reject(new SteamError('network'));
+    }
+    await ended;
+  };
+
   /** The games Steam was asked about, in order. */
   const gamesAsked = (): number[] =>
     made.client.asked.flatMap((request) =>
@@ -314,6 +326,7 @@ function setupDozenGames() {
     start,
     answerTheRest,
     failGame,
+    leaveUnanswered,
     gamesAsked,
     gamesSaved,
   };
@@ -1146,6 +1159,16 @@ describe('Tracker', () => {
       await failGame(2, 'network', ended);
 
       expect(gamesAsked()).toEqual([1, 2, 3, 4]);
+    });
+
+    it('should fail once, with no other game asked about, when Steam answers none of the games in flight', async () => {
+      const { start, leaveUnanswered, gamesAsked, events } = setupDozenGames();
+      const { ended } = await start();
+
+      await leaveUnanswered(ended);
+
+      expect(gamesAsked()).toEqual([1, 2, 3, 4]);
+      expect(events).toEqual(['failed: network']);
     });
 
     it('should keep the games that were being read when another failed the dashboard', async () => {

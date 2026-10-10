@@ -72,7 +72,14 @@ void app.whenReady().then(async () => {
   const fakeSteam = app.isPackaged
     ? undefined
     : process.env.TROPHY_TRACKER_FAKE_STEAM;
-  const client = new SteamClient(fetch, () => store.getLanguage(), fakeSteam);
+  const client = new SteamClient(
+    fetch,
+    () => store.getLanguage(),
+    fakeSteam,
+    // The audit cannot wait fifteen seconds for a Steam that does not answer;
+    // a user's app always does.
+    fakeSteam ? () => AbortSignal.timeout(2_000) : undefined,
+  );
   const windows = new Windows();
   const browser = new Browser(windows);
   const window = new MainWindow(browser);
