@@ -355,34 +355,29 @@ describe('settingsSlice', () => {
     });
 
     /**
-     * A main process that takes the language and then fails to write it, as
-     * the real one does: `held` is the language it is left on.
+     * A main process that cannot write a language: it keeps the one it had,
+     * as the real one does, and the call rejects.
      */
-    function mainThatCannotSaveFrench() {
-      const held = { language: 'en' };
+    function mainThatCannotSaveALanguage() {
+      const setLanguageMock = vi.fn<IApi['setLanguage']>(failing);
       const api: Partial<IApi> = {
-        setLanguage: (language) => {
-          held.language = language;
-          return language === 'fr'
-            ? failing()
-            : Promise.resolve(makeAppState({ language }));
-        },
+        setLanguage: setLanguageMock,
         logError: () => Promise.resolve(),
       };
-      return { api, held };
+      return { api, setLanguageMock };
     }
 
-    it('should put the main process back on the language in use when the other one could not be saved', async () => {
-      const { api, held } = mainThatCannotSaveFrench();
+    it('should ask the main process for nothing more when the language could not be saved', async () => {
+      const { api, setLanguageMock } = mainThatCannotSaveALanguage();
       const { sut } = await setup(api);
 
       await sut.getState().settings.changeLanguage('fr');
 
-      expect(held.language).toBe('en');
+      expect(setLanguageMock).toHaveBeenCalledExactlyOnceWith('fr');
     });
 
     it('should tell the user something went wrong when the language could not be saved', async () => {
-      const { api } = mainThatCannotSaveFrench();
+      const { api } = mainThatCannotSaveALanguage();
       const { sut, toastMock } = await setup(api);
 
       await sut.getState().settings.changeLanguage('fr');
@@ -391,7 +386,7 @@ describe('settingsSlice', () => {
     });
 
     it('should not reload the window when the language could not be saved', async () => {
-      const { api } = mainThatCannotSaveFrench();
+      const { api } = mainThatCannotSaveALanguage();
       const { sut, reloadMock } = await setup(api);
 
       await sut.getState().settings.changeLanguage('fr');
@@ -399,11 +394,9 @@ describe('settingsSlice', () => {
       expect(reloadMock).not.toHaveBeenCalled();
     });
 
-    it('should stay in the language in use when the main process cannot be put back on it either', async () => {
-      const { sut } = await setup({
-        setLanguage: failing,
-        logError: () => Promise.resolve(),
-      });
+    it('should stay in the language in use when the other one could not be saved', async () => {
+      const { api } = mainThatCannotSaveALanguage();
+      const { sut } = await setup(api);
 
       await sut.getState().settings.changeLanguage('fr');
 
