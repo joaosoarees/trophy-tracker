@@ -20,6 +20,7 @@ import {
 import { AccountFollower } from './AccountFollower';
 import { Accounts } from './Accounts';
 import { GameWatcher } from './GameWatcher';
+import { KeyStatus } from './KeyStatus';
 import { SetupService } from './SetupService';
 
 /** Steam knows whoever is asked about, and calls them "player". */
@@ -67,14 +68,16 @@ function setup({
       { steamId, name: 'player', avatar: 'x' },
     );
   }
+  const client = fakeSteamClient({
+    summary: (credentials) => {
+      whileSteamAnswers(store);
+      return profileOf(credentials);
+    },
+  });
   const accountSetup = new SetupService(
     store,
-    fakeSteamClient({
-      summary: (credentials) => {
-        whileSteamAnswers(store);
-        return profileOf(credentials);
-      },
-    }),
+    client,
+    new KeyStatus(store, client),
   );
   /** What the watcher was asked, in order. */
   const asked: string[] = [];
@@ -116,12 +119,14 @@ function setupWired(signedIn: string) {
     { steamId: STEAM_ID, apiKey: KEY },
     { steamId: STEAM_ID, name: 'player', avatar: 'x' },
   );
+  const client = fakeSteamClient({
+    summary: (credentials) =>
+      credentials.apiKey === KEY ? summary(credentials) : rejected(),
+  });
   const accountSetup = new SetupService(
     store,
-    fakeSteamClient({
-      summary: (credentials) =>
-        credentials.apiKey === KEY ? summary(credentials) : rejected(),
-    }),
+    client,
+    new KeyStatus(store, client),
   );
   /** Every account the app was said to have started following. */
   const followed: string[] = [];

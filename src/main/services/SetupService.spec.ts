@@ -1,15 +1,10 @@
-import { statSync, utimesSync } from 'node:fs';
-import { join } from 'node:path';
-
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { type Language } from '@shared/i18n';
-import { type IAppState } from '@shared/types/AppState';
 import { fakeSteamClient, type ISteamAnswers } from '@tests/fakeSteamClient';
 import {
   fakeFetch,
   KEY,
-  makeTempDir,
   OTHER_KEY,
   OTHER_STEAM_ID,
   STEAM_ID,
@@ -24,8 +19,8 @@ import {
   SteamError,
   type SteamErrorKind,
 } from '../steam/SteamClient';
-import { Store } from '../storage/Store';
 
+import { KeyStatus } from './KeyStatus';
 import { SetupService } from './SetupService';
 
 const KEY_REJECTED = 'Steam rejected the Web API key.';
@@ -46,29 +41,15 @@ const failing = (kind: SteamErrorKind) => (): never => {
 
 /**
  * A fresh app over a store in memory and a Steam that answers what it is
- * given. Its language is only set when one is given.
+ * given, with the real key status over the same two. Its language is only
+ * set when one is given.
  */
 function setup(answers: ISteamAnswers = {}, language?: Language) {
-  return build(new InMemoryStore(), answers, language);
-}
-
-/** The same app over the store it is given. */
-function build<T extends ConstructorParameters<typeof SetupService>[0]>(
-  store: T,
-  answers: ISteamAnswers,
-  language?: Language,
-) {
+  const store = new InMemoryStore();
   const client = fakeSteamClient(answers);
-  const changes: IAppState[] = [];
-  const logErrorMock = vi.fn<(source: string, detail: string) => void>();
-  const sut = new SetupService(
-    store,
-    client,
-    (state) => changes.push(state),
-    logErrorMock,
-  );
+  const sut = new SetupService(store, client, new KeyStatus(store, client));
   if (language) sut.setLanguage(language);
-  return { store, client, sut, changes, logErrorMock };
+  return { store, client, sut };
 }
 
 /** The app with one account, `STEAM_ID`, which it follows. */
@@ -83,17 +64,6 @@ async function withTwoAccounts() {
   const made = await withOneAccount();
   await made.sut.addAccount(OTHER_STEAM_ID, OTHER_KEY);
   return made;
-}
-
-/**
- * The app with one account over the real `Store`, in the folder `dir`: for
- * what only the file it saves shows.
- */
-async function withOneAccountOnDisk() {
-  const dir = makeTempDir();
-  const made = build(new Store(dir), { summary });
-  await made.sut.addAccount(STEAM_ID, KEY);
-  return { ...made, dir };
 }
 
 describe('SetupService', () => {
@@ -166,95 +136,6 @@ describe('SetupService', () => {
         accounts: [{ steamId: STEAM_ID }, { steamId: OTHER_STEAM_ID }],
       });
     });
-  });
-
-  describe('attempt', () => {
-    it('should keep the app open and mark the account when Steam starts rejecting its key', async () => {
-      const { sut, changes } = await withOneAccount();
-
-      const result = await sut.attempt(() =>
-        Promise.reject(new SteamError('invalid-key')),
-      );
-
-      expect(result).toEqual({ ok: false, error: KEY_REJECTED });
-      expect(sut.getState()).toMatchObject({
-        isConfigured: true,
-        accounts: [{ steamId: STEAM_ID, status: 'rejected' }],
-      });
-      expect(changes).toEqual([
-        expect.objectContaining({
-          accounts: [expect.objectContaining({ status: 'rejected' })],
-        }),
-      ]);
-    });
-
-    it('should mark the account as limited when Steam asks it to slow down', async () => {
-      const { sut } = await withOneAccount();
-
-      await sut.attempt(() => Promise.reject(new SteamError('rate-limited')));
-
-      expect(sut.getState().accounts[0].status).toBe('rateLimited');
-    });
-
-    it('should take the mark off when a read works again', async () => {
-      const { sut } = await withOneAccount();
-      await sut.attempt(() => Promise.reject(new SteamError('rate-limited')));
-
-      await sut.attempt(() => Promise.resolve('read'));
-
-      expect(sut.getState().accounts[0].status).toBe('valid');
-    });
-
-    it('should announce nothing when a read only confirms what was known', async () => {
-      const { sut, changes } = await withOneAccount();
-
-      await sut.attempt(() => Promise.resolve('read'));
-
-      expect(changes).toEqual([]);
-    });
-
-    it('should leave the account as it was when Steam cannot be reached', async () => {
-      const { sut, changes } = await withOneAccount();
-
-      const result = await sut.attempt(() =>
-        Promise.reject(new SteamError('network')),
-      );
-
-      expect(result).toEqual({
-        ok: false,
-        error: 'Could not reach Steam. Check your connection.',
-      });
-      expect(sut.getState().accounts[0].status).toBe('valid');
-      expect(changes).toEqual([]);
-    });
-
-    it('should hide the details of an unexpected error', async () => {
-      const { sut, changes, logErrorMock } = await withOneAccount();
-
-      const result = await sut.attempt(() => Promise.reject(new Error('boom')));
-
-      expect(result).toEqual({
-        ok: false,
-        error: 'Unexpected error. Try again.',
-      });
-      expect(sut.getState().accounts[0].status).toBe('valid');
-      expect(changes).toEqual([]);
-      expect(logErrorMock).toHaveBeenCalledExactlyOnceWith(
-        'main: steam read',
-        expect.stringContaining('boom'),
-      );
-    });
-
-    it.each(['invalid-key', 'network'] as const)(
-      'should log nothing when the read fails with %s, which Steam is known to answer',
-      async (kind) => {
-        const { sut, logErrorMock } = await withOneAccount();
-
-        await sut.attempt(() => Promise.reject(new SteamError(kind)));
-
-        expect(logErrorMock).not.toHaveBeenCalled();
-      },
-    );
   });
 
   describe('setLanguage', () => {
@@ -438,29 +319,6 @@ describe('SetupService', () => {
       const state = await sut.recheckAccount(STEAM_ID);
 
       expect(state.accounts[0].status).toBe('valid');
-    });
-
-    it('should leave the saved file alone when Steam answers what was already known', async () => {
-      const { sut, dir } = await withOneAccountOnDisk();
-      const file = join(dir, 'config.json');
-      const before = new Date('2020-01-01T00:00:00Z');
-      utimesSync(file, before, before);
-
-      await sut.recheckAccount(STEAM_ID);
-
-      expect(statSync(file).mtime).toEqual(before);
-    });
-
-    it('should save the new status when Steam answers something else', async () => {
-      const { sut, dir, store } = await withOneAccountOnDisk();
-      store.setAccountStatus(STEAM_ID, 'rejected');
-      const file = join(dir, 'config.json');
-      const before = new Date('2020-01-01T00:00:00Z');
-      utimesSync(file, before, before);
-
-      await sut.recheckAccount(STEAM_ID);
-
-      expect(statSync(file).mtime).not.toEqual(before);
     });
   });
 

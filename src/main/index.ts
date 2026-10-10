@@ -10,6 +10,7 @@ import { AccountFollower } from './services/AccountFollower';
 import { Accounts } from './services/Accounts';
 import { AppUpdates } from './services/AppUpdates';
 import { GameWatcher } from './services/GameWatcher';
+import { KeyStatus } from './services/KeyStatus';
 import { RunningGame } from './services/RunningGame';
 import { SetupService } from './services/SetupService';
 import { Tracker } from './services/Tracker';
@@ -76,12 +77,13 @@ void app.whenReady().then(async () => {
   const window = new MainWindow(browser);
   const logError = (source: string, detail: string): void =>
     errorLog.write(source, detail);
-  const setup = new SetupService(
+  const keys = new KeyStatus(
     store,
     client,
-    (state) => window.send(IpcEvent.stateChanged, state, false),
+    () => window.send(IpcEvent.stateChanged, setup.getState(), false),
     logError,
   );
+  const setup = new SetupService(store, client, keys);
   // With a fake Steam the local client is fake too: a folder the audit fills
   // in, read the way a Linux install is, or no client at all.
   const fakeSteamHome = process.env.TROPHY_TRACKER_FAKE_STEAM_HOME;
@@ -136,7 +138,7 @@ void app.whenReady().then(async () => {
     intervals: fakeSteam ? { running: 2_000, unlocks: 3_000 } : undefined,
     lastPlayedAppId: () => tracker.lastPlayedAppId(),
     followRunningGame: () => follower.forRunningGame(),
-    pollGame: (appid) => setup.attempt(() => tracker.getGame(appid, 'poll')),
+    pollGame: (appid) => keys.attempt(() => tracker.getGame(appid, 'poll')),
     isConfigured: () => setup.isConfigured,
     onCurrentChanged: (current) => window.send(IpcEvent.gameChanged, current),
     onGameUpdated: (view) => window.send(IpcEvent.gameUpdated, view),
@@ -145,6 +147,7 @@ void app.whenReady().then(async () => {
 
   new Ipc({
     setup,
+    keys,
     accounts,
     tracker,
     watcher,

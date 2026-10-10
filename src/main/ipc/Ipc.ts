@@ -8,6 +8,7 @@ import { type MainWindow } from '../MainWindow';
 import { type Accounts } from '../services/Accounts';
 import { type AppUpdates } from '../services/AppUpdates';
 import { type GameWatcher } from '../services/GameWatcher';
+import { type KeyStatus } from '../services/KeyStatus';
 import { type SetupService } from '../services/SetupService';
 import { type Tracker } from '../services/Tracker';
 import { Achievements } from '../steam/Achievements';
@@ -36,6 +37,7 @@ type IpcHandlers = {
 
 interface IIpcDeps {
   setup: SetupService;
+  keys: KeyStatus;
   accounts: Accounts;
   tracker: Tracker;
   watcher: GameWatcher;
@@ -55,6 +57,7 @@ export class Ipc {
   register(): void {
     const {
       setup,
+      keys,
       accounts,
       tracker,
       watcher,
@@ -80,7 +83,7 @@ export class Ipc {
 
       getCurrentAppId: () => watcher.refreshCurrent(),
       getGame: (appid, isForced) =>
-        setup.attempt(async () => {
+        keys.attempt(async () => {
           const view = isForced
             ? await tracker.getGame(appid, true)
             : await tracker.getGameStaleFirst(appid, {
@@ -89,14 +92,14 @@ export class Ipc {
                   watcher.remember(fresh);
                   window.send(IpcEvent.gameUpdated, fresh);
                 },
-                // Lets the setup notice a key that stopped working.
-                onError: (e) => void setup.noticeFailure(e),
+                // Lets the app notice a key that stopped working.
+                onError: (e) => void keys.noticeFailure(e),
               });
           watcher.remember(view);
           return view;
         }),
       getDashboard: (mode) =>
-        setup.attempt(() =>
+        keys.attempt(() =>
           tracker.getDashboard(mode, (done, total) =>
             window.send(IpcEvent.dashboardProgress, done, total),
           ),

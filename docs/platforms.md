@@ -34,7 +34,7 @@ The same code runs on Windows, macOS, Linux and, for development, WSL.
 ### Production behaviour
 
 - **Errors are logged locally, never sent anywhere:** `system/ErrorLog.ts` writes to `logs/errors.log` in the data folder (rotated at 512 KB).
-- The main process logs uncaught exceptions and rejections, a failed automatic update (`AppUpdates`) and an unexpected error of a read from Steam (`SetupService`). A service takes the log as a dependency (`logError`) and never writes to the console. The interface reports its own through `SystemService.logError` (`app/lib/reportUnhandledErrors.ts`, `ui/components/ErrorBoundary`).
+- The main process logs uncaught exceptions and rejections, a failed automatic update (`AppUpdates`) and an unexpected error of a read from Steam (`KeyStatus`). A service takes the log as a dependency (`logError`) and never writes to the console. The interface reports its own through `SystemService.logError` (`app/lib/reportUnhandledErrors.ts`, `ui/components/ErrorBoundary`).
 - **A render error never leaves a blank window:** `ErrorBoundary` wraps the app and shows `CrashScreen` with a reload button.
 - **Code only needed sometimes is loaded lazily:** the onboarding is loaded with `app/lib/namedLazyLoad.ts` inside `Suspense`.
 - The interface bundle is minified (`electron.vite.config.ts`). Its main file is about 510 kB; the size warning is set to 800 kB, because the file is read from disk, not downloaded, and roughly half of it is `react-dom`. If it shows, find out what grew before raising the limit.
