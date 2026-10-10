@@ -12,6 +12,7 @@ With the app in its final shape, what had lost its reason was removed rather tha
 - **The date beside the key** ("Checked on…"). It was only written when the status changed, so it showed when the account was added while claiming to be when the key was last checked.
 - **The "Code signing policy" section of the README**, written for the SignPath application.
 - `saveConfig` became `addAccount`, which is what it does.
+- **The last step of the setup.** Once everything about accounts happened in the account step, "Done" was two lines of summary and a button. The account step now ends the setup, and its sentence about how the app works moved there.
 
 ## No migration code
 

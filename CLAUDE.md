@@ -201,7 +201,7 @@ The app keeps several Steam accounts and follows one at a time. An account is a 
 - **One card per account.** Settings lists the accounts as `AccountCard`s: the one in use has the accent border and opens, inside the card, its masked key with "Replace key" and "Remove account" (`Settings/components/AccountDetails`); any other card is one button that switches to it. Nothing about an account is drawn outside its card.
 - **A card keeps its shape when the account in use changes.** `AccountCard` is drawn the same way in use or not; what makes another account clickable is a button laid under the card's content. The same goes for anything whose state flips between "is a button" and "is not": change what is inside, not the element.
 - **Adding and removing.** The dashed card at the end of the list opens the onboarding with only its account and final steps (`navigation.isAddingAccount`), the form already open; the account just added becomes the one in use. A SteamID that is already saved is refused. Removing an account deletes its key, its cache and its notes, and the dialog says so by name; removing the last one leads back to the onboarding.
-- **In the setup, everything about accounts happens in the account step.** An account Steam accepts is saved at once and joins a list of cards above the form, which closes into "Add another account"; the last step is only the summary. The first setup ends on the account signed in to Steam, or the first added. An account added in that visit can be taken out again in one click; an older one cannot, because it may have notes and Settings asks first.
+- **In the setup, everything about accounts happens in the account step.** An account Steam accepts is saved at once and joins a list of cards above the form, which closes into "Add another account", and the step's forward button enters the app: there is no step after it. The first setup ends on the account signed in to Steam, or the first added. An account added in that visit can be taken out again in one click; an older one cannot, because it may have notes and Settings asks first.
 
 ## Data sources
 
@@ -236,11 +236,11 @@ Things that have already cost time:
 
 ## Forms (react-hook-form + zod)
 
-The setup (`ui/screens/Onboarding/`) is one multi-step form: Language, Account, Done. How it is built is in `docs/onboarding-form.md`: **read it before changing the form.** The rules:
+The setup (`ui/screens/Onboarding/`) is one form in two steps: Language, then Account. How it is built is in `docs/onboarding-form.md`: **read it before changing the form.** The rules:
 
 - The controller owns the form (`useForm` with `zodResolver`); each step reads it with `useFormContext` and only advances after validating its own fields.
 - Schemas hold the message **key**, not the text, so an error follows a language change. Every key used in a schema exists under `validation` in the locales (there is a test).
-- **Everything about accounts happens in the account step.** An account Steam accepts is saved at once and leaves the form for the list above it; the last step is only the summary.
+- **Everything about accounts happens in the account step.** An account Steam accepts is saved at once and leaves the form for the list above it, and the step ends the setup. A step that asks nothing and decides nothing is not a step: a summary was removed for that.
 - **The Web API key lives only in its field while it is typed**: it is not kept in `sessionStorage` or anywhere else, and a saved key is never put back on screen.
 - The `Stepper`'s state is local to the component (`useReducer`), on purpose: do not move it to the store.
 - Enter in a field is that step's own "advance", never the submit of the whole form.

@@ -2,7 +2,7 @@
 
 How the multi-step form of the setup is built. The rules that follow from this are in `CLAUDE.md`; read this before changing anything under `ui/screens/Onboarding/`.
 
-The onboarding (`ui/screens/Onboarding/`) is a single multi-step form with three steps: Language, Account, Done. Opened from Settings to add an account, it leaves the language step out.
+The onboarding (`ui/screens/Onboarding/`) is a single form in two steps: Language, then Account. Opened to add an account it is the account step alone, and the bar of steps is not drawn. Opened from Settings to add an account, it leaves the language step out.
 
 ```
 Onboarding/
@@ -14,7 +14,7 @@ Onboarding/
   steps/<Name>Step/          index.tsx + schema.ts (+ use<Name>StepController.ts when it has state)
 ```
 
-- The controller owns the form: `useForm` with `zodResolver(onboardingSchema)`. `DoneStep` has no schema: it is the summary and the way into the app, and decides nothing.
+- The controller owns the form: `useForm` with `zodResolver(onboardingSchema)`. There is no step for a summary: the account step lists what was verified and its forward button enters the app.
 - Each step reads the form with `useFormContext<OnboardingFormData>()` and only advances after validating its own fields.
 - **Stepper.** `stepperState.ts` is a pure, tested reducer holding the current step and the furthest one reached. It is local to the component on purpose (React's `useReducer`, not a store slice): the state is born and dies with the onboarding, and the `Stepper` stays a self-contained component. Do not move it to Zustand for uniformity. The step names at the top are buttons: any step already reached can be revisited in either direction, steps ahead stay locked. A step that changes something later steps depend on calls `lockFollowingSteps()` (through `useStepper`) so they must be reached again. Changing the language locks nothing.
 - **The account step checks the SteamID and the key together.** A Web API key does not say whose it is, so the SteamID is still an input: detected from the Steam client and shown locked, with "Use another account" as the way out; a SteamID the user typed is never locked, and an account the app already has is not offered again. One "Verify" calls `checkApiKey` (key + SteamID against the official API, which returns name and avatar) and then `checkPrivacy`. There is no lookup of the public community profile any more: it was rate-limited and unreliable.
