@@ -105,6 +105,10 @@ export function AccountStep({
                       account.name || account.steamId,
                     )}
                     className="-mr-1"
+                    // Not while Steam is asked about another account, nor
+                    // while the setup ends: the list they answer for would
+                    // change under them. The same wait as "Back".
+                    disabled={isVerifying || isFinishing}
                     onClick={() => handleRemove(account.steamId)}
                   >
                     <X />

@@ -716,6 +716,37 @@ async function auditOnboarding(page, steam, language) {
     await audit(page, `onboarding-add-another-${language}`);
     await type(page, '[id$="-steamId"]', SECOND_STEAM_ID);
     await type(page, '[id$="-apiKey"]', 'FEDCBA9876543210FEDCBA9876540000');
+
+    // While Steam is asked about one more account, the ones already listed
+    // cannot be removed: the X of a card waits for the answer, as "Cancel"
+    // does. Steam takes the request and does not answer it, so there is time
+    // to look; the app gives up by itself.
+    const removeAndVerify = `JSON.stringify((() => {
+      const shown = (el) => el.offsetParent !== null;
+      const panel = document.querySelector('[id$="-steamId"]').closest('.rounded-lg.border');
+      return {
+        isRemoveDisabled: document.querySelector('main form ul[aria-label] > li button').disabled,
+        isVerifyDisabled: [...panel.querySelectorAll('button')].filter(shown).at(-1).disabled,
+      };
+    })())`;
+    steam.state.mode = 'hung';
+    await page.evaluate(verifyAccount);
+    await sleep(400);
+    const asking = JSON.parse(await page.evaluate(removeAndVerify));
+    expectThat(
+      FLOW,
+      asking.isVerifyDisabled && asking.isRemoveDisabled,
+      `an account can be removed from the list while another is being verified (found: ${JSON.stringify(asking)})`,
+    );
+    await page.capture(`onboarding-verifying-${language}`);
+    await waitFor(page, `!JSON.parse(${removeAndVerify}).isVerifyDisabled`);
+    const answered = JSON.parse(await page.evaluate(removeAndVerify));
+    expectThat(
+      FLOW,
+      !answered.isRemoveDisabled,
+      'the X of an account card is not given back when the verification ends',
+    );
+    steam.state.mode = 'ok';
     expectThat(
       FLOW,
       (await verify()) === '',
