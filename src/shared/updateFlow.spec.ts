@@ -25,8 +25,7 @@ describe('updateFlow', () => {
     it.each([
       { state: 'a version is fetched by hand', info: appInfoIn('manual') },
       { state: 'the system blocks a version', info: appInfoIn('blocked') },
-      // The automatic path with nothing found reports `downloading` and no version.
-      { state: 'no version was found', info: appInfoIn('downloading', null) },
+      { state: 'no version was found', info: appInfoIn('idle', null) },
       { state: 'nothing is known yet', info: null },
     ])('should answer false when $state', ({ info }) => {
       const isHolding = isUpdatingItself(info);
@@ -48,6 +47,10 @@ describe('updateFlow', () => {
     it.each([
       { state: 'a version is downloading', info: appInfoIn('downloading') },
       { state: 'no version was found', info: appInfoIn('manual', null) },
+      {
+        state: 'the app found nothing to fetch',
+        info: appInfoIn('idle', null),
+      },
       { state: 'nothing is known yet', info: null },
     ])('should answer false when $state', ({ info }) => {
       const isTelling = needsTheUser(info);

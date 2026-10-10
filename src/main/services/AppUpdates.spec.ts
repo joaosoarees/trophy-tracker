@@ -20,7 +20,7 @@ const downloading = (percent: number, newVersion = '1.1.0') =>
   });
 const READY = makeAppInfo({ newVersion: '1.1.0', updateStatus: 'ready' });
 /** The automatic path with nothing found. */
-const NOTHING = makeAppInfo({ updateStatus: 'downloading' });
+const NOTHING = makeAppInfo({ updateStatus: 'idle' });
 /** A version the system would refuse to install. */
 const BLOCKED = makeAppInfo({ newVersion: '1.1.0', updateStatus: 'blocked' });
 
@@ -42,7 +42,8 @@ function setup({
   attempted = null,
 }: ISetup = {}) {
   const calls = { check: 0, download: 0, install: 0, manual: 0, forced: 0 };
-  const net = { online: true };
+  /** What the updater finds; a test changes it to publish or withdraw a release. */
+  const net = { online: true, latest };
   const changes: IAppInfo[] = [];
   const logged: string[] = [];
   const clock = { now: 0 };
@@ -54,7 +55,7 @@ function setup({
     check: () => {
       calls.check++;
       return net.online
-        ? Promise.resolve(latest)
+        ? Promise.resolve(net.latest)
         : Promise.reject(new Error('offline'));
     },
     download: () => {
@@ -147,6 +148,15 @@ describe('AppUpdates', () => {
       await settle();
 
       expect(calls).toMatchObject({ check: 0, download: 0 });
+    });
+
+    it('should answer that nothing is being fetched when no version was found', async () => {
+      const { sut } = setup({ latest: null });
+      await sut.checkNow();
+
+      const info = await sut.getAppInfo();
+
+      expect(info).toEqual(NOTHING);
     });
 
     it('should answer the version as ready when its download has finished', async () => {
@@ -317,6 +327,25 @@ describe('AppUpdates', () => {
       expect(answer).toEqual({ ok: true, info: downloading(0) });
       expect(calls.check).toBe(2);
     });
+
+    it.each([
+      { found: 'no release', latest: null },
+      { found: 'the running version', latest: '1.0.0' },
+    ])(
+      'should forget the version whose download failed when a later check finds $found',
+      async ({ latest }) => {
+        // 1.1.0 was withdrawn after its download failed.
+        const { sut, net, emit } = setup();
+        await sut.checkNow();
+        emit().onError('checksum mismatch');
+        await settle();
+        net.latest = latest;
+
+        const answer = await sut.checkNow();
+
+        expect(answer).toEqual({ ok: true, info: NOTHING });
+      },
+    );
 
     it('should answer the new version as blocked, downloading nothing, when the system would refuse to install it', async () => {
       const { sut, calls } = setup({ isBlocked: true });

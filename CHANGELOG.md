@@ -23,6 +23,7 @@ What changed in each version, for whoever uses the app. The section of a version
 - A note, pin or checklist edited just before the app switches by itself to the account signed in to Steam is saved in the account it was written in, not in the other one.
 - Switching accounts while Steam is still answering no longer shows the previous account's game, dashboard, progress count or last played game under the new account.
 - Leaving "Add account" no longer puts the app back on the account that was in use when it was opened, if the app switched to the account signed in to Steam meanwhile.
+- Settings no longer goes on saying a version is downloading when its download failed and that version was then withdrawn: asking for a check says the app is up to date.
 - In the first setup, changing the language after an account was added no longer leaves the app in the previous language when the setup ends.
 - In the first setup, removing the only account while "Add another account" is open no longer leaves a "Finish" button that does nothing, nor an empty step after "Cancel": the form is the first account's again, empty, and offers the account signed in to Steam once more.
 - After "Use another account", the setup no longer says it could not find an account signed in to the Steam client when it had found one.

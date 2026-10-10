@@ -41,7 +41,7 @@ export const Settings = memo(function Settings() {
     <section className="relative flex flex-1 flex-col gap-6 overflow-y-auto p-4">
       <h1 className="text-xl font-semibold">{t.settings.title}</h1>
 
-      {appInfo?.newVersion && (
+      {appInfo?.newVersion && appInfo.updateStatus !== 'idle' && (
         <UpdateNotice
           version={appInfo.newVersion}
           status={appInfo.updateStatus}

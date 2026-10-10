@@ -144,7 +144,12 @@ export class AppUpdates {
     }
 
     if (this.auto) {
-      if (this.status === 'failed') this.status = 'idle';
+      if (this.status === 'failed') {
+        this.status = 'idle';
+        // The version that failed is only known again if this look finds it:
+        // its release may have been withdrawn meanwhile.
+        this.newVersion = null;
+      }
       if (this.status === 'idle') await this.look();
       // A failure may also have arrived as an event while the check ran.
       if (this.currentStatus() !== 'failed') {
@@ -221,11 +226,15 @@ export class AppUpdates {
     return this.status;
   }
 
+  /**
+   * What the automatic path knows. After a failure the answer is the
+   * checker's (`manual`), never this one, so `failed` has no status of its own.
+   */
   private info(): IAppInfo {
     return {
       version: this.currentVersion,
       newVersion: this.newVersion,
-      updateStatus: this.status === 'ready' ? 'ready' : 'downloading',
+      updateStatus: this.status === 'failed' ? 'idle' : this.status,
       downloadPercent: this.status === 'downloading' ? this.percent : null,
     };
   }
