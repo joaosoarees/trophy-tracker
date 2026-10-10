@@ -473,6 +473,28 @@ async function type(page, selector, text) {
 }
 
 /**
+ * Enter held down in a field: the key repeats before the screen is drawn
+ * again, so whatever Enter starts is asked for several times at once.
+ */
+async function holdEnter(page, selector) {
+  await page.evaluate(
+    `document.querySelector(${JSON.stringify(selector)}).focus()`,
+  );
+  const enter = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 };
+  await Promise.all(
+    Array.from({ length: 6 }, (_, index) =>
+      page.send('Input.dispatchKeyEvent', {
+        ...enter,
+        type: 'keyDown',
+        text: '\r',
+        autoRepeat: index > 0,
+      }),
+    ),
+  );
+  await page.send('Input.dispatchKeyEvent', { ...enter, type: 'keyUp' });
+}
+
+/**
  * The onboarding as a new user meets it, in the language picked on its first
  * screen, with Steam answering badly before it answers well. Leaves the app
  * set up, on its first screen.
@@ -511,13 +533,22 @@ async function auditOnboarding(page, steam, language) {
       !(await page.evaluate(`document.querySelector('#steamId').readOnly`)),
       '"Use another account" does not open the SteamID for typing',
     );
+    expectThat(
+      FLOW,
+      !/could not find an account/i.test(
+        await page.evaluate(`document.querySelector('main').innerText`),
+      ),
+      '"Use another account" says no account was found in the Steam client, when one was',
+    );
     await audit(page, `onboarding-account-typed-${language}`);
     await type(page, '#steamId', STEAM_ID);
   }
-  await type(page, '#apiKey', '0123456789ABCDEF0123456789ABCDEF');
+  const KEY = '0123456789ABCDEF0123456789ABCDEF';
+  await type(page, '#apiKey', KEY);
 
-  const verify = async () => {
-    await page.evaluate(verifyAccount);
+  const verify = async ({ isEnterHeld = false } = {}) => {
+    if (isEnterHeld) await holdEnter(page, '#apiKey');
+    else await page.evaluate(verifyAccount);
     // Buttons are disabled while Steam is being asked, however long it takes.
     await sleep(300);
     await waitFor(
@@ -530,9 +561,9 @@ async function auditOnboarding(page, steam, language) {
   // Each answer of Steam has its own error; the words are checked in the
   // first language, and everywhere that the three are different and present.
   const alerts = [];
-  const refuse = async (mode, words, capture, problem) => {
+  const refuse = async (mode, words, capture, problem, how) => {
     steam.state.mode = mode;
-    const alert = await verify();
+    const alert = await verify(how);
     alerts.push(alert);
     expectThat(
       FLOW,
@@ -546,7 +577,17 @@ async function auditOnboarding(page, steam, language) {
     /key/i,
     'onboarding-key-rejected',
     'a rejected key shows no error about the key',
+    // Enter in the key field is the step's "Verify", once however long it is held.
+    { isEnterHeld: isFirst },
   );
+  if (isFirst) {
+    const asked = steam.asked('GetPlayerSummaries', KEY);
+    expectThat(
+      FLOW,
+      asked === 1,
+      `Enter held down in the key field asked Steam about the key ${asked} times, not once`,
+    );
+  }
   await refuse(
     'down',
     /reach|connection/i,
@@ -564,6 +605,28 @@ async function auditOnboarding(page, steam, language) {
     new Set(alerts).size === alerts.length,
     'two different answers of Steam show the same error',
   );
+
+  if (isFirst) {
+    // Steam accepts the key when it is checked and rejects it as the account
+    // is saved: the form stays, with what was typed and the reason.
+    steam.state.profilesAsked = 0;
+    steam.state.mode = 'second-thoughts';
+    const refusal = await verify();
+    const kept = JSON.parse(
+      await page.evaluate(
+        `JSON.stringify({ cards: ${accountCards}, steamId: document.querySelector('#steamId')?.value ?? null, key: document.querySelector('#apiKey')?.value ?? null })`,
+      ),
+    );
+    expectThat(
+      FLOW,
+      /key/i.test(refusal) &&
+        kept.cards === 0 &&
+        kept.steamId === STEAM_ID &&
+        kept.key === KEY,
+      `an account refused as it is saved does not leave the form open with what was typed and the reason (shown: "${refusal}"; found: ${JSON.stringify({ ...kept, key: kept.key === KEY ? 'kept' : 'lost' })})`,
+    );
+    await audit(page, `onboarding-refused-as-saved-${language}`);
+  }
 
   steam.state.mode = 'ok';
   const alert = await verify();
@@ -589,6 +652,47 @@ async function auditOnboarding(page, steam, language) {
   await audit(page, `onboarding-verified-${language}`);
 
   if (isFirst) {
+    // The only account is removed while "Add another account" is open: the
+    // step is back at its beginning, and the account can be verified again.
+    await page.evaluate(verifyAccount);
+    await sleep(700);
+    await page.evaluate(
+      `[...document.querySelectorAll('main form ul[aria-label] > li button')].at(-1).click()`,
+    );
+    await waitFor(page, `(${accountCards}) === 0`);
+    await sleep(700);
+    const restarted = JSON.parse(
+      await page.evaluate(`JSON.stringify((() => {
+        const field = document.querySelector('#steamId');
+        const forward = [...document.querySelectorAll('main button')].filter((el) => el.offsetParent !== null).at(-1);
+        return {
+          cards: ${accountCards},
+          value: field?.value ?? null,
+          locked: field?.readOnly ?? null,
+          key: document.querySelector('#apiKey')?.value ?? null,
+          inPanel: Boolean(field?.closest('.rounded-lg.border')),
+          forward: forward.type,
+        };
+      })())`),
+    );
+    expectThat(
+      FLOW,
+      restarted.cards === 0 &&
+        restarted.value === STEAM_ID &&
+        restarted.locked &&
+        restarted.key === '' &&
+        !restarted.inPanel &&
+        restarted.forward === 'button',
+      `removing the only account with "Add another account" open does not bring back the form of the first account, with the SteamID of the Steam client (found: ${JSON.stringify(restarted)})`,
+    );
+    await audit(page, `onboarding-last-account-removed-${language}`);
+    await type(page, '#apiKey', KEY);
+    expectThat(
+      FLOW,
+      (await verify()) === '' && (await page.evaluate(accountCards)) === 1,
+      'the account removed in the step could not be verified again',
+    );
+
     // One more account, without leaving the step that is about accounts.
     await captureHover(
       page,
@@ -886,6 +990,22 @@ async function auditAccounts(page, steam, home) {
     FLOW,
     /32/.test(await page.evaluate(visibleText('main [role="alert"]'))),
     'a key in the wrong format is not refused before Steam is asked',
+  );
+  // A key Steam refuses, with Enter held down in the field: asked once, and
+  // the button is there again for the next try.
+  const REFUSED_KEY = 'FFEEDDCCBBAA99887766554433221100';
+  await type(page, 'main input[type="password"]', REFUSED_KEY);
+  await holdEnter(page, 'main input[type="password"]');
+  const refusedAgain = await waitFor(
+    page,
+    `/rejected/i.test(${visibleText('main [role="alert"]')}) && ![...document.querySelectorAll('main button')].some((el) => el.offsetParent !== null && el.disabled)`,
+  );
+  await sleep(500);
+  const askedToReplace = steam.asked('GetPlayerSummaries', REFUSED_KEY);
+  expectThat(
+    FLOW,
+    refusedAgain && askedToReplace === 1,
+    `Enter held down in the new key's field asked Steam about it ${askedToReplace} times, not once, or left the button disabled`,
   );
   steam.state.mode = 'ok';
   await type(

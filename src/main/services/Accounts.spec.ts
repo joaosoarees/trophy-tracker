@@ -31,6 +31,10 @@ const summary = ({ steamId }: ICredentials): IRawPlayerSummary => ({
   avatarfull: 'x',
 });
 
+const KEY_REJECTED = 'Steam rejected the Web API key.';
+const ALREADY_ADDED =
+  'This account was already added. To change its key, use “Replace key” in Settings.';
+
 /** Steam rejecting the key it was asked with. */
 const rejected = (): never => {
   throw new SteamError('invalid-key');
@@ -184,14 +188,19 @@ describe('Accounts', () => {
     it('should follow the added account when Steam accepts its key', async () => {
       const { sut } = setup();
 
-      const state = await sut.add(UNKNOWN_STEAM_ID, OTHER_KEY);
+      const result = await sut.add(UNKNOWN_STEAM_ID, OTHER_KEY);
 
-      expect(state.activeSteamId).toBe(UNKNOWN_STEAM_ID);
-      expect(state.accounts.map((account) => account.steamId)).toEqual([
-        OTHER_STEAM_ID,
-        STEAM_ID,
-        UNKNOWN_STEAM_ID,
-      ]);
+      expect(result).toMatchObject({
+        ok: true,
+        value: {
+          activeSteamId: UNKNOWN_STEAM_ID,
+          accounts: [
+            { steamId: OTHER_STEAM_ID },
+            { steamId: STEAM_ID },
+            { steamId: UNKNOWN_STEAM_ID },
+          ],
+        },
+      });
     });
 
     it('should forget the game on screen before it checks the running game when the added account takes over', async () => {
@@ -206,35 +215,38 @@ describe('Accounts', () => {
     });
 
     it('should check the running game and forget nothing when the add is refused with the app set up', async () => {
-      const { sut, asked } = setup();
+      const { sut, asked, state } = setup();
 
-      const state = await sut.add(OTHER_STEAM_ID, OTHER_KEY);
+      const result = await sut.add(OTHER_STEAM_ID, OTHER_KEY);
 
-      expect(state.activeSteamId).toBe(STEAM_ID);
+      expect(result).toEqual({ ok: false, error: ALREADY_ADDED });
+      expect(state().activeSteamId).toBe(STEAM_ID);
       expect(asked).toEqual([`check the running game, on ${STEAM_ID}`]);
     });
 
     it('should forget nothing when the app followed a saved account while Steam refused the one being added', async () => {
-      const { sut, asked } = setup({
+      const { sut, asked, state } = setup({
         profileOf: rejected,
         whileSteamAnswers: (store) => store.setActiveAccount(OTHER_STEAM_ID),
       });
 
-      const state = await sut.add(UNKNOWN_STEAM_ID, OTHER_KEY);
+      const result = await sut.add(UNKNOWN_STEAM_ID, OTHER_KEY);
 
-      expect(state.activeSteamId).toBe(OTHER_STEAM_ID);
+      expect(result).toEqual({ ok: false, error: KEY_REJECTED });
+      expect(state().activeSteamId).toBe(OTHER_STEAM_ID);
       expect(asked).toEqual([`check the running game, on ${OTHER_STEAM_ID}`]);
     });
 
     it('should ask nothing of the watcher when the add leaves the app without an account', async () => {
-      const { sut, asked } = setup({
+      const { sut, asked, state } = setup({
         saved: [],
         profileOf: rejected,
       });
 
-      const state = await sut.add(STEAM_ID, KEY);
+      const result = await sut.add(STEAM_ID, KEY);
 
-      expect(state.isConfigured).toBe(false);
+      expect(result).toEqual({ ok: false, error: KEY_REJECTED });
+      expect(state().isConfigured).toBe(false);
       expect(asked).toEqual([]);
     });
   });

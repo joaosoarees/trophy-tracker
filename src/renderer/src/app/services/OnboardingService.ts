@@ -25,7 +25,11 @@ export class OnboardingService extends Service {
     return this.api.checkPrivacy(steamId, apiKey);
   }
 
-  static addAccount(steamId: string, apiKey: string): Promise<IAppState> {
+  /** Saves the account only if Steam still accepts it; a refusal says why. */
+  static addAccount(
+    steamId: string,
+    apiKey: string,
+  ): Promise<CheckResult<IAppState>> {
     return this.api.addAccount(steamId, apiKey);
   }
 }

@@ -32,8 +32,14 @@ export interface IApi {
     steamId: string,
     apiKey: string,
   ) => Promise<CheckResult<{ gamesWithPlaytime: number }>>;
-  /** Adds an account and starts following it. */
-  addAccount: (steamId: string, apiKey: string) => Promise<IAppState>;
+  /**
+   * Adds an account and starts following it, if Steam accepts the pair again
+   * and the app does not have the account: a refusal says why and saves nothing.
+   */
+  addAccount: (
+    steamId: string,
+    apiKey: string,
+  ) => Promise<CheckResult<IAppState>>;
   setActiveAccount: (steamId: string) => Promise<IAppState>;
   removeAccount: (steamId: string) => Promise<IAppState>;
   replaceKey: (

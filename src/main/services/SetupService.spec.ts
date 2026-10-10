@@ -23,6 +23,8 @@ import { KeyStatus } from './KeyStatus';
 import { SetupService } from './SetupService';
 
 const KEY_REJECTED = 'Steam rejected the Web API key.';
+const ALREADY_ADDED =
+  'This account was already added. To change its key, use “Replace key” in Settings.';
 
 /** Steam knows whoever is asked about, and calls them "player". */
 const summary = ({ steamId }: ICredentials): IRawPlayerSummary => ({
@@ -95,23 +97,35 @@ describe('SetupService', () => {
   });
 
   describe('addAccount', () => {
-    it('should save nothing when Steam rejects the key', async () => {
+    it('should say why, and save nothing, when Steam rejects the key', async () => {
       const { sut, store } = setup({ summary: failing('invalid-key') });
 
-      const state = await sut.addAccount(STEAM_ID, KEY);
+      const result = await sut.addAccount(STEAM_ID, KEY);
 
-      expect(state.isConfigured).toBe(false);
+      expect(result).toEqual({ ok: false, error: KEY_REJECTED });
       expect(store.getCredentials()).toBeNull();
+    });
+
+    it('should refuse an account the app already has, keeping its key', async () => {
+      const { sut, store } = await withOneAccount();
+
+      const result = await sut.addAccount(STEAM_ID, OTHER_KEY);
+
+      expect(result).toEqual({ ok: false, error: ALREADY_ADDED });
+      expect(store.getCredentialsOf(STEAM_ID)?.apiKey).toBe(KEY);
     });
 
     it('should set the app up with the profile when Steam accepts the key', async () => {
       const { sut } = setup({ summary });
 
-      const state = await sut.addAccount(STEAM_ID, KEY);
+      const result = await sut.addAccount(STEAM_ID, KEY);
 
-      expect(state).toMatchObject({
-        isConfigured: true,
-        profile: { steamId: STEAM_ID, name: 'player', avatar: 'x' },
+      expect(result).toMatchObject({
+        ok: true,
+        value: {
+          isConfigured: true,
+          profile: { steamId: STEAM_ID, name: 'player', avatar: 'x' },
+        },
       });
     });
 
@@ -129,11 +143,14 @@ describe('SetupService', () => {
     it('should follow an account as soon as it is added', async () => {
       const { sut } = await withOneAccount();
 
-      const state = await sut.addAccount(OTHER_STEAM_ID, OTHER_KEY);
+      const result = await sut.addAccount(OTHER_STEAM_ID, OTHER_KEY);
 
-      expect(state).toMatchObject({
-        activeSteamId: OTHER_STEAM_ID,
-        accounts: [{ steamId: STEAM_ID }, { steamId: OTHER_STEAM_ID }],
+      expect(result).toMatchObject({
+        ok: true,
+        value: {
+          activeSteamId: OTHER_STEAM_ID,
+          accounts: [{ steamId: STEAM_ID }, { steamId: OTHER_STEAM_ID }],
+        },
       });
     });
   });

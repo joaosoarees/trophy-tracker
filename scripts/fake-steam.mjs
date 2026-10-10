@@ -168,8 +168,14 @@ export async function startFakeSteam() {
   const libraryOf = (steamId) =>
     steamId === SECOND_STEAM_ID ? secondGames : games;
   const state = {
-    /** `ok`, `bad-key` (Steam rejects the key), `private` (profile hidden) or `down` (no answer at all). */
+    /**
+     * `ok`, `bad-key` (Steam rejects the key), `private` (profile hidden),
+     * `down` (no answer at all) or `second-thoughts` (Steam accepts the key
+     * the first time it is asked about a profile, and rejects it from then on).
+     */
     mode: 'ok',
+    /** How many times a profile was asked about in `second-thoughts`; set to 0 with the mode. */
+    profilesAsked: 0,
     /** AppID "being played", as the profile reports it; `null` for none. */
     running: null,
     /** Whether it is the second account that is playing; the first plays otherwise. */
@@ -184,6 +190,13 @@ export async function startFakeSteam() {
     if (path.startsWith('/github/')) return [404, { message: 'Not Found' }];
     if (state.mode === 'bad-key' && query.has('key')) {
       return [403, FORBIDDEN_HTML];
+    }
+    if (
+      state.mode === 'second-thoughts' &&
+      path.includes('GetPlayerSummaries')
+    ) {
+      state.profilesAsked += 1;
+      if (state.profilesAsked > 1) return [403, FORBIDDEN_HTML];
     }
 
     const owned = libraryOf(query.get('steamid'));
@@ -316,13 +329,16 @@ export async function startFakeSteam() {
     return [404, { error: `the fake Steam does not know ${path}` }];
   };
 
+  /** Every request made, answered or not. */
+  const requests = [];
   const server = createServer((request, response) => {
+    requests.push(new URL(request.url, 'http://fake-steam'));
     if (state.mode === 'down') {
       // No answer at all, as when Steam cannot be reached.
       request.socket.destroy();
       return;
     }
-    const [status, body] = answer(new URL(request.url, 'http://fake-steam'));
+    const [status, body] = answer(requests.at(-1));
     response.writeHead(status, {
       'content-type':
         typeof body === 'string' ? 'text/html' : 'application/json',
@@ -356,6 +372,12 @@ export async function startFakeSteam() {
       found.unlocked += 1;
       return achievement.localized_name;
     },
+    /** How many times a call (part of its path) was made with a key. */
+    asked: (call, key) =>
+      requests.filter(
+        (url) =>
+          url.pathname.includes(call) && url.searchParams.get('key') === key,
+      ).length,
     stop: () => new Promise((resolve) => server.close(resolve)),
   };
 }

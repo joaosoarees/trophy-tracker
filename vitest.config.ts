@@ -30,6 +30,7 @@ export default defineConfig({
         'src/main/**/*.ts',
         'src/shared/**/*.ts',
         'src/renderer/src/app/lib/saver.ts',
+        'src/renderer/src/app/lib/singleFlight.ts',
         // The store slices that hold logic, tested against a fake main
         // process, with what wires them to its events and the rule that
         // drops an answer that arrives after the account changed.
@@ -45,6 +46,7 @@ export default defineConfig({
         'src/renderer/src/ui/screens/**/gameList.ts',
         'src/renderer/src/ui/screens/**/schema.ts',
         'src/renderer/src/ui/screens/**/stepperState.ts',
+        'src/renderer/src/ui/screens/**/accountFormState.ts',
       ],
       exclude: [
         // A spec beside the code is not code to cover.
