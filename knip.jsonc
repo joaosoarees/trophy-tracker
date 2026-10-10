@@ -1,0 +1,12 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // Scripts that nothing imports: one is run by Electron (`pnpm installer:art`),
+  // the other inside the container of `pnpm test:package`.
+  "entry": ["scripts/installer-art.mjs", "scripts/package-test/probe.mjs"],
+  // shadcn/ui components are generated whole; what the app does not use of
+  // them stays as generated.
+  "ignore": ["src/renderer/src/ui/primitives/**"],
+  // Read from disk and run inside the audited page (`scripts/audit-ui.mjs`),
+  // never imported.
+  "ignoreDependencies": ["axe-core"],
+}
