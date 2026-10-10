@@ -41,6 +41,12 @@ export async function makeAppStore({
   });
 
   const reloadMock = vi.fn();
+  const windowListeners = new Set<[type: string, listener: () => void]>();
+  /** Tells whoever listens on the window that the event happened. */
+  const fireWindowEvent = (type: string): void =>
+    windowListeners.forEach(([heard, listener]) => {
+      if (heard === type) listener();
+    });
   vi.stubGlobal('window', {
     api: new Proxy(api, {
       get(target, name: string) {
@@ -49,8 +55,14 @@ export async function makeAppStore({
       },
     }),
     location: { reload: reloadMock },
-    addEventListener: () => {},
-    removeEventListener: () => {},
+    addEventListener: (type: string, listener: () => void) =>
+      void windowListeners.add([type, listener]),
+    removeEventListener: (type: string, listener: () => void) =>
+      windowListeners.forEach((entry) => {
+        if (entry[0] === type && entry[1] === listener) {
+          windowListeners.delete(entry);
+        }
+      }),
   });
 
   const { useStore, connectStore } = await import('@app/store');
@@ -71,6 +83,7 @@ export async function makeAppStore({
   return {
     sut: useStore,
     follow,
+    fireWindowEvent,
     storage,
     reloadMock,
     toastMock: vi.mocked(toast),

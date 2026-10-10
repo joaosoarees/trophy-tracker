@@ -30,13 +30,16 @@ export default defineConfig({
         'src/main/**/*.ts',
         'src/shared/**/*.ts',
         'src/renderer/src/app/lib/saver.ts',
-        // The store slices that hold logic, tested against a fake main process.
+        // The store slices that hold logic, tested against a fake main
+        // process, with what wires them to its events and the rule that
+        // drops an answer that arrives after the account changed.
         'src/renderer/src/app/store/slices/updatesSlice.ts',
         'src/renderer/src/app/store/slices/settingsSlice.ts',
         'src/renderer/src/app/store/slices/userDataSlice.ts',
-        // The rule that drops an answer that arrives after the account
-        // changed. The games, dashboard and session slices have a spec for
-        // that rule alone, so they are not measured as a whole.
+        'src/renderer/src/app/store/slices/gamesSlice.ts',
+        'src/renderer/src/app/store/slices/dashboardSlice.ts',
+        'src/renderer/src/app/store/slices/sessionSlice.ts',
+        'src/renderer/src/app/store/connect.ts',
         'src/renderer/src/app/store/sameAccount.ts',
         'src/renderer/src/ui/screens/**/achievementList.ts',
         'src/renderer/src/ui/screens/**/gameList.ts',
