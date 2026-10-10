@@ -48,6 +48,8 @@ export default defineConfig({
         'src/renderer/src/ui/screens/**/schema.ts',
         'src/renderer/src/ui/screens/**/stepperState.ts',
         'src/renderer/src/ui/screens/**/accountFormState.ts',
+        'src/renderer/src/ui/utils/format.ts',
+        'src/renderer/src/ui/utils/text.ts',
       ],
       exclude: [
         // A spec beside the code is not code to cover.
