@@ -62,16 +62,28 @@ type SettingsActions = {
   ) => Promise<void>;
   /**
    * Achievement names and art come from Steam already translated, so the
-   * window is reloaded to guarantee nothing in the old language stays on screen.
+   * window is reloaded to guarantee nothing in the old language stays on
+   * screen. A language that could not be saved is not changed to: the user
+   * is told and the main process is put back on the one in use.
    */
   changeLanguage: (language: Language) => Promise<void>;
   /**
    * Follows another saved account. What was read for the one being left goes
-   * off the screen as the state changes (see `connectStore`).
+   * off the screen as the state changes (see `connectStore`). When the call
+   * fails the user is told, and the store follows whichever account the main
+   * process was left on, as it does after a removal that fails.
    */
   switchAccount: (steamId: string) => Promise<void>;
   /** Forgets an account; removing the last one leads back to the onboarding. */
   removeAccount: (steamId: string) => Promise<void>;
+  /**
+   * The account step takes back an account it added. Answers the state
+   * after it, which the step hands on as it does an add's (see
+   * `acceptAccountStep`): what the main process is left with when the call
+   * fails, and `null` when not even that is known. A call that fails tells
+   * the user: the X that asks has no line of its own to say it on.
+   */
+  removeStepAccount: (steamId: string) => Promise<IAppState | null>;
   /**
    * Asks Steam again whether the saved key of an account works, and takes
    * the state after it. A call that fails tells the user: the button that
@@ -100,6 +112,22 @@ type SettingsActions = {
 };
 
 export type SettingsSlice = SettingsStore & SettingsActions;
+
+/**
+ * For a call about accounts that rejected: tells the user, in the language
+ * given, and answers what the main process holds now, `null` when it cannot
+ * say either. The main process changes what it holds before it writes it, so
+ * a write the disk refused leaves it past the change (the account gone, the
+ * other one in use) while the screen still shows what was there before.
+ */
+async function heldAfterFailure(
+  error: unknown,
+  language: Language,
+): Promise<IAppState | null> {
+  toast.error(explainFailedCall(error, messagesFor(language)));
+  // No answer here either: the screen keeps what it has.
+  return SettingsService.getState().catch(() => null);
+}
 
 export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
   appState: null,
@@ -247,8 +275,19 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
   },
 
   changeLanguage: async (language) => {
-    if (language === get().session.language) return;
-    await SettingsService.setLanguage(language);
+    const previous = get().session.language;
+    if (language === previous) return;
+    try {
+      await SettingsService.setLanguage(language);
+    } catch (error) {
+      toast.error(explainFailedCall(error, messagesFor(previous)));
+      // The main process takes the language before it writes it, so it may
+      // be asking Steam in a language the screen is not in. Asking for the
+      // previous one puts it back, whether or not that one is written: what
+      // matters is what it holds, and the disk still has the previous one.
+      await SettingsService.setLanguage(previous).catch(() => undefined);
+      return;
+    }
     window.location.reload();
   },
 
@@ -256,13 +295,24 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
     if (steamId === get().settings.appState?.activeSteamId) return;
     // Edits still waiting to be written belong to the account being left.
     get().userData.flush();
-    get().settings.apply(await AccountsService.setActive(steamId));
+    const next = await AccountsService.setActive(steamId).catch((error) =>
+      heldAfterFailure(error, get().session.language),
+    );
+    if (next) get().settings.apply(next);
   },
 
   removeAccount: async (steamId) => {
     get().userData.flush();
-    get().settings.apply(await AccountsService.remove(steamId));
+    const next = await AccountsService.remove(steamId).catch((error) =>
+      heldAfterFailure(error, get().session.language),
+    );
+    if (next) get().settings.apply(next);
   },
+
+  removeStepAccount: async (steamId) =>
+    AccountsService.remove(steamId).catch((error) =>
+      heldAfterFailure(error, get().session.language),
+    ),
 
   recheckAccount: async (steamId) => {
     try {

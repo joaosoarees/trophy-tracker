@@ -10,8 +10,8 @@ import { useFormContext } from 'react-hook-form';
 import { useT } from '@app/hooks/useT';
 import { explainFailedCall } from '@app/lib/failedCall';
 import { singleFlight } from '@app/lib/singleFlight';
-import { AccountsService } from '@app/services/AccountsService';
 import { OnboardingService } from '@app/services/OnboardingService';
+import { useStore } from '@app/store';
 import { type IAccount } from '@shared/types/Account';
 import { type IAppState } from '@shared/types/AppState';
 import { useStepper } from '@ui/screens/Onboarding/components/Stepper/useStepper';
@@ -43,6 +43,9 @@ export function useAccountStepController({
   const t = useT();
   const { lockFollowingSteps, whileBusy } = useStepper();
   const form = useFormContext<OnboardingFormData>();
+  const removeStepAccount = useStore(
+    (store) => store.settings.removeStepAccount,
+  );
 
   // Whether the form is open, whether it can be closed, and what is known of
   // the Steam client's account change together: one reducer holds the three.
@@ -162,7 +165,10 @@ export function useAccountStepController({
   }
 
   async function handleRemove(steamId: string) {
-    const next = await AccountsService.remove(steamId);
+    // A call that fails is said by the store, in a toast: the X has no line
+    // of its own. The list then follows what the main process was left with.
+    const next = await removeStepAccount(steamId);
+    if (!next) return;
     onChange(next);
     if (next.accounts.length > 0) return;
     // Back to the beginning: there is nothing for the next step to show.

@@ -7,6 +7,8 @@ import { makeAppState } from '@tests/factories/makeAppState';
 import { OTHER_STEAM_ID, STEAM_ID, UNKNOWN_STEAM_ID } from '@tests/helpers';
 import { deferred, makeAppStore } from '@tests/makeAppStore';
 
+import { type SettingsSlice } from './settingsSlice';
+
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn() }),
 }));
@@ -58,6 +60,11 @@ function notSetUpState(): IAppState {
     activeSteamId: null,
   });
 }
+
+const UNEXPECTED = 'Unexpected error. Try again.';
+
+/** A call to the main process that fails as a write the disk refuses does. */
+const failing = () => Promise.reject(new Error('disk full'));
 
 describe('settingsSlice', () => {
   afterEach(() => {
@@ -346,6 +353,62 @@ describe('settingsSlice', () => {
 
       expect(reloadMock).not.toHaveBeenCalled();
     });
+
+    /**
+     * A main process that takes the language and then fails to write it, as
+     * the real one does: `held` is the language it is left on.
+     */
+    function mainThatCannotSaveFrench() {
+      const held = { language: 'en' };
+      const api: Partial<IApi> = {
+        setLanguage: (language) => {
+          held.language = language;
+          return language === 'fr'
+            ? failing()
+            : Promise.resolve(makeAppState({ language }));
+        },
+        logError: () => Promise.resolve(),
+      };
+      return { api, held };
+    }
+
+    it('should put the main process back on the language in use when the other one could not be saved', async () => {
+      const { api, held } = mainThatCannotSaveFrench();
+      const { sut } = await setup(api);
+
+      await sut.getState().settings.changeLanguage('fr');
+
+      expect(held.language).toBe('en');
+    });
+
+    it('should tell the user something went wrong when the language could not be saved', async () => {
+      const { api } = mainThatCannotSaveFrench();
+      const { sut, toastMock } = await setup(api);
+
+      await sut.getState().settings.changeLanguage('fr');
+
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(UNEXPECTED);
+    });
+
+    it('should not reload the window when the language could not be saved', async () => {
+      const { api } = mainThatCannotSaveFrench();
+      const { sut, reloadMock } = await setup(api);
+
+      await sut.getState().settings.changeLanguage('fr');
+
+      expect(reloadMock).not.toHaveBeenCalled();
+    });
+
+    it('should stay in the language in use when the main process cannot be put back on it either', async () => {
+      const { sut } = await setup({
+        setLanguage: failing,
+        logError: () => Promise.resolve(),
+      });
+
+      await sut.getState().settings.changeLanguage('fr');
+
+      expect(sut.getState().session.language).toBe('en');
+    });
   });
 
   describe('switchAccount', () => {
@@ -389,6 +452,45 @@ describe('settingsSlice', () => {
 
       expect(setActiveAccountMock).not.toHaveBeenCalled();
     });
+
+    it('should follow the account the main process is left on when the call that switches fails', async () => {
+      const { sut } = await setup({
+        setActiveAccount: failing,
+        getState: () => Promise.resolve(otherAccountState()),
+        logError: () => Promise.resolve(),
+      });
+      sut.getState().settings.apply(makeAppState());
+
+      await sut.getState().settings.switchAccount(OTHER_STEAM_ID);
+
+      expect(sut.getState().settings.appState).toEqual(otherAccountState());
+    });
+
+    it('should tell the user something went wrong when the call that switches fails', async () => {
+      const { sut, toastMock } = await setup({
+        setActiveAccount: failing,
+        getState: () => Promise.resolve(makeAppState()),
+        logError: () => Promise.resolve(),
+      });
+      sut.getState().settings.apply(makeAppState());
+
+      await sut.getState().settings.switchAccount(OTHER_STEAM_ID);
+
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(UNEXPECTED);
+    });
+
+    it('should keep the state it had when the call that switches fails and the main process cannot say what it holds', async () => {
+      const { sut } = await setup({
+        setActiveAccount: failing,
+        getState: failing,
+        logError: () => Promise.resolve(),
+      });
+      sut.getState().settings.apply(makeAppState());
+
+      await sut.getState().settings.switchAccount(OTHER_STEAM_ID);
+
+      expect(sut.getState().settings.appState).toEqual(makeAppState());
+    });
   });
 
   describe('removeAccount', () => {
@@ -426,6 +528,141 @@ describe('settingsSlice', () => {
 
       expect(order).toEqual(['flushed', 'removed']);
     });
+
+    it('should show the accounts the main process is left with when the call that removes one fails', async () => {
+      const { sut } = await setup({
+        removeAccount: failing,
+        getState: () => Promise.resolve(otherAccountState()),
+        logError: () => Promise.resolve(),
+      });
+      sut.getState().settings.apply(twoAccountsState(STEAM_ID));
+
+      await sut.getState().settings.removeAccount(STEAM_ID);
+
+      expect(sut.getState().settings.appState).toEqual(otherAccountState());
+    });
+
+    it('should tell the user something went wrong when the call that removes an account fails', async () => {
+      const { sut, toastMock } = await setup({
+        removeAccount: failing,
+        getState: () => Promise.resolve(makeAppState()),
+        logError: () => Promise.resolve(),
+      });
+      sut.getState().settings.apply(makeAppState());
+
+      await sut.getState().settings.removeAccount(STEAM_ID);
+
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(UNEXPECTED);
+    });
+
+    it('should keep the state it had when the call that removes an account fails and the main process cannot say what it holds', async () => {
+      const { sut } = await setup({
+        removeAccount: failing,
+        getState: failing,
+        logError: () => Promise.resolve(),
+      });
+      sut.getState().settings.apply(makeAppState());
+
+      await sut.getState().settings.removeAccount(STEAM_ID);
+
+      expect(sut.getState().settings.appState).toEqual(makeAppState());
+    });
+  });
+
+  describe('removeStepAccount', () => {
+    it('should answer the state after the removal when the main process removed the account', async () => {
+      const { sut } = await setup({
+        removeAccount: () => Promise.resolve(otherAccountState()),
+      });
+
+      const next = await sut.getState().settings.removeStepAccount(STEAM_ID);
+
+      expect(next).toEqual(otherAccountState());
+    });
+
+    it('should not take the state itself when the first setup removes one of its accounts', async () => {
+      const { sut } = await setup({
+        removeAccount: () => Promise.resolve(otherAccountState()),
+      });
+      sut.getState().settings.apply(notSetUpState());
+
+      await sut.getState().settings.removeStepAccount(STEAM_ID);
+
+      expect(sut.getState().settings.appState).toEqual(notSetUpState());
+    });
+
+    it('should answer what the main process is left with when the call that removes the account fails', async () => {
+      const { sut } = await setup({
+        removeAccount: failing,
+        getState: () => Promise.resolve(otherAccountState()),
+        logError: () => Promise.resolve(),
+      });
+
+      const next = await sut.getState().settings.removeStepAccount(STEAM_ID);
+
+      expect(next).toEqual(otherAccountState());
+    });
+
+    it('should tell the user something went wrong when the call that removes the account fails', async () => {
+      const { sut, toastMock } = await setup({
+        removeAccount: failing,
+        getState: () => Promise.resolve(makeAppState()),
+        logError: () => Promise.resolve(),
+      });
+
+      await sut.getState().settings.removeStepAccount(STEAM_ID);
+
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(UNEXPECTED);
+    });
+
+    it('should answer nothing when the call that removes the account fails and the main process cannot say what it holds', async () => {
+      const { sut } = await setup({
+        removeAccount: failing,
+        getState: failing,
+        logError: () => Promise.resolve(),
+      });
+
+      const next = await sut.getState().settings.removeStepAccount(STEAM_ID);
+
+      expect(next).toBeNull();
+    });
+  });
+
+  describe('a call that fails', () => {
+    it.each<[string, keyof IApi, (store: SettingsSlice) => Promise<unknown>]>([
+      ['changeLanguage', 'setLanguage', (s) => s.changeLanguage('fr')],
+      [
+        'switchAccount',
+        'setActiveAccount',
+        (s) => s.switchAccount(OTHER_STEAM_ID),
+      ],
+      ['removeAccount', 'removeAccount', (s) => s.removeAccount(STEAM_ID)],
+      [
+        'removeStepAccount',
+        'removeAccount',
+        (s) => s.removeStepAccount(STEAM_ID),
+      ],
+    ])(
+      'should write the error to the log when the call of %s to the main process fails',
+      async (_action, call, act) => {
+        const logErrorMock = vi.fn<IApi['logError']>(() => Promise.resolve());
+        const failure = new Error('disk full');
+        failure.stack = 'Error: disk full\n    at saveConfig (Store.ts:1:1)';
+        const { sut } = await setup({
+          [call]: () => Promise.reject(failure),
+          getState: () => Promise.resolve(makeAppState()),
+          logError: logErrorMock,
+        });
+        sut.getState().settings.apply(makeAppState());
+
+        await act(sut.getState().settings);
+
+        expect(logErrorMock).toHaveBeenCalledExactlyOnceWith(
+          'failed call',
+          'Error: disk full\n    at saveConfig (Store.ts:1:1)',
+        );
+      },
+    );
   });
 
   describe('recheckAccount', () => {
