@@ -143,6 +143,14 @@ describe('stepperState', () => {
         });
       });
 
+      it('should keep the state when no step ahead was reached', () => {
+        const state = makeState({ current: 1, furthest: 1 });
+
+        const locked = stepperReducer(state, { type: 'lockFollowing' });
+
+        expect(locked).toBe(state);
+      });
+
       it('should refuse a jump to a following step when they were locked again', () => {
         const locked = makeLockedState();
 
