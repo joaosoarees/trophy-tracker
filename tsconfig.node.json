@@ -8,7 +8,8 @@
       "@ui/*": ["./src/renderer/src/ui/*"],
       "@shared/*": ["./src/shared/*"],
       "@main/*": ["./src/main/*"],
-      "@test/*": ["./test/*"]
+      "@test/*": ["./test/*"],
+      "@tests/*": ["./test/*"]
     }
   },
   "include": [

@@ -8,7 +8,8 @@
       "@app/*": ["./src/renderer/src/app/*"],
       "@ui/*": ["./src/renderer/src/ui/*"],
       "@shared/*": ["./src/shared/*"],
-      "@test/*": ["./test/*"]
+      "@test/*": ["./test/*"],
+      "@tests/*": ["./test/*"]
     }
   },
   "include": [
@@ -20,5 +21,9 @@
     "test/factories/makeAchievement.ts",
     "test/factories/makeGameView.ts",
     "test/factories/makeGameSummary.ts"
-  ]
+  ],
+  // Specs use Node (fixtures, helpers), which this project does not have:
+  // those of `shared/` are checked by `tsconfig.node.json`, those of the
+  // interface by `tsconfig.webtest.json`.
+  "exclude": ["src/**/*.spec.ts"]
 }

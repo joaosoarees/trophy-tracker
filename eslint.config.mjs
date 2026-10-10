@@ -75,7 +75,10 @@ export default defineConfig(
             'index',
           ],
           pathGroups: [
-            { pattern: '@{app,ui,shared,main,test}/**', group: 'internal' },
+            {
+              pattern: '@{app,ui,shared,main,test,tests}/**',
+              group: 'internal',
+            },
           ],
           alphabetize: { order: 'asc', caseInsensitive: true },
           'newlines-between': 'always',
@@ -124,7 +127,12 @@ export default defineConfig(
   },
 
   {
-    files: ['src/main/**/*.ts', 'src/preload/**/*.ts', 'test/**/*.ts'],
+    files: [
+      'src/main/**/*.ts',
+      'src/preload/**/*.ts',
+      'test/**/*.ts',
+      'src/**/*.spec.ts',
+    ],
     languageOptions: { globals: globals.node },
   },
 
@@ -202,7 +210,7 @@ export default defineConfig(
 
   {
     // Tests poke at untyped JSON and use fakes that are async only by signature.
-    files: ['test/**/*.ts'],
+    files: ['test/**/*.ts', 'src/**/*.spec.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',

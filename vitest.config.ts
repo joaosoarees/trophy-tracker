@@ -8,13 +8,18 @@ export default defineConfig({
       '@shared': resolve('src/shared'),
       '@app': resolve('src/renderer/src/app'),
       '@ui': resolve('src/renderer/src/ui'),
-      // Only tests use these two: they live away from the code they test.
+      // Only tests use these: `@main` for the ones that still live away from
+      // the code they test, `@test` and `@tests` for helpers, factories and
+      // fixtures (`@tests` is the name the specs beside the code import).
       '@main': resolve('src/main'),
       '@test': resolve('test'),
+      '@tests': resolve('test'),
     },
   },
   test: {
-    include: ['test/**/*.test.ts'],
+    // Tests are moving beside the code they test (`Tracker.spec.ts` next to
+    // `Tracker.ts`). Until the move is complete both places are run.
+    include: ['test/**/*.test.ts', 'src/**/*.spec.ts'],
     environment: 'node',
     // Reuses transformed modules between runs made by hand. The commit and
     // push hooks and the CI set `CI`, so the runs that gate a change always
@@ -39,6 +44,8 @@ export default defineConfig({
         'src/renderer/src/ui/screens/**/stepperState.ts',
       ],
       exclude: [
+        // A spec beside the code is not code to cover.
+        'src/**/*.spec.ts',
         'src/shared/types/**',
         // Texts and constants: nothing to execute.
         'src/shared/i18n/locales/**',
