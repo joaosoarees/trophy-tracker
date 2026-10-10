@@ -75,7 +75,8 @@ export class Ipc {
 
     const handlers: IpcHandlers = {
       getState: () => setup.getState(),
-      detectSteamId: () => local.getActiveSteamId(),
+      // An account that cannot be read is not offered, as when nobody is signed in.
+      detectSteamId: () => local.getActiveSteamId().catch(() => null),
       checkApiKey: (steamId, apiKey) => checks.checkApiKey(steamId, apiKey),
       checkPrivacy: (steamId, apiKey) => checks.checkPrivacy(steamId, apiKey),
       addAccount: (steamId, apiKey) => accounts.add(steamId, apiKey),
@@ -86,19 +87,21 @@ export class Ipc {
 
       getCurrentAppId: () => watcher.refreshCurrent(),
       getGame: (appid, isForced) =>
-        keys.attempt(async (onAnswer) => {
+        keys.attempt(async (onAnswer, onFailure) => {
           const view = isForced
             ? await tracker.getGame(appid, true, onAnswer)
             : await tracker.getGameStaleFirst(appid, {
                 // Steam accepted the key, now or in the refresh behind the scenes.
                 onAnswer,
-                // The refresh that ran behind the scenes found something new.
+                // The refresh that ran behind the scenes found something new,
+                // for the account that is still in use.
                 onFresh: (fresh) => {
                   watcher.remember(fresh);
                   window.send(IpcEvent.gameUpdated, fresh);
                 },
-                // Lets the app notice a key that stopped working.
-                onError: (e) => void keys.noticeFailure(e),
+                // Lets the app notice a key that stopped working, on the
+                // account the game was asked for.
+                onError: onFailure,
               });
           watcher.remember(view);
           return view;

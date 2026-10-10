@@ -59,14 +59,20 @@ export class KeyStatus {
    * answered from the cache: the read calls `onAnswer` when Steam answered a
    * request made with the key, and only then is the account marked `valid`.
    * It is the account the read started for, and the call may come after this
-   * has answered, from a refresh that goes on behind the scenes.
+   * has answered, from a refresh that goes on behind the scenes. A failure of
+   * such a refresh has nobody to be answered to: the read hands it to
+   * `onFailure`, which notes it for that same account, whichever is in use
+   * by then.
    */
   async attempt<T>(
-    run: (onAnswer: () => void) => Promise<T>,
+    run: (onAnswer: () => void, onFailure: (e: unknown) => void) => Promise<T>,
   ): Promise<CheckResult<T>> {
     const steamId = this.store.getActiveSteamId();
     try {
-      const value = await run(() => this.mark(steamId, 'valid'));
+      const value = await run(
+        () => this.mark(steamId, 'valid'),
+        (e) => void this.noticeFailure(e, steamId),
+      );
       return { ok: true, value };
     } catch (e) {
       return { ok: false, error: this.noticeFailure(e, steamId) };
@@ -75,10 +81,10 @@ export class KeyStatus {
 
   /**
    * Takes note of a failed read and returns the message to show for it. A
-   * refused or limited key is recorded on its account: the app stays open
-   * with what it had, and says which key needs attention.
+   * refused or limited key is recorded on the account the read started for:
+   * the app stays open with what it had, and says which key needs attention.
    */
-  noticeFailure(e: unknown, steamId = this.store.getActiveSteamId()): string {
+  private noticeFailure(e: unknown, steamId: string | null): string {
     const { status, message } = this.interpret(e);
     if (status) this.mark(steamId, status);
     return message;

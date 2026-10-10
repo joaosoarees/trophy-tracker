@@ -29,8 +29,9 @@ How a read reaches the screen (the last known view first, skeletons on first loa
 
 Do not fire requests for nothing.
 
-- **Opening a game** serves the cached view at once; a view older than 60 s triggers one background refresh.
+- **Opening a game** serves the cached view at once; a view older than 60 s triggers one background refresh. What that refresh finds reaches the interface only while the account it was read for is still in use (`docs/accounts.md`).
 - **Game open:** every 60 s it re-reads only the player state (and counters, if the game has them). The achievement list is cached for 24 h. The ↻ button forces everything.
+- **A game the library does not list costs one library read, not one per check.** The name of a game comes from the library (`GetOwnedGames`, reused for 10 minutes). When the library on hand does not list the game, it is asked for again once, since the game may have joined it after that answer; an answer that was just read, or was already found not to list the game, is not asked for again until it is 10 minutes old (`Tracker.gameName`). The game is then named `App <appid>`: the achievement list (`GetGameAchievements`) carries no game name, and the app reads none from any other answer.
 - **No change, no event:** `Tracker.getGame` returns the same object when nothing changed, and the main process emits `game-updated` only when the object is a different one.
 - **Dashboard:** loads on startup, on ↻ (`all`) and when a game closes (`changed`: only games whose playtime changed).
 - **A dashboard that fails stops asking.** Its games are read four at a time (`Tracker.pool`). Once the read of one fails with an error that fails the dashboard, no other game is started; the reads already in flight end, what they read is saved with what was read before, and only then does the dashboard answer the error, so nothing is asked, saved or announced as progress after it. Asking again (`cached`) reads only the games that were not read. A game with no stats, or one Steam fails with an `unknown` error, does not fail the dashboard (`Tracker.readSummary`).

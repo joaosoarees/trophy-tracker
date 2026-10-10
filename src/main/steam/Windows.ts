@@ -81,9 +81,12 @@ export class Windows {
     return typeof v === 'number' && v > 0 ? v : null;
   }
 
-  /** SteamID64 of the account signed in to the Steam client. */
+  /**
+   * SteamID64 of the account signed in to the Steam client; `null` when the
+   * registry says nobody is. Rejects when the registry could not be asked.
+   */
   async getActiveSteamId(): Promise<string | null> {
-    const v = await this.regValue(`${STEAM_KEY}\\ActiveProcess`, 'ActiveUser');
+    const v = await this.queryReg(`${STEAM_KEY}\\ActiveProcess`, 'ActiveUser');
     return typeof v === 'number' && v > 0
       ? Windows.accountIdToSteamId(v)
       : null;
@@ -129,7 +132,17 @@ export class Windows {
     await this.deps.run('rundll32.exe', ['url.dll,FileProtocolHandler', url]);
   }
 
-  private async regValue(
+  /** A registry value, or `null` when it is not there or could not be asked for. */
+  private regValue(key: string, name: string): Promise<string | number | null> {
+    return this.queryReg(key, name).catch(() => null);
+  }
+
+  /**
+   * A registry value, or `null` when the registry has none by that name:
+   * `reg.exe` ran and ended with code 1. Anything else that goes wrong (the
+   * command cannot be started, is killed for taking too long) rejects.
+   */
+  private async queryReg(
     key: string,
     name: string,
   ): Promise<string | number | null> {
@@ -138,8 +151,9 @@ export class Windows {
       return Windows.parseRegValue(
         await this.deps.run('reg.exe', ['query', key, '/v', name]),
       );
-    } catch {
-      return null;
+    } catch (e) {
+      if ((e as { code?: unknown }).code === 1) return null;
+      throw e;
     }
   }
 }

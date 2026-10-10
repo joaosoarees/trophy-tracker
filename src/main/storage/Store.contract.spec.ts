@@ -112,6 +112,29 @@ const PER_ACCOUNT = [
 ];
 
 /**
+ * The two a read asks for by the account it started for, since another may
+ * be in use by the time it needs them.
+ */
+const ASKED_BY_OWNER = [
+  {
+    what: 'library',
+    write: (store: ServiceStore, owner?: string) =>
+      store.setLibrary(GAMES, 5, owner),
+    read: (store: ServiceStore, owner: string): unknown =>
+      store.getLibrary(owner) ?? null,
+    value: LIBRARY as unknown,
+  },
+  {
+    what: 'summary',
+    write: (store: ServiceStore, owner?: string) =>
+      store.setSummaries({ 1: SUMMARY }, owner),
+    read: (store: ServiceStore, owner: string): unknown =>
+      store.getSummary(1, owner),
+    value: SUMMARY as unknown,
+  },
+];
+
+/**
  * What `Tracker`, `SetupService`, `AccountChecks` and `KeyStatus` rely on in
  * a store, asserted of the real `Store` and of the fake their specs run over. A difference is a fault of
  * the fake.
@@ -494,6 +517,43 @@ describe.each(IMPLEMENTATIONS)(
           sut.setCredentials(CREDENTIALS, PROFILE);
 
           expect(read(sut)).toBeNull();
+        },
+      );
+
+      it.each(ASKED_BY_OWNER)(
+        'should answer the $what of an account when asked for it while another is in use',
+        ({ write, read, value }) => {
+          const { sut } = setupWithTwoAccounts();
+          write(sut, STEAM_ID);
+
+          const answer = read(sut, STEAM_ID);
+
+          expect(answer).toEqual(value);
+        },
+      );
+
+      it.each(ASKED_BY_OWNER)(
+        'should not answer the $what of the account in use when asked for that of another',
+        ({ write, read }) => {
+          const { sut } = setupWithTwoAccounts();
+          write(sut);
+
+          const answer = read(sut, STEAM_ID);
+
+          expect(answer).toBeNull();
+        },
+      );
+
+      it.each(ASKED_BY_OWNER)(
+        'should answer no $what when asked for that of an account that was removed',
+        ({ write, read }) => {
+          const { sut } = setupWithTwoAccounts();
+          write(sut, STEAM_ID);
+          sut.removeAccount(STEAM_ID);
+
+          const answer = read(sut, STEAM_ID);
+
+          expect(answer).toBeNull();
         },
       );
 
