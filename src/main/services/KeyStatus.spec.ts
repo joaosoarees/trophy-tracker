@@ -41,7 +41,10 @@ const summary = ({ steamId }: ICredentials): IRawPlayerSummary => ({
  * unless the test is about the file. `changes` holds the accounts as they
  * were each time a change was announced.
  */
-function setup(store: InMemoryStore | Store = new InMemoryStore()) {
+function setup(
+  store: InMemoryStore | Store = new InMemoryStore(),
+  client = fakeSteamClient({ summary }),
+) {
   store.setCredentials(
     { steamId: STEAM_ID, apiKey: KEY },
     { steamId: STEAM_ID, name: 'player', avatar: 'x' },
@@ -50,11 +53,23 @@ function setup(store: InMemoryStore | Store = new InMemoryStore()) {
   const logErrorMock = vi.fn<(source: string, detail: string) => void>();
   const sut = new KeyStatus(
     store,
-    fakeSteamClient({ summary }),
+    client,
     () => changes.push(store.getAccounts()),
     logErrorMock,
   );
-  return { store, sut, changes, logErrorMock };
+  return { store, sut, client, changes, logErrorMock };
+}
+
+/** The same app, with Steam failing whoever asks for a profile. */
+function setupFailingSteam(failure: Error) {
+  return setup(
+    new InMemoryStore(),
+    fakeSteamClient({
+      summary: () => {
+        throw failure;
+      },
+    }),
+  );
 }
 
 /**
@@ -458,6 +473,82 @@ describe('KeyStatus', () => {
       await sut.recheck(STEAM_ID);
 
       expect(statSync(file).mtime).not.toEqual(before);
+    });
+
+    it.each([
+      { kind: 'invalid-key', status: 'rejected' },
+      { kind: 'rate-limited', status: 'rateLimited' },
+    ] as const)(
+      'should mark the account as $status when Steam answers $kind about its key',
+      async ({ kind, status }) => {
+        const { sut, store } = setupFailingSteam(new SteamError(kind));
+
+        await sut.recheck(STEAM_ID);
+
+        expect(store.getAccounts()[0].status).toBe(status);
+      },
+    );
+
+    it('should take the mark off the account when Steam accepts its key again', async () => {
+      const { sut, store } = setup();
+      store.setAccountStatus(STEAM_ID, 'rejected');
+
+      await sut.recheck(STEAM_ID);
+
+      expect(store.getAccounts()[0].status).toBe('valid');
+    });
+
+    it.each(['valid', 'rejected', 'rateLimited'] as const)(
+      'should leave the account as %s when Steam cannot be reached',
+      async (status) => {
+        const { sut, store } = setupFailingSteam(new SteamError('network'));
+        store.setAccountStatus(STEAM_ID, status);
+
+        await sut.recheck(STEAM_ID);
+
+        expect(store.getAccounts()[0].status).toBe(status);
+      },
+    );
+
+    it('should ask Steam about the account with the key saved for it', async () => {
+      const { sut, client } = setup();
+
+      await sut.recheck(STEAM_ID);
+
+      expect(client.asked).toEqual([
+        {
+          method: 'getPlayerSummary',
+          credentials: { steamId: STEAM_ID, apiKey: KEY },
+        },
+      ]);
+    });
+
+    it('should ask Steam nothing when the app does not have the account', async () => {
+      const { sut, client } = setup();
+
+      await sut.recheck(OTHER_STEAM_ID);
+
+      expect(client.asked).toEqual([]);
+    });
+
+    it('should announce no change when it finds another status, which the answer of the recheck carries', async () => {
+      const { sut, changes } = setupFailingSteam(new SteamError('invalid-key'));
+
+      await sut.recheck(STEAM_ID);
+
+      expect(changes).toEqual([]);
+    });
+
+    it('should log the error and leave the account as it was when the recheck fails unexpectedly', async () => {
+      const { sut, store, logErrorMock } = setupFailingSteam(new Error('boom'));
+
+      await sut.recheck(STEAM_ID);
+
+      expect(store.getAccounts()[0].status).toBe('valid');
+      expect(logErrorMock).toHaveBeenCalledExactlyOnceWith(
+        'main: steam read',
+        expect.stringContaining('boom'),
+      );
     });
   });
 });
