@@ -30,9 +30,9 @@ const turn = (): Promise<void> =>
  * it is wired, over a main process that answers it when the test says so:
  * `asked` holds one answer per request, in the order they were made. The
  * dashboard is answered at once, and `dashboardModes` holds what each of its
- * reads asked for.
+ * reads asked for. `session` is what the page before a reload left behind.
  */
-async function setup() {
+async function setup(session: Record<string, string> = {}) {
   const asked: ReturnType<typeof deferred<CurrentGame>>[] = [];
   const dashboardModes: (DashboardMode | undefined)[] = [];
   const api: Partial<IApi> = {
@@ -50,7 +50,7 @@ async function setup() {
     onGameUpdated: () => () => {},
     onDashboardProgress: () => () => {},
   };
-  const made = await makeAppStore({ api });
+  const made = await makeAppStore({ api, session });
   made.follow(makeAppState());
   // The dashboard asked for as the store is wired has been listed.
   await turn();
@@ -124,6 +124,63 @@ describe('sessionSlice', () => {
       sut.getState().session.setCurrent({ appid: 7, isRunning: true });
 
       expect(dashboardModes).toEqual(['cached']);
+    });
+
+    it('should bring the app to the game when it is opened on Steam', async () => {
+      const { sut } = await setup();
+      sut.getState().navigation.pickGame(8);
+      sut.getState().navigation.goTo('dashboard');
+
+      sut.getState().session.setCurrent({ appid: 7, isRunning: true });
+
+      expect(sut.getState().navigation).toMatchObject({
+        tab: 'game',
+        pickedAppId: null,
+        seenRunningAppId: 7,
+      });
+    });
+
+    it('should leave the user where they went when the running game is said to be running again', async () => {
+      const { sut } = await setup();
+      sut.getState().session.setCurrent({ appid: 7, isRunning: true });
+      sut.getState().navigation.goTo('dashboard');
+
+      sut.getState().session.setCurrent({ appid: 7, isRunning: true });
+
+      expect(sut.getState().navigation.tab).toBe('dashboard');
+    });
+
+    it('should leave the user where they are when the current game is not running', async () => {
+      const { sut } = await setup();
+      sut.getState().navigation.pickGame(8);
+      sut.getState().navigation.goTo('dashboard');
+
+      sut.getState().session.setCurrent({ appid: 7, isRunning: false });
+
+      expect(sut.getState().navigation).toMatchObject({
+        tab: 'dashboard',
+        pickedAppId: 8,
+        seenRunningAppId: null,
+      });
+    });
+
+    it('should bring the app to the game again when it is opened a second time', async () => {
+      const { sut } = await setup();
+      sut.getState().session.setCurrent({ appid: 7, isRunning: true });
+      sut.getState().session.setCurrent({ appid: 7, isRunning: false });
+      sut.getState().navigation.goTo('dashboard');
+
+      sut.getState().session.setCurrent({ appid: 7, isRunning: true });
+
+      expect(sut.getState().navigation.tab).toBe('game');
+    });
+
+    it('should keep the running game as the one already seen when there is no current game yet', async () => {
+      const { sut } = await setup({ 'view-seen-running': '7' });
+
+      sut.getState().session.setCurrent(null);
+
+      expect(sut.getState().navigation.seenRunningAppId).toBe(7);
     });
   });
 
