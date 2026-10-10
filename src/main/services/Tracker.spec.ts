@@ -83,9 +83,13 @@ const unheard = {
 
 /**
  * A tracker for `STEAM_ID`, the account in use, over a store in memory and a
- * Steam that answers what it is given.
+ * Steam that answers what it is given. `statMap` is what the file of the Steam
+ * client links, achievement to stat; a function is asked on each read of it.
  */
-function setup(answers: ISteamAnswers, statMap = new Map<string, string>()) {
+function setup(
+  answers: ISteamAnswers,
+  statMap: Map<string, string> | (() => Map<string, string>) = new Map(),
+) {
   const store = new InMemoryStore();
   store.setCredentials({ steamId: STEAM_ID, apiKey: KEY }, profile);
   const client = fakeSteamClient(answers);
@@ -93,7 +97,8 @@ function setup(answers: ISteamAnswers, statMap = new Map<string, string>()) {
   const sut = new Tracker({
     store,
     client,
-    readStatMap: () => Promise.resolve(statMap),
+    readStatMap: () =>
+      Promise.resolve(typeof statMap === 'function' ? statMap() : statMap),
     now: () => now,
   });
   const advance = (ms: number): void => {
@@ -167,6 +172,30 @@ function setupNioh() {
   };
   return { ...made, unlock };
 }
+
+/**
+ * Nioh 3, whose list has counters, with the file of the Steam client that
+ * links them to stats: `file.links` is what it holds, and `file.reads` how
+ * many times it was read.
+ */
+function setupNiohCounters(links: Record<string, string>) {
+  const file = { links, reads: 0 };
+  const made = setup(
+    {
+      owned: () => [game(NIOH, 'Nioh 3', 500)],
+      achievements: () => nioh.response.achievements,
+      player: () => niohUnlocked(1),
+      stats: () => ({ ACH_001_PROGRESS: 12 }),
+    },
+    () => {
+      file.reads += 1;
+      return new Map(Object.entries(file.links));
+    },
+  );
+  return { ...made, file };
+}
+
+const DAY = 24 * 60 * 60_000;
 
 /**
  * A library that does not list the game 7, which the player has all the
@@ -408,6 +437,100 @@ describe('Tracker', () => {
       await sut.getGame(NIOH, true);
 
       expect(requestsTo(client, 'getGameAchievements')).toBe(2);
+    });
+
+    it('should reuse the achievement list when the game is read again within a day', async () => {
+      const { sut, client, advance } = setupNioh();
+      await sut.getGame(NIOH);
+      advance(DAY - 1);
+
+      await sut.getGame(NIOH);
+
+      expect(requestsTo(client, 'getGameAchievements')).toBe(1);
+    });
+
+    it('should ask for the achievement list again when the one it has is a day old', async () => {
+      const { sut, client, advance } = setupNioh();
+      await sut.getGame(NIOH);
+      advance(DAY);
+
+      await sut.getGame(NIOH);
+
+      expect(requestsTo(client, 'getGameAchievements')).toBe(2);
+    });
+
+    it('should read the file that links counters to stats once when the game is read again', async () => {
+      const { sut, file, advance } = setupNiohCounters({
+        ACH_001: 'ACH_001_PROGRESS',
+      });
+      await sut.getGame(NIOH);
+      advance(60_000);
+
+      await sut.getGame(NIOH, 'poll');
+
+      expect(file.reads).toBe(1);
+    });
+
+    it('should read the file that links counters to stats again when it linked nothing the time before', async () => {
+      const { sut, file, advance } = setupNiohCounters({});
+      await sut.getGame(NIOH);
+      advance(60_000);
+
+      await sut.getGame(NIOH, 'poll');
+
+      expect(file.reads).toBe(2);
+    });
+
+    it('should show the counters when the file that links them to stats is there only by the second read', async () => {
+      const { sut, file, advance } = setupNiohCounters({});
+      await sut.getGame(NIOH);
+      file.links = { ACH_001: 'ACH_001_PROGRESS' };
+      advance(60_000);
+
+      const view = await sut.getGame(NIOH, 'poll');
+
+      expect(
+        view.achievements.find((a) => a.id === 'ACH_001')?.progress,
+      ).toEqual({ current: 12, target: 39 });
+    });
+
+    it('should not ask for the counters when the file that links them to stats links nothing', async () => {
+      const { sut, client } = setupNiohCounters({});
+
+      await sut.getGame(NIOH);
+
+      expect(requestsTo(client, 'getUserStats')).toBe(0);
+    });
+
+    it('should not read the file that links counters to stats when no achievement of the game has a counter', async () => {
+      let reads = 0;
+      const { sut } = setup(
+        {
+          owned: () => [game(7, 'Game', 5)],
+          achievements: noAchievementList,
+          player: () => achieved(0, 0),
+        },
+        () => {
+          reads += 1;
+          return new Map<string, string>();
+        },
+      );
+
+      await sut.getGame(7);
+
+      expect(reads).toBe(0);
+    });
+
+    it('should fail as not set up, asking Steam nothing, when the key of the account in use cannot be read', async () => {
+      const { sut, client, store } = setupGame7();
+      store.loseKeyOf(STEAM_ID);
+
+      const gamePromise = sut.getGame(7);
+
+      await expect(gamePromise).rejects.toThrow(
+        new SteamError('not-configured'),
+      );
+      expect(client.asked).toEqual([]);
     });
 
     it('should answer the same object when the periodic check finds nothing new', async () => {
@@ -830,6 +953,22 @@ describe('Tracker', () => {
 
       expect(appId).toBe(2);
     });
+
+    it('should answer no game when none of the library was ever played', async () => {
+      const { sut } = setup({ owned: () => [game(3, 'Never', 0, 0)] });
+
+      const appId = await sut.lastPlayedAppId();
+
+      expect(appId).toBeNull();
+    });
+
+    it('should fail with a private profile when the library is not visible', async () => {
+      const { sut } = setup({ owned: () => null });
+
+      const appIdPromise = sut.lastPlayedAppId();
+
+      await expect(appIdPromise).rejects.toThrow(new SteamError('private'));
+    });
   });
 
   describe('getDashboard', () => {
@@ -1214,6 +1353,27 @@ describe('Tracker', () => {
       expect(gamesAsked()).toEqual(DOZEN);
       expect(gamesSaved()).toEqual([1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
       expect(events.at(-1)).toBe('answered 11 games');
+    });
+
+    it('should fail with a private profile, keeping no library, when the library is not visible', async () => {
+      const { sut, store } = setup({ owned: () => null });
+
+      const dashboardPromise = sut.getDashboard();
+
+      await expect(dashboardPromise).rejects.toThrow(new SteamError('private'));
+      expect(store.getLibrary()).toBeUndefined();
+    });
+
+    it('should fail as not set up, asking Steam nothing, when the key of the account in use cannot be read', async () => {
+      const { sut, client, store } = setupTwoGames();
+      store.loseKeyOf(STEAM_ID);
+
+      const dashboardPromise = sut.getDashboard();
+
+      await expect(dashboardPromise).rejects.toThrow(
+        new SteamError('not-configured'),
+      );
+      expect(client.asked).toEqual([]);
     });
 
     it('should fail with a private profile instead of answering an empty dashboard', async () => {
