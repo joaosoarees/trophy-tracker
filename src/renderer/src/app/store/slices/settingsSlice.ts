@@ -64,14 +64,15 @@ type SettingsActions = {
    * Achievement names and art come from Steam already translated, so the
    * window is reloaded to guarantee nothing in the old language stays on
    * screen. A language that could not be saved is not changed to: the user
-   * is told and the main process is put back on the one in use.
+   * is told, and the main process, which keeps nothing it could not write,
+   * is still on the one in use.
    */
   changeLanguage: (language: Language) => Promise<void>;
   /**
    * Follows another saved account. What was read for the one being left goes
    * off the screen as the state changes (see `connectStore`). When the call
-   * fails the user is told, and the store follows whichever account the main
-   * process was left on, as it does after a removal that fails.
+   * fails the user is told, and the store takes what the main process
+   * holds, as it does after a removal that fails.
    */
   switchAccount: (steamId: string) => Promise<void>;
   /** Forgets an account; removing the last one leads back to the onboarding. */
@@ -106,7 +107,8 @@ type SettingsActions = {
    * another account. With several accounts it ends on the one signed in to
    * Steam, or else on the first one added. With the app already set up there
    * is nothing to take: every answer of the step is in the store, and so is
-   * whatever the main process sent since.
+   * whatever the main process sent since. When a call fails the user is
+   * told and nothing is taken: the setup stays as it is, to be ended again.
    */
   finishSetup: () => Promise<void>;
 };
@@ -116,9 +118,10 @@ export type SettingsSlice = SettingsStore & SettingsActions;
 /**
  * For a call about accounts that rejected: tells the user, in the language
  * given, and answers what the main process holds now, `null` when it cannot
- * say either. The main process changes what it holds before it writes it, so
- * a write the disk refused leaves it past the change (the account gone, the
- * other one in use) while the screen still shows what was there before.
+ * say either. A write the disk refused leaves the main process as it was,
+ * so this is normally what the screen already shows; it is asked all the
+ * same, because the call may have failed past the write, and the main
+ * process may have followed another account meanwhile.
  */
 async function heldAfterFailure(
   error: unknown,
@@ -280,12 +283,9 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
     try {
       await SettingsService.setLanguage(language);
     } catch (error) {
+      // The main process takes a language only once it is written: it is
+      // still on the previous one, as the screen is, and nothing is put back.
       toast.error(explainFailedCall(error, messagesFor(previous)));
-      // The main process takes the language before it writes it, so it may
-      // be asking Steam in a language the screen is not in. Asking for the
-      // previous one puts it back, whether or not that one is written: what
-      // matters is what it holds, and the disk still has the previous one.
-      await SettingsService.setLanguage(previous).catch(() => undefined);
       return;
     }
     window.location.reload();
@@ -337,14 +337,24 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
   finishSetup: async () => {
     if (get().settings.appState?.isConfigured) return;
 
-    // The state is asked for last: it is the one the setup ends on.
-    const signedIn = await OnboardingService.detectSteamId();
-    let next = await SettingsService.getState();
-    const first =
-      next.accounts.find((account) => account.steamId === signedIn) ??
-      next.accounts.at(0);
-    if (first && first.steamId !== next.activeSteamId) {
-      next = await AccountsService.setActive(first.steamId);
+    let next: IAppState;
+    try {
+      // The state is asked for last: it is the one the setup ends on.
+      const signedIn = await OnboardingService.detectSteamId();
+      next = await SettingsService.getState();
+      const first =
+        next.accounts.find((account) => account.steamId === signedIn) ??
+        next.accounts.at(0);
+      if (first && first.steamId !== next.activeSteamId) {
+        next = await AccountsService.setActive(first.steamId);
+      }
+    } catch (error) {
+      // Taking the state without the account it should end on would enter
+      // the app on another one. The main process keeps nothing it could not
+      // write, so it is where it was, and asking again starts from there.
+      const m = messagesFor(get().session.language);
+      toast.error(explainFailedCall(error, m));
+      return;
     }
     get().settings.apply(next);
   },

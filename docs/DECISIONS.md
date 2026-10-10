@@ -129,6 +129,12 @@ The main process had grown two styles: classes that receive what they depend on 
 
 File names and boolean names were drifting the same way, and a rule kept in someone's head had already failed, so both are enforced: the boolean prefix by `@typescript-eslint/naming-convention`, unused code by `knip`. The boolean exceptions are the names that are part of a file format or of Steam's answers; renaming those in memory only would have given one thing two names.
 
+## The store keeps nothing it could not write
+
+`Store` used to change what it held and then write it. When the disk refused the write, the caller got the error and the store kept the change: the app ran on an account, a language or a note the file did not have, the next write that worked saved the refused change along with its own, and otherwise a restart undid it. It now writes first and takes the change only then (`docs/local-data.md`). The alternative, keeping the change and trying the write again later, was not taken: the interface has already told the user the change failed and put the screen back.
+
+Three choices follow from it that could have gone the other way. **A removal that cannot delete the notes puts the account back** rather than leaving it removed with its notes on disk, because adding that account again would bring those notes back. **A key status that cannot be written is logged and fails nothing** rather than failing the read that learnt it: the status is what Steam last said, the game was read, and the next read learns it again; keeping it in memory only would have made it the one thing held that the file does not have. **The cache stays as it was**, taken at once and written a second later: it is what makes a library of hundreds of games one write, and nothing in it is the user's.
+
 ## Not done on purpose
 
 - **Docker Compose for development**: tried and reverted. The app is a desktop window; a container complicated something still experimental.

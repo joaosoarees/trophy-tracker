@@ -27,7 +27,9 @@ type SavedSetup = Pick<
 /**
  * Whether the app is set up, in which language, which accounts it knows and
  * which one it follows. An account gets in, or gets another key, only
- * through the checks it is given.
+ * through the checks it is given. A change the disk refuses throws out of
+ * the call that asked for it and changes nothing (`Store`), so the state
+ * answered after it is the one from before.
  */
 export class SetupService {
   constructor(
@@ -88,10 +90,11 @@ export class SetupService {
       return { ok: false, error: this.messages.errors.notConfigured };
     }
 
-    const following = this.store.getActiveSteamId();
-    this.store.setCredentials({ steamId, apiKey: apiKey.trim() }, check.value);
-    // Saving follows the account that was saved; this one was only repaired.
-    if (following) this.store.setActiveAccount(following);
+    // This account is only repaired: the app stays on the one in use, and in
+    // one write, so a disk that refuses cannot leave it on the repaired one.
+    this.store.setCredentials({ steamId, apiKey: apiKey.trim() }, check.value, {
+      shouldFollow: false,
+    });
     return { ok: true, value: this.getState() };
   }
 

@@ -217,6 +217,33 @@ describe('SetupService', () => {
       expect(store.getCredentialsOf(STEAM_ID)?.apiKey).toBe(OTHER_KEY);
     });
 
+    it('should replace the key in one write, so a disk that gives out after it leaves the app where it was', async () => {
+      const { sut, store } = await withTwoAccounts();
+      store.refuseWrites(1);
+
+      const result = await sut.replaceKey(STEAM_ID, OTHER_KEY);
+
+      expect(result).toMatchObject({
+        ok: true,
+        value: { activeSteamId: OTHER_STEAM_ID },
+      });
+    });
+
+    it('should say so and keep the old key when the new one cannot be written', async () => {
+      const { sut, store } = await withTwoAccounts();
+      store.refuseWrites();
+
+      const failure = await sut
+        .replaceKey(STEAM_ID, OTHER_KEY)
+        .catch((e: unknown) => e);
+
+      expect(failure).toEqual(
+        new Error('InMemoryStore: the write was refused'),
+      );
+      expect(store.getCredentialsOf(STEAM_ID)?.apiKey).toBe(KEY);
+      expect(store.getActiveSteamId()).toBe(OTHER_STEAM_ID);
+    });
+
     it('should keep the old key when Steam refuses the new one', async () => {
       let isRefusing = false;
       const { sut, store } = await withOneAccount({
@@ -271,6 +298,48 @@ describe('SetupService', () => {
       const state = sut.removeAccount(STEAM_ID);
 
       expect(state).toMatchObject({ isConfigured: false, accounts: [] });
+    });
+  });
+
+  describe('a change the disk refuses', () => {
+    it.each<[string, (sut: SetupService) => unknown]>([
+      ['follow another account', (sut) => sut.setActiveAccount(STEAM_ID)],
+      ['remove an account', (sut) => sut.removeAccount(OTHER_STEAM_ID)],
+      ['change the language', (sut) => sut.setLanguage('fr')],
+    ])(
+      'should say so and answer the state it had when asked to %s',
+      async (_change, change) => {
+        const { sut, store } = await withTwoAccounts();
+        const before = sut.getState();
+        store.refuseWrites();
+        let failure: unknown = null;
+
+        try {
+          change(sut);
+        } catch (e) {
+          failure = e;
+        }
+
+        expect(failure).toEqual(
+          new Error('InMemoryStore: the write was refused'),
+        );
+        expect(sut.getState()).toEqual(before);
+      },
+    );
+
+    it('should say so and save nothing when an account Steam accepts cannot be written', async () => {
+      const { sut, store } = await withOneAccount();
+      const before = sut.getState();
+      store.refuseWrites();
+
+      const failure = await sut
+        .addAccount(OTHER_STEAM_ID, OTHER_KEY)
+        .catch((e: unknown) => e);
+
+      expect(failure).toEqual(
+        new Error('InMemoryStore: the write was refused'),
+      );
+      expect(sut.getState()).toEqual(before);
     });
   });
 

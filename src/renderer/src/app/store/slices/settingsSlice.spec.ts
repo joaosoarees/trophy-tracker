@@ -355,34 +355,29 @@ describe('settingsSlice', () => {
     });
 
     /**
-     * A main process that takes the language and then fails to write it, as
-     * the real one does: `held` is the language it is left on.
+     * A main process that cannot write a language: it keeps the one it had,
+     * as the real one does, and the call rejects.
      */
-    function mainThatCannotSaveFrench() {
-      const held = { language: 'en' };
+    function mainThatCannotSaveALanguage() {
+      const setLanguageMock = vi.fn<IApi['setLanguage']>(failing);
       const api: Partial<IApi> = {
-        setLanguage: (language) => {
-          held.language = language;
-          return language === 'fr'
-            ? failing()
-            : Promise.resolve(makeAppState({ language }));
-        },
+        setLanguage: setLanguageMock,
         logError: () => Promise.resolve(),
       };
-      return { api, held };
+      return { api, setLanguageMock };
     }
 
-    it('should put the main process back on the language in use when the other one could not be saved', async () => {
-      const { api, held } = mainThatCannotSaveFrench();
+    it('should ask the main process for nothing more when the language could not be saved', async () => {
+      const { api, setLanguageMock } = mainThatCannotSaveALanguage();
       const { sut } = await setup(api);
 
       await sut.getState().settings.changeLanguage('fr');
 
-      expect(held.language).toBe('en');
+      expect(setLanguageMock).toHaveBeenCalledExactlyOnceWith('fr');
     });
 
     it('should tell the user something went wrong when the language could not be saved', async () => {
-      const { api } = mainThatCannotSaveFrench();
+      const { api } = mainThatCannotSaveALanguage();
       const { sut, toastMock } = await setup(api);
 
       await sut.getState().settings.changeLanguage('fr');
@@ -391,7 +386,7 @@ describe('settingsSlice', () => {
     });
 
     it('should not reload the window when the language could not be saved', async () => {
-      const { api } = mainThatCannotSaveFrench();
+      const { api } = mainThatCannotSaveALanguage();
       const { sut, reloadMock } = await setup(api);
 
       await sut.getState().settings.changeLanguage('fr');
@@ -399,11 +394,9 @@ describe('settingsSlice', () => {
       expect(reloadMock).not.toHaveBeenCalled();
     });
 
-    it('should stay in the language in use when the main process cannot be put back on it either', async () => {
-      const { sut } = await setup({
-        setLanguage: failing,
-        logError: () => Promise.resolve(),
-      });
+    it('should stay in the language in use when the other one could not be saved', async () => {
+      const { api } = mainThatCannotSaveALanguage();
+      const { sut } = await setup(api);
 
       await sut.getState().settings.changeLanguage('fr');
 
@@ -885,6 +878,107 @@ describe('settingsSlice', () => {
 
       expect(sut.getState().settings.appState?.activeSteamId).toBe(
         OTHER_STEAM_ID,
+      );
+    });
+  });
+
+  describe('finishSetup, when a call to the main process fails', () => {
+    /**
+     * The main process as the first setup ends with two accounts, on the
+     * second, while Steam is signed in to the first: who is signed in is
+     * asked, then the state, then the first account. `overrides` replaces
+     * the calls that fail.
+     */
+    function endingApi(overrides: Partial<IApi>): Partial<IApi> {
+      return {
+        detectSteamId: () => Promise.resolve(STEAM_ID),
+        getState: () => Promise.resolve(twoAccountsState(OTHER_STEAM_ID)),
+        setActiveAccount: () => Promise.resolve(twoAccountsState(STEAM_ID)),
+        logError: () => Promise.resolve(),
+        ...overrides,
+      };
+    }
+
+    const CALLS: (keyof IApi)[] = [
+      'detectSteamId',
+      'getState',
+      'setActiveAccount',
+    ];
+
+    it.each(CALLS)(
+      'should tell the user something went wrong when %s fails',
+      async (call) => {
+        const { sut, toastMock } = await setup(endingApi({ [call]: failing }));
+        sut.getState().settings.apply(notSetUpState());
+
+        await sut.getState().settings.finishSetup();
+
+        expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(UNEXPECTED);
+      },
+    );
+
+    it.each(CALLS)(
+      'should stay in the setup, taking nothing, when %s fails',
+      async (call) => {
+        const { sut } = await setup(endingApi({ [call]: failing }));
+        sut.getState().settings.apply(notSetUpState());
+
+        await sut.getState().settings.finishSetup();
+
+        expect(sut.getState().settings.appState).toEqual(notSetUpState());
+      },
+    );
+
+    it.each(CALLS)(
+      'should write the error to the log when %s fails',
+      async (call) => {
+        const logErrorMock = vi.fn<IApi['logError']>(() => Promise.resolve());
+        const failure = new Error('disk full');
+        failure.stack = 'Error: disk full\n    at saveConfig (Store.ts:1:1)';
+        const { sut } = await setup(
+          endingApi({
+            [call]: () => Promise.reject(failure),
+            logError: logErrorMock,
+          }),
+        );
+        sut.getState().settings.apply(notSetUpState());
+
+        await sut.getState().settings.finishSetup();
+
+        expect(logErrorMock).toHaveBeenCalledExactlyOnceWith(
+          'failed call',
+          failure.stack,
+        );
+      },
+    );
+
+    it('should say it in the language the setup is in', async () => {
+      const { sut, toastMock } = await setup(endingApi({ getState: failing }));
+      sut.getState().settings.apply({ ...notSetUpState(), language: 'pt-BR' });
+
+      await sut.getState().settings.finishSetup();
+
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(
+        'Erro inesperado. Tente de novo.',
+      );
+    });
+
+    it('should enter the app when asked again and the main process answers this time', async () => {
+      let isFailing = true;
+      const { sut } = await setup(
+        endingApi({
+          setActiveAccount: () =>
+            isFailing ? failing() : Promise.resolve(twoAccountsState(STEAM_ID)),
+        }),
+      );
+      sut.getState().settings.apply(notSetUpState());
+      await sut.getState().settings.finishSetup();
+      isFailing = false;
+
+      await sut.getState().settings.finishSetup();
+
+      expect(sut.getState().settings.appState).toEqual(
+        twoAccountsState(STEAM_ID),
       );
     });
   });
