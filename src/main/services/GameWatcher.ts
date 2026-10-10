@@ -46,6 +46,15 @@ export class GameWatcher {
    */
   private forgotten = 0;
 
+  /**
+   * The checks that have not ended, by name, each with how many times the
+   * current game had been forgotten as it began.
+   */
+  private readonly inFlight = new Map<
+    string,
+    { forgotten: number; done: Promise<void> }
+  >();
+
   /** What stops each periodic check; empty while the watcher is stopped. */
   private stops: (() => void)[] = [];
 
@@ -137,39 +146,78 @@ export class GameWatcher {
     }
   }
 
-  async checkRunningGame(): Promise<void> {
-    const forgotten = this.forgotten;
-    const next = await this.observe();
-    // Another account took over meanwhile: the next check looks for its game.
-    if (forgotten !== this.forgotten) return;
-    const previous = this.current;
-    if (!GameWatcher.hasChanged(previous, next)) return;
-
-    // The game was closed: one last read catches what was unlocked in the final minute.
-    if (GameWatcher.hasStoppedPlaying(previous, next)) {
-      await this.checkUnlocks();
+  /**
+   * Looks for the game open on Steam and tells the interface when it changed.
+   * One check at a time: a check waits on Steam, for longer than the time
+   * between two of them when Steam does not answer, and a second one beside
+   * it would see what the first is still acting on, a game that closed
+   * included, and announce it again.
+   */
+  checkRunningGame(): Promise<void> {
+    return this.once('running', async () => {
+      const forgotten = this.forgotten;
+      const next = await this.observe();
+      // Another account took over meanwhile: the next check looks for its game.
       if (forgotten !== this.forgotten) return;
-    }
+      const previous = this.current;
+      if (!GameWatcher.hasChanged(previous, next)) return;
 
-    this.current = next;
-    this.lastView = null;
-    this.deps.onCurrentChanged(next);
+      // The game was closed: one last read catches what was unlocked in the final minute.
+      if (GameWatcher.hasStoppedPlaying(previous, next)) {
+        await this.checkUnlocks();
+        if (forgotten !== this.forgotten) return;
+      }
+
+      this.current = next;
+      this.lastView = null;
+      this.deps.onCurrentChanged(next);
+    });
   }
 
+  /**
+   * Reads the game being played and hands the interface what changed. One
+   * read of a game at a time, so two can never answer out of order.
+   */
   async checkUnlocks(): Promise<void> {
     if (!this.current?.isRunning || this.current.isOnAnotherAccount) return;
     if (!this.deps.isConfigured()) return;
 
     const { appid } = this.current;
-    const result = await this.deps.pollGame(appid);
-    if (!result.ok || this.current?.appid !== appid) return;
+    return this.once(`unlocks:${appid}`, async () => {
+      const forgotten = this.forgotten;
+      const result = await this.deps.pollGame(appid);
+      // Another account took over meanwhile: the view is of the one that was
+      // left, even when this one is on the same game by now.
+      if (forgotten !== this.forgotten) return;
+      if (!result.ok || this.current?.appid !== appid) return;
 
-    const view = result.value;
-    // The same object comes back when nothing changed; then there is nothing to announce.
-    if (view === this.lastView) return;
+      const view = result.value;
+      // The same object comes back when nothing changed; then there is nothing to announce.
+      if (view === this.lastView) return;
 
-    this.lastView = view;
-    this.deps.onGameUpdated(view);
+      this.lastView = view;
+      this.deps.onGameUpdated(view);
+    });
+  }
+
+  /**
+   * Runs a check unless the one of that name has not ended, which then
+   * answers for this one too. A check begun before the current game was
+   * forgotten is not waited for: it is for the account that was left, and
+   * drops what it finds.
+   */
+  private once(name: string, check: () => Promise<void>): Promise<void> {
+    const running = this.inFlight.get(name);
+    if (running?.forgotten === this.forgotten) return running.done;
+
+    const flight = {
+      forgotten: this.forgotten,
+      done: check().finally(() => {
+        if (this.inFlight.get(name) === flight) this.inFlight.delete(name);
+      }),
+    };
+    this.inFlight.set(name, flight);
+    return flight.done;
   }
 
   private static everyInterval(
