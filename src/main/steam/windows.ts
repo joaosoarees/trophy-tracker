@@ -20,7 +20,7 @@ const STEAM_KEY = 'HKCU\\Software\\Valve\\Steam';
 const execFileAsync = promisify(execFile);
 
 /** Runs a Windows executable and answers what it printed. */
-export type RunCommand = (file: string, args: string[]) => Promise<string>;
+type RunCommand = (file: string, args: string[]) => Promise<string>;
 
 const run: RunCommand = async (file, args) => {
   const { stdout } = await execFileAsync(file, args, {

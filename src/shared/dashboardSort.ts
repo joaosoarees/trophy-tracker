@@ -1,11 +1,11 @@
 /** The two lists of the dashboard. */
 export type DashboardFilter = 'ongoing' | 'complete';
 
-export const ONGOING_SORTS = ['closest', 'played', 'fewest', 'name'] as const;
-export const COMPLETE_SORTS = ['completed', 'played', 'name'] as const;
+const ONGOING_SORTS = ['closest', 'played', 'fewest', 'name'] as const;
+const COMPLETE_SORTS = ['completed', 'played', 'name'] as const;
 
-export type OngoingSort = (typeof ONGOING_SORTS)[number];
-export type CompleteSort = (typeof COMPLETE_SORTS)[number];
+type OngoingSort = (typeof ONGOING_SORTS)[number];
+type CompleteSort = (typeof COMPLETE_SORTS)[number];
 export type DashboardSort = OngoingSort | CompleteSort;
 
 /** The order chosen for each list; a preference kept across restarts. */

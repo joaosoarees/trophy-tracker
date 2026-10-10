@@ -1,7 +1,7 @@
 import { type BrowserWindowConstructorOptions } from 'electron';
 
 /** Height of the app's own top bar: the tab bar, and the system's buttons over it. */
-export const WINDOW_BAR_HEIGHT = 36;
+const WINDOW_BAR_HEIGHT = 36;
 
 type WindowFrame = Pick<
   BrowserWindowConstructorOptions,

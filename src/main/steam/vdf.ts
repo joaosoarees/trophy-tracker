@@ -1,4 +1,4 @@
-export type VdfValue = string | number | bigint | IVdfObject;
+type VdfValue = string | number | bigint | IVdfObject;
 export interface IVdfObject {
   [key: string]: VdfValue;
 }
