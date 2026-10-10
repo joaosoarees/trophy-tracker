@@ -24,7 +24,6 @@ export const Settings = memo(function Settings() {
     isAccountLocked,
     language,
     appInfo,
-    checkState,
     alwaysOnTop,
     preferences,
     dataFolder,
@@ -34,20 +33,9 @@ export const Settings = memo(function Settings() {
     handleToggleAlwaysOnTop,
     handleRememberWindowChange,
     handleOpenDataFolder,
-    handleCheckForUpdates,
     handleInstallUpdate,
     handleOpenPage,
   } = useSettingsController();
-
-  // What the last check found, said where the version is.
-  const versionState =
-    checkState === 'checking'
-      ? t.settings.checkingForUpdates
-      : checkState === 'failed'
-        ? t.settings.updateCheckFailed
-        : checkState === 'upToDate' && !appInfo?.newVersion
-          ? t.settings.upToDate
-          : undefined;
 
   return (
     <section className="relative flex flex-1 flex-col gap-6 overflow-y-auto p-4">
@@ -156,22 +144,8 @@ export const Settings = memo(function Settings() {
       </DetailGroup>
 
       <DetailGroup title={t.settings.groups.about}>
-        <DetailRow
-          label={t.settings.versionLabel}
-          description={
-            // Announced when it changes; a version that was found shows in the notice above.
-            <span role="status">{versionState}</span>
-          }
-        >
+        <DetailRow label={t.settings.versionLabel}>
           {appInfo?.version}
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={checkState === 'checking'}
-            onClick={handleCheckForUpdates}
-          >
-            {t.settings.checkForUpdates}
-          </Button>
         </DetailRow>
         <DetailRow
           label={t.settings.source}

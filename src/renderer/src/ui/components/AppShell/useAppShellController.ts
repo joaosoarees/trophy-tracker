@@ -30,7 +30,7 @@ export function useAppShellController() {
       alwaysOnTop: state.settings.alwaysOnTop,
       newVersion: state.updates.appInfo?.newVersion ?? null,
       isUpdateReady: state.updates.appInfo?.updateStatus === 'ready',
-      isCheckingForUpdates: state.updates.checkState === 'checking',
+      isCheckingForUpdates: state.updates.isChecking,
       libraryError: state.dashboard.error,
       isLibraryLoading:
         state.dashboard.games === null && state.dashboard.error === null,

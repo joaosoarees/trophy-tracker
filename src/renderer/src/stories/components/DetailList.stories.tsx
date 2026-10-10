@@ -55,10 +55,12 @@ export const Settings: Story = {
       >
         <Switch label="Keep the window on top" checked onChange={fn()} />
       </DetailRow>
-      <DetailRow label="Version" description="You have the latest version.">
-        0.6.0
+      <DetailRow
+        label="Data folder"
+        description="/home/player/.config/trophy-tracker"
+      >
         <Button size="sm" variant="secondary">
-          Check for updates
+          Open folder
         </Button>
       </DetailRow>
     </DetailGroup>

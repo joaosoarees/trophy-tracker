@@ -258,7 +258,7 @@ describe('updates: with the app in use', () => {
 
     expect(ok).toBe(true);
     expect(updates().appInfo).toEqual(MANUAL);
-    expect(updates().checkState).toBe('upToDate');
+    expect(updates().isChecking).toBe(false);
   });
 
   it('says a check is running while it waits for the answer', async () => {
@@ -267,7 +267,7 @@ describe('updates: with the app in use', () => {
 
     void updates().check();
 
-    expect(updates().checkState).toBe('checking');
+    expect(updates().isChecking).toBe(true);
   });
 
   it('brings the restart question back after it was put off', async () => {
@@ -293,7 +293,7 @@ describe('updates: with the app in use', () => {
     api.checkForUpdates.mockRejectedValueOnce(new Error('offline'));
 
     expect(await updates().check()).toBe(false);
-    expect(updates().checkState).toBe('failed');
+    expect(updates().isChecking).toBe(false);
   });
 });
 
