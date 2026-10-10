@@ -41,7 +41,7 @@ export function KeyField({
           label={isShown ? t.accounts.hideKey : t.accounts.showKey}
           aria-pressed={isShown}
           className="absolute top-1/2 right-0.5 -translate-y-1/2"
-          onClick={() => setIsShown((shown) => !shown)}
+          onClick={() => setIsShown((isShown) => !isShown)}
         >
           {isShown ? <EyeOff /> : <Eye />}
         </IconButton>

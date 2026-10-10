@@ -1,4 +1,4 @@
-import { SteamClient } from '../src/main/steam/client';
+import { SteamClient } from '../src/main/steam/SteamClient';
 
 export interface IRoute {
   status?: number;

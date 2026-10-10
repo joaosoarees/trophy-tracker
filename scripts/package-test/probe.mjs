@@ -46,7 +46,7 @@ console.log(
 console.log(
   'RESULT state:',
   await js(
-    `window.api.getState().then(s => JSON.stringify({ configured: s.configured, language: s.language }))`,
+    `window.api.getState().then(s => JSON.stringify({ isConfigured: s.isConfigured, language: s.language }))`,
   ),
 );
 console.log(

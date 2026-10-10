@@ -36,8 +36,8 @@ export function useSettingsController() {
         ) ?? null,
       // The account playing a game is not left while the game runs.
       isPlaying:
-        state.session.current?.running === true &&
-        state.session.current.otherAccount !== true,
+        state.session.current?.isRunning === true &&
+        state.session.current.isOnAnotherAccount !== true,
       language: state.session.language,
       appInfo: state.updates.appInfo,
       alwaysOnTop: state.settings.alwaysOnTop,

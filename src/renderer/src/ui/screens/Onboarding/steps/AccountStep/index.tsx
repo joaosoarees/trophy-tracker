@@ -29,7 +29,7 @@ interface IAccountStepProps {
   addedHere: string[];
   onChange: (state: IAppState, added?: string) => void;
   /** The step was opened to add an account: its form starts open. */
-  startsOpen: boolean;
+  isInitiallyOpen: boolean;
   /** The setup is being finished: nothing else can be asked for meanwhile. */
   isFinishing: boolean;
   /** The way out when the step was opened only to add an account. */
@@ -46,7 +46,7 @@ export function AccountStep({
   accounts,
   addedHere,
   onChange,
-  startsOpen,
+  isInitiallyOpen,
   isFinishing,
   onCancel,
 }: IAccountStepProps) {
@@ -65,7 +65,7 @@ export function AccountStep({
     handleOpenForm,
     handleCloseForm,
     handleEditSteamId,
-  } = useAccountStepController({ accounts, startsOpen, onChange });
+  } = useAccountStepController({ accounts, isInitiallyOpen, onChange });
   const text = t.onboarding.account;
   const hasAccounts = accounts.length > 0;
   const verifyLabel = isVerifying

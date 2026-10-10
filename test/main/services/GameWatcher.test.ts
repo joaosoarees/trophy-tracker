@@ -47,7 +47,7 @@ describe('GameWatcher', () => {
 
     expect(await watcher.resolveCurrent()).toEqual({
       appid: 7,
-      running: false,
+      isRunning: false,
     });
   });
 
@@ -60,7 +60,7 @@ describe('GameWatcher', () => {
 
     expect(await watcher.resolveCurrent()).toEqual({
       appid: 42,
-      running: false,
+      isRunning: false,
     });
   });
 
@@ -83,8 +83,8 @@ describe('GameWatcher', () => {
 
     expect(await watcher.resolveCurrent()).toEqual({
       appid: 42,
-      running: true,
-      otherAccount: true,
+      isRunning: true,
+      isOnAnotherAccount: true,
     });
   });
 
@@ -111,7 +111,7 @@ describe('GameWatcher', () => {
 
     expect(await watcher.resolveCurrent()).toEqual({
       appid: 7,
-      running: false,
+      isRunning: false,
     });
   });
 
@@ -139,7 +139,7 @@ describe('GameWatcher', () => {
 
     expect(await watcher.resolveCurrent()).toEqual({
       appid: 42,
-      running: true,
+      isRunning: true,
     });
   });
 
@@ -160,7 +160,7 @@ describe('GameWatcher', () => {
     await watcher.checkRunningGame();
     expect(deps.onCurrentChanged).toHaveBeenLastCalledWith({
       appid: 42,
-      running: true,
+      isRunning: true,
     });
     expect(deps.onCurrentChanged).toHaveBeenCalledTimes(2);
   });
@@ -201,12 +201,12 @@ describe('GameWatcher', () => {
   });
 
   it('stops polling once the setup is gone', async () => {
-    let configured = true;
-    const { watcher, deps, run } = setup({ isConfigured: () => configured });
+    let isConfigured = true;
+    const { watcher, deps, run } = setup({ isConfigured: () => isConfigured });
     run(42);
     await watcher.refreshCurrent();
 
-    configured = false;
+    isConfigured = false;
     await watcher.checkUnlocks();
 
     expect(deps.pollGame).not.toHaveBeenCalled();
@@ -229,7 +229,7 @@ describe('GameWatcher', () => {
 
     expect(events).toEqual([
       ['updated', 3],
-      ['changed', { appid: 42, running: false }],
+      ['changed', { appid: 42, isRunning: false }],
     ]);
   });
 
@@ -246,7 +246,7 @@ describe('GameWatcher', () => {
     run(42);
     await watcher.checkRunningGame();
 
-    watcher.forget({ current: true });
+    watcher.forget({ isCurrentIncluded: true });
     await watcher.checkRunningGame();
 
     expect(deps.onCurrentChanged).toHaveBeenCalledTimes(2);
@@ -290,7 +290,7 @@ describe('GameWatcher: the periodic checks', () => {
 
     expect(deps.onCurrentChanged).toHaveBeenLastCalledWith({
       appid: 42,
-      running: true,
+      isRunning: true,
     });
   });
 

@@ -12,6 +12,17 @@ import tseslint from 'typescript-eslint';
 
 const renderer = ['src/renderer/**/*.{ts,tsx}'];
 
+// Booleans that keep a name without `is`/`has`/`can`, each for a reason:
+// - written to the user's files, or part of what Steam answers, so a new name
+//   would be a new file format: `hidden`, `unlocked`, `done`, `pinned`,
+//   `alwaysOnTop`, `rememberWindow`;
+// - the name of a native or Radix attribute the prop stands for: `open`,
+//   `checked`, `disabled`, `readOnly`;
+// - `ok`, what tells a result from a failure (as in `Response.ok`), and
+//   `value`, the argument of a setter.
+const BOOLEAN_NAMES_KEPT =
+  '^(hidden|unlocked|done|pinned|alwaysOnTop|rememberWindow|open|checked|disabled|readOnly|ok|value)$';
+
 export default defineConfig(
   // shadcn/ui components are generated; they are formatted but not linted.
   globalIgnores([
@@ -89,6 +100,20 @@ export default defineConfig(
           format: ['PascalCase'],
           custom: { regex: '^I[A-Z]', match: true },
           filter: { regex: '^Window$', match: false },
+        },
+        // A boolean says what it answers: `isOpen`, `hasCounter`, `canOpen`.
+        {
+          selector: [
+            'variable',
+            'parameter',
+            'classProperty',
+            'typeProperty',
+            'accessor',
+          ],
+          types: ['boolean'],
+          format: ['PascalCase'],
+          prefix: ['is', 'has', 'can', 'should'],
+          filter: { regex: BOOLEAN_NAMES_KEPT, match: false },
         },
       ],
       '@typescript-eslint/no-unused-vars': [

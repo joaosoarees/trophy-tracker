@@ -3,15 +3,15 @@ import { type AccountStatus } from '@shared/types/Account';
 import { type IAppState } from '@shared/types/AppState';
 import { type CheckResult } from '@shared/types/Check';
 import { type IProfile } from '@shared/types/Profile';
+import { API_KEY_PATTERN, isSteamId } from '@shared/validation';
 
-import {
-  type SteamClient,
-  SteamError,
-  steamErrorMessage,
-} from '../steam/client';
+import { type SteamClient, SteamError } from '../steam/SteamClient';
 import { type Store } from '../storage/Store';
 
-import { checkApiKey, checkPrivacy } from './onboardingChecks';
+const fail = (error: string): { ok: false; error: string } => ({
+  ok: false,
+  error,
+});
 
 /** What a failed read says about the key it was made with, when it says anything. */
 const STATUS_OF: Partial<Record<SteamError['kind'], AccountStatus>> = {
@@ -44,7 +44,7 @@ export class SetupService {
 
   getState(): IAppState {
     return {
-      configured: this.isConfigured,
+      isConfigured: this.isConfigured,
       language: this.store.getLanguage(),
       profile: this.store.getProfile(),
       accounts: this.store.getAccounts(),
@@ -75,7 +75,7 @@ export class SetupService {
     if (e instanceof SteamError) {
       const status = STATUS_OF[e.kind];
       if (status) this.mark(steamId, status);
-      return steamErrorMessage(this.messages, e);
+      return e.describe(this.messages);
     }
     console.error(e);
     return this.messages.errors.unexpected;
@@ -92,19 +92,82 @@ export class SetupService {
   /** Checks the pair for an account that is not in the app yet. */
   checkApiKey(steamId: string, apiKey: string): Promise<CheckResult<IProfile>> {
     if (this.store.getCredentialsOf(steamId.trim()) !== null) {
-      return Promise.resolve({
-        ok: false,
-        error: this.messages.accounts.alreadyAdded,
-      });
+      return Promise.resolve(fail(this.messages.accounts.alreadyAdded));
     }
-    return checkApiKey(this.messages, this.client, steamId, apiKey);
+    return this.checkPair(steamId, apiKey);
   }
 
-  checkPrivacy(
+  /** The library and the achievements must be visible to the Web API. */
+  async checkPrivacy(
     steamId: string,
     apiKey: string,
   ): Promise<CheckResult<{ gamesWithPlaytime: number }>> {
-    return checkPrivacy(this.messages, this.client, steamId, apiKey);
+    const m = this.messages;
+    const creds = { steamId: steamId.trim(), apiKey: apiKey.trim() };
+    try {
+      const games = await this.client.getOwnedGames(creds);
+      if (games === null) return fail(m.check.privacyBlocked);
+      const played = games
+        .filter((g) => g.playtime_forever > 0)
+        .sort(
+          (a, b) => (b.rtime_last_played ?? 0) - (a.rtime_last_played ?? 0),
+        );
+
+      // A game with no achievements proves nothing; try the most recent ones until one answers.
+      for (const game of played.slice(0, 5)) {
+        try {
+          await this.client.getPlayerAchievements(creds, game.appid);
+          break;
+        } catch (e) {
+          if (e instanceof SteamError && e.kind === 'no-stats') continue;
+          if (e instanceof SteamError && e.kind === 'private') {
+            return fail(m.check.privacyBlocked);
+          }
+          throw e;
+        }
+      }
+      return { ok: true, value: { gamesWithPlaytime: played.length } };
+    } catch (e) {
+      return fail(this.describe(e));
+    }
+  }
+
+  /**
+   * The key is valid if Steam accepts an authenticated call, and the SteamID if
+   * that call finds its profile. Both are checked together because the key alone
+   * does not say whose it is.
+   */
+  private async checkPair(
+    steamId: string,
+    apiKey: string,
+  ): Promise<CheckResult<IProfile>> {
+    const m = this.messages;
+    const id = steamId.trim();
+    const key = apiKey.trim();
+    if (!isSteamId(id)) return fail(m.validation.steamIdFormat);
+    if (!API_KEY_PATTERN.test(key)) return fail(m.validation.apiKeyFormat);
+    try {
+      const p = await this.client.getPlayerSummary({
+        steamId: id,
+        apiKey: key,
+      });
+      return {
+        ok: true,
+        value: {
+          steamId: p.steamid,
+          name: p.personaname,
+          avatar: p.avatarfull,
+        },
+      };
+    } catch (e) {
+      return fail(this.describe(e));
+    }
+  }
+
+  private describe(e: unknown): string {
+    return e instanceof SteamError
+      ? e.describe(this.messages)
+      : this.messages.errors.unexpected;
   }
 
   /** Adds an account, and starts following it, only if Steam accepts its key. */
@@ -124,15 +187,10 @@ export class SetupService {
     steamId: string,
     apiKey: string,
   ): Promise<CheckResult<IAppState>> {
-    const check = await checkApiKey(
-      this.messages,
-      this.client,
-      steamId,
-      apiKey,
-    );
+    const check = await this.checkPair(steamId, apiKey);
     if (!check.ok) return check;
     if (!this.store.hasAccount(steamId)) {
-      return { ok: false, error: this.messages.errors.notConfigured };
+      return fail(this.messages.errors.notConfigured);
     }
 
     const following = this.store.getActiveSteamId();

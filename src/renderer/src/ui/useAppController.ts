@@ -41,7 +41,7 @@ export function useAppController() {
     })),
   );
 
-  const configured = appState?.configured === true;
+  const isConfigured = appState?.isConfigured === true;
   const activeSteamId = appState?.activeSteamId ?? null;
 
   useEffect(() => {
@@ -58,12 +58,12 @@ export function useAppController() {
 
   // Again for each account: what was read for one says nothing about another.
   useEffect(() => {
-    if (configured) return connectStore();
-  }, [configured, activeSteamId]);
+    if (isConfigured) return connectStore();
+  }, [isConfigured, activeSteamId]);
 
   // `undefined` while the current game is still unknown.
   const runningAppId =
-    current === null ? undefined : current.running ? current.appid : null;
+    current === null ? undefined : current.isRunning ? current.appid : null;
   useEffect(() => {
     if (runningAppId !== undefined) followRunningGame(runningAppId);
   }, [runningAppId, followRunningGame]);
@@ -76,9 +76,9 @@ export function useAppController() {
 
   return {
     appState,
-    showOnboarding: !configured || isAddingAccount,
+    isOnboardingShown: !isConfigured || isAddingAccount,
     // With the app already set up, the step is only there to add an account.
-    isAddingAccount: configured && isAddingAccount,
+    isAddingAccount: isConfigured && isAddingAccount,
     handleOnboardingDone: (next: IAppState) => leaveOnboarding(next),
     handleOnboardingCancel: () => leaveOnboarding(),
     isStartingUp: updateStartup !== 'done',

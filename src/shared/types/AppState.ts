@@ -6,7 +6,7 @@ import { type IAccount } from './Account';
 import { type IProfile } from './Profile';
 
 export interface IAppState {
-  configured: boolean;
+  isConfigured: boolean;
   language: Language;
   /** The account being followed. */
   profile: IProfile | null;

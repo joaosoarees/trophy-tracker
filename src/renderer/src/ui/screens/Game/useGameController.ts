@@ -34,7 +34,7 @@ export function useGameController(appid: number) {
     justUnlocked,
     userData,
     filter,
-    hiddenOnly,
+    isHiddenOnlyChosen,
     isDetailsOpen,
     toggleDetails,
     summary,
@@ -62,14 +62,14 @@ export function useGameController(appid: number) {
 
       return {
         view: entry?.view ?? null,
-        isLoading: entry?.loading ?? true,
+        isLoading: entry?.isLoading ?? true,
         error: isKeyRefused ? null : (entry?.error ?? null),
         justUnlocked: entry?.justUnlocked ?? NONE_UNLOCKED,
         userData: state.userData.byGame[appid] ?? NO_USER_DATA,
         // Shared by every game, so they hold when the game changes.
         filter: state.navigation.achievementFilter,
-        hiddenOnly: state.navigation.hiddenOnly,
-        isDetailsOpen: state.navigation.gameDetailsOpen,
+        isHiddenOnlyChosen: state.navigation.isHiddenOnly,
+        isDetailsOpen: state.navigation.isGameDetailsOpen,
         toggleDetails: state.navigation.toggleGameDetails,
         // Playtime comes with the library, which the dashboard reads.
         summary:
@@ -94,7 +94,7 @@ export function useGameController(appid: number) {
   const hiddenCount = view ? countHidden(view, filter) : 0;
   // With nothing hidden in this list the toggle is not drawn, so it must not
   // filter either: the list would be empty with no control to explain it.
-  const isHiddenOnly = hiddenOnly && hiddenCount > 0;
+  const isHiddenOnly = isHiddenOnlyChosen && hiddenCount > 0;
 
   const achievements = useMemo(
     () =>
@@ -104,7 +104,7 @@ export function useGameController(appid: number) {
             sort,
             query,
             locale,
-            hiddenOnly: isHiddenOnly,
+            isHiddenOnly,
           })
         : [],
     [view, userData, filter, sort, query, locale, isHiddenOnly],
@@ -153,7 +153,7 @@ export function useGameController(appid: number) {
     handleFindAchievement: (achievement: IAchievement) => {
       setFilter(achievement.unlocked ? 'unlocked' : 'pending');
       // The user asked for this one: a filter that would hide it goes off.
-      if (hiddenOnly && !achievement.hidden) toggleHiddenOnly();
+      if (isHiddenOnlyChosen && !achievement.hidden) toggleHiddenOnly();
       setQuery(achievement.name);
     },
     otherFilter,
@@ -162,7 +162,7 @@ export function useGameController(appid: number) {
     filter,
     sort,
     query,
-    hiddenOnly: isHiddenOnly,
+    isHiddenOnly,
     hiddenCount,
     handleToggleHiddenOnly: toggleHiddenOnly,
     setFilter,

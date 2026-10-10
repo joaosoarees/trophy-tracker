@@ -31,7 +31,7 @@ describe('settings: loading', () => {
 
     await settings().load();
 
-    expect(settings().appState?.configured).toBe(true);
+    expect(settings().appState?.isConfigured).toBe(true);
     expect(settings().alwaysOnTop).toBe(true);
     expect(settings().preferences.rememberWindow).toBe(false);
     expect(settings().dataFolder?.path).toBe('/home/me/data');
@@ -213,7 +213,7 @@ describe('settings: accounts', () => {
       removeAccount: () =>
         Promise.resolve(
           makeAppState({
-            configured: false,
+            isConfigured: false,
             profile: null,
             accounts: [],
             activeSteamId: null,
@@ -225,7 +225,7 @@ describe('settings: accounts', () => {
     await settings().removeAccount(STEAM_ID);
 
     expect(settings().appState).toMatchObject({
-      configured: false,
+      isConfigured: false,
       accounts: [],
     });
   });

@@ -32,8 +32,8 @@ import type {
   IRawOwnedGame,
   IRawSchemaAchievement,
   IStoreArt,
-} from '../steam/client';
-import { type IBounds, parseBounds } from '../system/windowBounds';
+} from '../steam/SteamClient';
+import { type IBounds, WindowBounds } from '../system/WindowBounds';
 
 /** Optional cipher for the key (Electron's safeStorage, when there is a keyring). */
 export interface ICipher {
@@ -506,7 +506,7 @@ export class Store {
   }
 
   getWindowBounds(): IBounds | null {
-    return parseBounds(this.settings.windowBounds);
+    return WindowBounds.parse(this.settings.windowBounds);
   }
 
   setWindowBounds(bounds: IBounds): void {
@@ -546,11 +546,11 @@ export class Store {
     // There is nobody to write for: no screen allows it, and nothing is kept.
     if (!notes) return;
     const game = (notes[appid] ??= {});
-    const empty =
+    const isEmpty =
       data.note.trim() === '' &&
       !data.pinned &&
       (data.checklist?.length ?? 0) === 0;
-    if (empty) delete game[achievementId];
+    if (isEmpty) delete game[achievementId];
     else game[achievementId] = data;
     this.saveUserData();
   }

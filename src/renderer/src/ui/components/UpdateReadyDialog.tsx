@@ -26,7 +26,7 @@ export function UpdateReadyDialog({
   const t = useT();
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onLater()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onLater()}>
       <DialogContent className="max-w-[min(24rem,calc(100vw-2rem))]">
         <DialogHeader>
           <DialogTitle>{t.update.readyTitle(version)}</DialogTitle>

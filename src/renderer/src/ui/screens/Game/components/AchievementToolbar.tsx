@@ -21,7 +21,7 @@ interface IAchievementToolbarProps {
   query: string;
   pending: number;
   unlocked: number;
-  hiddenOnly: boolean;
+  isHiddenOnly: boolean;
   /** Hidden achievements in the list being shown. */
   hiddenCount: number;
   onFilterChange: (filter: AchievementFilter) => void;
@@ -36,7 +36,7 @@ export function AchievementToolbar({
   query,
   pending,
   unlocked,
-  hiddenOnly,
+  isHiddenOnly,
   hiddenCount,
   onFilterChange,
   onHiddenOnlyToggle,
@@ -62,8 +62,8 @@ export function AchievementToolbar({
           <Button
             size="sm"
             variant="ghost"
-            className={cn('h-8 px-2 text-xs', hiddenOnly && TOGGLE_ON)}
-            aria-pressed={hiddenOnly}
+            className={cn('h-8 px-2 text-xs', isHiddenOnly && TOGGLE_ON)}
+            aria-pressed={isHiddenOnly}
             onClick={onHiddenOnlyToggle}
           >
             <EyeOff />

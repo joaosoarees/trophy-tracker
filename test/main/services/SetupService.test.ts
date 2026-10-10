@@ -5,13 +5,17 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { SetupService } from '@main/services/SetupService';
-import { SteamClient, SteamError } from '@main/steam/client';
+import { SteamClient, SteamError } from '@main/steam/SteamClient';
 import { Store } from '@main/storage/Store';
+import { type Language } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
 import {
   fakeFetch,
   FORBIDDEN_HTML,
+  type IRoute,
   KEY,
+  NO_STATS,
+  NOT_PUBLIC,
   OTHER_KEY,
   OTHER_STEAM_ID,
   STEAM_ID,
@@ -32,14 +36,19 @@ const summary = (url: URL) => ({
   },
 });
 
-function setup(routes: Parameters<typeof fakeFetch>[0] = {}) {
+function setup(
+  routes: Parameters<typeof fakeFetch>[0] = {},
+  language: Language = 'en',
+) {
   const store = new Store(mkdtempSync(join(tmpdir(), 'stt-')));
-  const client = new SteamClient(fakeFetch(routes));
+  const fetchImpl = fakeFetch(routes);
+  const client = new SteamClient(fetchImpl);
   const changes: IAppState[] = [];
   const service = new SetupService(store, client, (state) =>
     changes.push(state),
   );
-  return { store, client, service, changes };
+  service.setLanguage(language);
+  return { store, client, service, changes, fetchImpl };
 }
 
 /** The app with two accounts, following the second one. */
@@ -53,7 +62,7 @@ async function withTwoAccounts() {
 describe('SetupService', () => {
   it('starts unconfigured, in English', () => {
     expect(setup().service.getState()).toEqual({
-      configured: false,
+      isConfigured: false,
       language: 'en',
       profile: null,
       accounts: [],
@@ -68,7 +77,7 @@ describe('SetupService', () => {
 
     const state = await service.addAccount(STEAM_ID, KEY);
 
-    expect(state.configured).toBe(false);
+    expect(state.isConfigured).toBe(false);
     expect(store.getCredentials()).toBeNull();
   });
 
@@ -78,7 +87,7 @@ describe('SetupService', () => {
     const state = await service.addAccount(STEAM_ID, ` ${KEY} `);
 
     expect(state).toMatchObject({
-      configured: true,
+      isConfigured: true,
       profile: { steamId: STEAM_ID, name: 'player' },
     });
     expect(store.getCredentials()).toEqual({
@@ -100,7 +109,7 @@ describe('SetupService', () => {
       error: 'Steam rejected the Web API key.',
     });
     expect(service.getState()).toMatchObject({
-      configured: true,
+      isConfigured: true,
       accounts: [{ steamId: STEAM_ID, status: 'rejected' }],
     });
     expect(changes).toHaveLength(1);
@@ -227,7 +236,7 @@ describe('SetupService', () => {
     const state = service.removeAccount(OTHER_STEAM_ID);
 
     expect(state).toMatchObject({
-      configured: true,
+      isConfigured: true,
       activeSteamId: STEAM_ID,
       accounts: [{ steamId: STEAM_ID }],
     });
@@ -238,7 +247,7 @@ describe('SetupService', () => {
     await service.addAccount(STEAM_ID, KEY);
 
     expect(service.removeAccount(STEAM_ID)).toMatchObject({
-      configured: false,
+      isConfigured: false,
       accounts: [],
     });
   });
@@ -251,5 +260,127 @@ describe('SetupService', () => {
     const state = await service.recheckAccount(STEAM_ID);
 
     expect(state.accounts[0].status).toBe('valid');
+  });
+});
+
+describe('SetupService: checking a key and its SteamID', () => {
+  it('rejects a bad format', async () => {
+    const { service } = setup();
+
+    expect((await service.checkApiKey(STEAM_ID, 'short')).ok).toBe(false);
+  });
+
+  it('rejects a badly formed SteamID before asking Steam', async () => {
+    const { service, fetchImpl } = setup();
+
+    expect(await service.checkApiKey('12345', KEY)).toEqual({
+      ok: false,
+      error: 'A SteamID is a 17-digit number that starts with 7656.',
+    });
+    expect(fetchImpl.calls).toHaveLength(0);
+  });
+
+  it('reports a SteamID that has no profile', async () => {
+    const { service } = setup({
+      GetPlayerSummaries: { json: { response: { players: [] } } },
+    });
+
+    expect(await service.checkApiKey(STEAM_ID, KEY)).toEqual({
+      ok: false,
+      error: 'No Steam profile was found with that SteamID.',
+    });
+  });
+
+  it.each<{ language: Language; error: string }>([
+    { language: 'en', error: 'Steam rejected the Web API key.' },
+    { language: 'pt-BR', error: 'A Steam recusou a chave da Web API.' },
+  ])(
+    'says in $language that Steam does not accept the key',
+    async ({ language, error }) => {
+      const { service } = setup(
+        { GetPlayerSummaries: FORBIDDEN_HTML },
+        language,
+      );
+
+      expect(await service.checkApiKey(STEAM_ID, KEY)).toEqual({
+        ok: false,
+        error,
+      });
+    },
+  );
+
+  it('accepts a valid key', async () => {
+    const { service } = setup({ GetPlayerSummaries: summary });
+
+    expect(await service.checkApiKey(STEAM_ID, KEY)).toEqual({
+      ok: true,
+      value: { steamId: STEAM_ID, name: 'player', avatar: 'x' },
+    });
+  });
+});
+
+describe('SetupService: checking what the profile shows', () => {
+  const game = (appid: number, name: string, playtime: number, last = 0) => ({
+    appid,
+    name,
+    playtime_forever: playtime,
+    img_icon_url: 'abc',
+    rtime_last_played: last,
+  });
+  const owned = (...games: ReturnType<typeof game>[]): IRoute => ({
+    json: { response: { game_count: games.length, games } },
+  });
+  const player = (unlocked: number, total: number): IRoute => ({
+    json: {
+      playerstats: {
+        success: true,
+        achievements: Array.from({ length: total }, (_, i) => ({
+          apiname: `A${i}`,
+          achieved: i < unlocked ? 1 : 0,
+          unlocktime: 0,
+        })),
+      },
+    },
+  });
+
+  it('rejects when the library is not visible', async () => {
+    const { service } = setup({ GetOwnedGames: { json: { response: {} } } });
+
+    expect((await service.checkPrivacy(STEAM_ID, KEY)).ok).toBe(false);
+  });
+
+  it('rejects when the achievements are not visible', async () => {
+    const { service } = setup({
+      GetOwnedGames: owned(game(1, 'A', 10)),
+      GetPlayerAchievements: NOT_PUBLIC,
+    });
+
+    expect((await service.checkPrivacy(STEAM_ID, KEY)).ok).toBe(false);
+  });
+
+  it('skips games with no achievements and counts the played ones', async () => {
+    const { service } = setup({
+      GetOwnedGames: owned(
+        game(1, 'No achievements', 10, 200),
+        game(2, 'With', 10, 100),
+        game(3, 'Never opened', 0),
+      ),
+      'appid=1': NO_STATS,
+      'appid=2': player(1, 2),
+    });
+
+    expect(await service.checkPrivacy(STEAM_ID, KEY)).toEqual({
+      ok: true,
+      value: { gamesWithPlaytime: 2 },
+    });
+  });
+
+  it('says so when Steam cannot be asked', async () => {
+    const { service } = setup({ GetOwnedGames: FORBIDDEN_HTML });
+
+    expect(await service.checkPrivacy(STEAM_ID, KEY)).toEqual({
+      ok: false,
+      error: 'Steam rejected the Web API key.',
+    });
   });
 });

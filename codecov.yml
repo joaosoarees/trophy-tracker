@@ -1,0 +1,12 @@
+# What turns a pull request red on Codecov. The thresholds that fail the build
+# itself are in vitest.config.ts; these only keep a change that moves the
+# numbers by a line or two from being reported as a drop.
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 0.5%
+    patch:
+      default:
+        target: 90%

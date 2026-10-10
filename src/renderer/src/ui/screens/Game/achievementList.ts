@@ -15,7 +15,7 @@ interface IListOptions {
   query: string;
   locale: string;
   /** Keep only the achievements Steam marks as hidden. */
-  hiddenOnly?: boolean;
+  isHiddenOnly?: boolean;
 }
 
 type Compare = (a: IAchievement, b: IAchievement) => number;
@@ -27,7 +27,7 @@ type Compare = (a: IAchievement, b: IAchievement) => number;
 export function listAchievements(
   view: IGameView,
   userData: GameUserData,
-  { filter, sort, query, locale, hiddenOnly = false }: IListOptions,
+  { filter, sort, query, locale, isHiddenOnly = false }: IListOptions,
 ): IAchievement[] {
   const ratio = (a: IAchievement): number => {
     const progress = shownProgress(a, userData[a.id]);
@@ -51,7 +51,7 @@ export function listAchievements(
     .filter(
       (a) =>
         a.unlocked === (filter === 'unlocked') &&
-        (!hiddenOnly || a.hidden) &&
+        (!isHiddenOnly || a.hidden) &&
         matches(query, a.name, a.description),
     )
     .sort((a, b) => pinned(b) - pinned(a) || order(a, b));

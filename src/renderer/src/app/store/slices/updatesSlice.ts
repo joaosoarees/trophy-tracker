@@ -47,7 +47,7 @@ type UpdatesActions = {
 export type UpdatesSlice = UpdatesStore & UpdatesActions;
 
 // Guards against a second `start` while the first check is still running.
-let starting = false;
+let isStarting = false;
 
 // A window reload (a language change) is not the app opening again.
 const alreadyCheckedThisLaunch = (): boolean =>
@@ -71,7 +71,7 @@ export const createUpdatesSlice: StoreSlice<UpdatesSlice> = (set, get) => {
       return;
     }
     const t = messagesFor(get().session.language);
-    const isConfigured = get().settings.appState?.configured === true;
+    const isConfigured = get().settings.appState?.isConfigured === true;
     toast(t.update.available(info.newVersion), {
       duration: 10_000,
       // The details live in Settings, which only exists once the app is set up.
@@ -130,9 +130,9 @@ export const createUpdatesSlice: StoreSlice<UpdatesSlice> = (set, get) => {
       if (get().updates.startup === 'done') {
         // After a reload: only read what the main process already knows.
         void SystemService.getAppInfo().then(get().updates.accept, () => {});
-      } else if (!starting) {
-        starting = true;
-        void runStartupCheck().finally(() => (starting = false));
+      } else if (!isStarting) {
+        isStarting = true;
+        void runStartupCheck().finally(() => (isStarting = false));
       }
       return off;
     },
@@ -161,14 +161,14 @@ export const createUpdatesSlice: StoreSlice<UpdatesSlice> = (set, get) => {
 
     accept: (appInfo) => {
       const { startup, appInfo: previous } = get().updates;
-      const becameReady =
+      const hasBecomeReady =
         appInfo.updateStatus === 'ready' && previous?.updateStatus !== 'ready';
 
       set(
         (prevState) => {
           prevState.updates.appInfo = appInfo;
           // In use, the restart is the user's call.
-          if (startup === 'done' && becameReady) {
+          if (startup === 'done' && hasBecomeReady) {
             prevState.updates.isReadyDialogOpen = true;
           }
         },

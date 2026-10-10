@@ -14,30 +14,30 @@ describe('update flow', () => {
     {
       state: 'a version downloading',
       appInfo: info('downloading'),
-      holds: true,
+      isHolding: true,
     },
-    { state: 'a version ready', appInfo: info('ready'), holds: true },
+    { state: 'a version ready', appInfo: info('ready'), isHolding: true },
     {
       state: 'a version to fetch by hand',
       appInfo: info('manual'),
-      holds: false,
+      isHolding: false,
     },
     {
       state: 'a version the system blocks',
       appInfo: info('blocked'),
-      holds: false,
+      isHolding: false,
     },
     // The automatic path with nothing found reports `downloading` and no version.
     {
       state: 'nothing found',
       appInfo: info('downloading', null),
-      holds: false,
+      isHolding: false,
     },
-    { state: 'nothing known yet', appInfo: null, holds: false },
+    { state: 'nothing known yet', appInfo: null, isHolding: false },
   ])(
-    'with $state, holding the app to update is $holds',
-    ({ appInfo, holds }) => {
-      expect(isUpdatingItself(appInfo)).toBe(holds);
+    'with $state, holding the app to update is $isHolding',
+    ({ appInfo, isHolding }) => {
+      expect(isUpdatingItself(appInfo)).toBe(isHolding);
     },
   );
 
@@ -45,21 +45,24 @@ describe('update flow', () => {
     {
       state: 'a version to fetch by hand',
       appInfo: info('manual'),
-      tells: true,
+      isTelling: true,
     },
     {
       state: 'a version the system blocks',
       appInfo: info('blocked'),
-      tells: true,
+      isTelling: true,
     },
     {
       state: 'a version downloading',
       appInfo: info('downloading'),
-      tells: false,
+      isTelling: false,
     },
-    { state: 'nothing found', appInfo: info('manual', null), tells: false },
-    { state: 'nothing known yet', appInfo: null, tells: false },
-  ])('with $state, telling the user is $tells', ({ appInfo, tells }) => {
-    expect(needsTheUser(appInfo)).toBe(tells);
-  });
+    { state: 'nothing found', appInfo: info('manual', null), isTelling: false },
+    { state: 'nothing known yet', appInfo: null, isTelling: false },
+  ])(
+    'with $state, telling the user is $isTelling',
+    ({ appInfo, isTelling }) => {
+      expect(needsTheUser(appInfo)).toBe(isTelling);
+    },
+  );
 });

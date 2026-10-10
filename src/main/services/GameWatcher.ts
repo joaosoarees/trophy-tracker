@@ -52,26 +52,26 @@ export class GameWatcher {
     if (running !== null) {
       // Whose game it is only has to be asked when the game starts.
       const isSameGame =
-        this.current?.running === true && this.current.appid === running;
+        this.current?.isRunning === true && this.current.appid === running;
       const isOnAnotherAccount = isSameGame
-        ? this.current?.otherAccount === true
+        ? this.current?.isOnAnotherAccount === true
         : (await this.deps.followRunningGame?.()) === 'other';
       // Not this account's game: it is not what was "last played" here.
       if (isOnAnotherAccount) {
-        return { appid: running, running: true, otherAccount: true };
+        return { appid: running, isRunning: true, isOnAnotherAccount: true };
       }
       this.lastSeenRunning = running;
-      return { appid: running, running: true };
+      return { appid: running, isRunning: true };
     }
     if (!this.deps.isConfigured()) return null;
     // A game seen closing is the last one played, whatever the library read
     // before it was started still says.
     if (this.lastSeenRunning !== null) {
-      return { appid: this.lastSeenRunning, running: false };
+      return { appid: this.lastSeenRunning, isRunning: false };
     }
 
     const last = await this.deps.lastPlayedAppId().catch(() => null);
-    return last === null ? null : { appid: last, running: false };
+    return last === null ? null : { appid: last, isRunning: false };
   }
 
   /**
@@ -79,7 +79,7 @@ export class GameWatcher {
    * following another one would show the game with the wrong achievements.
    */
   get isPlaying(): boolean {
-    return this.current?.running === true && !this.current.otherAccount;
+    return this.current?.isRunning === true && !this.current.isOnAnotherAccount;
   }
 
   /** Resolves the current game and remembers it without announcing a change. */
@@ -94,9 +94,9 @@ export class GameWatcher {
   }
 
   /** Drops what was read: language changed or the setup was erased. */
-  forget({ current = false } = {}): void {
+  forget({ isCurrentIncluded = false } = {}): void {
     this.lastView = null;
-    if (current) {
+    if (isCurrentIncluded) {
       this.current = null;
       this.lastSeenRunning = null;
     }
@@ -107,15 +107,15 @@ export class GameWatcher {
     const previous = this.current;
     if (
       next?.appid === previous?.appid &&
-      next?.running === previous?.running &&
-      next?.otherAccount === previous?.otherAccount
+      next?.isRunning === previous?.isRunning &&
+      next?.isOnAnotherAccount === previous?.isOnAnotherAccount
     ) {
       return;
     }
 
     // The game was closed: one last read catches what was unlocked in the final minute.
-    const stillRunning = next?.running && next.appid === previous?.appid;
-    if (previous?.running && !stillRunning) await this.checkUnlocks();
+    const isStillRunning = next?.isRunning && next.appid === previous?.appid;
+    if (previous?.isRunning && !isStillRunning) await this.checkUnlocks();
 
     this.current = next;
     this.lastView = null;
@@ -123,7 +123,7 @@ export class GameWatcher {
   }
 
   async checkUnlocks(): Promise<void> {
-    if (!this.current?.running || this.current.otherAccount) return;
+    if (!this.current?.isRunning || this.current.isOnAnotherAccount) return;
     if (!this.deps.isConfigured()) return;
 
     const { appid } = this.current;

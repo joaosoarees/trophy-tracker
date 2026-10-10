@@ -4,7 +4,7 @@ import { type DashboardMode, type IGameSummary } from '@shared/types/Game';
 
 type DashboardStore = {
   games: IGameSummary[] | null;
-  loading: boolean;
+  isLoading: boolean;
   error: string | null;
   /** Games read and total, during a load. */
   progress: [number, number] | null;
@@ -19,15 +19,15 @@ export type DashboardSlice = DashboardStore & DashboardActions;
 
 export const createDashboardSlice: StoreSlice<DashboardSlice> = (set, get) => ({
   games: null,
-  loading: false,
+  isLoading: false,
   error: null,
   progress: null,
 
   load: async (mode = 'cached') => {
-    if (get().dashboard.loading) return;
+    if (get().dashboard.isLoading) return;
     set(
       (prevState) => {
-        prevState.dashboard.loading = true;
+        prevState.dashboard.isLoading = true;
         prevState.dashboard.progress = null;
       },
       false,
@@ -37,7 +37,7 @@ export const createDashboardSlice: StoreSlice<DashboardSlice> = (set, get) => ({
     const result = await DashboardService.getDashboard(mode);
     set(
       (prevState) => {
-        prevState.dashboard.loading = false;
+        prevState.dashboard.isLoading = false;
         prevState.dashboard.progress = null;
         if (result.ok) {
           prevState.dashboard.games = result.value;

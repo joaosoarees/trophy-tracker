@@ -68,8 +68,8 @@ type SettingsActions = {
   switchAccount: (steamId: string) => Promise<void>;
   /** Forgets an account; removing the last one leads back to the onboarding. */
   removeAccount: (steamId: string) => Promise<void>;
-  /** A state the main process sent by itself; `followed` when it switched accounts to match Steam. */
-  accept: (appState: IAppState, followed: boolean) => void;
+  /** A state the main process sent by itself; `hasFollowed` when it switched accounts to match Steam. */
+  accept: (appState: IAppState, hasFollowed: boolean) => void;
 };
 
 export type SettingsSlice = SettingsStore & SettingsActions;
@@ -116,7 +116,7 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
   // Optimistic update: the button responds at once and is put back if the
   // main process could not apply the change.
   toggleAlwaysOnTop: async () => {
-    const previous = get().settings.alwaysOnTop;
+    const isOnBefore = get().settings.alwaysOnTop;
     const setAlwaysOnTop = (value: boolean, action: string) =>
       set(
         (prevState) => {
@@ -126,14 +126,14 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
         action,
       );
 
-    setAlwaysOnTop(!previous, 'settings/toggleAlwaysOnTop');
+    setAlwaysOnTop(!isOnBefore, 'settings/toggleAlwaysOnTop');
     try {
-      const applied = await SettingsService.setAlwaysOnTop(!previous);
-      if (applied === previous) {
-        setAlwaysOnTop(applied, 'settings/alwaysOnTopNotApplied');
+      const isOnNow = await SettingsService.setAlwaysOnTop(!isOnBefore);
+      if (isOnNow === isOnBefore) {
+        setAlwaysOnTop(isOnNow, 'settings/alwaysOnTopNotApplied');
       }
     } catch {
-      setAlwaysOnTop(previous, 'settings/rollbackAlwaysOnTop');
+      setAlwaysOnTop(isOnBefore, 'settings/rollbackAlwaysOnTop');
       toast.error(messagesFor(get().session.language).errors.changeNotSaved);
     }
   },
@@ -235,9 +235,9 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
     get().settings.apply(await AccountsService.remove(steamId));
   },
 
-  accept: (appState, followed) => {
+  accept: (appState, hasFollowed) => {
     get().settings.apply(appState);
-    if (!followed) return;
+    if (!hasFollowed) return;
     const name = appState.profile?.name || appState.activeSteamId || '';
     toast(messagesFor(appState.language).accounts.switched(name));
   },

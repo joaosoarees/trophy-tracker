@@ -6,7 +6,7 @@ import { STEAM_ID } from '@test/helpers';
 /** The app set up, in English, with the default list orders. */
 export function makeAppState(props: Partial<IAppState> = {}): IAppState {
   return {
-    configured: true,
+    isConfigured: true,
     language: 'en',
     profile: { steamId: STEAM_ID, name: 'player', avatar: '' },
     accounts: [

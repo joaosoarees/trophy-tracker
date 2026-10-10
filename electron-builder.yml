@@ -47,7 +47,7 @@ mac:
       arch: [x64, arm64]
 dmg:
   # The app builds the download link of its update notice from this name
-  # (main/services/releases.ts); change both together.
+  # (`Releases.downloadUrl` in main/system/Releases.ts); change both together.
   artifactName: Trophy-Tracker-${version}-macOS-${arch}.${ext}
   # build/background.png (and @2x) is the window's picture: a tray with an
   # arrow from the app, on the left, to Applications, on the right.

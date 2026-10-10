@@ -27,13 +27,13 @@ export interface IGameSummary {
 
 /**
  * Game on screen by default: the one open on Steam or, with none open, the
- * last one played. `otherAccount`: it is running on a Steam account the app
+ * last one played. `isOnAnotherAccount`: it is running on a Steam account the app
  * does not have, so there is nothing of it to show.
  */
 export type CurrentGame = {
   appid: number;
-  running: boolean;
-  otherAccount?: boolean;
+  isRunning: boolean;
+  isOnAnotherAccount?: boolean;
 } | null;
 
 /** `cached`: uses what it already has; `changed`: re-reads the library and only the games that changed; `all`: re-reads everything. */

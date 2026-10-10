@@ -34,8 +34,9 @@ export default defineConfig({
         // cannot use. It drops them safely; there is nothing for us to fix.
         // Every other warning, and this one in our own code, still shows.
         onwarn(warning, warn) {
-          const fromDependency = warning.id?.includes('node_modules') ?? false;
-          if (warning.code === 'INVALID_ANNOTATION' && fromDependency) return;
+          const isFromDependency =
+            warning.id?.includes('node_modules') ?? false;
+          if (warning.code === 'INVALID_ANNOTATION' && isFromDependency) return;
           warn(warning);
         },
       },

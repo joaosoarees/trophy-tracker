@@ -5,7 +5,7 @@ import { mergeView } from '@shared/view';
 
 type GameEntry = {
   view: IGameView | null;
-  loading: boolean;
+  isLoading: boolean;
   error: string | null;
   /** Names of the achievements unlocked since the last read, until the notice is dismissed. */
   justUnlocked: string[];
@@ -28,7 +28,7 @@ export type GamesSlice = GamesStore & GamesActions;
 
 const emptyEntry = (): GameEntry => ({
   view: null,
-  loading: false,
+  isLoading: false,
   error: null,
   justUnlocked: [],
 });
@@ -41,23 +41,23 @@ export const createGamesSlice: StoreSlice<GamesSlice> = (set, get) => ({
     void get().userData.load(appid);
   },
 
-  load: async (appid, force = false) => {
-    if (get().games.entries[appid]?.loading) return;
+  load: async (appid, isForced = false) => {
+    if (get().games.entries[appid]?.isLoading) return;
     set(
       (prevState) => {
-        (prevState.games.entries[appid] ??= emptyEntry()).loading = true;
+        (prevState.games.entries[appid] ??= emptyEntry()).isLoading = true;
       },
       false,
       'games/load',
     );
 
-    const result = await GamesService.getGame(appid, force);
+    const result = await GamesService.getGame(appid, isForced);
     if (result.ok) return get().games.accept(result.value);
 
     set(
       (prevState) => {
         const entry = prevState.games.entries[appid];
-        entry.loading = false;
+        entry.isLoading = false;
         entry.error = result.error;
       },
       false,
@@ -71,7 +71,7 @@ export const createGamesSlice: StoreSlice<GamesSlice> = (set, get) => ({
         const entry = (prevState.games.entries[next.appid] ??= emptyEntry());
         const previous = get().games.entries[next.appid]?.view ?? null;
         const view = mergeView(previous, next);
-        entry.loading = false;
+        entry.isLoading = false;
         entry.error = null;
         if (view === previous) return;
 

@@ -34,9 +34,9 @@ export function PasteListDialog({
   const [text, setText] = useState('');
   const newItems = parseChecklist(text, items).length;
 
-  function handleOpenChange(next: boolean) {
-    onOpenChange(next);
-    if (!next) setText('');
+  function handleOpenChange(isOpen: boolean) {
+    onOpenChange(isOpen);
+    if (!isOpen) setText('');
   }
 
   function handleConfirm() {

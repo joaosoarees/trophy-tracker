@@ -1,4 +1,6 @@
 pnpm exec lint-staged
+# Nothing unused: files, exports and dependencies (one second).
+pnpm exec knip
 pnpm typecheck
 # CI=true: no module cache, as on the CI (see vitest.config.ts).
 CI=true pnpm test

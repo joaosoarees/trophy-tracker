@@ -5,7 +5,7 @@ import {
 } from '@shared/types/Game';
 import { mergeView } from '@shared/view';
 
-import { buildGameView } from '../steam/achievements';
+import { Achievements } from '../steam/Achievements';
 import {
   type SteamClient,
   SteamError,
@@ -13,7 +13,7 @@ import {
   type IRawOwnedGame,
   type IRawSchemaAchievement,
   type IStoreArt,
-} from '../steam/client';
+} from '../steam/SteamClient';
 import type { Store, ISummaryEntry } from '../storage/Store';
 
 const LIBRARY_TTL = 10 * 60_000;
@@ -61,9 +61,9 @@ export class Tracker {
     return creds;
   }
 
-  async library(force = false): Promise<IRawOwnedGame[]> {
+  async library(isForced = false): Promise<IRawOwnedGame[]> {
     const cached = this.store.getLibrary();
-    if (cached && !force && this.now() - cached.fetchedAt < LIBRARY_TTL)
+    if (cached && !isForced && this.now() - cached.fetchedAt < LIBRARY_TTL)
       return cached.games;
     return this.once('library', async () => {
       const creds = this.credentials();
@@ -117,10 +117,10 @@ export class Tracker {
 
   private async schema(
     appid: number,
-    fresh: boolean,
+    isFresh: boolean,
   ): Promise<IRawSchemaAchievement[]> {
     const cached = this.store.getSchema(appid);
-    if (cached && !fresh && this.now() - cached.fetchedAt < SCHEMA_TTL)
+    if (cached && !isFresh && this.now() - cached.fetchedAt < SCHEMA_TTL)
       return cached.items;
     const items = await this.client.getGameAchievements(appid);
     this.store.setSchema(appid, items, this.now());
@@ -178,13 +178,13 @@ export class Tracker {
 
   private async readGame(
     appid: number,
-    fresh: boolean,
+    isFresh: boolean,
     cached: IGameView | null,
   ): Promise<IGameView> {
     const creds = this.credentials();
     const [name, schema, player, art] = await Promise.all([
       this.gameName(appid),
-      this.schema(appid, fresh),
+      this.schema(appid, isFresh),
       this.client.getPlayerAchievements(creds, appid),
       this.art([appid]),
     ]);
@@ -199,7 +199,7 @@ export class Tracker {
     }
 
     const read: IGameView = {
-      ...buildGameView({
+      ...Achievements.buildGameView({
         appid,
         name,
         schema,
@@ -253,7 +253,7 @@ export class Tracker {
     mode: DashboardMode,
     onProgress?: (done: number, total: number) => void,
   ): Promise<IGameSummary[]> {
-    const force = mode === 'all';
+    const isForced = mode === 'all';
     const creds = this.credentials();
     const played = (await this.library(mode !== 'cached')).filter(
       (g) => g.playtime_forever > 0,
@@ -270,7 +270,7 @@ export class Tracker {
         !(
           cached.unlocked === cached.total && cached.lastUnlockAt === undefined
         );
-      if (cached && isCurrent && !force) entries.set(game.appid, cached);
+      if (cached && isCurrent && !isForced) entries.set(game.appid, cached);
       else pending.push(game);
     }
 
@@ -348,9 +348,9 @@ export class Tracker {
         };
       })
       .sort((a, b) => {
-        const doneA = a.unlocked === a.total;
-        const doneB = b.unlocked === b.total;
-        if (doneA !== doneB) return doneA ? 1 : -1;
+        const isDoneA = a.unlocked === a.total;
+        const isDoneB = b.unlocked === b.total;
+        if (isDoneA !== isDoneB) return isDoneA ? 1 : -1;
         return ratio(b) - ratio(a) || b.lastPlayed - a.lastPlayed;
       });
   }
