@@ -10,6 +10,8 @@ const STATS_FILE = '/mnt/c/steam/appcache/stats/UserGameStatsSchema_10.bin';
 interface ISetupOverrides {
   /** Where the registry says Steam is; by default, `/mnt/c/steam`. */
   steamPath?: string | null;
+  /** What reading the signed-in account does; by default, it answers `STEAM_ID`. */
+  getActiveSteamId?: () => Promise<string | null>;
 }
 
 /**
@@ -24,13 +26,16 @@ const portable = (path: string) => path.replaceAll('\\', '/');
  */
 function setup(
   files: Record<string, Buffer> = {},
-  { steamPath = '/mnt/c/steam' }: ISetupOverrides = {},
+  {
+    steamPath = '/mnt/c/steam',
+    getActiveSteamId = () => Promise.resolve(STEAM_ID),
+  }: ISetupOverrides = {},
 ) {
   const read: string[] = [];
   const sut = new RegistrySteam(
     {
       getRunningAppId: () => Promise.resolve(2638890),
-      getActiveSteamId: () => Promise.resolve(STEAM_ID),
+      getActiveSteamId,
       getSteamPath: () => Promise.resolve(steamPath),
     },
     (systemPath) => {
@@ -72,6 +77,22 @@ describe('RegistrySteam', () => {
       const steamId = await sut.getActiveSteamId();
 
       expect(steamId).toBe(STEAM_ID);
+    });
+
+    it('should fail instead of answering nobody when the registry cannot be read', async () => {
+      const { sut } = setup(
+        {},
+        {
+          getActiveSteamId: () =>
+            Promise.reject(new Error('reg.exe could not be started')),
+        },
+      );
+
+      const steamIdPromise = sut.getActiveSteamId();
+
+      await expect(steamIdPromise).rejects.toThrow(
+        new Error('reg.exe could not be started'),
+      );
     });
   });
 

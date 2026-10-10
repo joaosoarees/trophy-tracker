@@ -86,6 +86,18 @@ describe('FileSteam', () => {
       expect(read).toEqual([`${flatpak}/${LOGIN_USERS_FILE}`]);
     });
 
+    it('should read the usual folder when Steam is in more than one', async () => {
+      const flatpak = '/home/me/.var/app/com.valvesoftware.Steam/data/Steam';
+      const { sut, read } = setup({
+        [`${flatpak}/${LOGIN_USERS_FILE}`]: LOGIN_USERS,
+        [`${STEAM}/${LOGIN_USERS_FILE}`]: LOGIN_USERS,
+      });
+
+      await sut.getActiveSteamId();
+
+      expect(read).toEqual([`${STEAM}/${LOGIN_USERS_FILE}`]);
+    });
+
     it('should answer the account in the macOS folder when the system is a Mac', async () => {
       const mac = '/Users/me/Library/Application Support/Steam';
       const { sut } = setup(

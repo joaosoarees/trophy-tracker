@@ -34,6 +34,7 @@ export class BinaryVdf {
       const obj: IVdfObject = {};
       for (;;) {
         if (pos >= buf.length) throw new Error('Truncated binary VDF');
+        const typeAt = pos;
         const type = buf[pos++];
         if (type === T.End) return obj;
         const key = readString();
@@ -61,7 +62,7 @@ export class BinaryVdf {
             pos += 8;
             break;
           default:
-            throw new Error(`Unknown VDF type ${type} at position ${pos - 1}`);
+            throw new Error(`Unknown VDF type ${type} at position ${typeAt}`);
         }
       }
     };

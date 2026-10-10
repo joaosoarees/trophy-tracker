@@ -423,6 +423,27 @@ describe('userDataSlice', () => {
       });
     });
 
+    it('should read every note of the game again when the save that fails ends after its account was left and followed again', async () => {
+      const saved = {
+        A: { note: 'saved note', pinned: false },
+        B: { note: 'the other boss', pinned: true },
+      };
+      const { sut, follow, setUserDataMock } = await setup(saved);
+      const saving = deferred<void>();
+      setUserDataMock.mockReturnValueOnce(saving.promise);
+      follow(makeAppState());
+      await sut.getState().userData.load(10);
+      sut.getState().userData.update(10, 'A', { note: 'never saved' });
+      follow(otherAccountState());
+      follow(makeAppState());
+      saving.reject(new Error('disk full'));
+      await vi.advanceTimersByTimeAsync(0);
+
+      await sut.getState().userData.load(10);
+
+      expect(sut.getState().userData.byGame[10]).toEqual(saved);
+    });
+
     it('should remove the entry when the edit that failed was its first', async () => {
       const { sut, setUserDataMock } = await setup();
       setUserDataMock.mockRejectedValueOnce(new Error('disk full'));

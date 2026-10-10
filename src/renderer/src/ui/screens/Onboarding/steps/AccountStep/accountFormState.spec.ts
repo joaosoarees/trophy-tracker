@@ -203,6 +203,21 @@ describe('accountFormState', () => {
         expect(answered).toEqual(makeState({ detection: 'none' }));
       });
 
+      it('should leave a form that can be closed as one when nobody is signed in to the Steam client', () => {
+        const state = makeState({ isOptional: true });
+
+        const answered = accountFormReducer(state, {
+          type: 'detected',
+          steamId: null,
+          isSaved: false,
+          typed: '',
+        });
+
+        expect(answered).toEqual(
+          makeState({ isOptional: true, detection: 'none' }),
+        );
+      });
+
       it('should keep the state when the answer arrives with the form closed', () => {
         const state = makeState({ isOpen: false });
 
@@ -237,6 +252,16 @@ describe('accountFormState', () => {
         const edited = accountFormReducer(state, { type: 'steamIdEdited' });
 
         expect(edited).toEqual(makeState({ detection: 'setAside' }));
+      });
+
+      it('should leave a form that can be closed as one when its SteamID is unlocked', () => {
+        const state = makeState({ isOptional: true, detection: 'inField' });
+
+        const edited = accountFormReducer(state, { type: 'steamIdEdited' });
+
+        expect(edited).toEqual(
+          makeState({ isOptional: true, detection: 'setAside' }),
+        );
       });
 
       it('should keep the state when no SteamID is locked', () => {

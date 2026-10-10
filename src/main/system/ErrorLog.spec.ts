@@ -16,6 +16,8 @@ import { ErrorLog } from './ErrorLog';
 const NOW = '2026-03-04T05:06:07.000Z';
 /** Over the half megabyte at which the file is rotated. */
 const LARGE_SIZE = 600 * 1024;
+/** The half megabyte itself: the largest file that is not rotated. */
+const LIMIT_SIZE = 512 * 1024;
 
 /** A log whose file, and the folder it is in, do not exist yet. */
 function setup() {
@@ -79,6 +81,24 @@ describe('ErrorLog', () => {
       expect(readFileSync(file, 'utf8')).toBe(
         `[${NOW}] big\n${'x'.repeat(8000)}\n\n`,
       );
+    });
+
+    it('should leave out the blank space around the detail when it has some', () => {
+      const { sut, file } = setup();
+
+      sut.write('main: uncaughtException', '\n  boom\n\n');
+
+      expect(readFileSync(file, 'utf8')).toBe(
+        `[${NOW}] main: uncaughtException\nboom\n\n`,
+      );
+    });
+
+    it('should go on in the same file when it is exactly half a megabyte', () => {
+      const { sut, file } = setupWithFile('y'.repeat(LIMIT_SIZE));
+
+      sut.write('after', 'small');
+
+      expect(existsSync(`${file}.old`)).toBe(false);
     });
 
     it('should move the file to .old when it is over half a megabyte', () => {

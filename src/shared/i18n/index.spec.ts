@@ -51,6 +51,35 @@ describe('i18n', () => {
         expect(steamName).toBe(steam);
       },
     );
+
+    it.each([
+      { code: 'en', label: 'English', locale: 'en-US', country: 'US' },
+      {
+        code: 'pt-BR',
+        label: 'Português (Brasil)',
+        locale: 'pt-BR',
+        country: 'BR',
+      },
+      { code: 'es', label: 'Español', locale: 'es-ES', country: 'ES' },
+      { code: 'fr', label: 'Français', locale: 'fr-FR', country: 'FR' },
+    ] as const)(
+      'should offer $code as $label, with the dates of $locale and the store of $country',
+      ({ code, label, locale, country }) => {
+        const language = LANGUAGES[code];
+
+        expect({
+          label: language.label,
+          locale: language.locale,
+          country: language.country,
+        }).toEqual({ label, locale, country });
+      },
+    );
+  });
+
+  describe('LANGUAGE_CODES', () => {
+    it('should list the languages in the order they are offered, English first', () => {
+      expect(LANGUAGE_CODES).toEqual(['en', 'pt-BR', 'es', 'fr']);
+    });
   });
 
   describe('messagesFor', () => {
@@ -93,6 +122,12 @@ describe('i18n', () => {
       const isRegistered = isLanguage('pt-BR');
 
       expect(isRegistered).toBe(true);
+    });
+
+    it('should answer false when given a list that holds a registered language', () => {
+      const isRegistered = isLanguage(['en']);
+
+      expect(isRegistered).toBe(false);
     });
 
     it.each(['de', undefined, 'toString'])(

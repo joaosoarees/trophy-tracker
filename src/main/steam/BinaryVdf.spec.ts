@@ -92,6 +92,23 @@ describe('BinaryVdf', () => {
       });
     });
 
+    it('should read a text as UTF-8 when it has letters outside ASCII', () => {
+      const file = Buffer.concat([text('gamename', 'Pokémon 鬼'), END]);
+
+      const root = BinaryVdf.parse(file);
+
+      expect(root).toEqual({ gamename: 'Pokémon 鬼' });
+    });
+
+    it('should throw and say where when the file has a type it does not know', () => {
+      const unknown = Buffer.concat([Buffer.from([5]), str('wide'), str('x')]);
+      const file = Buffer.concat([text('gamename', 'Nioh 3'), unknown, END]);
+
+      expect(() => BinaryVdf.parse(file)).toThrow(
+        new Error('Unknown VDF type 5 at position 17'),
+      );
+    });
+
     it('should throw when the file is truncated', () => {
       const file = makeSchema().subarray(0, 40);
 
@@ -108,6 +125,64 @@ describe('BinaryVdf', () => {
       const statMap = BinaryVdf.achievementStatMap(schema);
 
       expect(statMap).toEqual(new Map([['ACH_001', 'ACH_001_PROGRESS']]));
+    });
+
+    it('should link nothing when the game has no stats', () => {
+      const schema = BinaryVdf.parse(
+        Buffer.concat([obj('3681010', text('gamename', 'Nioh 3')), END]),
+      );
+
+      const statMap = BinaryVdf.achievementStatMap(schema);
+
+      expect(statMap).toEqual(new Map());
+    });
+
+    it.each([
+      {
+        problem: 'its progress is computed, not read from one stat',
+        bits: [
+          bit(
+            '0',
+            'ACH_000',
+            obj(
+              'progress',
+              obj('value', text('operation', 'add'), text('operand1', 'STAT')),
+            ),
+          ),
+        ],
+      },
+      {
+        problem: 'its progress names no value',
+        bits: [bit('0', 'ACH_000', obj('progress', int('max_val', 39)))],
+      },
+      {
+        problem: 'its stat is not named by a text',
+        bits: [
+          bit(
+            '0',
+            'ACH_000',
+            obj(
+              'progress',
+              obj('value', text('operation', 'statvalue'), int('operand1', 3)),
+            ),
+          ),
+        ],
+      },
+      {
+        problem: 'it has a counter but no name',
+        bits: [obj('0', progress('STAT'))],
+      },
+    ])('should not link an achievement when $problem', ({ bits }) => {
+      const schema = BinaryVdf.parse(
+        Buffer.concat([
+          obj('3681010', obj('stats', obj('1376', obj('bits', ...bits)))),
+          END,
+        ]),
+      );
+
+      const statMap = BinaryVdf.achievementStatMap(schema);
+
+      expect(statMap).toEqual(new Map());
     });
   });
 });

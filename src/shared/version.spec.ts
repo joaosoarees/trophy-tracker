@@ -29,7 +29,19 @@ describe('version', () => {
       },
     );
 
-    it.each(['2.0.0-beta.1', 'latest', ''])(
+    it('should answer true when the later candidate has blank space around it', () => {
+      const isNewer = isNewerVersion(' v2.0.0\n', '1.0.0');
+
+      expect(isNewer).toBe(true);
+    });
+
+    it('should answer false when the current version is not a plain one', () => {
+      const isNewer = isNewerVersion('2.0.0', '1.0.0-beta.1');
+
+      expect(isNewer).toBe(false);
+    });
+
+    it.each(['2.0.0-beta.1', 'release-2.0.0', 'latest', ''])(
       'should answer false when the candidate is a pre-release or a malformed tag: "%s"',
       (candidate) => {
         const isNewer = isNewerVersion(candidate, '1.0.0');

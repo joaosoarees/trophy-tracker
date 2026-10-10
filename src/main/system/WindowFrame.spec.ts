@@ -20,6 +20,12 @@ describe('WindowFrame', () => {
       },
     );
 
+    it('should frame the window for the system it runs on when none is named', () => {
+      const frame = WindowFrame.options();
+
+      expect(frame).toEqual(WindowFrame.options(process.platform));
+    });
+
     it('should keep the title bar of the system when the system is linux', () => {
       const frame = WindowFrame.options('linux');
 
