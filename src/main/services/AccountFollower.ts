@@ -4,7 +4,10 @@ import { type Store } from '../storage/Store';
 type AccountInUse = Pick<Store, 'getActiveSteamId' | 'setActiveAccount'>;
 
 interface IAccountFollowerDeps {
-  /** SteamID64 of the account signed in to the Steam client, or `null`. */
+  /**
+   * SteamID64 of the account signed in to the Steam client, or `null` when
+   * nobody is. Rejects when that could not be read.
+   */
   getSignedInSteamId: () => Promise<string | null>;
   store: AccountInUse;
   /** Called after the app started following another account. */
@@ -24,11 +27,13 @@ export class AccountFollower {
   /**
    * Follows the client's account if it changed since last looked at (and
    * once as the app opens). Acting only on a change is what lets an account
-   * picked by hand stand. Answers whether the app switched.
+   * picked by hand stand. A read that failed says nothing about the client:
+   * what was last seen stands, or the account that comes back after it would
+   * look like a change. Answers whether the app switched.
    */
   async onClientChange(): Promise<boolean> {
     const steamId = await this.signedIn();
-    if (steamId === this.lastSeen) return false;
+    if (steamId === undefined || steamId === this.lastSeen) return false;
     this.lastSeen = steamId;
 
     if (steamId === null || steamId === this.deps.store.getActiveSteamId()) {
@@ -46,13 +51,14 @@ export class AccountFollower {
   async forRunningGame(): Promise<'followed' | 'other'> {
     const steamId = await this.signedIn();
     // With no way to tell who is playing, it is taken to be the account in use.
-    if (steamId === null) return 'followed';
+    if (steamId === null || steamId === undefined) return 'followed';
     this.lastSeen = steamId;
     return this.follow(steamId) ? 'followed' : 'other';
   }
 
-  private signedIn(): Promise<string | null> {
-    return this.deps.getSignedInSteamId().catch(() => null);
+  /** Who is signed in to the client; `undefined` when it could not be read. */
+  private signedIn(): Promise<string | null | undefined> {
+    return this.deps.getSignedInSteamId().catch(() => undefined);
   }
 
   /** Answers whether the app is now on that account. */

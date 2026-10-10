@@ -15,7 +15,7 @@ interface IRegistryValue {
 }
 
 interface ISetupOverrides {
-  /** The one value in the registry; a query for any other fails. */
+  /** The one value in the registry; any other is not there. */
   registry?: IRegistryValue;
   /** What a command other than `reg.exe` prints. */
   output?: string;
@@ -28,6 +28,21 @@ interface ISetupOverrides {
 /** What `reg query` prints for one value. */
 const regOutput = ({ key, name, type, data }: IRegistryValue) =>
   `\r\n${key}\r\n    ${name}    ${type}    ${data}\r\n\r\n`;
+
+/**
+ * What `execFile` rejects with when `reg.exe` ran and found no such key or
+ * value: the command ended with code 1.
+ */
+const notFound = (key: string, name: string): Error =>
+  Object.assign(new Error(`reg.exe: no ${key} ${name}`), { code: 1 });
+
+/** `reg.exe` not answering within the time it is given: it is killed. */
+const timedOut = (): Error =>
+  Object.assign(new Error('reg.exe timed out'), {
+    code: null,
+    killed: true,
+    signal: 'SIGTERM',
+  });
 
 /** A Windows, reached natively, that keeps every command it was asked to run. */
 function setup({
@@ -47,7 +62,7 @@ function setup({
       const [, key, , name] = args;
       return registry?.key === key && registry.name === name
         ? Promise.resolve(regOutput(registry))
-        : Promise.reject(new Error(`reg.exe: no ${key} ${name}`));
+        : Promise.reject(notFound(key, name));
     },
     ...deps,
   });
@@ -213,6 +228,37 @@ describe('Windows', () => {
 
       expect(steamId).toBeNull();
     });
+
+    it('should answer null when the registry has no such value', async () => {
+      const { sut } = setup();
+
+      const steamId = await sut.getActiveSteamId();
+
+      expect(steamId).toBeNull();
+    });
+
+    it('should answer null without running anything when there is no Windows', async () => {
+      const { sut, commands } = setup({ hasWindows: false });
+
+      const steamId = await sut.getActiveSteamId();
+
+      expect(steamId).toBeNull();
+      expect(commands).toEqual([]);
+    });
+
+    it.each([
+      { problem: 'cannot be run', failure: new Error('spawn reg.exe ENOENT') },
+      { problem: 'times out', failure: timedOut() },
+    ])(
+      'should fail instead of answering nobody when the query $problem',
+      async ({ failure }) => {
+        const { sut } = setup({ failure });
+
+        const steamIdPromise = sut.getActiveSteamId();
+
+        await expect(steamIdPromise).rejects.toBe(failure);
+      },
+    );
   });
 
   describe('getSteamPath', () => {

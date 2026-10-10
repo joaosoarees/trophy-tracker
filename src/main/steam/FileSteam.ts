@@ -42,16 +42,16 @@ export class FileSteam implements ISteamLocal {
     return Promise.resolve(null);
   }
 
+  /**
+   * `null` when Steam is not installed or its file marks no account. A file
+   * that cannot be read rejects: the client may be rewriting it.
+   */
   async getActiveSteamId(): Promise<string | null> {
     if (!this.steamDir) return null;
-    try {
-      const file = join(this.steamDir, 'config', 'loginusers.vdf');
-      return SteamFiles.mostRecentSteamId(
-        (await this.read(file)).toString('utf8'),
-      );
-    } catch {
-      return null;
-    }
+    const file = join(this.steamDir, 'config', 'loginusers.vdf');
+    return SteamFiles.mostRecentSteamId(
+      (await this.read(file)).toString('utf8'),
+    );
   }
 
   readStatMap(appid: number): Promise<Map<string, string>> {

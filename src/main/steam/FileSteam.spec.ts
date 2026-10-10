@@ -107,12 +107,24 @@ describe('FileSteam', () => {
       expect(read).toEqual([]);
     });
 
-    it('should answer null when the file cannot be read', async () => {
-      const { sut } = setup({ [`${STEAM}/steam.sh`]: '' });
+    it('should answer null when the file marks no account', async () => {
+      const { sut } = setup({
+        [`${STEAM}/${LOGIN_USERS_FILE}`]: '"users"\n{\n}\n',
+      });
 
       const steamId = await sut.getActiveSteamId();
 
       expect(steamId).toBeNull();
+    });
+
+    it('should fail instead of answering nobody when the file cannot be read', async () => {
+      const { sut } = setup({ [`${STEAM}/steam.sh`]: '' });
+
+      const steamIdPromise = sut.getActiveSteamId();
+
+      await expect(steamIdPromise).rejects.toThrow(
+        `ENOENT: ${STEAM}/${LOGIN_USERS_FILE}`,
+      );
     });
   });
 

@@ -204,6 +204,20 @@ describe('RunningGame', () => {
     expect(asked).toEqual([STEAM_ID]);
   });
 
+  it('should ask about the account in use when the one signed in to Steam cannot be read', async () => {
+    const { sut, asked, configure } = setup({
+      local: {
+        getActiveSteamId: () => Promise.reject(new Error('reg.exe timed out')),
+      },
+    });
+    configure();
+
+    const appId = await sut.getAppId();
+
+    expect(appId).toBe(105600);
+    expect(asked).toEqual([STEAM_ID]);
+  });
+
   it('should keep the last answer when the API fails', async () => {
     let isFailing = false;
     const { sut, configure, advance } = setup({

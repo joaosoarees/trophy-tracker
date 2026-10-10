@@ -75,7 +75,8 @@ export class Ipc {
 
     const handlers: IpcHandlers = {
       getState: () => setup.getState(),
-      detectSteamId: () => local.getActiveSteamId(),
+      // An account that cannot be read is not offered, as when nobody is signed in.
+      detectSteamId: () => local.getActiveSteamId().catch(() => null),
       checkApiKey: (steamId, apiKey) => checks.checkApiKey(steamId, apiKey),
       checkPrivacy: (steamId, apiKey) => checks.checkPrivacy(steamId, apiKey),
       addAccount: (steamId, apiKey) => accounts.add(steamId, apiKey),
