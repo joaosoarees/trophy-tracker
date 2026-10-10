@@ -1,7 +1,7 @@
 import { DEFAULT_ACHIEVEMENT_SORT } from '@shared/achievementSort';
 import { DEFAULT_DASHBOARD_SORT } from '@shared/dashboardSort';
 import { type IAppState } from '@shared/types/AppState';
-import { STEAM_ID } from '@test/helpers';
+import { STEAM_ID } from '@tests/helpers';
 
 /** The app set up, in English, with the default list orders. */
 export function makeAppState(props: Partial<IAppState> = {}): IAppState {

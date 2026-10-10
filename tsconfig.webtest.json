@@ -15,7 +15,7 @@
     }
   },
   "include": [
-    "test/renderer/app/store",
+    "test/makeAppStore.ts",
     "src/renderer/**/*.spec.ts",
     "src/renderer/src/env.d.ts"
   ],

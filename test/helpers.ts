@@ -4,7 +4,6 @@ import { join } from 'node:path';
 
 import { onTestFinished } from 'vitest';
 
-import { SteamClient } from '../src/main/steam/SteamClient';
 import { Store } from '../src/main/storage/Store';
 
 export interface IRoute {
@@ -38,20 +37,21 @@ export function fakeFetch(
 }
 
 /**
- * The real `Store` over a folder of its own, removed when the test ends. Call
+ * A folder of its own in the temp directory, removed when the test ends. Call
  * it inside a test (or a function a test calls), not at the top of a file.
  */
-export function makeDiskStore(): Store {
+export function makeTempDir(): string {
   const dir = mkdtempSync(join(tmpdir(), 'tt-'));
   onTestFinished(() => {
     rmSync(dir, { recursive: true, force: true });
   });
-  return new Store(dir);
+  return dir;
 }
 
-export const clientWith = (
-  routes: Parameters<typeof fakeFetch>[0],
-): SteamClient => new SteamClient(fakeFetch(routes));
+/** The real `Store` over a folder of its own, removed when the test ends. */
+export function makeDiskStore(): Store {
+  return new Store(makeTempDir());
+}
 
 export const KEY = '0123456789ABCDEF0123456789ABCDEF';
 /** A made-up account: nobody's real SteamID belongs in the repository. */
