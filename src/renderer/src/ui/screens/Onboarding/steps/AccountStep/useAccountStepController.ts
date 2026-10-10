@@ -16,8 +16,8 @@ interface IAccountStepOptions {
   accounts: IAccount[];
   /** The step was opened to add an account: its form is what the user came for. */
   startsOpen: boolean;
-  /** Called with the state after an account was saved or removed; `games` when one was just verified. */
-  onChange: (state: IAppState, games?: number) => void;
+  /** Called with the state after an account was saved (its SteamID is given) or removed. */
+  onChange: (state: IAppState, added?: string) => void;
 }
 
 export function useAccountStepController({
@@ -25,7 +25,7 @@ export function useAccountStepController({
   startsOpen,
   onChange,
 }: IAccountStepOptions) {
-  const { nextStep, lockFollowingSteps } = useStepper();
+  const { lockFollowingSteps } = useStepper();
   const form = useFormContext<OnboardingFormData>();
 
   // With no account yet the form is the step; afterwards it opens on request.
@@ -43,8 +43,6 @@ export function useAccountStepController({
   const [problem, setProblem] = useState<string | null>(null);
   /** The key works but Steam does not let the achievements be read. */
   const [privacyProblem, setPrivacyProblem] = useState<string | null>(null);
-  /** "Next" was asked for with no account verified. */
-  const [isMissingAccount, setIsMissingAccount] = useState(false);
 
   // Offer the account signed in to the Steam client, unless the app already
   // has it or something is in the field. Again each time the form opens.
@@ -110,8 +108,7 @@ export function useAccountStepController({
 
     const next = await OnboardingService.addAccount(steamId, apiKey);
     setIsVerifying(false);
-    onChange(next, privacy.value.gamesWithPlaytime);
-    setIsMissingAccount(false);
+    onChange(next, steamId.trim());
     emptyForm();
     setIsFormOpen(false);
     setIsFormOptional(false);
@@ -144,14 +141,6 @@ export function useAccountStepController({
     form.setFocus('accountStep.steamId');
   }
 
-  function handleNext() {
-    if (accounts.length === 0) {
-      setIsMissingAccount(true);
-      return;
-    }
-    nextStep();
-  }
-
   return {
     form,
     isFormOpen,
@@ -159,7 +148,6 @@ export function useAccountStepController({
     isVerifying,
     problem,
     privacyProblem,
-    isMissingAccount,
     steamIdSource: source,
     // Locked while it is the account found in the Steam client.
     isSteamIdLocked: source !== 'typed' && !isEditingSteamId,
@@ -168,6 +156,5 @@ export function useAccountStepController({
     handleOpenForm,
     handleCloseForm,
     handleEditSteamId,
-    handleNext,
   };
 }

@@ -285,7 +285,6 @@ export const en = {
     steps: {
       language: 'Language',
       account: 'Account',
-      done: 'Done',
     },
     goToStep: (step: string) => `Go to ${step}`,
 
@@ -346,18 +345,10 @@ export const en = {
       verifying: 'Verifying…',
     },
 
-    done: {
-      title: 'All set',
-      description: 'The setup is complete.',
-      found: (n: number) =>
-        `I found ${n} ${n === 1 ? 'played game' : 'played games'} on your account.`,
-      account: 'Account',
-      language: 'Language',
-      howItWorks:
-        'Open a game on Steam and the app switches to it on its own. With no game open it shows the last one you played; the Dashboard lists them all.',
-      finish: 'Enter the app',
-      saving: 'Saving…',
-    },
+    howItWorks:
+      'Open a game on Steam and the app switches to it on its own. With no game open it shows the last one you played; the Dashboard lists them all.',
+    finish: 'Enter the app',
+    finishing: 'Saving…',
   },
 };
 
