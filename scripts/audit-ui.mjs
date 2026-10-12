@@ -376,6 +376,13 @@ async function auditDetailsFlow(page) {
 
 /** Runs every check on what is on screen now. */
 async function audit(page, name) {
+  // A toast read while it fades in or out is text of too little contrast:
+  // the ones on screen are waited for until they are fully there, or gone.
+  await waitFor(
+    page,
+    `[...document.querySelectorAll('[data-sonner-toast]')].every((el) => getComputedStyle(el).opacity === '1')`,
+    2000,
+  );
   await page.evaluate(axeSource);
   const result = JSON.parse(
     await page.evaluate(`axe.run(document, { resultTypes: ['violations'] }).then((r) => JSON.stringify({
