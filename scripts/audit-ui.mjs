@@ -1174,6 +1174,28 @@ async function auditAccounts(page, steam, home) {
     refusedAgain && askedToReplace === 1,
     `Enter held down in the new key's field asked Steam about it ${askedToReplace} times, not once, or left the button disabled`,
   );
+  // While a key is being saved its field cannot be put away and opened
+  // again: the answer would land on a key that was not the one checked.
+  const REPLACE_KEY = `[...document.querySelectorAll('main button[aria-expanded]')].find((el) => el.innerText.trim() === 'Replace key')`;
+  steam.state.mode = 'hung';
+  await type(
+    page,
+    'main input[type="password"]',
+    '11223344556677889900AABBCCDDEEFF',
+  );
+  await page.evaluate(clickButton('main', 'Verify and save'));
+  await sleep(400);
+  expectThat(
+    FLOW,
+    await page.evaluate(`${REPLACE_KEY}.disabled`),
+    '"Replace key" can be clicked while a key is being saved',
+  );
+  await page.capture('flow-key-being-saved');
+  expectThat(
+    FLOW,
+    await waitFor(page, `!${REPLACE_KEY}.disabled`),
+    '"Replace key" is not given back when the save ends',
+  );
   steam.state.mode = 'ok';
   await type(
     page,
@@ -1214,6 +1236,27 @@ async function auditAccounts(page, steam, home) {
   );
   await sleep(600);
   await audit(page, 'flow-add-account');
+  // "Cancel" waits for the answer too: left mid-verify, the step was gone
+  // and the account was added all the same, with nothing said. Steam takes
+  // the request and does not answer it, so there is time to look.
+  const CANCEL = `[...document.querySelectorAll('main footer button')].find((el) => el.innerText.trim() === 'Cancel')`;
+  await type(page, '[id$="-steamId"]', '76561198000000077');
+  await type(page, '[id$="-apiKey"]', 'ABCDEF0123456789ABCDEF0123456789');
+  steam.state.mode = 'hung';
+  await page.evaluate(verifyAccount);
+  await sleep(400);
+  expectThat(
+    FLOW,
+    await page.evaluate(`${CANCEL}.disabled`),
+    'adding an account from the app can be cancelled while the account is being verified',
+  );
+  await page.capture('flow-add-account-verifying');
+  expectThat(
+    FLOW,
+    await waitFor(page, `!${CANCEL}.disabled`),
+    '"Cancel" is not given back when the verification ends',
+  );
+  steam.state.mode = 'ok';
   await page.evaluate(clickButton('main', 'Cancel'));
   expectThat(
     FLOW,
