@@ -64,4 +64,16 @@ describe('activeGame', () => {
       isOnAnotherAccount: false,
     });
   });
+
+  it('should show the picked game as one of the account in use, not running, when it is the game that runs on an account the app does not have', () => {
+    const current = { appid: 42, isRunning: true, isOnAnotherAccount: true };
+
+    const game = activeGame(current, 42);
+
+    expect(game).toEqual({
+      appid: 42,
+      isRunning: false,
+      isOnAnotherAccount: false,
+    });
+  });
 });
