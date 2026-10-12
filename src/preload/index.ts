@@ -17,45 +17,56 @@ const listen = (channel: string) => (cb: (...args: never[]) => void) => {
   };
 };
 
-const calls = [
-  'getState',
-  'detectSteamId',
-  'checkApiKey',
-  'checkPrivacy',
-  'addAccount',
-  'setActiveAccount',
-  'removeAccount',
-  'replaceKey',
-  'recheckAccount',
-  'getCurrentAppId',
-  'getGame',
-  'getDashboard',
-  'getUserData',
-  'setUserData',
-  'setLanguage',
-  'setAchievementSort',
-  'setDashboardSort',
-  'getAlwaysOnTop',
-  'setAlwaysOnTop',
-  'getPreferences',
-  'setPreference',
-  'getFolder',
-  'openFolder',
-  'openGuide',
-  'openExternal',
-  'getAppInfo',
-  'checkForUpdates',
-  'installUpdate',
-  'logError',
-] as const;
+/** What the interface asks: every member of `IApi` that is not an event. */
+type Call = Exclude<keyof IApi, `on${string}`>;
 
-const api = {
-  ...Object.fromEntries(calls.map((c) => [c, invoke(c)])),
+/**
+ * Every call, by name. The compiler holds the list to `IApi`: a call that is
+ * missing here, or a name `IApi` does not have, does not build. As a plain
+ * list cast to `IApi`, a forgotten name built, passed every test and failed
+ * in the window, where `window.api` had no such function.
+ */
+const calls: Record<Call, true> = {
+  getState: true,
+  detectSteamId: true,
+  checkApiKey: true,
+  checkPrivacy: true,
+  addAccount: true,
+  setActiveAccount: true,
+  removeAccount: true,
+  replaceKey: true,
+  recheckAccount: true,
+  getCurrentAppId: true,
+  getGame: true,
+  getDashboard: true,
+  getUserData: true,
+  setUserData: true,
+  setLanguage: true,
+  setAchievementSort: true,
+  setDashboardSort: true,
+  getAlwaysOnTop: true,
+  setAlwaysOnTop: true,
+  getPreferences: true,
+  setPreference: true,
+  getFolder: true,
+  openFolder: true,
+  openGuide: true,
+  openExternal: true,
+  getAppInfo: true,
+  checkForUpdates: true,
+  installUpdate: true,
+  logError: true,
+};
+
+const api: IApi = {
+  ...(Object.fromEntries(
+    Object.keys(calls).map((call) => [call, invoke(call)]),
+  ) as Pick<IApi, Call>),
   onStateChanged: listen(IpcEvent.stateChanged),
   onGameChanged: listen(IpcEvent.gameChanged),
   onGameUpdated: listen(IpcEvent.gameUpdated),
   onDashboardProgress: listen(IpcEvent.dashboardProgress),
   onAppInfoChanged: listen(IpcEvent.appInfoChanged),
-} as unknown as IApi;
+};
 
 contextBridge.exposeInMainWorld('api', api);

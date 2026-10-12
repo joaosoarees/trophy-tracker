@@ -172,7 +172,7 @@ ui (screens, components) → app/store and app/hooks → app/services → window
 - Interface services hold no state: they are typed doors to the main process. State lives in the store.
 - A store slice reaches the main process through `@app/services`, never through `window.api` (`docs/store.md`).
 - In the main process, `Ipc` holds no logic, and services receive what they depend on through the constructor (see `index.ts`), so they are testable without Electron.
-- **To add a call**, four places: a method on `IApi` (`shared/types/Api.ts`), a handler in `main/ipc/Ipc.ts`, the name in the list in `preload/index.ts`, and a method on the matching class in `app/services`.
+- **To add a call**, four places: a method on `IApi` (`shared/types/Api.ts`), a handler in `main/ipc/Ipc.ts`, the name in the list in `preload/index.ts` (a call missing there does not compile), and a method on the matching class in `app/services`.
 
 ## Tests
 
