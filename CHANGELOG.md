@@ -6,14 +6,33 @@ What changed in each version, for whoever uses the app. The section of a version
 
 ### Fixed
 
+**Checklists**
+
+- A pasted list keeps a number at the start of a line when it is part of the name: "1-1 Secret exit", "1.5x multiplier", "10:30 boss rush", "2024-01-01 event". Such a line used to lose what came before its first separator ("1 Secret exit"), and two lines that differed only there became one item. A numbered list ("1. Item") still loses its numbers.
+- An item can no longer be renamed to the text of another item on the same list. With two items of one text, "Undo" after removing either put nothing back.
+
+**Accounts and the setup**
+
+- "Cancel" waits while an account added from Settings is being verified. Cancelled at that moment, the screen used to close while the account was added all the same, and the app moved to it without a word.
+- "Replace key" waits while a key is being saved, and "Verify" while the setup is ending.
+- In the setup, the message under a SteamID or a key in the wrong format goes away as the field is corrected. It used to stay until "Verify" was pressed again.
+
 **The dashboard and reading from Steam**
 
 - Achievements unlocked in the last minute of a game are no longer left out when the window is reloaded (the "Reload" button of the error screen) within ten seconds of the game closing. They used to stay out until the game was read again (↻, for one).
+- Changing the language while a game is still being read from Steam no longer leaves its achievements in the language that was left. Their names and descriptions could stay that way for up to a day, also after a restart, and game art for good, until ↻.
+- A game picked in the dashboard opens with your achievements even while that same game is running on a Steam account that is not in the app. It used to show "This game is running on a Steam account that is not in the app" until the game closed.
+- A game that starts just as the app opens, or just after another account is switched to, is shown as running. The app could stay on the last game played for as long as the other one ran.
+- On Windows, a game is no longer shown as closed, and ten seconds later as started again, when Windows fails to say which game is running.
+- On macOS and Linux, a game that is not from Steam, shown as being played on the Steam profile, is no longer taken for a running game ("App 1.535e+19", with an error from Steam).
 
 **When the app cannot save**
 
 - When a game starts on a saved account the app is not on, and the app cannot save the switch to it, the error log is told once, not every ten seconds for as long as it lasts. Meanwhile the Game tab stays on the game the account in use played last, and the app switches to the account that is playing, and shows its game, as soon as it can save again.
 - "Check again" in Settings says "Unexpected error. Try again." when what Steam answered about the key cannot be saved. It used to end without a word, with the card still showing the old status.
+- A language picked in the setup that cannot be saved goes back to the one before, with "Unexpected error. Try again.". The setup used to stay in the new language and the app then opened in the old one, with nothing said.
+- When two saves of the same note, pin or checklist overlap and one of them fails, the screen goes back to what was really saved. It could go back to nothing while the note was saved, or to the old text while the new one was.
+- The same for the order of the lists: when the order of one list and then of the other are changed and the first cannot be saved, the second is no longer undone on screen.
 
 ## 1.1.0
 
