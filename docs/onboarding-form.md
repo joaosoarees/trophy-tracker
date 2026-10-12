@@ -26,7 +26,7 @@ The onboarding (`ui/screens/Onboarding/`) is a single form in two steps: Languag
 ```
 Onboarding/
   index.tsx                  FormProvider + Stepper with the steps
-  useOnboardingController.ts useForm, the watch subscription, the end of the setup
+  useOnboardingController.ts useForm, the language subscription, the end of the setup
   schema.ts                  onboardingSchema: one schema per step, and OnboardingFormData
   components/                Stepper/ (index, StepperContext, stepperState, useStepper), StepHeader,
                              FieldError,
@@ -43,5 +43,6 @@ Onboarding/
 - Errors from Steam about the pair (rejected key, unknown SteamID, private profile) are shown in the step, not under one field, because they are not about one field. Format errors stay under their field.
 - A message key in a schema looks like `'steamIdFormat'`; `FieldError` translates it when rendering.
 - A field that is not a plain `<input>` becomes a controlled component with `useController` (e.g. `ControlledLanguageSelect`).
-- Field side effects use the `form.watch` subscription (e.g. switching the screen language), always with `unsubscribe` on cleanup.
+- Field side effects use `form.subscribe` with `formState: { values: true }` (e.g. switching the screen language), whose return is the effect's cleanup.
+- **A format error goes as its field is corrected.** No step submits the form, so the library never starts checking a field again by itself: after the `trigger` of "Verify" an error stayed under a corrected field until the next "Verify". The account step listens to its two fields and triggers again the one that has an error. What empties the form clears the errors before the values, or an emptied field would be checked and told it is required.
 - Nothing typed in the form is kept anywhere but the form: the language is saved as it is picked, an account as it is verified. The pick is a store action (`settings.pickSetupLanguage`): the screen changes at once, and a language the disk refuses is put back to the one the main process holds, with a toast; the action answers the language the screen is left on and the controller sets the field to it.

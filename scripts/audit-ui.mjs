@@ -571,7 +571,19 @@ async function auditOnboarding(page, steam, language, userData) {
       '"Use another account" says no account was found in the Steam client, when one was',
     );
     await audit(page, `onboarding-account-typed-${language}`);
+    // A format error goes as the field is corrected, not at the next "Verify".
+    const formatError = `[...document.querySelectorAll('main small')].some((el) => /17-digit/.test(el.innerText))`;
+    await type(page, '[id$="-steamId"]', '123');
+    await page.evaluate(verifyAccount);
+    const isFormatRefused = await waitFor(page, formatError, 3000);
     await type(page, '[id$="-steamId"]', STEAM_ID);
+    expectThat(
+      FLOW,
+      isFormatRefused && (await waitFor(page, `!(${formatError})`, 2000)),
+      isFormatRefused
+        ? 'the format error of a SteamID stays under the field after it was corrected'
+        : 'a SteamID in the wrong format is not refused under its field',
+    );
   }
   const KEY = '0123456789ABCDEF0123456789ABCDEF';
   await type(page, '[id$="-apiKey"]', KEY);

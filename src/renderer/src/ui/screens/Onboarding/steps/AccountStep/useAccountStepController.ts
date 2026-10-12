@@ -93,10 +93,32 @@ export function useAccountStepController({
     };
   }, [isAskingSteamClient]);
 
+  // "Verify" checks the format of the two fields, and nothing submits this
+  // form, so the library would check them again only at the next "Verify":
+  // an error stayed under a field that had been corrected. A field that has
+  // an error is checked again as it changes.
+  useEffect(
+    () =>
+      form.subscribe({
+        name: 'accountStep',
+        formState: { values: true },
+        callback: ({ name }) => {
+          const isOfTheStep =
+            name === 'accountStep.steamId' || name === 'accountStep.apiKey';
+          if (isOfTheStep && form.getFieldState(name).error) {
+            void form.trigger(name);
+          }
+        },
+      }),
+    [form],
+  );
+
   function emptyForm() {
+    // The errors go first: emptied with one, a field would be checked again
+    // and told it is required.
+    form.clearErrors('accountStep');
     form.setValue('accountStep.steamId', '');
     form.setValue('accountStep.apiKey', '');
-    form.clearErrors('accountStep');
     setProblem(null);
     setPrivacyProblem(null);
   }
