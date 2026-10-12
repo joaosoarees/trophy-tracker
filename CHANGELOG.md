@@ -2,6 +2,12 @@
 
 What changed in each version, for whoever uses the app. The section of a version is what its release shows on GitHub.
 
+## Unreleased
+
+### Fixed
+
+- "About", in Settings, names the Apache 2.0 license. Version 1.2.0 still said MIT there, though it is under Apache 2.0.
+
 ## 1.2.0
 
 The account in use is shown at the top of the window, and a round of fixes: checklists, notes, the setup, a game running while accounts or the language change, updates, and what happens when something cannot be saved.
