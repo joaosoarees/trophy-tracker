@@ -108,6 +108,41 @@ describe('RunningGame', () => {
     expect(asked).toHaveLength(0);
   });
 
+  it('should keep the last answer when the registry cannot be read', async () => {
+    let isFailing = false;
+    const { sut } = setup({
+      local: {
+        canTrackRunningGame: true,
+        getRunningAppId: () =>
+          isFailing
+            ? Promise.reject(new Error('reg.exe timed out'))
+            : Promise.resolve(42),
+      },
+    });
+    await sut.getAppId();
+    isFailing = true;
+
+    const appId = await sut.getAppId();
+
+    expect(appId).toBe(42);
+  });
+
+  it('should answer null when the registry says the game closed', async () => {
+    let running: number | null = 42;
+    const { sut } = setup({
+      local: {
+        canTrackRunningGame: true,
+        getRunningAppId: () => Promise.resolve(running),
+      },
+    });
+    await sut.getAppId();
+    running = null;
+
+    const appId = await sut.getAppId();
+
+    expect(appId).toBeNull();
+  });
+
   it('should answer null without asking the API when no account is configured', async () => {
     const { sut, asked } = setup();
 

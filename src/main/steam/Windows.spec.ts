@@ -178,8 +178,22 @@ describe('Windows', () => {
       expect(appId).toBeNull();
     });
 
-    it('should answer null when the query fails', async () => {
-      const { sut } = setup({ failure: new Error('reg.exe not found') });
+    it.each([
+      { problem: 'cannot be run', failure: new Error('spawn reg.exe ENOENT') },
+      { problem: 'times out', failure: timedOut() },
+    ])(
+      'should fail instead of answering no game when the query $problem',
+      async ({ failure }) => {
+        const { sut } = setup({ failure });
+
+        const appIdPromise = sut.getRunningAppId();
+
+        await expect(appIdPromise).rejects.toBe(failure);
+      },
+    );
+
+    it('should answer null when the registry has no such value', async () => {
+      const { sut } = setup();
 
       const appId = await sut.getRunningAppId();
 

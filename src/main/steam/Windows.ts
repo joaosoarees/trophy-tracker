@@ -75,9 +75,12 @@ export class Windows {
       : windowsPath;
   }
 
-  /** AppID of the running game, or `null` when no game is open. */
+  /**
+   * AppID of the running game, or `null` when the registry says none is.
+   * Rejects when the registry could not be asked: that is not a game closing.
+   */
   async getRunningAppId(): Promise<number | null> {
-    const v = await this.regValue(STEAM_KEY, 'RunningAppID');
+    const v = await this.queryReg(STEAM_KEY, 'RunningAppID');
     return typeof v === 'number' && v > 0 ? v : null;
   }
 
