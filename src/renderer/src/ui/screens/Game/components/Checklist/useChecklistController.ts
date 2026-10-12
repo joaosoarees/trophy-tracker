@@ -6,6 +6,7 @@ import {
   createChecklistItem,
   isOnChecklist,
   parseChecklist,
+  renameChecklistItem,
 } from '@shared/checklist';
 import { type IChecklistItem } from '@shared/types/UserData';
 
@@ -65,7 +66,8 @@ export function useChecklistController({
 
   function handleRename(id: string, text: string) {
     setEditingId(null);
-    if (text.trim() !== '') patch(id, { text: text.trim() });
+    const renamed = renameChecklistItem(items, id, text);
+    if (renamed !== items) onChange(renamed);
   }
 
   /** Removing is instant, so it can be taken back: the item was typed by hand. */

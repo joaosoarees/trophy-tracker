@@ -4,7 +4,9 @@ import {
   type IChecklistItem,
 } from './types/UserData';
 
-const MARKER = /^\s*(?:[-*•·–—]|\[[ xX]?\]|☐|☑|✓|✔|\d+\s*[.)\-:])\s*/;
+// A number is a marker only when no digit follows its separator: "1. Item" is
+// numbered, "1-1 Item", "1.5x", "10:30" and "2024-01-01" are names.
+const MARKER = /^\s*(?:[-*•·–—]|\[[ xX]?\]|☐|☑|✓|✔|\d+\s*[.)\-:](?!\d))\s*/;
 
 /** Text pasted from a guide, one item per line, becomes checklist items. */
 export function parseChecklist(
@@ -77,6 +79,26 @@ export function createChecklistItem(
 export function isOnChecklist(text: string, items: IChecklistItem[]): boolean {
   const key = text.trim().toLowerCase();
   return items.some((item) => item.text.toLowerCase() === key);
+}
+
+/**
+ * An item takes the text it was renamed to, without the spaces around it.
+ * Answers the list it was given when the name stays: the text is blank, or
+ * another item has it, and a list holds a text once (the undo of a twin would
+ * find its text on the list and put nothing back).
+ */
+export function renameChecklistItem(
+  items: IChecklistItem[],
+  id: string,
+  text: string,
+): IChecklistItem[] {
+  const clean = text.trim();
+  const others = items.filter((item) => item.id !== id);
+  if (clean === '' || isOnChecklist(clean, others)) return items;
+
+  return items.map((item) =>
+    item.id === id ? { ...item, text: clean } : item,
+  );
 }
 
 /**
