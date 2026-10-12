@@ -14,6 +14,7 @@ What changed in each version, for whoever uses the app. The section of a version
 **Searching and notes**
 
 - Clearing a search with its X leaves the cursor in the field, so the next search can be typed at once. The field used to lose it, and typing did nothing until the field was clicked again.
+- A note stays open while it is being edited, also when all its text is deleted. A saved note used to close under the cursor as its last letter went, and the next keys were lost.
 
 **Accounts and the setup**
 

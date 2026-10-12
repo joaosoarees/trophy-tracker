@@ -43,7 +43,7 @@ export function useAchievementCardController({
     note,
     isPinned,
     isChecklistOpen,
-    // An open note stays open while it has text.
+    // A note is on screen while it has text, and while it is being edited.
     isNoteVisible: isNoteOpen || note !== '',
     shouldFocusNote: isNoteOpen && note === '',
     progress: achievement.unlocked ? null : shownProgress(achievement, data),

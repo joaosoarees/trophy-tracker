@@ -1058,6 +1058,35 @@ async function auditAccounts(page, steam, home) {
     'clearing the search with its X does not empty the field and leave the focus in it',
   );
 
+  // A note stays under the cursor when its text is deleted, and closes,
+  // empty, once it is left.
+  const NOTE = `document.querySelector('main li textarea')`;
+  await page.evaluate(
+    `document.querySelector('main li button[aria-label="Add a note"]').click()`,
+  );
+  await sleep(300);
+  await page.send('Input.insertText', { text: 'Audit note' });
+  await page.evaluate(`${NOTE}.blur()`);
+  await sleep(300);
+  await page.evaluate(
+    `(() => { ${NOTE}.focus(); ${NOTE}.select(); document.execCommand('delete'); })()`,
+  );
+  await sleep(500);
+  expectThat(
+    FLOW,
+    await page.evaluate(
+      `${NOTE} !== null && ${NOTE}.value === '' && document.activeElement === ${NOTE}`,
+    ),
+    'a note whose text was deleted closed under the cursor',
+  );
+  await page.capture('flow-note-emptied');
+  await page.evaluate(`${NOTE}?.blur()`);
+  expectThat(
+    FLOW,
+    await waitFor(page, `${NOTE} === null`, 2000),
+    'an empty note stays open after it was left',
+  );
+
   await page.evaluate(`${LIST_TOGGLE}.click()`);
   await sleep(500);
   await addItem();
