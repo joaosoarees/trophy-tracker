@@ -4,7 +4,9 @@ import {
   type IChecklistItem,
 } from './types/UserData';
 
-const MARKER = /^\s*(?:[-*•·–—]|\[[ xX]?\]|☐|☑|✓|✔|\d+\s*[.)\-:])\s*/;
+// A number is a marker only when no digit follows its separator: "1. Item" is
+// numbered, "1-1 Item", "1.5x", "10:30" and "2024-01-01" are names.
+const MARKER = /^\s*(?:[-*•·–—]|\[[ xX]?\]|☐|☑|✓|✔|\d+\s*[.)\-:](?!\d))\s*/;
 
 /** Text pasted from a guide, one item per line, becomes checklist items. */
 export function parseChecklist(

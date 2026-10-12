@@ -67,14 +67,35 @@ describe('checklist', () => {
       },
     );
 
-    it.each(['3 Kodamas in the village', 'Stage 2-1'])(
-      'should keep the numbers when they are part of the name: %s',
-      (line) => {
-        const items = parseChecklist(line);
+    it.each([
+      '3 Kodamas in the village',
+      'Stage 2-1',
+      '1-1 Secret exit',
+      '1.5x multiplier',
+      '10:30 boss rush',
+      '2024-01-01 event',
+    ])('should keep the numbers when they are part of the name: %s', (line) => {
+      const items = parseChecklist(line);
 
-        expect(items).toEqual([{ id: `${STAMP}-0`, text: line, done: false }]);
-      },
-    );
+      expect(items).toEqual([{ id: `${STAMP}-0`, text: line, done: false }]);
+    });
+
+    it('should drop only the marker when the name starts with a number too', () => {
+      const items = parseChecklist('1. 3 Kodamas in the village');
+
+      expect(items).toEqual([
+        { id: `${STAMP}-0`, text: '3 Kodamas in the village', done: false },
+      ]);
+    });
+
+    it('should keep both lines when they differ only in the number they start with', () => {
+      const items = parseChecklist('1-1 Coins\n2-1 Coins');
+
+      expect(items).toEqual([
+        { id: `${STAMP}-0`, text: '1-1 Coins', done: false },
+        { id: `${STAMP}-1`, text: '2-1 Coins', done: false },
+      ]);
+    });
 
     it('should create an unchecked item with its own id for each line when given several', () => {
       const items = parseChecklist('a\nb');
