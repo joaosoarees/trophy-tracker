@@ -6,6 +6,7 @@ import {
   createChecklistItem,
   isOnChecklist,
   parseChecklist,
+  renameChecklistItem,
   restoreChecklistItem,
   shownProgress,
 } from './checklist';
@@ -231,6 +232,27 @@ describe('checklist', () => {
       const isOn = isOnChecklist('   ', items);
 
       expect(isOn).toBe(false);
+    });
+  });
+
+  describe('renameChecklistItem', () => {
+    it('should give the item the text without the spaces around it when it is renamed', () => {
+      const items = [bridge, { ...cave, done: true }];
+
+      const renamed = renameChecklistItem(items, 'c', '  Deep cave ');
+
+      expect(renamed).toEqual([
+        bridge,
+        { id: 'c', text: 'Deep cave', done: true },
+      ]);
+    });
+
+    it('should answer the list it was given when the text is only spaces', () => {
+      const items = [bridge, cave];
+
+      const renamed = renameChecklistItem(items, 'c', '   ');
+
+      expect(renamed).toBe(items);
     });
   });
 

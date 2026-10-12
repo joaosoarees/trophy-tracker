@@ -82,6 +82,23 @@ export function isOnChecklist(text: string, items: IChecklistItem[]): boolean {
 }
 
 /**
+ * An item takes the text it was renamed to, without the spaces around it.
+ * Answers the list it was given when the text is blank: the name stays.
+ */
+export function renameChecklistItem(
+  items: IChecklistItem[],
+  id: string,
+  text: string,
+): IChecklistItem[] {
+  const clean = text.trim();
+  if (clean === '') return items;
+
+  return items.map((item) =>
+    item.id === id ? { ...item, text: clean } : item,
+  );
+}
+
+/**
  * A removed item goes back into the list as it is now, not as it was when the
  * item left: at the place it was taken from, or at the end when the list got
  * shorter than that. Answers the list it was given when the item is already on
