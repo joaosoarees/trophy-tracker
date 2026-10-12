@@ -70,9 +70,13 @@ type SettingsActions = {
   changeLanguage: (language: Language) => Promise<void>;
   /**
    * The language picked in the setup. The screen changes at once, with no
-   * reload: nothing Steam translated is on it yet.
+   * reload: nothing Steam translated is on it yet. A pick that could not be
+   * saved is put back to the language the main process holds, and the user
+   * is told in it, unless another pick was made meanwhile: the screen is on
+   * that one, which has a save of its own. Answers the language the screen
+   * is left on, for the form's field to follow.
    */
-  pickSetupLanguage: (language: Language) => Promise<void>;
+  pickSetupLanguage: (language: Language) => Promise<Language>;
   /**
    * Follows another saved account. What was read for the one being left goes
    * off the screen as the state changes (see `connectStore`). When the call
@@ -297,8 +301,26 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
   },
 
   pickSetupLanguage: async (language) => {
+    const previous = get().session.language;
+    if (language === previous) return language;
+
     get().session.setLanguage(language);
-    await SettingsService.setLanguage(language);
+    try {
+      await SettingsService.setLanguage(language);
+    } catch (error) {
+      const problem = explainFailedCall(error, messagesFor(previous));
+      // Not `previous`: with two picks under way it may be one that was not
+      // saved either. The main process keeps only what it wrote.
+      const held = await SettingsService.getState().then(
+        (appState) => appState.language,
+        () => previous,
+      );
+      if (get().session.language === language) {
+        get().session.setLanguage(held);
+        toast.error(problem);
+      }
+    }
+    return get().session.language;
   },
 
   switchAccount: async (steamId) => {

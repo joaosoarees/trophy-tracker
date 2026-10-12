@@ -44,4 +44,4 @@ Onboarding/
 - A message key in a schema looks like `'steamIdFormat'`; `FieldError` translates it when rendering.
 - A field that is not a plain `<input>` becomes a controlled component with `useController` (e.g. `ControlledLanguageSelect`).
 - Field side effects use the `form.watch` subscription (e.g. switching the screen language), always with `unsubscribe` on cleanup.
-- Nothing typed in the form is kept anywhere but the form: the language is saved as it is picked, an account as it is verified.
+- Nothing typed in the form is kept anywhere but the form: the language is saved as it is picked, an account as it is verified. The pick is a store action (`settings.pickSetupLanguage`): the screen changes at once, and a language the disk refuses is put back to the one the main process holds, with a toast; the action answers the language the screen is left on and the controller sets the field to it.

@@ -55,7 +55,12 @@ export function useOnboardingController({
       // Picking the language switches the screen right away, with no reload.
       const language = formData.languageStep?.language;
       if (name === 'languageStep.language' && isLanguage(language)) {
-        void pickSetupLanguage(language);
+        void pickSetupLanguage(language).then((shown) => {
+          // The pick could not be saved: the field follows the screen back.
+          if (shown !== language) {
+            form.setValue('languageStep.language', shown);
+          }
+        });
       }
     });
 

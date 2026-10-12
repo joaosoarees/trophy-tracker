@@ -502,10 +502,35 @@ async function holdEnter(page, selector) {
  * screen, with Steam answering badly before it answers well. Leaves the app
  * set up, on its first screen.
  */
-async function auditOnboarding(page, steam, language) {
+async function auditOnboarding(page, steam, language, userData) {
   const FLOW = `onboarding (${language})`;
   const failuresBefore = failures.length;
   const isFirst = language === LANGUAGES[0];
+  if (isFirst) {
+    // A language the disk refuses to save is not kept on screen: the pick
+    // goes back, with a toast saying so, and the next pick is saved.
+    const picked = `[...document.querySelectorAll('[role="radio"]')].findIndex((el) => el.getAttribute('aria-checked') === 'true')`;
+    const TOAST = `document.querySelector('[data-sonner-toast]')`;
+    mkdirSync(join(userData, 'settings.json.tmp'));
+    await page.evaluate(
+      `document.querySelectorAll('[role="radio"]')[3].click()`,
+    );
+    const isToldAndBack = await waitFor(
+      page,
+      `${TOAST}?.innerText.includes('Unexpected error') && (${picked}) === 0`,
+      4000,
+    );
+    expectThat(
+      FLOW,
+      isToldAndBack,
+      `a language that could not be saved stays picked, or nothing says it was not saved (picked: ${await page.evaluate(picked)}; toast: "${await page.evaluate(`${TOAST}?.innerText ?? ''`)}")`,
+    );
+    // The toast is still rising when the check passes.
+    await sleep(500);
+    await page.capture('flow-language-not-saved');
+    rmSync(join(userData, 'settings.json.tmp'), { recursive: true });
+    await waitFor(page, `${TOAST} === null`, 8000);
+  }
   await page.evaluate(
     `document.querySelectorAll('[role="radio"]')[${LANGUAGES.indexOf(language)}].click()`,
   );
@@ -1827,7 +1852,7 @@ for (const language of languages) {
   try {
     await withApp(async (page) => {
       await sleep(6000);
-      await auditOnboarding(page, steam, language);
+      await auditOnboarding(page, steam, language, userData);
       await auditScreens(page, steam, language);
       await auditCrash(page, language, userData);
       if (language !== LANGUAGES[0]) return;
