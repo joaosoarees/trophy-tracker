@@ -254,6 +254,22 @@ describe('checklist', () => {
 
       expect(renamed).toBe(items);
     });
+
+    it('should answer the list it was given when another item has the text in another case', () => {
+      const items = [bridge, cave];
+
+      const renamed = renameChecklistItem(items, 'c', ' bridge ');
+
+      expect(renamed).toBe(items);
+    });
+
+    it('should change the case of the text when only the item itself has it', () => {
+      const items = [bridge, cave];
+
+      const renamed = renameChecklistItem(items, 'c', 'CAVE');
+
+      expect(renamed).toEqual([bridge, { id: 'c', text: 'CAVE', done: false }]);
+    });
   });
 
   describe('restoreChecklistItem', () => {

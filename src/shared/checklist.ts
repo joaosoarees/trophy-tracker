@@ -83,7 +83,9 @@ export function isOnChecklist(text: string, items: IChecklistItem[]): boolean {
 
 /**
  * An item takes the text it was renamed to, without the spaces around it.
- * Answers the list it was given when the text is blank: the name stays.
+ * Answers the list it was given when the name stays: the text is blank, or
+ * another item has it, and a list holds a text once (the undo of a twin would
+ * find its text on the list and put nothing back).
  */
 export function renameChecklistItem(
   items: IChecklistItem[],
@@ -91,7 +93,8 @@ export function renameChecklistItem(
   text: string,
 ): IChecklistItem[] {
   const clean = text.trim();
-  if (clean === '') return items;
+  const others = items.filter((item) => item.id !== id);
+  if (clean === '' || isOnChecklist(clean, others)) return items;
 
   return items.map((item) =>
     item.id === id ? { ...item, text: clean } : item,

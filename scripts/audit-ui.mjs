@@ -976,8 +976,8 @@ async function auditAccounts(page, steam, home) {
   const UNDO = `document.querySelector('[data-sonner-toast]:not([data-removed="true"]) [data-action]')`;
   const LIST_TOGGLE = `document.querySelector('main li [aria-expanded]')`;
   const LIST_ITEMS = `document.querySelectorAll('main li button[aria-label="Remove item"]').length`;
-  const addItem = async () => {
-    await type(page, 'main li input[placeholder="New item"]', 'Audit item');
+  const addItem = async (text = 'Audit item') => {
+    await type(page, 'main li input[placeholder="New item"]', text);
     await page.evaluate(
       `document.querySelector('main li button[aria-label="Add item"]').click()`,
     );
@@ -1013,6 +1013,27 @@ async function auditAccounts(page, steam, home) {
       (await page.evaluate(LIST_ITEMS)) === 1,
     'an undo with nothing to put back stays on screen, or puts the item on the list twice',
   );
+  // Renamed to the text of another item, an item keeps its name: a list
+  // holds a text once, or the undo of a twin would put nothing back.
+  const RENAME_FIELD = 'main li input[aria-label="Rename item"]';
+  await addItem('Second item');
+  await page.evaluate(
+    `document.querySelectorAll('main li button[aria-label="Rename item"]')[1].click()`,
+  );
+  await sleep(300);
+  await type(page, RENAME_FIELD, 'audit item');
+  await page.evaluate(
+    `document.querySelector(${JSON.stringify(RENAME_FIELD)}).blur()`,
+  );
+  await sleep(300);
+  expectThat(
+    FLOW,
+    (await page.evaluate(
+      `[...document.querySelectorAll('main li li label')].map((label) => label.textContent).join('|')`,
+    )) === 'Audit item|Second item',
+    'a checklist item renamed to the text of another one took it',
+  );
+  await page.capture('flow-checklist-rename');
   await removeItem();
   expectThat(
     FLOW,
