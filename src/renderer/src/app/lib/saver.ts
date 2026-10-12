@@ -36,16 +36,17 @@ export function createSaver<T>({
     { saved: T | undefined; started: number; written: number; ended: number }
   >();
 
-  const commit = (key: string): void => {
+  /** Resolves once the save ended, whatever became of it. */
+  const commit = (key: string): Promise<void> => {
     const entry = pending.get(key);
     const state = unsettled.get(key);
-    if (!entry || !state) return;
+    if (!entry || !state) return Promise.resolve();
     clearTimeout(entry.timer);
     pending.delete(key);
     state.started += 1;
     const turn = state.started;
 
-    save(key, entry.value)
+    return save(key, entry.value)
       .then(
         () => {
           // The baseline of whatever comes after, unless a later save was
@@ -69,25 +70,33 @@ export function createSaver<T>({
       });
   };
 
-  return {
-    /** `previous` is the value on screen before this edit. */
-    schedule(key: string, value: T, previous: T | undefined): void {
-      if (!unsettled.has(key)) {
-        unsettled.set(key, {
-          saved: previous,
-          started: 0,
-          written: 0,
-          ended: 0,
-        });
-      }
+  /** `previous` is the value on screen before this edit. */
+  const schedule = (key: string, value: T, previous: T | undefined): void => {
+    if (!unsettled.has(key)) {
+      unsettled.set(key, { saved: previous, started: 0, written: 0, ended: 0 });
+    }
 
-      const waiting = pending.get(key);
-      if (waiting) clearTimeout(waiting.timer);
-      pending.set(key, { value, timer: setTimeout(() => commit(key), delay) });
-    },
+    const waiting = pending.get(key);
+    if (waiting) clearTimeout(waiting.timer);
+    pending.set(key, {
+      value,
+      timer: setTimeout(() => void commit(key), delay),
+    });
+  };
+
+  return {
+    schedule,
     /** Writes everything that is waiting (when the window closes, for example). */
     flush(): void {
-      for (const key of [...pending.keys()]) commit(key);
+      for (const key of [...pending.keys()]) void commit(key);
+    },
+    /**
+     * An edit that does not wait for the pause, such as a choice made in one
+     * click. Resolves once its save ended, whatever became of it.
+     */
+    write(key: string, value: T, previous: T | undefined): Promise<void> {
+      schedule(key, value, previous);
+      return commit(key);
     },
   };
 }

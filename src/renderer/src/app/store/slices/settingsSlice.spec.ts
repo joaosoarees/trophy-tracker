@@ -262,6 +262,53 @@ describe('settingsSlice', () => {
 
       expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(NOT_SAVED);
     });
+
+    /**
+     * The order of the pending list is changed and then that of the unlocked
+     * one, and neither save has ended: `end(n, outcome)` ends the nth.
+     */
+    async function setupTwoChanges() {
+      const saves = [deferred<void>(), deferred<void>()];
+      let asked = 0;
+      const made = await setup({
+        setAchievementSort: () => saves[asked++].promise,
+      });
+      const { setAchievementSort } = made.sut.getState().settings;
+      const changes = [
+        setAchievementSort('pending', 'rare'),
+        setAchievementSort('unlocked', 'name'),
+      ];
+      const end = (nth: 1 | 2, outcome: 'ok' | 'fail'): Promise<void> => {
+        if (outcome === 'ok') saves[nth - 1].resolve();
+        else saves[nth - 1].reject(new Error('disk full'));
+        return changes[nth - 1];
+      };
+      return { ...made, end };
+    }
+
+    it('should keep both orders when the earlier of two changes under way cannot be saved and the later one is', async () => {
+      const { sut, end } = await setupTwoChanges();
+      await end(1, 'fail');
+
+      await end(2, 'ok');
+
+      expect(sut.getState().settings.achievementSort).toEqual({
+        pending: 'rare',
+        unlocked: 'name',
+      });
+    });
+
+    it('should go back to the orders before both when neither of two changes under way can be saved', async () => {
+      const { sut, end } = await setupTwoChanges();
+      await end(1, 'fail');
+
+      await end(2, 'fail');
+
+      expect(sut.getState().settings.achievementSort).toEqual({
+        pending: 'common',
+        unlocked: 'recent',
+      });
+    });
   });
 
   describe('setDashboardSort', () => {
@@ -310,6 +357,27 @@ describe('settingsSlice', () => {
       await sut.getState().settings.setDashboardSort('ongoing', 'name');
 
       expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(NOT_SAVED);
+    });
+
+    it('should keep both orders when the earlier of two changes under way cannot be saved and the later one is', async () => {
+      const saves = [deferred<void>(), deferred<void>()];
+      let asked = 0;
+      const { sut } = await setup({
+        setDashboardSort: () => saves[asked++].promise,
+      });
+      const { setDashboardSort } = sut.getState().settings;
+      const earlier = setDashboardSort('ongoing', 'name');
+      const later = setDashboardSort('complete', 'name');
+      saves[0].reject(new Error('disk full'));
+      await earlier;
+
+      saves[1].resolve();
+      await later;
+
+      expect(sut.getState().settings.dashboardSort).toEqual({
+        ongoing: 'name',
+        complete: 'name',
+      });
     });
   });
 

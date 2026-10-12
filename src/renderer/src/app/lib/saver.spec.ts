@@ -254,4 +254,34 @@ describe('createSaver', () => {
       expect(onRollbackMock).toHaveBeenCalledExactlyOnceWith('note', 'one');
     });
   });
+
+  describe('write', () => {
+    it('should save at once, without the pause', () => {
+      const { sut, saveMock } = setup();
+
+      void sut.write('order', 'name', 'recent');
+
+      expect(saveMock).toHaveBeenCalledExactlyOnceWith('order', 'name');
+    });
+
+    it('should not resolve while its save is under way', async () => {
+      const { sut } = setupHeldSaves();
+      let hasResolved = false;
+      void sut.write('note', 'one', 'old').then(() => {
+        hasResolved = true;
+      });
+
+      await vi.advanceTimersByTimeAsync(PAUSE);
+
+      expect(hasResolved).toBe(false);
+    });
+
+    it('should have rolled back by the time it resolves when the save fails', async () => {
+      const { sut, onRollbackMock } = setup(['fail']);
+
+      await sut.write('order', 'name', 'recent');
+
+      expect(onRollbackMock).toHaveBeenCalledExactlyOnceWith('order', 'recent');
+    });
+  });
 });
