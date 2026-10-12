@@ -23,8 +23,13 @@ What changed in each version, for whoever uses the app. The section of a version
 - Changing the language while a game is still being read from Steam no longer leaves its achievements in the language that was left. Their names and descriptions could stay that way for up to a day, also after a restart, and game art for good, until ↻.
 - A game picked in the dashboard opens with your achievements even while that same game is running on a Steam account that is not in the app. It used to show "This game is running on a Steam account that is not in the app" until the game closed.
 - A game that starts just as the app opens, or just after another account is switched to, is shown as running. The app could stay on the last game played for as long as the other one ran.
+- A game stays on the dashboard, with the numbers it had, when Steam fails to answer for it while the dashboard is read again (↻, or after the game was played). It used to leave the list until the next read, with nothing said.
 - On Windows, a game is no longer shown as closed, and ten seconds later as started again, when Windows fails to say which game is running.
 - On macOS and Linux, a game that is not from Steam, shown as being played on the Steam profile, is no longer taken for a running game ("App 1.535e+19", with an error from Steam).
+
+**Updates**
+
+- An app opened before the network is up updates itself as usual once it is. It used to stop looking until it was restarted or the updates button was pressed, and only offered the download page for a version it could have installed.
 
 **When the app cannot save**
 

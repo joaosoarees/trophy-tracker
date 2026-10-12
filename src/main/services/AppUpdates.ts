@@ -72,7 +72,7 @@ export class AppUpdates {
    */
   private readonly failedInstall: string | null;
   private blocked: Promise<boolean> | null = null;
-  private looking: Promise<void> | null = null;
+  private looking: Promise<boolean> | null = null;
   private newVersion: string | null = null;
   private percent = 0;
   private status: 'idle' | 'downloading' | 'ready' | 'failed' = 'idle';
@@ -161,9 +161,9 @@ export class AppUpdates {
         // its release may have been withdrawn meanwhile.
         this.newVersion = null;
       }
-      if (this.status === 'idle') await this.look();
+      const hasChecked = this.status !== 'idle' || (await this.look());
       // A failure may also have arrived as an event while the check ran.
-      if (this.currentStatus() !== 'failed') {
+      if (hasChecked && this.currentStatus() !== 'failed') {
         return { ok: true, info: this.info() };
       }
     }
@@ -179,23 +179,39 @@ export class AppUpdates {
     this.auto.install();
   }
 
-  /** Looks for a newer version and starts downloading it; simultaneous calls share one look. */
-  private look(): Promise<void> {
+  /**
+   * Looks for a newer version and starts downloading it; simultaneous calls
+   * share one look. Answers whether the check could be made.
+   */
+  private look(): Promise<boolean> {
     this.looking ??= this.lookOnce().finally(() => (this.looking = null));
     return this.looking;
   }
 
-  private async lookOnce(): Promise<void> {
-    if (!this.auto) return;
+  private async lookOnce(): Promise<boolean> {
+    if (!this.auto) return false;
+    const checkedBefore = this.checkedAt;
     this.checkedAt = this.now();
+    let version: string | null;
     try {
-      const version = await this.auto.check();
+      version = await this.auto.check();
+    } catch {
+      // The check could not be made: the app opened before the network was
+      // up, for one. That says nothing about the updater, so it is not a
+      // failure of it, which would hand the user the download page until a
+      // restart. Nothing new is known, and the look is still due: the next
+      // one that comes round asks again, without waiting the six hours.
+      this.checkedAt = checkedBefore;
+      return false;
+    }
+
+    try {
       if (version === null || !isNewerVersion(version, this.currentVersion)) {
-        return;
+        return true;
       }
       if (version === this.failedInstall) {
         this.fail();
-        return;
+        return true;
       }
       this.newVersion = version;
       this.percent = 0;
@@ -206,6 +222,7 @@ export class AppUpdates {
     } catch {
       this.fail();
     }
+    return true;
   }
 
   private progress(percent: number): void {

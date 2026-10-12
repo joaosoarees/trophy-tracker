@@ -1498,6 +1498,47 @@ describe('Tracker', () => {
       });
     });
 
+    it('should keep a game on the dashboard, with what it had, when Steam fails to answer for it as it is read again', async () => {
+      let isDownForGame1 = false;
+      const { sut } = setup({
+        owned: () => [game(1, 'A', 10), game(2, 'B', 20)],
+        player: (appid) => {
+          if (isDownForGame1 && appid === 1)
+            throw new SteamError('unknown', 500);
+          return achieved(appid, 4);
+        },
+      });
+      await sut.getDashboard();
+      isDownForGame1 = true;
+
+      const games = await sut.getDashboard('all');
+
+      const counts = games
+        .map(({ appid, unlocked, total }) => ({ appid, unlocked, total }))
+        .sort((a, b) => a.appid - b.appid);
+      expect(counts).toEqual([
+        { appid: 1, unlocked: 1, total: 4 },
+        { appid: 2, unlocked: 2, total: 4 },
+      ]);
+    });
+
+    it('should take a game off the dashboard when Steam says, as it is read again, that it has no achievements', async () => {
+      let hasGame1Stats = true;
+      const { sut } = setup({
+        owned: () => [game(1, 'A', 10), game(2, 'B', 20)],
+        player: (appid) => {
+          if (!hasGame1Stats && appid === 1) throw new SteamError('no-stats');
+          return achieved(1, 4);
+        },
+      });
+      await sut.getDashboard();
+      hasGame1Stats = false;
+
+      const games = await sut.getDashboard('all');
+
+      expect(games.map(({ appid }) => appid)).toEqual([2]);
+    });
+
     it('should give a game the art in the new language when the language changes while the art is asked for', async () => {
       const { sut, store, answer } = setupTranslatedGame();
       const reading = sut.getDashboard();

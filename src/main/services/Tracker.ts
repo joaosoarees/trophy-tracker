@@ -434,7 +434,8 @@ export class Tracker {
 
   /**
    * What Steam says the player has in a game. A game without achievements
-   * counts as read; any failure but those two ends the whole read.
+   * counts as read, and one Steam fails to answer for with an unknown error
+   * keeps the summary it had; any other failure ends the whole read.
    */
   private async readSummary(
     creds: ICredentials,
@@ -454,9 +455,15 @@ export class Tracker {
         (e.kind !== 'no-stats' && e.kind !== 'unknown')
       )
         throw e;
+      // A one-off Steam failure must not become "no achievements" in the
+      // cache, nor take off the list a game that was read before: it stays
+      // with what the store has of it, to be read again at the next attempt.
+      const kept =
+        e.kind === 'unknown'
+          ? this.store.getSummary(game.appid, creds.steamId)
+          : null;
       return {
-        entry: Dashboard.entry([], game.playtime_forever),
-        // A one-off Steam failure must not become "no achievements" in the cache.
+        entry: kept ?? Dashboard.entry([], game.playtime_forever),
         isLasting: e.kind !== 'unknown',
       };
     }
