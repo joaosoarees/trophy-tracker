@@ -254,13 +254,14 @@ export function AccountStep({
       )}
 
       <StepperFooter>
+        {/* Disabled by the stepper while an account is verified or the setup
+            ends: the step is busy then. "Cancel" leaves the step as "Back"
+            does, so it waits as "Back" does. */}
         {onCancel ? (
-          <Button type="button" variant="ghost" onClick={onCancel}>
+          <StepperPreviousButton onClick={onCancel}>
             {t.common.cancel}
-          </Button>
+          </StepperPreviousButton>
         ) : (
-          // Disabled by the stepper while an account is verified or the
-          // setup ends: the step is busy then.
           <StepperPreviousButton />
         )}
         {isFormOpen && !isFormOptional ? (
