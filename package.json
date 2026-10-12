@@ -5,7 +5,7 @@
   "version": "1.1.0",
   "private": true,
   "description": "Tracks your Steam achievements: what is missing, the hidden ones, counters, checklists and guides. Not affiliated with Valve.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": {
     "name": "Joao Soares",
     "email": "joaosoarees@users.noreply.github.com"

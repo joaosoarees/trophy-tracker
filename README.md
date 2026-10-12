@@ -13,7 +13,7 @@
   <a href="https://github.com/joaosoarees/trophy-tracker/actions/workflows/ci.yml"><img src="https://github.com/joaosoarees/trophy-tracker/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://codecov.io/gh/joaosoarees/trophy-tracker"><img src="https://codecov.io/gh/joaosoarees/trophy-tracker/graph/badge.svg" alt="Test coverage" /></a>
   <img src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-2b3544" alt="Windows, macOS and Linux" />
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/joaosoarees/trophy-tracker" alt="MIT license" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/joaosoarees/trophy-tracker" alt="Apache 2.0 license" /></a>
 </p>
 
 <p align="center">
@@ -131,4 +131,4 @@ How the code is organised and the rules every change follows are in [CLAUDE.md](
 
 ## License
 
-[MIT](LICENSE)
+[Apache 2.0](LICENSE)

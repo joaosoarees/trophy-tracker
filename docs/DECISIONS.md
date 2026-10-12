@@ -123,7 +123,7 @@ Until 2026-10-11 any failure on the automatic path, the check included, put `App
 
 Found the hard way: 0.1.0 and 0.2.0 installed, 0.3.0 was refused by the same machine. With Smart App Control on, Windows runs an unsigned executable only if Microsoft's reputation service accepts it, which cannot be predicted, and there is no per-app exception. So the app does not download or restart there; the notice says the system would block the install. The check looks at the signature of the running app, so it stops applying by itself once the installers are signed.
 
-The MIT license and the "Code signing policy" and "Privacy" sections of the README were written for an application to SignPath Foundation, which signs open-source projects for free. See "Unsigned for now".
+The license (MIT at the time) and the "Code signing policy" and "Privacy" sections of the README were written for an application to SignPath Foundation, which signs open-source projects for free. The owner changed the license to Apache 2.0 on 2026-10-11; versions up to 1.1.0 were published under MIT. See "Unsigned for now".
 
 ## The audit and the fake Steam
 

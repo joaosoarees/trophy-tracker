@@ -8,6 +8,10 @@ What changed in each version, for whoever uses the app. The section of a version
 
 - With more than one account, the Settings button at the top of the window shows the face of the account in use in place of the gear, and its tooltip names it. Nothing on the Game or the Dashboard said whose achievements were on screen.
 
+### Changed
+
+- The app is now under the Apache 2.0 license. Versions up to 1.1.0 were published under MIT.
+
 ### Fixed
 
 **Checklists**
