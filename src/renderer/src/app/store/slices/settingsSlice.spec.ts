@@ -404,6 +404,130 @@ describe('settingsSlice', () => {
     });
   });
 
+  describe('pickSetupLanguage', () => {
+    it('should show the language before the main process has saved it', async () => {
+      const saving = deferred<IAppState>();
+      const { sut } = await setup({ setLanguage: () => saving.promise });
+
+      void sut.getState().settings.pickSetupLanguage('fr');
+
+      expect(sut.getState().session.language).toBe('fr');
+    });
+
+    it('should save the language that was picked', async () => {
+      const setLanguageMock = vi.fn(() =>
+        Promise.resolve(makeAppState({ language: 'fr' })),
+      );
+      const { sut } = await setup({ setLanguage: setLanguageMock });
+
+      await sut.getState().settings.pickSetupLanguage('fr');
+
+      expect(setLanguageMock).toHaveBeenCalledExactlyOnceWith('fr');
+    });
+
+    it('should answer the language that was picked when it is saved', async () => {
+      const { sut } = await setup({
+        setLanguage: () => Promise.resolve(makeAppState({ language: 'fr' })),
+      });
+
+      const shown = await sut.getState().settings.pickSetupLanguage('fr');
+
+      expect(shown).toBe('fr');
+    });
+
+    it('should save nothing when the language is the one in use', async () => {
+      const setLanguageMock = vi.fn(() => Promise.resolve(makeAppState()));
+      const { sut } = await setup({ setLanguage: setLanguageMock });
+
+      await sut.getState().settings.pickSetupLanguage('en');
+
+      expect(setLanguageMock).not.toHaveBeenCalled();
+    });
+
+    /**
+     * A main process that cannot write a language: it keeps English, as the
+     * real one keeps the one it had, and the call rejects.
+     */
+    const mainStillInEnglish = (): Partial<IApi> => ({
+      setLanguage: failing,
+      getState: () => Promise.resolve(makeAppState()),
+      logError: () => Promise.resolve(),
+    });
+
+    it('should put the screen back on the language the main process holds when the pick could not be saved', async () => {
+      const { sut } = await setup(mainStillInEnglish());
+
+      await sut.getState().settings.pickSetupLanguage('fr');
+
+      expect(sut.getState().session.language).toBe('en');
+    });
+
+    it('should answer the language the main process holds when the pick could not be saved', async () => {
+      const { sut } = await setup(mainStillInEnglish());
+
+      const shown = await sut.getState().settings.pickSetupLanguage('fr');
+
+      expect(shown).toBe('en');
+    });
+
+    it('should tell the user, in the language that stays, when the pick could not be saved', async () => {
+      const { sut, toastMock } = await setup(mainStillInEnglish());
+
+      await sut.getState().settings.pickSetupLanguage('fr');
+
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(UNEXPECTED);
+    });
+
+    it('should go back to the language it had when the main process cannot say which one it holds', async () => {
+      const { sut } = await setup({
+        ...mainStillInEnglish(),
+        getState: failing,
+      });
+
+      await sut.getState().settings.pickSetupLanguage('fr');
+
+      expect(sut.getState().session.language).toBe('en');
+    });
+
+    /**
+     * Spanish is picked and then French, and neither save has ended: `refuse`
+     * makes the disk refuse the first one.
+     */
+    async function setupTwoPicks() {
+      const spanish = deferred<IAppState>();
+      const french = deferred<IAppState>();
+      const made = await setup({
+        ...mainStillInEnglish(),
+        setLanguage: (language) =>
+          language === 'es' ? spanish.promise : french.promise,
+      });
+      const { pickSetupLanguage } = made.sut.getState().settings;
+      const earlier = pickSetupLanguage('es');
+      void pickSetupLanguage('fr');
+      const refuse = (): Promise<unknown> => {
+        spanish.reject(new Error('disk full'));
+        return earlier;
+      };
+      return { ...made, refuse };
+    }
+
+    it('should stay on a later pick when an earlier one could not be saved', async () => {
+      const { sut, refuse } = await setupTwoPicks();
+
+      await refuse();
+
+      expect(sut.getState().session.language).toBe('fr');
+    });
+
+    it('should say nothing of a pick that was left for another when it could not be saved', async () => {
+      const { toastMock, refuse } = await setupTwoPicks();
+
+      await refuse();
+
+      expect(toastMock.error).not.toHaveBeenCalled();
+    });
+  });
+
   describe('switchAccount', () => {
     it('should write what was waiting to be saved before it asks for the other account', async () => {
       const order: string[] = [];

@@ -376,6 +376,13 @@ async function auditDetailsFlow(page) {
 
 /** Runs every check on what is on screen now. */
 async function audit(page, name) {
+  // A toast read while it fades in or out is text of too little contrast:
+  // the ones on screen are waited for until they are fully there, or gone.
+  await waitFor(
+    page,
+    `[...document.querySelectorAll('[data-sonner-toast]')].every((el) => getComputedStyle(el).opacity === '1')`,
+    2000,
+  );
   await page.evaluate(axeSource);
   const result = JSON.parse(
     await page.evaluate(`axe.run(document, { resultTypes: ['violations'] }).then((r) => JSON.stringify({
@@ -502,10 +509,35 @@ async function holdEnter(page, selector) {
  * screen, with Steam answering badly before it answers well. Leaves the app
  * set up, on its first screen.
  */
-async function auditOnboarding(page, steam, language) {
+async function auditOnboarding(page, steam, language, userData) {
   const FLOW = `onboarding (${language})`;
   const failuresBefore = failures.length;
   const isFirst = language === LANGUAGES[0];
+  if (isFirst) {
+    // A language the disk refuses to save is not kept on screen: the pick
+    // goes back, with a toast saying so, and the next pick is saved.
+    const picked = `[...document.querySelectorAll('[role="radio"]')].findIndex((el) => el.getAttribute('aria-checked') === 'true')`;
+    const TOAST = `document.querySelector('[data-sonner-toast]')`;
+    mkdirSync(join(userData, 'settings.json.tmp'));
+    await page.evaluate(
+      `document.querySelectorAll('[role="radio"]')[3].click()`,
+    );
+    const isToldAndBack = await waitFor(
+      page,
+      `${TOAST}?.innerText.includes('Unexpected error') && (${picked}) === 0`,
+      4000,
+    );
+    expectThat(
+      FLOW,
+      isToldAndBack,
+      `a language that could not be saved stays picked, or nothing says it was not saved (picked: ${await page.evaluate(picked)}; toast: "${await page.evaluate(`${TOAST}?.innerText ?? ''`)}")`,
+    );
+    // The toast is still rising when the check passes.
+    await sleep(500);
+    await page.capture('flow-language-not-saved');
+    rmSync(join(userData, 'settings.json.tmp'), { recursive: true });
+    await waitFor(page, `${TOAST} === null`, 8000);
+  }
   await page.evaluate(
     `document.querySelectorAll('[role="radio"]')[${LANGUAGES.indexOf(language)}].click()`,
   );
@@ -546,7 +578,19 @@ async function auditOnboarding(page, steam, language) {
       '"Use another account" says no account was found in the Steam client, when one was',
     );
     await audit(page, `onboarding-account-typed-${language}`);
+    // A format error goes as the field is corrected, not at the next "Verify".
+    const formatError = `[...document.querySelectorAll('main small')].some((el) => /17-digit/.test(el.innerText))`;
+    await type(page, '[id$="-steamId"]', '123');
+    await page.evaluate(verifyAccount);
+    const isFormatRefused = await waitFor(page, formatError, 3000);
     await type(page, '[id$="-steamId"]', STEAM_ID);
+    expectThat(
+      FLOW,
+      isFormatRefused && (await waitFor(page, `!(${formatError})`, 2000)),
+      isFormatRefused
+        ? 'the format error of a SteamID stays under the field after it was corrected'
+        : 'a SteamID in the wrong format is not refused under its field',
+    );
   }
   const KEY = '0123456789ABCDEF0123456789ABCDEF';
   await type(page, '[id$="-apiKey"]', KEY);
@@ -1827,7 +1871,7 @@ for (const language of languages) {
   try {
     await withApp(async (page) => {
       await sleep(6000);
-      await auditOnboarding(page, steam, language);
+      await auditOnboarding(page, steam, language, userData);
       await auditScreens(page, steam, language);
       await auditCrash(page, language, userData);
       if (language !== LANGUAGES[0]) return;

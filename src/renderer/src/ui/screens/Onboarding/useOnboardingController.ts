@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-import { SettingsService } from '@app/services/SettingsService';
 import { useStore } from '@app/store';
 import { isLanguage } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
@@ -21,7 +20,9 @@ export function useOnboardingController({
   isAddingAccount,
   onDone,
 }: IOnboardingOptions) {
-  const setLanguage = useStore((store) => store.session.setLanguage);
+  const pickSetupLanguage = useStore(
+    (store) => store.settings.pickSetupLanguage,
+  );
   const acceptAccountStep = useStore(
     (store) => store.settings.acceptAccountStep,
   );
@@ -49,20 +50,28 @@ export function useOnboardingController({
     },
   });
 
-  useEffect(() => {
-    const { unsubscribe } = form.watch((formData, { name }) => {
-      // Picking the language switches the screen right away, with no reload.
-      const language = formData.languageStep?.language;
-      if (name === 'languageStep.language' && isLanguage(language)) {
-        setLanguage(language);
-        void SettingsService.setLanguage(language);
-      }
-    });
+  useEffect(
+    () =>
+      form.subscribe({
+        name: 'languageStep.language',
+        exact: true,
+        formState: { values: true },
+        callback: ({ values, name }) => {
+          // Picking the language switches the screen right away, with no
+          // reload. An event that names no field passes the filter above.
+          const { language } = values.languageStep;
+          if (name !== 'languageStep.language' || !isLanguage(language)) return;
 
-    return () => {
-      unsubscribe();
-    };
-  }, [form, setLanguage]);
+          void pickSetupLanguage(language).then((shown) => {
+            // The pick could not be saved: the field follows the screen back.
+            if (shown !== language) {
+              form.setValue('languageStep.language', shown);
+            }
+          });
+        },
+      }),
+    [form, pickSetupLanguage],
+  );
 
   /** An account was saved (`added`) or removed in the account step. */
   function handleAccountsChange(next: IAppState, added?: string) {
