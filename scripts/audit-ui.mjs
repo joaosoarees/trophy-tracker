@@ -1038,6 +1038,55 @@ async function auditAccounts(page, steam, home) {
   await sleep(900);
   await page.evaluate(showList('Pending'));
   await sleep(600);
+
+  // The X of the search hands the focus back to the field: the button that
+  // had it goes away with the text, and typing would go nowhere.
+  const SEARCH = 'main input[placeholder^="Search achievements"]';
+  await type(page, SEARCH, 'soul');
+  await sleep(300);
+  // A pointer puts the focus on what it presses, which a scripted click
+  // does not: the X is given it first.
+  await page.evaluate(
+    `(() => { const clear = document.querySelector('main button[aria-label="Clear search"]'); clear.focus(); clear.click(); })()`,
+  );
+  await sleep(300);
+  expectThat(
+    FLOW,
+    await page.evaluate(
+      `document.activeElement === document.querySelector(${JSON.stringify(SEARCH)}) && document.activeElement.value === ''`,
+    ),
+    'clearing the search with its X does not empty the field and leave the focus in it',
+  );
+
+  // A note stays under the cursor when its text is deleted, and closes,
+  // empty, once it is left.
+  const NOTE = `document.querySelector('main li textarea')`;
+  await page.evaluate(
+    `document.querySelector('main li button[aria-label="Add a note"]').click()`,
+  );
+  await sleep(300);
+  await page.send('Input.insertText', { text: 'Audit note' });
+  await page.evaluate(`${NOTE}.blur()`);
+  await sleep(300);
+  await page.evaluate(
+    `(() => { ${NOTE}.focus(); ${NOTE}.select(); document.execCommand('delete'); })()`,
+  );
+  await sleep(500);
+  expectThat(
+    FLOW,
+    await page.evaluate(
+      `${NOTE} !== null && ${NOTE}.value === '' && document.activeElement === ${NOTE}`,
+    ),
+    'a note whose text was deleted closed under the cursor',
+  );
+  await page.capture('flow-note-emptied');
+  await page.evaluate(`${NOTE}?.blur()`);
+  expectThat(
+    FLOW,
+    await waitFor(page, `${NOTE} === null`, 2000),
+    'an empty note stays open after it was left',
+  );
+
   await page.evaluate(`${LIST_TOGGLE}.click()`);
   await sleep(500);
   await addItem();

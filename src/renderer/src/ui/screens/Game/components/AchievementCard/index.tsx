@@ -195,6 +195,10 @@ export const AchievementCard = memo(function AchievementCard(
             placeholder={t.card.notePlaceholder}
             className="mt-2.5 min-h-0 text-sm"
             onChange={(event) => handleNoteChange(event.target.value)}
+            // A saved note is shown without having been opened: it is open
+            // from the moment it is edited, or deleting its text would take
+            // the field from under the cursor.
+            onFocus={handleOpenNote}
             onBlur={handleCloseNote}
           />
         </Collapsible>

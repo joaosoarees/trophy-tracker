@@ -11,6 +11,11 @@ What changed in each version, for whoever uses the app. The section of a version
 - A pasted list keeps a number at the start of a line when it is part of the name: "1-1 Secret exit", "1.5x multiplier", "10:30 boss rush", "2024-01-01 event". Such a line used to lose what came before its first separator ("1 Secret exit"), and two lines that differed only there became one item. A numbered list ("1. Item") still loses its numbers.
 - An item can no longer be renamed to the text of another item on the same list. With two items of one text, "Undo" after removing either put nothing back.
 
+**Searching and notes**
+
+- Clearing a search with its X leaves the cursor in the field, so the next search can be typed at once. The field used to lose it, and typing did nothing until the field was clicked again.
+- A note stays open while it is being edited, also when all its text is deleted. A saved note used to close under the cursor as its last letter went, and the next keys were lost.
+
 **Accounts and the setup**
 
 - "Cancel" waits while an account added from Settings is being verified. Cancelled at that moment, the screen used to close while the account was added all the same, and the app moved to it without a word.
