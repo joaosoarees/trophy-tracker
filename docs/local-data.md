@@ -11,7 +11,7 @@ The folder is `~/.config/trophy-tracker/` (`%APPDATA%\trophy-tracker` on Windows
 
 ## Rules
 
-- **`cache.json` records the language it was read in** and is dropped on startup if it does not match the language in `settings.json`. Changing the language drops the translated cache (games, achievement lists, art).
+- **`cache.json` records the language it was read in** and is dropped on startup if it does not match the language in `settings.json`. Changing the language drops the translated cache (games, achievement lists, art). A read still in flight then keeps nothing it was answered in the language that was left (`docs/steam-data.md`).
 
 - Never copy the key out of that folder or print it: the rule is in `CLAUDE.md`, because it holds for any work in the repository.
 - **A file is never lost to a bad write or a bad read** (`storage/Store.ts`). Writing goes to a temporary name and is then put in place.
