@@ -146,6 +146,7 @@ __tests__/           what specs share
   fakeSteamClient.ts   the fake of `SteamClient` for the same specs: answers values, writes down what was asked
   steamLibrary.ts      a library as Steam describes it: game, achieved; owned and player are their HTTP answers
   makeAppStore.ts      a fresh interface store over a fake main process
+  fakeSonner.ts        `sonner` for the specs of the store that assert what the user was told
   factories/           makeAchievement, makeAppInfo, makeAppState, makeGameSummary, makeGameView, makeStatSchema
   fixtures/            real API responses
 ```
@@ -172,7 +173,7 @@ ui (screens, components) → app/store and app/hooks → app/services → window
 - Interface services hold no state: they are typed doors to the main process. State lives in the store.
 - A store slice reaches the main process through `@app/services`, never through `window.api` (`docs/store.md`).
 - In the main process, `Ipc` holds no logic, and services receive what they depend on through the constructor (see `index.ts`), so they are testable without Electron.
-- **To add a call**, four places: a method on `IApi` (`shared/types/Api.ts`), a handler in `main/ipc/Ipc.ts`, the name in the list in `preload/index.ts`, and a method on the matching class in `app/services`.
+- **To add a call**, four places: a method on `IApi` (`shared/types/Api.ts`), a handler in `main/ipc/Ipc.ts`, the name in the list in `preload/index.ts` (a call missing there does not compile), and a method on the matching class in `app/services`.
 
 ## Tests
 
@@ -183,6 +184,7 @@ ui (screens, components) → app/store and app/hooks → app/services → window
 - **Imports in a spec:** the unit and its neighbours relatively (`./Tracker`, `../storage/Store`); `@shared/*`, `@app/*` and `@ui/*` as in the code; `@tests/*` for helpers, factories and fixtures.
 - **One behaviour per test**, written as arrange, act, assert, with a blank line between the three. A test that needs a second scenario is two tests.
 - **The act is a statement of its own that keeps the result** (`const info = await sut.getAppInfo();`), never a call inside `expect(...)`.
+- **A call that throws is kept as a function, or as its promise, and that is what is asserted:** `const run = () => sut.x();` then `expect(run).toThrow(new Error('…'))`; `const promise = sut.x();` then `await expect(promise).rejects.toThrow(new Error('…'))`. The act stays a statement of its own and the assertion fails when nothing is thrown. New tests use this form. The older ones that keep the error with a `try`/`catch` or `.catch((e) => e)` and compare it are safe (what they keep starts as `null`) and are not rewritten.
 - **The name is `should <result> when <condition>`** (`'should report a later release when GitHub has one'`).
 - **The instance under test is `sut`**, built by a `setup()` function that each test calls, so no test sees another's state. `setup()` returns `sut` and what the test needs to drive its collaborators.
 - **Assert what was promised:** exact values, the whole object when the object is the result, and the message of an error or a refusal, not only that it failed.
@@ -199,7 +201,7 @@ ui (screens, components) → app/store and app/hooks → app/services → window
 - `__tests__/steamLibrary.ts` builds a library as Steam describes it: `game` and `achieved` are the values a fake client answers, `owned` and `player` the HTTP answers that carry them. Use it instead of writing those by hand.
 - **Code that calls the system takes it as a dependency, defaulting to the real thing.** `Windows` takes the command runner in its constructor, `FileSteam` the disk, `RegistrySteam` the registry, and `SecureCipher.create` Electron's storage (`index.ts` passes the real one). New code that runs a command, reads the disk or uses an Electron API follows the same shape, so it can be tested on any machine.
 - **Store slices are tested against a fake main process.** `makeAppStore()` (`__tests__/makeAppStore.ts`) builds a fresh store with a fake `window.api` and `sessionStorage`; a call the test did not provide throws. Its `follow(appState)` puts the store on an account through the real `connectStore`, and `fireWindowEvent` tells the store's window listeners of an event (`beforeunload`). These tests have their own TypeScript project (`tsconfig.webtest.json`), because the store uses browser types.
-- **`sonner` is the one module that is mocked**, to see what was announced to the user.
+- **`sonner` is the one module that is mocked**, to see what was announced to the user, and only by the specs that assert it: `vi.mock('sonner', () => import('@tests/fakeSonner'))`. `__tests__/fakeSonner.ts` is the one shape of it; a spec that asserts nothing about toasts does not mock it.
 - **Fixtures are real responses** (`__tests__/fixtures`: Nioh 3 and Onimusha: Way of the Sword). The achievement lists exist in the four languages (`.en`, `.es`, `.fr`; the file without a suffix is Brazilian Portuguese); the audit's fake Steam needs them to answer in the app's language.
 - **Coverage:** `pnpm test:coverage` measures what is listed above; the Electron-only wiring and the texts are excluded in `vitest.config.ts`, with the reason.
 - `ci.yml` runs format, lint, types, tests with coverage and the build on Linux, and the tests again on Windows and macOS. A test must not assume a path separator or permission bits.

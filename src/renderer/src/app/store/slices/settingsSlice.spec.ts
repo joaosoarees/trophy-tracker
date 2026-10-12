@@ -9,9 +9,7 @@ import { deferred, makeAppStore } from '@tests/makeAppStore';
 
 import { type SettingsSlice } from './settingsSlice';
 
-vi.mock('sonner', () => ({
-  toast: Object.assign(vi.fn(), { error: vi.fn() }),
-}));
+vi.mock('sonner', () => import('@tests/fakeSonner'));
 
 const NOT_SAVED = 'Could not save your change, so it was undone.';
 

@@ -7,10 +7,6 @@ import { makeAppState } from '@tests/factories/makeAppState';
 import { OTHER_STEAM_ID } from '@tests/helpers';
 import { deferred, makeAppStore } from '@tests/makeAppStore';
 
-vi.mock('sonner', () => ({
-  toast: Object.assign(vi.fn(), { error: vi.fn() }),
-}));
-
 /** The state of the app following the second account. */
 function otherAccountState(): IAppState {
   return makeAppState({
