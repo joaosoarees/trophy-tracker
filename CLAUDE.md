@@ -146,6 +146,7 @@ __tests__/           what specs share
   fakeSteamClient.ts   the fake of `SteamClient` for the same specs: answers values, writes down what was asked
   steamLibrary.ts      a library as Steam describes it: game, achieved; owned and player are their HTTP answers
   makeAppStore.ts      a fresh interface store over a fake main process
+  fakeSonner.ts        `sonner` for the specs of the store that assert what the user was told
   factories/           makeAchievement, makeAppInfo, makeAppState, makeGameSummary, makeGameView, makeStatSchema
   fixtures/            real API responses
 ```
@@ -199,7 +200,7 @@ ui (screens, components) → app/store and app/hooks → app/services → window
 - `__tests__/steamLibrary.ts` builds a library as Steam describes it: `game` and `achieved` are the values a fake client answers, `owned` and `player` the HTTP answers that carry them. Use it instead of writing those by hand.
 - **Code that calls the system takes it as a dependency, defaulting to the real thing.** `Windows` takes the command runner in its constructor, `FileSteam` the disk, `RegistrySteam` the registry, and `SecureCipher.create` Electron's storage (`index.ts` passes the real one). New code that runs a command, reads the disk or uses an Electron API follows the same shape, so it can be tested on any machine.
 - **Store slices are tested against a fake main process.** `makeAppStore()` (`__tests__/makeAppStore.ts`) builds a fresh store with a fake `window.api` and `sessionStorage`; a call the test did not provide throws. Its `follow(appState)` puts the store on an account through the real `connectStore`, and `fireWindowEvent` tells the store's window listeners of an event (`beforeunload`). These tests have their own TypeScript project (`tsconfig.webtest.json`), because the store uses browser types.
-- **`sonner` is the one module that is mocked**, to see what was announced to the user.
+- **`sonner` is the one module that is mocked**, to see what was announced to the user, and only by the specs that assert it: `vi.mock('sonner', () => import('@tests/fakeSonner'))`. `__tests__/fakeSonner.ts` is the one shape of it; a spec that asserts nothing about toasts does not mock it.
 - **Fixtures are real responses** (`__tests__/fixtures`: Nioh 3 and Onimusha: Way of the Sword). The achievement lists exist in the four languages (`.en`, `.es`, `.fr`; the file without a suffix is Brazilian Portuguese); the audit's fake Steam needs them to answer in the app's language.
 - **Coverage:** `pnpm test:coverage` measures what is listed above; the Electron-only wiring and the texts are excluded in `vitest.config.ts`, with the reason.
 - `ci.yml` runs format, lint, types, tests with coverage and the build on Linux, and the tests again on Windows and macOS. A test must not assume a path separator or permission bits.

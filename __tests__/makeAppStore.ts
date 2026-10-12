@@ -24,8 +24,10 @@ interface IMakeAppStoreOptions {
 /**
  * A fresh interface store (`sut`) talking to a fake main process. The store is
  * a module-level singleton that reads `sessionStorage` when it is created, so
- * each call loads the modules again; `sonner`, which the spec mocks, is loaded
- * again too, so `toastMock` starts with no calls.
+ * each call loads the modules again. `toastMock` is what the store tells the
+ * user through, and is a mock only in a spec that put `@tests/fakeSonner` in
+ * the place of `sonner`: loaded again with the rest, it starts with no calls.
+ * A spec that asserts nothing about toasts leaves `sonner` as it is.
  */
 export async function makeAppStore({
   api = {},

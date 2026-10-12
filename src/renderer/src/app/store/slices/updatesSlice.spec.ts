@@ -5,9 +5,7 @@ import { makeAppInfo } from '@tests/factories/makeAppInfo';
 import { makeAppState } from '@tests/factories/makeAppState';
 import { deferred, makeAppStore } from '@tests/makeAppStore';
 
-vi.mock('sonner', () => ({
-  toast: Object.assign(vi.fn(), { error: vi.fn() }),
-}));
+vi.mock('sonner', () => import('@tests/fakeSonner'));
 
 const DOWNLOADING = makeAppInfo({
   newVersion: '1.1.0',
