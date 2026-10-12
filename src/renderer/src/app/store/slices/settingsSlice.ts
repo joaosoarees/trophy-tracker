@@ -69,6 +69,11 @@ type SettingsActions = {
    */
   changeLanguage: (language: Language) => Promise<void>;
   /**
+   * The language picked in the setup. The screen changes at once, with no
+   * reload: nothing Steam translated is on it yet.
+   */
+  pickSetupLanguage: (language: Language) => Promise<void>;
+  /**
    * Follows another saved account. What was read for the one being left goes
    * off the screen as the state changes (see `connectStore`). When the call
    * fails the user is told, and the store takes what the main process
@@ -289,6 +294,11 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
       return;
     }
     window.location.reload();
+  },
+
+  pickSetupLanguage: async (language) => {
+    get().session.setLanguage(language);
+    await SettingsService.setLanguage(language);
   },
 
   switchAccount: async (steamId) => {

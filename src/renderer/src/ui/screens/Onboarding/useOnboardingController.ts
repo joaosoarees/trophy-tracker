@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-import { SettingsService } from '@app/services/SettingsService';
 import { useStore } from '@app/store';
 import { isLanguage } from '@shared/i18n';
 import { type IAppState } from '@shared/types/AppState';
@@ -21,7 +20,9 @@ export function useOnboardingController({
   isAddingAccount,
   onDone,
 }: IOnboardingOptions) {
-  const setLanguage = useStore((store) => store.session.setLanguage);
+  const pickSetupLanguage = useStore(
+    (store) => store.settings.pickSetupLanguage,
+  );
   const acceptAccountStep = useStore(
     (store) => store.settings.acceptAccountStep,
   );
@@ -54,15 +55,14 @@ export function useOnboardingController({
       // Picking the language switches the screen right away, with no reload.
       const language = formData.languageStep?.language;
       if (name === 'languageStep.language' && isLanguage(language)) {
-        setLanguage(language);
-        void SettingsService.setLanguage(language);
+        void pickSetupLanguage(language);
       }
     });
 
     return () => {
       unsubscribe();
     };
-  }, [form, setLanguage]);
+  }, [form, pickSetupLanguage]);
 
   /** An account was saved (`added`) or removed in the account step. */
   function handleAccountsChange(next: IAppState, added?: string) {

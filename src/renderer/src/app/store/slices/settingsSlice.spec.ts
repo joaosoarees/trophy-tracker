@@ -404,6 +404,28 @@ describe('settingsSlice', () => {
     });
   });
 
+  describe('pickSetupLanguage', () => {
+    it('should show the language before the main process has saved it', async () => {
+      const saving = deferred<IAppState>();
+      const { sut } = await setup({ setLanguage: () => saving.promise });
+
+      void sut.getState().settings.pickSetupLanguage('fr');
+
+      expect(sut.getState().session.language).toBe('fr');
+    });
+
+    it('should save the language that was picked', async () => {
+      const setLanguageMock = vi.fn(() =>
+        Promise.resolve(makeAppState({ language: 'fr' })),
+      );
+      const { sut } = await setup({ setLanguage: setLanguageMock });
+
+      await sut.getState().settings.pickSetupLanguage('fr');
+
+      expect(setLanguageMock).toHaveBeenCalledExactlyOnceWith('fr');
+    });
+  });
+
   describe('switchAccount', () => {
     it('should write what was waiting to be saved before it asks for the other account', async () => {
       const order: string[] = [];
