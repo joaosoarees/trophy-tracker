@@ -24,35 +24,62 @@ export function createSaver<T>({
     string,
     { value: T; timer: ReturnType<typeof setTimeout> }
   >();
-  /** Last value known to be saved, for every key with unsaved edits. */
-  const saved = new Map<string, T | undefined>();
+  /**
+   * What is known of every key with an edit not settled yet: the last value
+   * known to be saved, and the saves of it, which are numbered as they start.
+   * More than one can be under way (an edit flushed while the one before is
+   * being written), and each carries the whole value, so only the answer of
+   * the newest one decides what the screen goes back to.
+   */
+  const unsettled = new Map<
+    string,
+    { saved: T | undefined; started: number; written: number; ended: number }
+  >();
 
   const commit = (key: string): void => {
     const entry = pending.get(key);
-    if (!entry) return;
+    const state = unsettled.get(key);
+    if (!entry || !state) return;
     clearTimeout(entry.timer);
     pending.delete(key);
+    state.started += 1;
+    const turn = state.started;
 
-    save(key, entry.value).then(
-      () => {
-        // A newer edit is already waiting: what was just saved is its baseline.
-        if (pending.has(key)) saved.set(key, entry.value);
-        else saved.delete(key);
-      },
-      () => {
-        // A newer edit carries the whole value and will be saved in its turn.
-        if (pending.has(key)) return;
-        const baseline = saved.get(key);
-        saved.delete(key);
-        onRollback(key, baseline);
-      },
-    );
+    save(key, entry.value)
+      .then(
+        () => {
+          // The baseline of whatever comes after, unless a later save was
+          // written before this one answered.
+          if (turn > state.written) {
+            state.written = turn;
+            state.saved = entry.value;
+          }
+        },
+        () => {
+          // A newer edit, waiting or being written, carries the whole value
+          // and is answered in its turn.
+          if (pending.has(key) || turn < state.started) return;
+          onRollback(key, state.saved);
+        },
+      )
+      .finally(() => {
+        state.ended += 1;
+        const isSettled = !pending.has(key) && state.ended === state.started;
+        if (isSettled) unsettled.delete(key);
+      });
   };
 
   return {
     /** `previous` is the value on screen before this edit. */
     schedule(key: string, value: T, previous: T | undefined): void {
-      if (!saved.has(key)) saved.set(key, previous);
+      if (!unsettled.has(key)) {
+        unsettled.set(key, {
+          saved: previous,
+          started: 0,
+          written: 0,
+          ended: 0,
+        });
+      }
 
       const waiting = pending.get(key);
       if (waiting) clearTimeout(waiting.timer);
