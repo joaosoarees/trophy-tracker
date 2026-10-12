@@ -5,6 +5,11 @@ export interface ISteamLocal {
    * Web API. Only Windows can (through the registry).
    */
   readonly canTrackRunningGame: boolean;
+  /**
+   * AppID of the running game; `null` when none is. Rejects when it could
+   * not be read: a caller that takes a failure for no game sees the game
+   * close and, at the next read, start again.
+   */
   getRunningAppId: () => Promise<number | null>;
   /**
    * SteamID64 of the account signed in to the client; `null` when nobody is.

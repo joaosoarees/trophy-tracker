@@ -108,6 +108,41 @@ describe('RunningGame', () => {
     expect(asked).toHaveLength(0);
   });
 
+  it('should keep the last answer when the registry cannot be read', async () => {
+    let isFailing = false;
+    const { sut } = setup({
+      local: {
+        canTrackRunningGame: true,
+        getRunningAppId: () =>
+          isFailing
+            ? Promise.reject(new Error('reg.exe timed out'))
+            : Promise.resolve(42),
+      },
+    });
+    await sut.getAppId();
+    isFailing = true;
+
+    const appId = await sut.getAppId();
+
+    expect(appId).toBe(42);
+  });
+
+  it('should answer null when the registry says the game closed', async () => {
+    let running: number | null = 42;
+    const { sut } = setup({
+      local: {
+        canTrackRunningGame: true,
+        getRunningAppId: () => Promise.resolve(running),
+      },
+    });
+    await sut.getAppId();
+    running = null;
+
+    const appId = await sut.getAppId();
+
+    expect(appId).toBeNull();
+  });
+
   it('should answer null without asking the API when no account is configured', async () => {
     const { sut, asked } = setup();
 
@@ -217,6 +252,18 @@ describe('RunningGame', () => {
     expect(appId).toBe(105600);
     expect(asked).toEqual([STEAM_ID]);
   });
+
+  it.each(['', '0', '-5', '1.5', 'abc', '15350571464926363648'])(
+    'should answer null when the profile shows "%s", which is not the appid of a Steam game',
+    async (gameid) => {
+      const { sut, configure } = setup({ summary: () => playing(gameid) });
+      configure();
+
+      const appId = await sut.getAppId();
+
+      expect(appId).toBeNull();
+    },
+  );
 
   it('should keep the last answer when the API fails', async () => {
     let isFailing = false;

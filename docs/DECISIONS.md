@@ -77,6 +77,14 @@ Found by the owner on 1.0.0: with the second account picked by hand and Steam on
 
 The follower only acted when the client's account changed, so a manual pick stood even against a running game. It now also acts when a game starts, and while the game runs the other accounts cannot be switched to: the owner asked for that, since switching back would recreate the same wrong screen. When the game closes the app stays where it is.
 
+## A registry read that fails is not a game closing
+
+On Windows the running game comes from the registry, through `reg.exe`, every ten seconds. A read that failed (the command killed at its ten seconds, or not started) answered "no game" until 2026-10-11: the watcher then made the game's last read, announced it closed and freed the account, and ten seconds later the game "started" again, with the dashboard read again and the app brought back to the Game tab. The Web API path already kept its last answer when a call failed; the registry path now does the same (`Windows.getRunningAppId` rejects, `RunningGame` keeps what it had). The cost is a game that really closed during a run of failed reads staying on screen as running until one works. How often `reg.exe` fails on a real machine was not measured: the change makes the three systems behave alike rather than answer a count.
+
+## A picked game is shown while it runs on an account the app does not have
+
+With a game running on a Steam account the app does not have, the Game tab says so and offers to add the account. Until 2026-10-11 the same screen came back when that game was picked in the dashboard of the account in use, which had played it too: the selector could not tell "nothing picked, the current game is on screen" from "the user picked the game that happens to be the current one", and that one game could not be opened until it closed. The owner chose to show the pick: the dashboard lists only this account's games, so what is shown is this account's data, with no running mark, since it is not this account that plays. The other reading (the game stays blocked while it runs elsewhere) was considered and dropped: `docs/accounts.md` forbids showing a running game with another account's data, which this does not do.
+
 ## Following the Steam account on every system
 
 It was Windows only at first, out of caution: there the registry says who is signed in. The Steam client's own files say the same on macOS and Linux, the app already read them to offer the SteamID in the setup, and the audit had been following an account through those files all along. So the restriction was removed. On macOS and Linux it was checked through the audit's fake client folder, not on a real Steam install.

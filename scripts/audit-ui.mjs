@@ -1352,6 +1352,33 @@ async function auditAccounts(page, steam, home) {
     'closing the game took the app back to the account picked before',
   );
 
+  // A game runs on an account the app does not have: the Game tab says so.
+  // The same game picked in the dashboard is the one of the account in use,
+  // shown with what that account has in it and not as running.
+  writeFakeSteamFolder(home, '76561198000000099');
+  steam.play(NIOH);
+  await page.evaluate(navButton(0));
+  expectThat(
+    FLOW,
+    await waitFor(
+      page,
+      `/not in the app/.test(document.querySelector('main').innerText)`,
+    ),
+    'a game running on an account the app does not have is not said to be on one',
+  );
+  await page.capture('flow-game-on-an-unknown-account');
+  await openGame(page, 'Nioh 3');
+  expectThat(
+    FLOW,
+    (await page.evaluate(gameTitle)) === 'Nioh 3' &&
+      !/running/i.test(await page.evaluate(headerText)),
+    `a game picked in the dashboard is not shown as the account in use has it while it runs on an account the app does not have (title: "${await page.evaluate(gameTitle)}"; header: "${await page.evaluate(headerText)}")`,
+  );
+  await page.capture('flow-picked-game-running-elsewhere');
+  steam.quit();
+  writeFakeSteamFolder(home, STEAM_ID);
+  await sleep(4000);
+
   // Removing: the question names the account, and can be backed out of.
   await openSettings();
   await page.evaluate(clickAccountCard(1));
