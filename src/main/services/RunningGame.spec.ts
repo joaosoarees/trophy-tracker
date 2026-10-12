@@ -218,6 +218,18 @@ describe('RunningGame', () => {
     expect(asked).toEqual([STEAM_ID]);
   });
 
+  it.each(['', '0', '-5', '1.5', 'abc', '15350571464926363648'])(
+    'should answer null when the profile shows "%s", which is not the appid of a Steam game',
+    async (gameid) => {
+      const { sut, configure } = setup({ summary: () => playing(gameid) });
+      configure();
+
+      const appId = await sut.getAppId();
+
+      expect(appId).toBeNull();
+    },
+  );
+
   it('should keep the last answer when the API fails', async () => {
     let isFailing = false;
     const { sut, configure, advance } = setup({

@@ -53,6 +53,16 @@ export class RunningGame {
     this.interval = interval;
   }
 
+  /**
+   * The appid a profile's `gameid` stands for, `null` when it is not one: no
+   * game, an empty text, or the 64-bit id Steam gives a game that is not its
+   * own, which no number here holds and no achievement list answers for.
+   */
+  private static appIdOf(gameid: string | undefined): number | null {
+    const appid = Number(gameid);
+    return Number.isSafeInteger(appid) && appid > 0 ? appid : null;
+  }
+
   /** AppID of the running game, or `null` when no game is open. */
   async getAppId(): Promise<number | null> {
     if (this.local.canTrackRunningGame) return this.local.getRunningAppId();
@@ -74,9 +84,7 @@ export class RunningGame {
     this.askedFor = credentials.steamId;
     try {
       const { gameid } = await this.client.getPlayerSummary(credentials);
-      const appid = Number(gameid);
-      this.last =
-        gameid !== undefined && Number.isInteger(appid) ? appid : null;
+      this.last = RunningGame.appIdOf(gameid);
     } catch {
       // Keep the last answer.
     }
