@@ -52,7 +52,7 @@ Four things together, each confirmed as essential to what the product is:
 
 - **Name:** Trophy Tracker. **Icon:** a trophy on a navy background (`build/icon.svg`, `build/icon.png`).
 - **Not affiliated with Valve or Steam**, and says so in the app and the README.
-- **Free and open source** under the MIT license, with no paid tier planned.
+- **Free and open source** under the Apache 2.0 license, with no paid tier planned.
 - **Voice:** plain, direct sentences that say what happened and what to do next; no jargon and no exclamation, except the one moment of finishing a game.
 
 ## Evidence on Hand
