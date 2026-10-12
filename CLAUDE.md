@@ -184,6 +184,7 @@ ui (screens, components) → app/store and app/hooks → app/services → window
 - **Imports in a spec:** the unit and its neighbours relatively (`./Tracker`, `../storage/Store`); `@shared/*`, `@app/*` and `@ui/*` as in the code; `@tests/*` for helpers, factories and fixtures.
 - **One behaviour per test**, written as arrange, act, assert, with a blank line between the three. A test that needs a second scenario is two tests.
 - **The act is a statement of its own that keeps the result** (`const info = await sut.getAppInfo();`), never a call inside `expect(...)`.
+- **A call that throws is kept as a function, or as its promise, and that is what is asserted:** `const run = () => sut.x();` then `expect(run).toThrow(new Error('…'))`; `const promise = sut.x();` then `await expect(promise).rejects.toThrow(new Error('…'))`. The act stays a statement of its own and the assertion fails when nothing is thrown. New tests use this form. The older ones that keep the error with a `try`/`catch` or `.catch((e) => e)` and compare it are safe (what they keep starts as `null`) and are not rewritten.
 - **The name is `should <result> when <condition>`** (`'should report a later release when GitHub has one'`).
 - **The instance under test is `sut`**, built by a `setup()` function that each test calls, so no test sees another's state. `setup()` returns `sut` and what the test needs to drive its collaborators.
 - **Assert what was promised:** exact values, the whole object when the object is the result, and the message of an error or a refusal, not only that it failed.
