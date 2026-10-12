@@ -105,6 +105,10 @@ On Windows the app closed and the installer's wizard came up asking everything t
 
 macOS cannot update itself: its updater only replaces an app signed with an Apple Developer ID certificate, which costs a yearly fee the project does not pay. The notice downloads the right disk image instead.
 
+## A check for updates that cannot be made is tried again
+
+Until 2026-10-11 any failure on the automatic path, the check included, put `AppUpdates` on the notice with the download page until the app was restarted or the user pressed the updates button. An app opened before the network was up therefore stopped updating itself for that whole run: when a release appeared, an app that could install it only offered the download. A check that could not be made now changes nothing: no version is known, and the look stays due, so the hourly timer asks again. A download that fails, an error the updater reports and a version whose install already failed still fall back to the notice, since those say something about the updater or the version.
+
 ## Smart App Control
 
 Found the hard way: 0.1.0 and 0.2.0 installed, 0.3.0 was refused by the same machine. With Smart App Control on, Windows runs an unsigned executable only if Microsoft's reputation service accepts it, which cannot be predicted, and there is no per-app exception. So the app does not download or restart there; the notice says the system would block the install. The check looks at the signature of the running app, so it stops applying by itself once the installers are signed.

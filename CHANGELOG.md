@@ -26,6 +26,10 @@ What changed in each version, for whoever uses the app. The section of a version
 - On Windows, a game is no longer shown as closed, and ten seconds later as started again, when Windows fails to say which game is running.
 - On macOS and Linux, a game that is not from Steam, shown as being played on the Steam profile, is no longer taken for a running game ("App 1.535e+19", with an error from Steam).
 
+**Updates**
+
+- An app opened before the network is up updates itself as usual once it is. It used to stop looking until it was restarted or the updates button was pressed, and only offered the download page for a version it could have installed.
+
 **When the app cannot save**
 
 - When a game starts on a saved account the app is not on, and the app cannot save the switch to it, the error log is told once, not every ten seconds for as long as it lasts. Meanwhile the Game tab stays on the game the account in use played last, and the app switches to the account that is playing, and shows its game, as soon as it can save again.

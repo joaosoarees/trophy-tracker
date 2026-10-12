@@ -228,14 +228,41 @@ describe('AppUpdates', () => {
       expect(info).toEqual(MANUAL);
     });
 
-    it('should answer what GitHub says when the automatic check could not be made', async () => {
+    it('should answer that nothing was found, not what GitHub says, when the automatic check could not be made', async () => {
       const { sut, net } = setup();
       net.online = false;
       await sut.checkNow();
 
       const info = await sut.getAppInfo();
 
-      expect(info).toEqual(MANUAL);
+      expect(info).toEqual(NOTHING);
+    });
+
+    it('should look again the next time it is asked when the automatic check could not be made', async () => {
+      const { sut, calls, net } = setup();
+      net.online = false;
+      await sut.getAppInfo();
+      await settle();
+      net.online = true;
+
+      await sut.getAppInfo();
+      await settle();
+
+      expect(calls.check).toBe(2);
+    });
+
+    it('should download the version found once the check that could not be made can be', async () => {
+      const { sut, net } = setup();
+      net.online = false;
+      await sut.getAppInfo();
+      await settle();
+      net.online = true;
+      await sut.getAppInfo();
+      await settle();
+
+      const info = await sut.getAppInfo();
+
+      expect(info).toEqual(downloading(0));
     });
 
     it('should not look again in the background when six hours have not passed', async () => {
