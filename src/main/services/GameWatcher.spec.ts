@@ -193,6 +193,29 @@ describe('GameWatcher', () => {
     });
   });
 
+  it('should answer the game a check announced as running when the last played one, asked for before it started, is known only afterwards', async () => {
+    const lastPlayed = held<number | null>();
+    const { sut, run } = setup({ lastPlayedAppId: () => lastPlayed.promise });
+    const asked = sut.refreshCurrent();
+    await turn();
+    run(42);
+    await sut.checkRunningGame();
+    lastPlayed.resolve(7);
+
+    const current = await asked;
+
+    expect(current).toEqual({ appid: 42, isRunning: true });
+  });
+
+  it('should not look again when another look for the current game ended meanwhile with the same answer', async () => {
+    const { sut, run, getRunningAppIdMock } = setup();
+    run(42);
+
+    await Promise.all([sut.refreshCurrent(), sut.refreshCurrent()]);
+
+    expect(getRunningAppIdMock).toHaveBeenCalledTimes(2);
+  });
+
   it('should answer the last played game of the account in use when another was in use as it began to look', async () => {
     const lastPlayed = [held<number | null>(), held<number | null>()];
     let reads = 0;

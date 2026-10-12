@@ -137,13 +137,22 @@ export class GameWatcher {
    * last read nor its announcement, which is what makes the interface read
    * the playtime again. The close is left to a check, started now, which is
    * the one in flight when there is one: it is read and announced once,
-   * whoever saw it first.
+   * whoever saw it first. What it saw is not answered either when a check
+   * announced something else meanwhile: it looks again.
    */
   async refreshCurrent(): Promise<CurrentGame> {
     const forgotten = this.forgotten;
+    const before = this.current;
     const current = await this.observe();
     // Another account took over meanwhile: its game is the one to answer.
     if (forgotten !== this.forgotten) return this.refreshCurrent();
+    // A check announced a change while this one looked, which takes longer
+    // when the last played game has to be asked for: what was seen here is
+    // from before it, and answered as it is would put the interface back on
+    // the game it had, with no later check to tell it otherwise.
+    const isOlderThanAnnounced =
+      this.current !== before && GameWatcher.hasChanged(this.current, current);
+    if (isOlderThanAnnounced) return this.refreshCurrent();
     if (GameWatcher.hasStoppedPlaying(this.current, current)) {
       void this.checkRunningGame();
       return current;
