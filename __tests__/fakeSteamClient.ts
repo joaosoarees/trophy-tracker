@@ -18,8 +18,13 @@ export interface ISteamAnswers {
   summary?: (credentials: ICredentials) => IRawPlayerSummary;
   /** The library of an account; `null` is a library that is not visible. */
   owned?: (credentials: ICredentials) => IRawOwnedGame[] | null;
-  /** The achievement list of a game (`getGameAchievements`). */
-  achievements?: (appid: number) => IRawSchemaAchievement[];
+  /**
+   * The achievement list of a game (`getGameAchievements`). A promise is
+   * Steam taking its time, as for `player`.
+   */
+  achievements?: (
+    appid: number,
+  ) => IRawSchemaAchievement[] | Promise<IRawSchemaAchievement[]>;
   /**
    * What a player has in a game (`getPlayerAchievements`). A promise is Steam
    * taking its time: the test settles it when the answer is to arrive.
@@ -30,8 +35,13 @@ export interface ISteamAnswers {
   ) => IRawPlayerAchievement[] | Promise<IRawPlayerAchievement[]>;
   /** The counters of a player in a game (`getUserStats`). */
   stats?: (appid: number, credentials: ICredentials) => Record<string, number>;
-  /** The art the store has; by default it has none for any game. */
-  art?: (appids: number[]) => Map<number, IStoreArt>;
+  /**
+   * The art the store has; by default it has none for any game. A promise is
+   * the store taking its time, as for `player`.
+   */
+  art?: (
+    appids: number[],
+  ) => Map<number, IStoreArt> | Promise<Map<number, IStoreArt>>;
 }
 
 /** One thing that was asked of Steam: which method, and with what. */

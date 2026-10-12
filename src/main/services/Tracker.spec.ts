@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { type Language } from '@shared/i18n';
 import { type IGameView } from '@shared/types/Game';
 import { makeGameSummary } from '@tests/factories/makeGameSummary';
 import {
@@ -15,6 +16,7 @@ import { achieved, game } from '@tests/steamLibrary';
 import {
   type ICredentials,
   type IRawPlayerAchievement,
+  type IRawSchemaAchievement,
   type IStoreArt,
   SteamError,
   type SteamErrorKind,
@@ -250,6 +252,61 @@ const turn = (): Promise<void> =>
   new Promise((resolve) => {
     setImmediate(resolve);
   });
+
+/** The one achievement of the game 1, as Steam names it in a language. */
+const listIn = (language: Language): IRawSchemaAchievement[] => [
+  {
+    internal_name: 'A0',
+    localized_name: language === 'fr' ? 'Gagnant' : 'Winner',
+    localized_desc: '',
+    icon: '',
+    icon_gray: '',
+    hidden: false,
+  },
+];
+
+/** The art the store has for the game 1 in a language. */
+const artIn = (language: Language): Map<number, IStoreArt> =>
+  new Map([
+    [
+      1,
+      {
+        header: `https://art.example/${language}/header.jpg`,
+        capsule: `https://art.example/${language}/capsule.jpg`,
+      },
+    ],
+  ]);
+
+/**
+ * A library with the game 1, in English, over a Steam that answers an
+ * achievement list and the art in the language each was asked for in, and
+ * only when the test lets it: `answer` gives every answer Steam owes, until
+ * it is asked for nothing more.
+ */
+function setupTranslatedGame() {
+  const owed: (() => void)[] = [];
+  /** An answer in the language of the app as it is asked for. */
+  const inTheLanguageAsked = <T>(give: (language: Language) => T) => {
+    const language = made.store.getLanguage();
+    return new Promise<T>((resolve) => {
+      owed.push(() => resolve(give(language)));
+    });
+  };
+  const made = setup({
+    owned: () => [game(1, 'Game', 10)],
+    achievements: () => inTheLanguageAsked(listIn),
+    player: () => achieved(0, 1),
+    art: () => inTheLanguageAsked(artIn),
+  });
+  const answer = async (): Promise<void> => {
+    for (;;) {
+      await turn();
+      if (owed.length === 0) return;
+      for (const give of owed.splice(0)) give();
+    }
+  };
+  return { ...made, answer };
+}
 
 const DOZEN = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -762,6 +819,58 @@ describe('Tracker', () => {
       const view = await sut.getGame(1);
 
       expect(view.header).toBe('');
+    });
+  });
+
+  describe('getGame, when the language changes while it reads', () => {
+    it('should answer the achievements in the new language when their list was asked for in the one that was left', async () => {
+      const { sut, store, answer } = setupTranslatedGame();
+      const reading = sut.getGame(1);
+      await turn();
+      store.setLanguage('fr');
+      await answer();
+
+      const view = await reading;
+
+      expect(view.achievements.map(({ name }) => name)).toEqual(['Gagnant']);
+    });
+
+    it('should attach the header in the new language when the art was asked for in the one that was left', async () => {
+      const { sut, store, answer } = setupTranslatedGame();
+      const reading = sut.getGame(1);
+      await turn();
+      store.setLanguage('fr');
+      await answer();
+
+      const view = await reading;
+
+      expect(view.header).toBe('https://art.example/fr/header.jpg');
+    });
+
+    it('should keep the achievement list in the new language when one asked for in the language that was left arrives', async () => {
+      const { sut, store, answer } = setupTranslatedGame();
+      const reading = sut.getGame(1);
+      await turn();
+      store.setLanguage('fr');
+      await answer();
+
+      await reading;
+
+      const kept = store.getSchema(1)?.items.map((item) => item.localized_name);
+      expect(kept).toEqual(['Gagnant']);
+    });
+
+    it('should not answer a read asked in the new language with the one still running in the language that was left', async () => {
+      const { sut, store, answer } = setupTranslatedGame();
+      void sut.getGame(1);
+      await turn();
+      store.setLanguage('fr');
+      const reading = sut.getGame(1);
+      await answer();
+
+      const view = await reading;
+
+      expect(view.achievements.map(({ name }) => name)).toEqual(['Gagnant']);
     });
   });
 
@@ -1387,6 +1496,20 @@ describe('Tracker', () => {
       await expect(dashboardPromise).rejects.toMatchObject({
         kind: 'private',
       });
+    });
+
+    it('should give a game the art in the new language when the language changes while the art is asked for', async () => {
+      const { sut, store, answer } = setupTranslatedGame();
+      const reading = sut.getDashboard();
+      await turn();
+      store.setLanguage('fr');
+      await answer();
+
+      const games = await reading;
+
+      expect(games.map(({ capsule }) => capsule)).toEqual([
+        'https://art.example/fr/capsule.jpg',
+      ]);
     });
   });
 });

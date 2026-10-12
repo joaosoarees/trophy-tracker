@@ -1,3 +1,4 @@
+import { type Language } from '@shared/i18n';
 import {
   type DashboardMode,
   type IGameSummary,
@@ -39,6 +40,7 @@ type ReadCache = Pick<
   | 'setSchema'
   | 'getArt'
   | 'setArt'
+  | 'getLanguage'
 >;
 
 /** The part of `SteamClient` that reads a library, a game and its art. */
@@ -94,13 +96,32 @@ export class Tracker {
     return this.store.getActiveSteamId() ?? '';
   }
 
-  /** Identical reads for the same account share one request. */
+  /**
+   * What a read is translated into: the language of the app as the read
+   * starts. Steam answers achievement names, descriptions and art in the
+   * language each request was made in, and the store drops them all when the
+   * language changes, so an answer asked for in the language that was left is
+   * not kept (`isStill`), and the read that waited for it starts again.
+   */
+  private language(): Language {
+    return this.store.getLanguage();
+  }
+
+  private isStill(language: Language): boolean {
+    return this.store.getLanguage() === language;
+  }
+
+  /**
+   * Identical reads for the same account, in the same language, share one
+   * request: a read asked in the new language is not answered by one still
+   * running in the language that was left.
+   */
   private once<T>(
     owner: string,
     name: string,
     run: () => Promise<T>,
   ): Promise<T> {
-    const key = `${owner}:${name}`;
+    const key = `${owner}:${this.language()}:${name}`;
     const running = this.inflight.get(key) as Promise<T> | undefined;
     if (running) return running;
     const promise = run().finally(() => this.inflight.delete(key));
@@ -145,6 +166,7 @@ export class Tracker {
 
   /** Art is decoration: it comes from the cache, and any store failure just leaves it out. */
   private async art(appids: number[]): Promise<Map<number, IStoreArt>> {
+    const language = this.language();
     const missing = appids.filter((id) => this.store.getArt(id) === null);
     if (missing.length > 0) {
       try {
@@ -152,7 +174,8 @@ export class Tracker {
         // Also record the ones the store did not return, so we do not ask again.
         for (const id of missing)
           if (!fetched.has(id)) fetched.set(id, { header: '', capsule: '' });
-        this.store.setArt(fetched);
+        // Art has no expiry: kept in another language, it would stay.
+        if (this.isStill(language)) this.store.setArt(fetched);
       } catch {
         // carry on without art
       }
@@ -201,8 +224,9 @@ export class Tracker {
     const cached = this.store.getSchema(appid);
     if (cached && !isFresh && this.now() - cached.fetchedAt < SCHEMA_TTL)
       return cached.items;
+    const language = this.language();
     const items = await this.client.getGameAchievements(appid);
-    this.store.setSchema(appid, items, this.now());
+    if (this.isStill(language)) this.store.setSchema(appid, items, this.now());
     return items;
   }
 
@@ -226,12 +250,15 @@ export class Tracker {
     onAnswer?: OnAnswer,
   ): Promise<IGameView> {
     const owner = this.owner();
+    const language = this.language();
     const cached = this.store.getGame(appid);
     if (cached && mode === false && this.now() - cached.fetchedAt < GAME_TTL)
       return cached;
     const view = await this.once(owner, `game:${appid}:${mode}`, () =>
-      this.readGame(owner, appid, mode === true, cached),
+      this.readGame(owner, language, appid, mode === true, cached),
     );
+    // The language changed meanwhile: the game is answered in the new one.
+    if (!this.isStill(language)) return this.getGame(appid, mode, onAnswer);
     // A game is never read without asking what the player has in it.
     onAnswer?.();
     return view;
@@ -272,6 +299,7 @@ export class Tracker {
 
   private async readGame(
     owner: string,
+    language: Language,
     appid: number,
     isFresh: boolean,
     cached: IGameView | null,
@@ -306,6 +334,8 @@ export class Tracker {
       header: art.get(appid)?.header ?? '',
     };
     const view = mergeView(cached, read);
+    // Read, at least in part, in a language the app has left: not kept.
+    if (!this.isStill(language)) return view;
     if (view === cached) {
       cached.fetchedAt = read.fetchedAt;
       this.store.setGame(cached, owner);
@@ -332,11 +362,15 @@ export class Tracker {
     onAnswer?: OnAnswer,
   ): Promise<IGameSummary[]> {
     const owner = this.owner();
+    const language = this.language();
     const { games, hasAnswer } = await this.once(
       owner,
       `dashboard:${mode}`,
       () => this.readDashboard(owner, mode, onProgress),
     );
+    // The language changed meanwhile: the art is answered in the new one.
+    if (!this.isStill(language))
+      return this.getDashboard(mode, onProgress, onAnswer);
     if (hasAnswer) onAnswer?.();
     return games;
   }
