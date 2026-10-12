@@ -154,6 +154,8 @@ export function useAccountStepController({
   // The step is not left while it waits for an answer: each call that waits
   // goes through the stepper (`whileBusy`), which takes no move until it ends.
   function handleVerify() {
+    // Enter in a field asks too, and no button's disabled state stops it.
+    if (isFinishing) return;
     void verifyOnce(() => whileBusy(verify));
   }
 

@@ -234,7 +234,9 @@ export function AccountStep({
               <Button
                 type="button"
                 size="sm"
-                disabled={isVerifying}
+                // Nor while the setup ends: the step is unmounted by its
+                // answer, under a check that would go on.
+                disabled={isVerifying || isFinishing}
                 onClick={handleVerify}
               >
                 {verifyLabel}

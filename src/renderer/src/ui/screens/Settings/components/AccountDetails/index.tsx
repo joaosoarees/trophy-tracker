@@ -74,6 +74,9 @@ export function AccountDetails({ account }: IAccountDetailsProps) {
             size="sm"
             variant="secondary"
             aria-expanded={isReplacing}
+            // Not while a key is being saved: the field would be emptied and
+            // typed in again under an answer about the key before it.
+            disabled={isSaving}
             onClick={handleToggleReplacing}
           >
             {t.accounts.replaceKey}
