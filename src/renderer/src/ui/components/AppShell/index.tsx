@@ -3,7 +3,6 @@ import {
   LayoutGrid,
   LoaderCircle,
   PictureInPicture2,
-  Settings as SettingsIcon,
   Trophy,
 } from 'lucide-react';
 
@@ -17,6 +16,7 @@ import { cn } from '@ui/utils/cn';
 import { GameOnAnotherAccount } from './GameOnAnotherAccount';
 import { KeyTroubleNotice } from './KeyTroubleNotice';
 import { NoGame } from './NoGame';
+import { SettingsButton } from './SettingsButton';
 import { TabButton } from './TabButton';
 import { useAppShellController } from './useAppShellController';
 
@@ -31,6 +31,7 @@ export function AppShell() {
     handleRetryLibrary,
     handleAddAccount,
     troubledAccount,
+    accountOnTheBar,
     alwaysOnTop,
     newVersion,
     isCheckingForUpdates,
@@ -90,16 +91,11 @@ export function AppShell() {
           {/* A window over another: the pin is kept for pinned achievements. */}
           <PictureInPicture2 />
         </IconButton>
-        <IconButton
-          label={t.nav.settings}
-          aria-current={tab === 'settings' ? 'page' : undefined}
-          className={cn(
-            tab === 'settings' && 'text-primary hover:text-primary',
-          )}
+        <SettingsButton
+          isCurrent={tab === 'settings'}
+          account={accountOnTheBar}
           onClick={() => goTo('settings')}
-        >
-          <SettingsIcon />
-        </IconButton>
+        />
       </nav>
 
       {troubledAccount && tab !== 'settings' && (

@@ -885,6 +885,25 @@ async function auditScreens(page, steam, language) {
     console.log('note the game art did not load (no internet?)');
   }
 
+  // The tab bar must hold at the narrowest the window gets, beside the
+  // buttons Windows draws over its end. The spacer between the tabs and the
+  // buttons is what gives way, so it is left out of what the bar needs.
+  const NARROWEST = 480;
+  const SYSTEM_BUTTONS = 138;
+  const barNeeds = await page.evaluate(`(() => {
+    const nav = document.querySelector('nav');
+    const style = getComputedStyle(nav);
+    const fixed = [...nav.children].filter((el) => getComputedStyle(el).flexGrow === '0');
+    const widths = fixed.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0);
+    const gaps = (parseFloat(style.columnGap) || 0) * (nav.children.length - 1);
+    return Math.ceil(widths + gaps + parseFloat(style.paddingLeft));
+  })()`);
+  expectThat(
+    FLOW,
+    barNeeds <= NARROWEST - SYSTEM_BUTTONS,
+    `the tab bar needs ${barNeeds} px, and has ${NARROWEST - SYSTEM_BUTTONS} beside the buttons Windows draws in a window ${NARROWEST} px wide`,
+  );
+
   // Flows do not depend on the language: once is enough.
   if (language === LANGUAGES[0]) await auditDetailsFlow(page);
   // The details open from the header; they close again for the next screen.
@@ -980,6 +999,13 @@ const activeAccountCard = `${ACCOUNT_CARDS}.findIndex((el) => el.getAttribute('a
 /** Clicks the card of an account that is not in use, or the one that adds. */
 const clickAccountCard = (index) =>
   `${ACCOUNT_CARDS}.at(${index}).querySelector('button').click()`;
+const SETTINGS_BUTTON = `[...document.querySelectorAll('nav button')].at(-1)`;
+/** The name of what leads to Settings, after "gear: " when it shows no face. */
+const accountOnTheBar = `(() => {
+  const button = ${SETTINGS_BUTTON};
+  const name = button.getAttribute('aria-label');
+  return button.querySelector('[data-slot="avatar"]') ? name : 'gear: ' + name;
+})()`;
 const settingsText = `document.querySelector('main > div:last-child > section')?.innerText ?? ''`;
 
 /**
@@ -1004,6 +1030,14 @@ async function auditAccounts(page, steam, home) {
     'Settings does not show two accounts with the first one in use',
   );
   await audit(page, 'flow-accounts-settings');
+  // With two accounts, what leads to Settings shows whose data is on screen.
+  expectThat(
+    FLOW,
+    (await page.evaluate(accountOnTheBar)) ===
+      'Settings (account in use: Audit Hunter)',
+    `the tab bar does not show the account in use (it says "${await page.evaluate(accountOnTheBar)}")`,
+  );
+  await captureHover(page, SETTINGS_BUTTON, 'hover-account-on-the-bar');
   await captureHover(
     page,
     `${ACCOUNT_CARDS}[1].querySelector('button')`,
@@ -1150,6 +1184,12 @@ async function auditAccounts(page, steam, home) {
     FLOW,
     (await page.evaluate(settingsText)).includes('Second Hunter'),
     'the details under the grid are not those of the account now in use',
+  );
+  expectThat(
+    FLOW,
+    (await page.evaluate(accountOnTheBar)) ===
+      'Settings (account in use: Second Hunter)',
+    `the tab bar does not show the account that was switched to (it says "${await page.evaluate(accountOnTheBar)}")`,
   );
   await page.evaluate(navButton(0));
   const itsGame = await waitFor(
@@ -1460,6 +1500,11 @@ async function auditAccounts(page, steam, home) {
     FLOW,
     removed,
     'removing the account in use does not move on to the other one',
+  );
+  expectThat(
+    FLOW,
+    (await page.evaluate(accountOnTheBar)) === 'gear: Settings',
+    `with one account left the tab bar does not go back to the gear (it says "${await page.evaluate(accountOnTheBar)}")`,
   );
   await page.evaluate(navButton(0));
   expectThat(

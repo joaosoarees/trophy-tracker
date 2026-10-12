@@ -54,6 +54,7 @@ export const en = {
     game: 'Game',
     dashboard: 'Dashboard',
     settings: 'Settings',
+    settingsWithAccount: (name: string) => `Settings (account in use: ${name})`,
     label: 'Main',
     pinWindow: 'Keep the window always on top',
     unpinWindow: 'Stop keeping the window on top',

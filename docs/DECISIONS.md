@@ -63,6 +63,14 @@ The card keeps one shape whether it is in use or not. When it was a button in on
 
 In the setup, adding a second account first lived in the last step, which sent the user back to the account step. Everything about accounts now happens in the account step, and the last step is only the summary.
 
+## The account in use is the face on the Settings button
+
+With two accounts, nothing on the Game or the Dashboard said whose data was on screen, and the app changes account by itself (a game starting, another account signing in to Steam). The owner asked for the account in use to be visible, as its avatar on the tab bar, shown only with more than one account and leading to Settings.
+
+A button of its own does not fit. Measured by the audit on 2026-10-12, at 480 px beside the 138 px of buttons Windows draws the bar has 342 px: without it the bar needs 342 in French (326 in English, 285 in Spanish, 280 in Portuguese), with it 378 and 362. So the face takes the place of the gear (`AppShell/SettingsButton`): no width is added, the click already led to Settings, and the tooltip names the account. The cost is that Settings stops looking like a gear once there are two accounts. Also considered: the avatar in the header of the Game and the toolbar of the Dashboard (two places, and none on the Game tab with no game), and tabs that drop their text when the window is narrow (a larger change to the bar for one avatar).
+
+This is the one thing about an account drawn outside its card, and it is only its face: the name is in the tooltip, and the key, its status and every action stay in the card.
+
 ## A refused key does not reopen the setup
 
 With one account, a key Steam refused sent the user back to the onboarding. With several, one bad key must not take the others down: the app stays open with what it had and says which key needs replacing.

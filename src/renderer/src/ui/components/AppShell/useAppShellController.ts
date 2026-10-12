@@ -17,6 +17,7 @@ export function useAppShellController() {
     libraryError,
     isLibraryLoading,
     activeAccount,
+    hasSeveralAccounts,
     goTo,
     startAddingAccount,
     loadCurrent,
@@ -39,6 +40,7 @@ export function useAppShellController() {
           (account) =>
             account.steamId === state.settings.appState?.activeSteamId,
         ) ?? null,
+      hasSeveralAccounts: (state.settings.appState?.accounts.length ?? 0) > 1,
       goTo: state.navigation.goTo,
       startAddingAccount: state.navigation.startAddingAccount,
       loadCurrent: state.session.loadCurrent,
@@ -91,6 +93,8 @@ export function useAppShellController() {
       activeAccount?.status === 'rateLimited'
         ? activeAccount
         : null,
+    // With one account there is nothing to tell apart: the bar keeps the gear.
+    accountOnTheBar: hasSeveralAccounts ? activeAccount : null,
     alwaysOnTop,
     newVersion,
     isCheckingForUpdates,

@@ -57,6 +57,7 @@ export const es: Messages = {
     game: 'Juego',
     dashboard: 'Panel',
     settings: 'Ajustes',
+    settingsWithAccount: (name) => `Ajustes (cuenta en uso: ${name})`,
     label: 'Principal',
     pinWindow: 'Mantener la ventana siempre visible',
     unpinWindow: 'Dejar de mantener la ventana siempre visible',
