@@ -14,7 +14,7 @@ The folder is `~/.config/trophy-tracker/` (`%APPDATA%\trophy-tracker` on Windows
 - **`cache.json` records the language it was read in** and is dropped on startup if it does not match the language in `settings.json`. Changing the language drops the translated cache (games, achievement lists, art). A read still in flight then keeps nothing it was answered in the language that was left (`docs/steam-data.md`).
 
 - Never copy the key out of that folder or print it: the rule is in `CLAUDE.md`, because it holds for any work in the repository.
-- **A file is never lost to a bad write or a bad read** (`storage/Store.ts`). Writing goes to a temporary name and is then put in place.
+- **A file is never lost to a bad write or a bad read** (`storage/Store.ts`). Writing goes to a temporary name and is then put in place. `config.json`, `userdata.json` and `settings.json` are flushed to the disk (`fsync`, through `flush: true`) before that: the rename alone protects against the app dying mid-write, not against the system going down a moment later with the new name kept and the new content not yet on the disk. `cache.json` is not flushed.
 - **A file that cannot be parsed, or whose content is not a JSON object, is copied to `<name>.damaged.bak`** before the app starts from nothing for that file, and the error log says so. This holds for all four files, `cache.json` included. Never treat such a file as empty: the next write would erase it for good.
 - **Every file carries the version of its format** (`FILE_VERSION`, 2 today). A file with no version counts as version 1. A file in the app's version is read. A file in any other version, older or later:
 

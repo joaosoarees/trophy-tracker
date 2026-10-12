@@ -35,6 +35,7 @@ What changed in each version, for whoever uses the app. The section of a version
 
 - When a game starts on a saved account the app is not on, and the app cannot save the switch to it, the error log is told once, not every ten seconds for as long as it lasts. Meanwhile the Game tab stays on the game the account in use played last, and the app switches to the account that is playing, and shows its game, as soon as it can save again.
 - "Check again" in Settings says "Unexpected error. Try again." when what Steam answered about the key cannot be saved. It used to end without a word, with the card still showing the old status.
+- Notes, checklists, accounts and settings are now written all the way to the disk before they replace the previous file, so a power cut just after a change should no longer be able to leave one of those files empty.
 - A language picked in the setup that cannot be saved goes back to the one before, with "Unexpected error. Try again.". The setup used to stay in the new language and the app then opened in the old one, with nothing said.
 - When two saves of the same note, pin or checklist overlap and one of them fails, the screen goes back to what was really saved. It could go back to nothing while the note was saved, or to the old text while the new one was.
 - The same for the order of the lists: when the order of one list and then of the other are changed and the first cannot be saved, the second is no longer undone on screen.

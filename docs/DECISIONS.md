@@ -45,6 +45,8 @@ A file used to be written straight over the previous one, and a file that could 
 
 The cache was rewritten whole on every game read. It is now written once, a second after it last changed, and when the app closes.
 
+Since 2026-10-11 the three files only the user can give back are also flushed to the disk before the rename. The rename protects a file from the app dying mid-write; it does not protect it from the system going down just after (a power cut during a game), when a file system may have recorded the new name and not the new content. The next start would then find `userdata.json` empty and set it aside as damaged, and the notes and checklists would be gone. Whether NTFS or APFS really lose a file this way was not tested, and cannot be without cutting the power: the flush was added because it is cheap (no difference that could be measured on the development machine, at 59 kB a write) and the loss is the one thing Steam cannot give back.
+
 ## Lists are not windowed
 
 Measured on the built app with 500 played games and a game with 300 achievements: both lists scroll at 60 frames a second, a tab switch costs about 40 ms, and the heaviest moment (showing a list of 200 cards) about 150 ms. Windowing would complicate the lists, the search and the keyboard for nothing that can be seen. Measure again before deciding otherwise.
