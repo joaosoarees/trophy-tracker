@@ -157,7 +157,7 @@ export const Settings = memo(function Settings() {
           label={t.settings.license}
           onClick={() => handleOpenPage('license')}
         >
-          MIT
+          Apache 2.0
           <ExternalLink className="size-4" />
         </DetailRow>
       </DetailGroup>

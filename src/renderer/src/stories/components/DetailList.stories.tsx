@@ -76,7 +76,7 @@ export const Clickable: Story = {
         <ExternalLink className="size-4" />
       </DetailRow>
       <DetailRow label="License" onClick={fn()}>
-        MIT
+        Apache 2.0
         <ExternalLink className="size-4" />
       </DetailRow>
     </DetailGroup>
