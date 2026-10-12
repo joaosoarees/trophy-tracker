@@ -237,18 +237,23 @@ export class Store {
   /**
    * Writes a whole file under a temporary name and then puts it in place, so
    * a crash in the middle leaves the previous file, not half of the new one.
+   * What only the user can give back (accounts and keys, notes, settings) is
+   * also flushed to the disk before it is put in place: without that, a
+   * system that goes down just after the write (a power cut, not the app
+   * crashing) may have kept the new name and not the new content, and the
+   * file is then empty at the next start. The cache is not flushed: Steam
+   * gives it all back.
    */
   private write(name: string, data: object, mode?: number): void {
     const file = join(this.dir, name);
     const temporary = `${file}.tmp`;
     const content = { version: FILE_VERSION, ...data };
+    const isCache = name === 'cache.json';
     writeFileSync(
       temporary,
       // The cache is large and only the app reads it; the rest stays readable.
-      name === 'cache.json'
-        ? JSON.stringify(content)
-        : JSON.stringify(content, null, 2),
-      { mode },
+      isCache ? JSON.stringify(content) : JSON.stringify(content, null, 2),
+      { mode, flush: !isCache },
     );
     if (mode !== undefined) chmodSync(temporary, mode);
     renameSync(temporary, file);
