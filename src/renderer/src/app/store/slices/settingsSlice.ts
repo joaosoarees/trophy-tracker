@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 
 import { explainFailedCall } from '@app/lib/failedCall';
+import { createSaver } from '@app/lib/saver';
 import { AccountsService } from '@app/services/AccountsService';
 import { OnboardingService } from '@app/services/OnboardingService';
 import { SettingsService } from '@app/services/SettingsService';
@@ -141,253 +142,272 @@ async function heldAfterFailure(
   return SettingsService.getState().catch(() => null);
 }
 
-export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => ({
-  appState: null,
-  alwaysOnTop: false,
-  preferences: DEFAULT_PREFERENCES,
-  folders: null,
-  achievementSort: DEFAULT_ACHIEVEMENT_SORT,
-  dashboardSort: DEFAULT_DASHBOARD_SORT,
-
-  load: async () => {
-    const [appState, alwaysOnTop, preferences, data, errorLog] =
-      await Promise.all([
-        SettingsService.getState(),
-        SettingsService.getAlwaysOnTop(),
-        SettingsService.getPreferences(),
-        SettingsService.getFolder('data'),
-        SettingsService.getFolder('errorLog'),
-      ]);
-    get().settings.apply(appState);
+export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => {
+  const applyAchievementSort = (value: IAchievementSort, action: string) =>
     set(
       (prevState) => {
-        prevState.settings.alwaysOnTop = alwaysOnTop;
-        prevState.settings.preferences = preferences;
-        prevState.settings.folders = { data, errorLog };
+        prevState.settings.achievementSort = value;
       },
       false,
-      'settings/load',
+      action,
     );
-  },
-
-  apply: (appState) =>
+  const applyDashboardSort = (value: IDashboardSort, action: string) =>
     set(
       (prevState) => {
-        prevState.settings.appState = appState;
-        prevState.settings.achievementSort = appState.achievementSort;
-        prevState.settings.dashboardSort = appState.dashboardSort;
-        prevState.session.language = appState.language;
+        prevState.settings.dashboardSort = value;
       },
       false,
-      'settings/apply',
-    ),
+      action,
+    );
 
-  // Optimistic update: the button responds at once and is put back if the
-  // main process could not apply the change.
-  toggleAlwaysOnTop: async () => {
-    const isOnBefore = get().settings.alwaysOnTop;
-    const setAlwaysOnTop = (value: boolean, action: string) =>
+  /**
+   * The saves of the order of two lists, written at once. Each save carries
+   * both orders, and two can be under way (one list reordered, then the
+   * other): the saver puts back what was last saved, and only when the
+   * newest one fails. Put back to what each call remembered, an earlier
+   * failure undid on screen an order the later save had written.
+   */
+  const listOrders = <T>(
+    save: (orders: T) => Promise<void>,
+    putBack: (orders: T) => void,
+  ) =>
+    createSaver<T>({
+      save: (_key, orders) => save(orders),
+      onRollback: (_key, saved) => {
+        if (saved !== undefined) putBack(saved);
+        toast.error(messagesFor(get().session.language).errors.changeNotSaved);
+      },
+    });
+  const achievementOrders = listOrders<IAchievementSort>(
+    (orders) => SettingsService.setAchievementSort(orders),
+    (orders) =>
+      applyAchievementSort(orders, 'settings/rollbackAchievementSort'),
+  );
+  const dashboardOrders = listOrders<IDashboardSort>(
+    (orders) => SettingsService.setDashboardSort(orders),
+    (orders) => applyDashboardSort(orders, 'settings/rollbackDashboardSort'),
+  );
+
+  return {
+    appState: null,
+    alwaysOnTop: false,
+    preferences: DEFAULT_PREFERENCES,
+    folders: null,
+    achievementSort: DEFAULT_ACHIEVEMENT_SORT,
+    dashboardSort: DEFAULT_DASHBOARD_SORT,
+
+    load: async () => {
+      const [appState, alwaysOnTop, preferences, data, errorLog] =
+        await Promise.all([
+          SettingsService.getState(),
+          SettingsService.getAlwaysOnTop(),
+          SettingsService.getPreferences(),
+          SettingsService.getFolder('data'),
+          SettingsService.getFolder('errorLog'),
+        ]);
+      get().settings.apply(appState);
       set(
         (prevState) => {
-          prevState.settings.alwaysOnTop = value;
-        },
-        false,
-        action,
-      );
-
-    setAlwaysOnTop(!isOnBefore, 'settings/toggleAlwaysOnTop');
-    try {
-      const isOnNow = await SettingsService.setAlwaysOnTop(!isOnBefore);
-      if (isOnNow === isOnBefore) {
-        setAlwaysOnTop(isOnNow, 'settings/alwaysOnTopNotApplied');
-      }
-    } catch {
-      setAlwaysOnTop(isOnBefore, 'settings/rollbackAlwaysOnTop');
-      toast.error(messagesFor(get().session.language).errors.changeNotSaved);
-    }
-  },
-
-  // Optimistic update, as in `toggleAlwaysOnTop`.
-  setPreference: async (key, value) => {
-    const previous = get().settings.preferences;
-    const apply = (preferences: IPreferences, action: string) =>
-      set(
-        (prevState) => {
+          prevState.settings.alwaysOnTop = alwaysOnTop;
           prevState.settings.preferences = preferences;
+          prevState.settings.folders = { data, errorLog };
         },
         false,
-        action,
+        'settings/load',
       );
+    },
 
-    apply({ ...previous, [key]: value }, 'settings/setPreference');
-    try {
-      apply(
-        await SettingsService.setPreference(key, value),
-        'settings/preferenceSaved',
-      );
-    } catch {
-      apply(previous, 'settings/rollbackPreference');
-      toast.error(messagesFor(get().session.language).errors.changeNotSaved);
-    }
-  },
-
-  openFolder: async (id) => {
-    const m = messagesFor(get().session.language);
-    try {
-      const done = await SettingsService.openFolder(id);
-      if (done === 'copied') toast(m.settings.pathCopied);
-    } catch {
-      toast.error(m.errors.unexpected);
-    }
-  },
-
-  // Optimistic update: the list reorders at once; if the preference cannot
-  // be saved, the previous order comes back.
-  setAchievementSort: async (filter, sort) => {
-    const previous = get().settings.achievementSort;
-    const next = { ...previous, [filter]: sort };
-    const apply = (value: IAchievementSort, action: string) =>
+    apply: (appState) =>
       set(
         (prevState) => {
-          prevState.settings.achievementSort = value;
+          prevState.settings.appState = appState;
+          prevState.settings.achievementSort = appState.achievementSort;
+          prevState.settings.dashboardSort = appState.dashboardSort;
+          prevState.session.language = appState.language;
         },
         false,
-        action,
-      );
+        'settings/apply',
+      ),
 
-    apply(next, 'settings/setAchievementSort');
-    try {
-      await SettingsService.setAchievementSort(next);
-    } catch {
-      apply(previous, 'settings/rollbackAchievementSort');
-      toast.error(messagesFor(get().session.language).errors.changeNotSaved);
-    }
-  },
+    // Optimistic update: the button responds at once and is put back if the
+    // main process could not apply the change.
+    toggleAlwaysOnTop: async () => {
+      const isOnBefore = get().settings.alwaysOnTop;
+      const setAlwaysOnTop = (value: boolean, action: string) =>
+        set(
+          (prevState) => {
+            prevState.settings.alwaysOnTop = value;
+          },
+          false,
+          action,
+        );
 
-  // Optimistic update, as in `setAchievementSort`.
-  setDashboardSort: async (filter, sort) => {
-    const previous = get().settings.dashboardSort;
-    const next = { ...previous, [filter]: sort };
-    const apply = (value: IDashboardSort, action: string) =>
-      set(
-        (prevState) => {
-          prevState.settings.dashboardSort = value;
-        },
-        false,
-        action,
-      );
-
-    apply(next, 'settings/setDashboardSort');
-    try {
-      await SettingsService.setDashboardSort(next);
-    } catch {
-      apply(previous, 'settings/rollbackDashboardSort');
-      toast.error(messagesFor(get().session.language).errors.changeNotSaved);
-    }
-  },
-
-  changeLanguage: async (language) => {
-    const previous = get().session.language;
-    if (language === previous) return;
-    try {
-      await SettingsService.setLanguage(language);
-    } catch (error) {
-      // The main process takes a language only once it is written: it is
-      // still on the previous one, as the screen is, and nothing is put back.
-      toast.error(explainFailedCall(error, messagesFor(previous)));
-      return;
-    }
-    window.location.reload();
-  },
-
-  pickSetupLanguage: async (language) => {
-    const previous = get().session.language;
-    if (language === previous) return language;
-
-    get().session.setLanguage(language);
-    try {
-      await SettingsService.setLanguage(language);
-    } catch (error) {
-      const problem = explainFailedCall(error, messagesFor(previous));
-      // Not `previous`: with two picks under way it may be one that was not
-      // saved either. The main process keeps only what it wrote.
-      const held = await SettingsService.getState().then(
-        (appState) => appState.language,
-        () => previous,
-      );
-      if (get().session.language === language) {
-        get().session.setLanguage(held);
-        toast.error(problem);
+      setAlwaysOnTop(!isOnBefore, 'settings/toggleAlwaysOnTop');
+      try {
+        const isOnNow = await SettingsService.setAlwaysOnTop(!isOnBefore);
+        if (isOnNow === isOnBefore) {
+          setAlwaysOnTop(isOnNow, 'settings/alwaysOnTopNotApplied');
+        }
+      } catch {
+        setAlwaysOnTop(isOnBefore, 'settings/rollbackAlwaysOnTop');
+        toast.error(messagesFor(get().session.language).errors.changeNotSaved);
       }
-    }
-    return get().session.language;
-  },
+    },
 
-  switchAccount: async (steamId) => {
-    if (steamId === get().settings.appState?.activeSteamId) return;
-    // Edits still waiting to be written belong to the account being left.
-    get().userData.flush();
-    const next = await AccountsService.setActive(steamId).catch((error) =>
-      heldAfterFailure(error, get().session.language),
-    );
-    if (next) get().settings.apply(next);
-  },
+    // Optimistic update, as in `toggleAlwaysOnTop`.
+    setPreference: async (key, value) => {
+      const previous = get().settings.preferences;
+      const apply = (preferences: IPreferences, action: string) =>
+        set(
+          (prevState) => {
+            prevState.settings.preferences = preferences;
+          },
+          false,
+          action,
+        );
 
-  removeAccount: async (steamId) => {
-    get().userData.flush();
-    const next = await AccountsService.remove(steamId).catch((error) =>
-      heldAfterFailure(error, get().session.language),
-    );
-    if (next) get().settings.apply(next);
-  },
-
-  removeStepAccount: async (steamId) =>
-    AccountsService.remove(steamId).catch((error) =>
-      heldAfterFailure(error, get().session.language),
-    ),
-
-  recheckAccount: async (steamId) => {
-    try {
-      get().settings.apply(await AccountsService.recheck(steamId));
-    } catch (error) {
-      const m = messagesFor(get().session.language);
-      toast.error(explainFailedCall(error, m));
-    }
-  },
-
-  accept: (appState, hasFollowed) => {
-    get().settings.apply(appState);
-    if (!hasFollowed) return;
-    const name = appState.profile?.name || appState.activeSteamId || '';
-    toast(messagesFor(appState.language).accounts.switched(name));
-  },
-
-  acceptAccountStep: (appState) => {
-    if (get().settings.appState?.isConfigured) get().settings.apply(appState);
-  },
-
-  finishSetup: async () => {
-    if (get().settings.appState?.isConfigured) return;
-
-    let next: IAppState;
-    try {
-      // The state is asked for last: it is the one the setup ends on.
-      const signedIn = await OnboardingService.detectSteamId();
-      next = await SettingsService.getState();
-      const first =
-        next.accounts.find((account) => account.steamId === signedIn) ??
-        next.accounts.at(0);
-      if (first && first.steamId !== next.activeSteamId) {
-        next = await AccountsService.setActive(first.steamId);
+      apply({ ...previous, [key]: value }, 'settings/setPreference');
+      try {
+        apply(
+          await SettingsService.setPreference(key, value),
+          'settings/preferenceSaved',
+        );
+      } catch {
+        apply(previous, 'settings/rollbackPreference');
+        toast.error(messagesFor(get().session.language).errors.changeNotSaved);
       }
-    } catch (error) {
-      // Taking the state without the account it should end on would enter
-      // the app on another one. The main process keeps nothing it could not
-      // write, so it is where it was, and asking again starts from there.
+    },
+
+    openFolder: async (id) => {
       const m = messagesFor(get().session.language);
-      toast.error(explainFailedCall(error, m));
-      return;
-    }
-    get().settings.apply(next);
-  },
-});
+      try {
+        const done = await SettingsService.openFolder(id);
+        if (done === 'copied') toast(m.settings.pathCopied);
+      } catch {
+        toast.error(m.errors.unexpected);
+      }
+    },
+
+    // Optimistic update: the list reorders at once; if the preference cannot
+    // be saved, the order that is saved comes back (`listOrders`).
+    setAchievementSort: (filter, sort) => {
+      const previous = get().settings.achievementSort;
+      const next = { ...previous, [filter]: sort };
+      applyAchievementSort(next, 'settings/setAchievementSort');
+      return achievementOrders.write('achievementSort', next, previous);
+    },
+
+    // Optimistic update, as in `setAchievementSort`.
+    setDashboardSort: (filter, sort) => {
+      const previous = get().settings.dashboardSort;
+      const next = { ...previous, [filter]: sort };
+      applyDashboardSort(next, 'settings/setDashboardSort');
+      return dashboardOrders.write('dashboardSort', next, previous);
+    },
+
+    changeLanguage: async (language) => {
+      const previous = get().session.language;
+      if (language === previous) return;
+      try {
+        await SettingsService.setLanguage(language);
+      } catch (error) {
+        // The main process takes a language only once it is written: it is
+        // still on the previous one, as the screen is, and nothing is put back.
+        toast.error(explainFailedCall(error, messagesFor(previous)));
+        return;
+      }
+      window.location.reload();
+    },
+
+    pickSetupLanguage: async (language) => {
+      const previous = get().session.language;
+      if (language === previous) return language;
+
+      get().session.setLanguage(language);
+      try {
+        await SettingsService.setLanguage(language);
+      } catch (error) {
+        const problem = explainFailedCall(error, messagesFor(previous));
+        // Not `previous`: with two picks under way it may be one that was not
+        // saved either. The main process keeps only what it wrote.
+        const held = await SettingsService.getState().then(
+          (appState) => appState.language,
+          () => previous,
+        );
+        if (get().session.language === language) {
+          get().session.setLanguage(held);
+          toast.error(problem);
+        }
+      }
+      return get().session.language;
+    },
+
+    switchAccount: async (steamId) => {
+      if (steamId === get().settings.appState?.activeSteamId) return;
+      // Edits still waiting to be written belong to the account being left.
+      get().userData.flush();
+      const next = await AccountsService.setActive(steamId).catch((error) =>
+        heldAfterFailure(error, get().session.language),
+      );
+      if (next) get().settings.apply(next);
+    },
+
+    removeAccount: async (steamId) => {
+      get().userData.flush();
+      const next = await AccountsService.remove(steamId).catch((error) =>
+        heldAfterFailure(error, get().session.language),
+      );
+      if (next) get().settings.apply(next);
+    },
+
+    removeStepAccount: async (steamId) =>
+      AccountsService.remove(steamId).catch((error) =>
+        heldAfterFailure(error, get().session.language),
+      ),
+
+    recheckAccount: async (steamId) => {
+      try {
+        get().settings.apply(await AccountsService.recheck(steamId));
+      } catch (error) {
+        const m = messagesFor(get().session.language);
+        toast.error(explainFailedCall(error, m));
+      }
+    },
+
+    accept: (appState, hasFollowed) => {
+      get().settings.apply(appState);
+      if (!hasFollowed) return;
+      const name = appState.profile?.name || appState.activeSteamId || '';
+      toast(messagesFor(appState.language).accounts.switched(name));
+    },
+
+    acceptAccountStep: (appState) => {
+      if (get().settings.appState?.isConfigured) get().settings.apply(appState);
+    },
+
+    finishSetup: async () => {
+      if (get().settings.appState?.isConfigured) return;
+
+      let next: IAppState;
+      try {
+        // The state is asked for last: it is the one the setup ends on.
+        const signedIn = await OnboardingService.detectSteamId();
+        next = await SettingsService.getState();
+        const first =
+          next.accounts.find((account) => account.steamId === signedIn) ??
+          next.accounts.at(0);
+        if (first && first.steamId !== next.activeSteamId) {
+          next = await AccountsService.setActive(first.steamId);
+        }
+      } catch (error) {
+        // Taking the state without the account it should end on would enter
+        // the app on another one. The main process keeps nothing it could not
+        // write, so it is where it was, and asking again starts from there.
+        const m = messagesFor(get().session.language);
+        toast.error(explainFailedCall(error, m));
+        return;
+      }
+      get().settings.apply(next);
+    },
+  };
+};
