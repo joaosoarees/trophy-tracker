@@ -57,6 +57,7 @@ export const ptBR: Messages = {
     game: 'Jogo',
     dashboard: 'Painel',
     settings: 'Configuração',
+    settingsWithAccount: (name) => `Configuração (conta em uso: ${name})`,
     label: 'Principal',
     pinWindow: 'Manter a janela sempre no topo',
     unpinWindow: 'Deixar de manter a janela no topo',

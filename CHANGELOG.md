@@ -4,6 +4,10 @@ What changed in each version, for whoever uses the app. The section of a version
 
 ## Unreleased
 
+### Added
+
+- With more than one account, the Settings button at the top of the window shows the face of the account in use in place of the gear, and its tooltip names it. Nothing on the Game or the Dashboard said whose achievements were on screen.
+
 ### Fixed
 
 **Checklists**

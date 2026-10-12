@@ -301,7 +301,7 @@ A compact field (32px, 12px text) in Recessed Slate with a chevron. Its list is 
 
 ### Navigation
 
-A single bar across the top with a hairline under it. Tabs are text with a small icon, in Quiet Steel; the current one is Glance White with a 2px Signal Blue underline. Utility actions sit at the right as icon buttons: updates (an arrow in a circle, which spins as a loader while checking and carries a Signal Blue dot once a version exists), always on top (a window over another) and Settings (a gear). The pin glyph is not used here: it belongs to pinned achievements. Switching tabs fades the new screen in with a 6px rise over 180ms.
+A single bar across the top with a hairline under it. Tabs are text with a small icon, in Quiet Steel; the current one is Glance White with a 2px Signal Blue underline. Utility actions sit at the right as icon buttons: updates (an arrow in a circle, which spins as a loader while checking and carries a Signal Blue dot once a version exists), always on top (a window over another) and Settings (a gear; with more than one account, the 24px round face of the account in use, ringed in Signal Blue while Settings is on screen, since the bar has no room for a button more). The pin glyph is not used here: it belongs to pinned achievements. Switching tabs fades the new screen in with a 6px rise over 180ms.
 
 ### Detail rows
 
@@ -371,7 +371,7 @@ The monospaced face exists for this field and the masked key alone, because 32 c
 - **Anatomy:** a card (Panel Navy, hairline, 8px): a 40px avatar, the name in title weight with the SteamID under it in caption text, and the status of the key at the end. A list ends with a dashed card of the same width, a plus and "Add account".
 - **Variants:** in a list that switches (Settings), and in a list that only shows what was verified (the setup), where the end of the card carries "Verified" and, for an account added in that visit, a 32px button that takes it out again.
 - **States:** the account in use has a Signal Blue border at 60 percent and the words "In use" beside its name; it is not a button, and it is where the card opens: under a hairline, on the field colour, the masked key with its actions. Any other account is one button exactly as wide as the card, hovering like a game row (Signal Blue border and the usual wash), so no empty area lights up around it.
-- **Do:** keep what belongs to an account inside its card. **Don't:** list an account's facts as loose rows under a row of faces: nothing ties them to the account, and a face-sized tile has more hover than content.
+- **Do:** keep what belongs to an account inside its card; only its face leaves it, for the Settings button of the tab bar. **Don't:** list an account's facts as loose rows under a row of faces: nothing ties them to the account, and a face-sized tile has more hover than content.
 
 #### Confirmation dialog
 

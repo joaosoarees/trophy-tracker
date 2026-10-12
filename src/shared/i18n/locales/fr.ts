@@ -58,6 +58,7 @@ export const fr: Messages = {
     game: 'Jeu',
     dashboard: 'Tableau de bord',
     settings: 'Paramètres',
+    settingsWithAccount: (name) => `Paramètres (compte utilisé : ${name})`,
     label: 'Principale',
     pinWindow: 'Garder la fenêtre toujours au premier plan',
     unpinWindow: 'Ne plus garder la fenêtre au premier plan',
