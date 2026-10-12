@@ -29,6 +29,7 @@ export default defineConfig({
       include: [
         'src/main/**/*.ts',
         'src/shared/**/*.ts',
+        'src/renderer/src/app/lib/activeGame.ts',
         'src/renderer/src/app/lib/saver.ts',
         'src/renderer/src/app/lib/singleFlight.ts',
         'src/renderer/src/app/lib/failedCall.ts',

@@ -1,26 +1,13 @@
 import { useShallow } from 'zustand/react/shallow';
 
+import { activeGame, type IActiveGame } from '@app/lib/activeGame';
 import { useStore } from '@app/store';
 
-/** The game on screen: the one picked in the dashboard or, without a pick, the current one. */
-export function useActiveGame(): {
-  appid: number | null;
-  isRunning: boolean;
-  /** The running game belongs to a Steam account the app does not have. */
-  isOnAnotherAccount: boolean;
-} {
+/** The game on screen, as `activeGame` decides it from the store. */
+export function useActiveGame(): IActiveGame {
   return useStore(
-    useShallow((state) => {
-      const { current } = state.session;
-      const appid = state.navigation.pickedAppId ?? current?.appid ?? null;
-
-      const isCurrent = current !== null && appid === current.appid;
-
-      return {
-        appid,
-        isRunning: isCurrent && current.isRunning,
-        isOnAnotherAccount: isCurrent && current.isOnAnotherAccount === true,
-      };
-    }),
+    useShallow((state) =>
+      activeGame(state.session.current, state.navigation.pickedAppId),
+    ),
   );
 }
