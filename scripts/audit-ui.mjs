@@ -41,7 +41,8 @@ import {
   writeFakeSteamFolder,
 } from './fake-steam.mjs';
 
-const PORT = 9333;
+// Each language audited side by side is given a port of its own.
+const PORT = Number(process.env.AUDIT_PORT ?? 9333);
 // In the order of the onboarding's language list, with Steam's name for each.
 const LANGUAGES = ['en', 'pt-BR', 'es', 'fr'];
 const STEAM_LANGUAGE = {
@@ -1765,11 +1766,47 @@ if (!existsSync('out/main/index.js')) {
   console.error('No build found. Run `pnpm build` first.');
   process.exit(1);
 }
-rmSync(OUT, { recursive: true, force: true });
-mkdirSync(OUT, { recursive: true });
-
 // `AUDIT_LANGUAGES=en pnpm audit:ui` runs one language while working on it.
 const languages = process.env.AUDIT_LANGUAGES?.split(',') ?? LANGUAGES;
+const isOneOfSeveral = process.env.AUDIT_ONE_OF_SEVERAL === '1';
+if (!isOneOfSeveral) {
+  rmSync(OUT, { recursive: true, force: true });
+  mkdirSync(OUT, { recursive: true });
+}
+
+// The languages share nothing (each has its own Steam, client folder, data
+// folder and captures), so several are audited side by side: one process
+// and one debugging port each. What a language printed is shown whole, in
+// the order of the list, once all of them ended.
+if (languages.length > 1) {
+  const runs = await Promise.all(
+    languages.map(
+      (language, index) =>
+        new Promise((resolve) => {
+          const child = spawn(process.execPath, [process.argv[1]], {
+            env: {
+              ...process.env,
+              AUDIT_LANGUAGES: language,
+              AUDIT_PORT: String(PORT + index),
+              AUDIT_ONE_OF_SEVERAL: '1',
+            },
+          });
+          let output = '';
+          child.stdout.on('data', (chunk) => (output += chunk));
+          child.stderr.on('data', (chunk) => (output += chunk));
+          child.on('close', (code) => resolve({ language, output, code }));
+        }),
+    ),
+  );
+  for (const run of runs) process.stdout.write(run.output);
+  const failed = runs.filter((run) => run.code !== 0);
+  console.log(
+    failed.length === 0
+      ? `\nNo problems found in ${languages.join(', ')}.`
+      : `\nProblems in ${failed.map((run) => run.language).join(', ')}: see each above.`,
+  );
+  process.exit(failed.length === 0 ? 0 : 1);
+}
 
 for (const language of languages) {
   console.log(`\n== ${language} ==`);
