@@ -33,6 +33,8 @@ export function showTheme(theme: ThemeId): void {
     root.style.setProperty(`--${name}`, value);
   }
   root.style.colorScheme = scheme;
+  // From here on the page paints its own field (`styles/index.css`).
+  root.dataset.theme = theme;
   root.classList.toggle('dark', scheme === 'dark');
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(theme));
