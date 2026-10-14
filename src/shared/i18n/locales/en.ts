@@ -238,12 +238,18 @@ export const en = {
   },
   settings: {
     title: 'Settings',
+    theme: 'Theme',
+    themeHint:
+      'The theme belongs to the account in use: each account keeps its own.',
+    palettes: 'Palettes of the themes',
+    paletteCredits: 'Dracula © Dracula Theme, MIT License.',
     steamId: (id: string) => `SteamID ${id}`,
     language: 'Language',
     languageHint:
       'The app reloads to apply the language, including achievement names.',
     groups: {
       account: 'Account',
+      appearance: 'Appearance',
       window: 'Window and language',
       data: 'Data and privacy',
       about: 'About',
@@ -304,6 +310,7 @@ export const en = {
 
     language: {
       title: 'Trophy Tracker',
+      theme: 'Theme',
       description: 'See what is left to unlock in the game you are playing.',
       intro:
         'For the game you are playing, this app shows which achievements are missing, what the hidden ones are, how far along the counted ones are, and shortcuts to guides.',
