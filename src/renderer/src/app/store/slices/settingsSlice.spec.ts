@@ -470,6 +470,95 @@ describe('settingsSlice', () => {
     });
   });
 
+  describe('pickTheme', () => {
+    /** The store on the app's state, in the default theme. */
+    async function setupOnNavy(api: Partial<IApi> = {}) {
+      const made = await setup(api);
+      made.sut.getState().settings.apply(makeAppState());
+      return made;
+    }
+
+    /** A main process that cannot write a theme: it keeps the default one. */
+    const mainStillOnNavy = (): Partial<IApi> => ({
+      setTheme: failing,
+      getState: () => Promise.resolve(makeAppState()),
+      logError: () => Promise.resolve(),
+    });
+
+    it('should show the theme before the main process has saved it', async () => {
+      const saving = deferred<IAppState>();
+      const { sut } = await setupOnNavy({ setTheme: () => saving.promise });
+
+      void sut.getState().settings.pickTheme('dracula');
+
+      expect(sut.getState().settings.appState?.theme).toBe('dracula');
+    });
+
+    it('should save the theme that was picked', async () => {
+      const setThemeMock = vi.fn(() =>
+        Promise.resolve(makeAppState({ theme: 'dracula' })),
+      );
+      const { sut } = await setupOnNavy({ setTheme: setThemeMock });
+
+      await sut.getState().settings.pickTheme('dracula');
+
+      expect(setThemeMock).toHaveBeenCalledExactlyOnceWith('dracula');
+    });
+
+    it('should save nothing when the theme is the one on screen', async () => {
+      const setThemeMock = vi.fn(() => Promise.resolve(makeAppState()));
+      const { sut } = await setupOnNavy({ setTheme: setThemeMock });
+
+      await sut.getState().settings.pickTheme('navy');
+
+      expect(setThemeMock).not.toHaveBeenCalled();
+    });
+
+    it('should put the screen back on the theme the main process holds when the pick could not be saved', async () => {
+      const { sut } = await setupOnNavy(mainStillOnNavy());
+
+      await sut.getState().settings.pickTheme('dracula');
+
+      expect(sut.getState().settings.appState?.theme).toBe('navy');
+    });
+
+    it('should tell the user when the pick could not be saved', async () => {
+      const { sut, toastMock } = await setupOnNavy(mainStillOnNavy());
+
+      await sut.getState().settings.pickTheme('dracula');
+
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(UNEXPECTED);
+    });
+
+    it('should go back to the theme it had when the main process cannot say which one it holds', async () => {
+      const { sut } = await setupOnNavy({
+        ...mainStillOnNavy(),
+        getState: failing,
+      });
+
+      await sut.getState().settings.pickTheme('dracula');
+
+      expect(sut.getState().settings.appState?.theme).toBe('navy');
+    });
+
+    it('should leave the screen on the account that took over when the pick could not be saved', async () => {
+      const saving = deferred<IAppState>();
+      const { sut } = await setupOnNavy({
+        ...mainStillOnNavy(),
+        setTheme: () => saving.promise,
+      });
+      const picking = sut.getState().settings.pickTheme('dracula');
+      sut
+        .getState()
+        .settings.apply({ ...otherAccountState(), theme: 'dracula' });
+
+      saving.reject(new Error('disk full'));
+      await picking;
+
+      expect(sut.getState().settings.appState?.theme).toBe('dracula');
+    });
+  });
+
   describe('pickSetupLanguage', () => {
     it('should show the language before the main process has saved it', async () => {
       const saving = deferred<IAppState>();

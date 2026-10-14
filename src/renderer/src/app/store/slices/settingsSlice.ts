@@ -19,6 +19,7 @@ import {
   type IDashboardSort,
 } from '@shared/dashboardSort';
 import { type Language, messagesFor } from '@shared/i18n';
+import { type ThemeId } from '@shared/themes';
 import { type IAppState } from '@shared/types/AppState';
 import {
   DEFAULT_PREFERENCES,
@@ -78,6 +79,13 @@ type SettingsActions = {
    * is left on, for the form's field to follow.
    */
   pickSetupLanguage: (language: Language) => Promise<Language>;
+  /**
+   * Changes the theme of the account in use or, during the setup, the one
+   * its first account will start on. The screen changes at once; a theme
+   * that could not be saved is put back to the one the main process holds,
+   * and the user is told.
+   */
+  pickTheme: (theme: ThemeId) => Promise<void>;
   /**
    * Follows another saved account. What was read for the one being left goes
    * off the screen as the state changes (see `connectStore`). When the call
@@ -340,6 +348,34 @@ export const createSettingsSlice: StoreSlice<SettingsSlice> = (set, get) => {
         }
       }
       return get().session.language;
+    },
+
+    pickTheme: async (theme) => {
+      const shown = get().settings.appState;
+      if (!shown || theme === shown.theme) return;
+      const show = (next: ThemeId, action: string) =>
+        set(
+          (prevState) => {
+            if (prevState.settings.appState) {
+              prevState.settings.appState.theme = next;
+            }
+          },
+          false,
+          action,
+        );
+
+      show(theme, 'settings/pickTheme');
+      try {
+        await SettingsService.setTheme(theme);
+      } catch (error) {
+        const held = await heldAfterFailure(error, get().session.language);
+        // Another theme was picked meanwhile, or another account took over:
+        // the screen is no longer on this pick, and is left as it is.
+        const now = get().settings.appState;
+        if (now?.theme === theme && now.activeSteamId === shown.activeSteamId) {
+          show(held?.theme ?? shown.theme, 'settings/rollbackTheme');
+        }
+      }
     },
 
     switchAccount: async (steamId) => {
