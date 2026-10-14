@@ -69,6 +69,17 @@ It is free, open source, and not affiliated with Valve or Steam.
   </tr>
 </table>
 
+### In your colours
+
+Five themes: Navy, the one the app starts on and the one in the pictures above, and Dracula, Gruvbox, Solarized Light and Synthwave. Each account keeps its own, so switching accounts changes the colours with it. Every theme passes the same contrast check.
+
+<p>
+  <img src="docs/screenshots/theme-dracula.png" width="24%" alt="The Game screen in the Dracula theme: a grey-purple field with a purple accent." />
+  <img src="docs/screenshots/theme-gruvbox.png" width="24%" alt="The Game screen in the Gruvbox theme: a warm dark field with a blue-grey accent." />
+  <img src="docs/screenshots/theme-solarized-light.png" width="24%" alt="The Game screen in the Solarized Light theme: a cream field with a blue accent." />
+  <img src="docs/screenshots/theme-synthwave.png" width="24%" alt="The Game screen in the Synthwave theme: a purple night field with a pink accent." />
+</p>
+
 ## Download
 
 Get the installer for your system from the [latest release](https://github.com/joaosoarees/trophy-tracker/releases/latest):
