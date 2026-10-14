@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <strong>Português</strong>
+  <a href="README.md">English</a> · <strong>Português</strong> · <a href="README.es.md">Español</a> · <a href="README.fr.md">Français</a>
 </p>
 
 <p align="center">
@@ -115,9 +115,9 @@ Suas chaves, notas, checklists e links ficam guardados só no seu computador, em
 
 Electron, React e TypeScript, com o cuidado que uma ferramenta pequena raramente recebe:
 
-- **Testado onde decide alguma coisa.** 430 testes cobrem a lógica que lê a Steam, guarda os seus dados e atualiza o app. Rodam em Windows, macOS e Linux a cada envio, e o selo no topo diz quanto dessa lógica eles cobrem.
+- **Testado onde decide alguma coisa.** Mais de 1.600 testes cobrem a lógica que lê a Steam, guarda os seus dados e atualiza o app. Rodam em Windows, macOS e Linux a cada envio, e o selo no topo diz quanto dessa lógica eles cobrem.
 - **A interface é auditada por um script, não de memória.** O `pnpm audit:ui` conduz o app compilado contra um substituto da Steam: passa pela configuração inicial, por todas as telas e pelos fluxos que nenhuma imagem isolada mostra (um jogo iniciando, uma conquista desbloqueada, a Steam fora do ar), conferindo acessibilidade com o axe, foco de teclado, hover e transbordamento. As imagens desta página vêm do mesmo substituto.
-- **Um catálogo de componentes.** O `pnpm storybook` mostra cada peça sozinha, em todos os estados, nos quatro idiomas e nas duas larguras para as quais a janela foi feita.
+- **Um catálogo de componentes.** O `pnpm storybook` mostra cada peça sozinha, em todos os estados, nos quatro idiomas, nos cinco temas e nas duas larguras para as quais a janela foi feita.
 - **Seus arquivos não se perdem numa queda.** Cada um é gravado inteiro antes de substituir o anterior, e um arquivo que não pode ser lido é guardado à parte, nunca sobrescrito.
 - **As versões se constroem sozinhas.** Uma tag de versão faz o GitHub Actions compilar e testar os instaladores nos três sistemas e publicá-los com as notas.
 - **Um sistema de design escrito** ([DESIGN.md](DESIGN.md)) e as razões das escolhas que não são óbvias ([docs/DECISIONS.md](docs/DECISIONS.md)), ambos em inglês.
