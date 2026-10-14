@@ -301,7 +301,7 @@ A compact field (32px, 12px text) in Recessed Slate with a chevron. Its list is 
 
 ### Navigation
 
-A single bar across the top with a hairline under it. Tabs are text with a small icon, in Quiet Steel; the current one is Glance White with a 2px Signal Blue underline. Utility actions sit at the right as icon buttons: updates (an arrow in a circle, which spins as a loader while checking and carries a Signal Blue dot once a version exists), always on top (a window over another) and Settings (a gear; with more than one account, the 24px round face of the account in use, ringed in Signal Blue while Settings is on screen, since the bar has no room for a button more). The pin glyph is not used here: it belongs to pinned achievements. Switching tabs fades the new screen in with a 6px rise over 180ms.
+A single bar across the top with a hairline under it. Tabs are text with a small icon, in Quiet Steel; the current one is Glance White with a 2px Signal Blue underline. Where the system draws no buttons at the left, the first tab reaches the window's edge, so its hover fills the corner, and its icon stands on the page's 16px margin. Utility actions sit at the right as icon buttons: updates (an arrow in a circle, which spins as a loader while checking and carries a Signal Blue dot once a version exists), always on top (a window over another) and Settings (a gear; with more than one account, the 24px round face of the account in use, ringed in Signal Blue while Settings is on screen, since the bar has no room for a button more). The pin glyph is not used here: it belongs to pinned achievements. Switching tabs fades the new screen in with a 6px rise over 180ms.
 
 ### Detail rows
 

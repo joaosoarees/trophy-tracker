@@ -2,6 +2,12 @@
 
 What changed in each version, for whoever uses the app. The section of a version is what its release shows on GitHub.
 
+## Unreleased
+
+### Fixed
+
+- The Game tab reaches the corner of the window. A strip of empty space was left between the corner and the tab, which showed when the pointer was over it. The tab's icon now lines up with the cards below.
+
 ## 1.3.0
 
 ### Added

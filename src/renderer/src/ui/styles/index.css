@@ -206,8 +206,12 @@
   height: calc(100vh - var(--window-bar-height));
 }
 
-/* Keeps a bar's content clear of the system's buttons at either end. */
+/*
+ * Keeps a bar's content clear of the system's buttons at either end. Where
+ * the system draws none at the left, the bar starts at the window's edge, so
+ * the hover of its first button leaves no gap in the corner.
+ */
 @utility window-buttons-inset {
-  padding-left: max(0.5rem, var(--window-buttons-left));
+  padding-left: var(--window-buttons-left);
   padding-right: max(0.5rem, var(--window-buttons-right));
 }
