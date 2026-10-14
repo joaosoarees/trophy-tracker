@@ -10,6 +10,7 @@ Desktop app (Electron + React + TypeScript) that shows, for the game open on Ste
 - **The fake Steam is reachable only when the app is not packaged.** The gate is in `src/main/index.ts`; the user's key is sent to whatever address the client is given, so never widen it (`docs/audit.md`).
 - **The app raises no system notification.** What was unlocked, and how many are left, goes in the notice at the top of the list.
 - This file holds the rules for any change; the files in the table below hold the rules of one area; `docs/DECISIONS.md` holds the reasons. Read the entry before undoing a choice, and add an entry when a choice is made that someone could reasonably want to undo.
+- `docs/ROADMAP.md` holds what was decided to do and is not done yet. Take an item out when it ships.
 
 ## Before changing an area, read its rules
 
@@ -218,7 +219,8 @@ ui (screens, components) → app/store and app/hooks → app/services → window
 ## Commits
 
 - **Every change is made on its own branch and reaches `main` through a pull request.** Never commit on `main` and never push it.
-- **The flow:** branch from an up-to-date `main`, commit there (one commit per change, without asking), push the branch and open the pull request with `gh pr create`. The owner merges.
+- **The flow:** branch from an up-to-date `main`, commit there (without asking), push the branch and open the pull request with `gh pr create`. The owner merges.
+- **Commits are small: one file each, when the file passes the hooks by itself.** A file that cannot stand alone goes with the smallest set that passes: a new function with its spec and its first use (`knip` refuses an export nobody uses), a type with what stops compiling without it. Order the work so that most files can land alone, the lowest layer first. A pull request is one change; its commits are the steps of it.
 - **Nothing is pushed, tagged or published without an explicit request.** A `v*.*.*` tag publishes a release by itself (`release.yml`), and installed apps update from it.
 - A release tag still needs its own explicit request. The steps of a release are in `docs/releases.md`.
 - **Conventional Commits in English:** `feat: achievement checklist`, `fix: ...`, `chore: ...`, `docs: ...`, `refactor: ...`, `perf: ...`, `style: ...`, `test: ...`. commitlint checks it; header and body lines stay within 100 characters.

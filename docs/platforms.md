@@ -30,7 +30,7 @@ The same code runs on Windows, macOS, Linux and, for development, WSL.
 - **Windows and macOS have no title bar** (`system/WindowFrame.ts`): the system draws only its own buttons, over the app's tab bar. Linux keeps the system's title bar.
 - The interface never asks which system it is on. CSS learns where the buttons are from `env(titlebar-area-*)`, through the `window-drag`, `window-buttons-inset`, `window-bar` and `h-below-window-bar` utilities in `ui/styles/index.css`; the fallbacks leave Linux unchanged.
 - The tab bar drags the window. A screen without it (onboarding, update, crash) starts with `ui/components/WindowBar`.
-- Whatever is added to the tab bar must fit beside the system's buttons at 480 px in French, the tightest case (138 px of buttons on Windows). The audit measures it in every language and fails over 342 px; French uses all of them, so the bar takes no other button (the account in use is shown on the Settings button for that reason).
+- Whatever is added to the tab bar must fit beside the system's buttons at 480 px in French, the tightest case (138 px of buttons on Windows). The audit measures it in the language it runs in, English unless French is asked for (`AUDIT_LANGUAGES=fr`), and fails over 342 px; French leaves next to nothing of them, so the bar takes no other button (the account in use is shown on the Settings button for that reason) until it adapts to its texts (`docs/ROADMAP.md`).
 
 ### Production behaviour
 
