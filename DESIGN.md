@@ -149,7 +149,7 @@ Motion is short and small. A screen rises 6 pixels as it appears, a list fades i
 
 **Key Characteristics:**
 
-- Dark only, on a navy field that sits quietly beside a game.
+- A navy field that sits quietly beside a game, unless the user picks another theme; every theme keeps the rules of this page.
 - Dense and narrow: built for 600 pixels of width, never under 480.
 - Flat surfaces separated by tone and a hairline border; shadow only on what floats.
 - One accent, used for what can be acted on and what is in focus.
@@ -159,6 +159,8 @@ Motion is short and small. A screen rises 6 pixels as it appears, a list fades i
 ## Colors
 
 A cool navy ramp carries the whole interface; four signal colors each mean exactly one thing.
+
+The names below are those of **Navy**, the theme a new install starts on. The app has other themes, picked by the user for each account, and each fills the same roles with its own values (`src/shared/themes.ts`): a field, a panel, a well, a control, a hover tint, a hairline, a field edge, primary and secondary text, and the four signals. Read "Signal Blue" as "the theme's accent", "Night Navy" as "the theme's field", and so on.
 
 ### Primary
 
@@ -191,6 +193,8 @@ A cool navy ramp carries the whole interface; four signal colors each mean exact
 **The One Signal Rule.** Signal Blue is the only color that means "you can act here" or "you are here". If it appears on something that is neither, it is wrong.
 
 **The One Meaning Rule.** Green is done, amber is set apart, red is loss. None of them is ever used for decoration or to add variety to a list.
+
+**The Theme Rule.** A theme changes tones, never roles. In every theme done is a green, set apart is an amber and loss is a red; the accent is none of the three, so a theme whose character is a green or an amber carries it in its surfaces and text, not in its accent; and every text is readable on every surface it is written on (4.5 to 1). Where a borrowed palette's own color fails that, the tone is adjusted. A spec holds every theme to this (`src/shared/themes.spec.ts`).
 
 **The Tint Rule.** Hover is a translucent wash of Hover Steel (40 to 50 percent) over whatever is underneath, not a new opaque color. Red text never sits on that wash, because it fails contrast; a destructive control hovers on a 15 percent wash of Erase Red instead.
 
@@ -335,6 +339,10 @@ A wash of Unlocked Green (15 percent) with green text across the top of the list
 
 The inverse of the page: Glance White with Night Navy text, softly rounded, with a small arrow. Used for every icon button and for any control that needs a word of explanation.
 
+### Theme picker
+
+One button per theme, in a row that wraps: a small sample, then the theme's name. The sample is that theme's own field with a dot of its accent and a bar of its text, and keeps those colors whichever theme is on screen, so a theme is seen before it is picked. The button around it is drawn in the theme on screen; the picked one has the accent border and primary text, the others are Quiet Steel and take a wash on hover. Names are the palettes' own and are not translated. It sits in Settings, under "Appearance", and on the language step of the setup.
+
 ### Accounts
 
 The app can follow more than one Steam account, each with its own Web API key. These components are the whole vocabulary for that; they are used in Settings and in the onboarding, and nowhere else shows a key.
@@ -402,7 +410,8 @@ The monospaced face exists for this field and the masked key alone, because 32 c
 
 ### Don't:
 
-- **Don't** add a light theme or a pure white or pure black surface.
+- **Don't** use a pure white or pure black surface, in any theme.
+- **Don't** give a component a color of its own: it names a role, and the theme fills it. The sample in the theme picker is the one exception.
 - **Don't** put a shadow on anything that scrolls with the page.
 - **Don't** use green, amber or red for decoration or to tell list items apart.
 - **Don't** place red text on the usual hover wash; use the red wash.
