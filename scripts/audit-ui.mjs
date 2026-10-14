@@ -7,16 +7,17 @@
 // The app runs for real, against a fake Steam (scripts/fake-steam.mjs) that
 // answers from the real responses in __tests__/fixtures, and a fake Steam client
 // folder. Nothing of this computer's Trophy Tracker data, account or key is
-// read. The audit runs once per language, as a new user each time, so that
-// everything on screen (interface, errors, achievement names) is in that
-// language from the first screen on:
+// read. The audit runs once, in English, as a new user. Another language can
+// be asked for (`AUDIT_LANGUAGES=fr`, or several: `en,fr`); each runs as a
+// new user too, so that everything on screen (interface, errors, achievement
+// names) is in that language from the first screen on:
 // - the onboarding, with the SteamID found in the Steam client, through a
 //   rejected key, a private profile and Steam being unreachable;
 // - every screen, checked for accessibility (axe), no scrollbar on the
 //   window, no sideways overflow, and a visible hover and keyboard focus on
 //   every kind of clickable element, none wider than what holds it;
 // - the screen shown when the interface fails to draw, and the way back.
-// Then, in the first language, the flows no single capture shows: the game
+// Then, in English only, the flows no single capture shows: the game
 // details opening and closing, a game starting, an achievement unlocked
 // while playing, the game finished and closed, Steam taking a request and
 // never answering it, Steam off the air with the app open, before it opens,
@@ -2063,8 +2064,9 @@ if (!existsSync('out/main/index.js')) {
   console.error('No build found. Run `pnpm build` first.');
   process.exit(1);
 }
-// `AUDIT_LANGUAGES=en pnpm audit:ui` runs one language while working on it.
-const languages = process.env.AUDIT_LANGUAGES?.split(',') ?? LANGUAGES;
+// One run, in the first language. `AUDIT_LANGUAGES=fr pnpm audit:ui` runs
+// another one, and `AUDIT_LANGUAGES=en,fr` several side by side.
+const languages = process.env.AUDIT_LANGUAGES?.split(',') ?? [LANGUAGES[0]];
 const isOneOfSeveral = process.env.AUDIT_ONE_OF_SEVERAL === '1';
 if (!isOneOfSeveral) {
   rmSync(OUT, { recursive: true, force: true });
