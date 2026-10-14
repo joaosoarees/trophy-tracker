@@ -2,6 +2,20 @@
 
 Why things are the way they are, for the choices that are not obvious from the code. `CLAUDE.md` and the other files of this folder hold the rules; this file holds the reasons and what was tried before. Newest first. Add an entry when a choice is made that someone could reasonably want to undo.
 
+## Themes, one per account
+
+The app was dark only, in Steam's own navy, and that was a rule. On 2026-10-13 the owner asked for themes, "not limited to light and dark", because it would be fun; the rule was dropped. What was decided, each of which could have gone the other way:
+
+- **A theme changes colours only.** Fonts and spacing change the width of texts in a window 480 px wide; corners were left as a possible later extra.
+- **Meanings are fixed, tones are the theme's.** Done is a green, set apart an amber, loss a red, in every theme, and the accent is in none of those families. A theme built on one colour (green phosphor, amber terminal) therefore carries it in its surfaces, not in its accent. Decided with the colour guidance of the design skill, against letting each theme pick freely.
+- **Legibility wins over fidelity.** A palette's own colour that fails 4.5 to 1 is adjusted (Dracula's comment grey as secondary text, its red on a card). Navy's own red failed on a card too, at 4.2 to 1, and was lifted from `#e5534b` to `#ea6058`: the audit had never caught it, because it only reads what is on screen and no error line on a card was.
+- **Contrast is held by a spec, not by the audit.** The themes are data (`shared/themes.ts`) and `themes.spec.ts` computes every pair in every theme, in milliseconds, on every commit. The audit runs one second theme through the screens, to catch what a ratio does not (a colour written in a component, a picture lost on its field); the others are looked at in Storybook.
+- **The theme is the account's**, and the window changes colour when the account does, also when the app follows the Steam client by itself. The owner chose it over one theme for the app; it makes the colour say whose achievements are on screen. A new account starts on the theme on screen. The setup's theme, picked before any account exists, is kept apart in `settings.json` and given to the first account.
+- **All themes are there from the start.** Unlocking one by finishing a game was considered and left out: it adds a rule, saved state, and odd cases with two accounts.
+- **Palettes keep their names** (Dracula, and later Gruvbox, Solarized, Synthwave) and are credited in About; each is under a licence that allows it. The default is called Navy, not Steam: the app is not affiliated with Valve.
+- **The interface asks for the window to be repainted**, rather than the main process doing it on each change of account or theme: the theme on screen changes in several places there, and only one in the interface (`themeOnScreen.showTheme`).
+- **The first frame is already in the theme.** The main process puts the theme in the window's address; the interface reads it before it draws, and after a reload reads the one it last drew, which the address no longer says.
+
 ## The audit runs once, and layouts adapt to their texts
 
 Until 2026-10-13 `pnpm audit:ui` ran once per language, four apps side by side, and the full run was what counted. The owner cut it to one run, in English: a check that takes minutes should not be what keeps a long label from breaking a row. The layout should adapt to its texts instead, wrapping or shrinking, and that is now a rule for new rows (`docs/interface.md`).
