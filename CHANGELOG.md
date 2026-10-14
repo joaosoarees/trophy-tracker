@@ -2,7 +2,7 @@
 
 What changed in each version, for whoever uses the app. The section of a version is what its release shows on GitHub.
 
-## Unreleased
+## 1.3.0
 
 ### Added
 
