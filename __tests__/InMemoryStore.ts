@@ -4,6 +4,7 @@ import {
 } from '@shared/achievementSort';
 import { type IDashboardSort, parseDashboardSort } from '@shared/dashboardSort';
 import { DEFAULT_LANGUAGE, type Language } from '@shared/i18n';
+import { DEFAULT_THEME, type ThemeId } from '@shared/themes';
 import { type AccountStatus, type IAccount } from '@shared/types/Account';
 import { type IGameView } from '@shared/types/Game';
 import { type IProfile } from '@shared/types/Profile';
@@ -44,6 +45,8 @@ export type ServiceStore = Pick<
   | 'setArt'
   | 'getLanguage'
   | 'setLanguage'
+  | 'getTheme'
+  | 'setTheme'
   | 'getAchievementSort'
   | 'getDashboardSort'
 >;
@@ -55,6 +58,7 @@ interface ISavedAccount {
   keyEnding: string;
   profile: IProfile;
   status: AccountStatus;
+  theme: ThemeId;
 }
 
 /** What was read from Steam about one account. */
@@ -68,8 +72,8 @@ const blank = (): IAccountReads => ({ games: new Map(), summaries: new Map() });
 
 /**
  * `Store` without the disk, for the specs of the services that use one: the
- * accounts, the one in use, the language and what was read from Steam, kept
- * in memory. It answers as the real one does, which
+ * accounts, the one in use, the language, the themes and what was read from
+ * Steam, kept in memory. It answers as the real one does, which
  * `src/main/storage/Store.contract.spec.ts` checks by running the same
  * assertions against both; a difference is fixed here.
  *
@@ -83,6 +87,8 @@ export class InMemoryStore implements ServiceStore {
   private accounts: ISavedAccount[] = [];
   private inUse: string | undefined;
   private language: Language = DEFAULT_LANGUAGE;
+  /** The theme of the setup, shown while there is no account. */
+  private setupTheme: ThemeId = DEFAULT_THEME;
   /** By SteamID. */
   private reads = new Map<string, IAccountReads>();
   // The same for every account: they describe the game, not the player.
@@ -160,14 +166,15 @@ export class InMemoryStore implements ServiceStore {
     { shouldFollow = true } = {},
   ): void {
     this.write();
+    const index = this.accounts.findIndex((a) => a.steamId === steamId);
     const account: ISavedAccount = {
       steamId,
       apiKey,
       keyEnding: apiKey.slice(-4),
       profile,
       status: 'valid',
+      theme: index === -1 ? this.getTheme() : this.accounts[index].theme,
     };
-    const index = this.accounts.findIndex((a) => a.steamId === steamId);
     if (index === -1) this.accounts.push(account);
     else this.accounts[index] = account;
     if (shouldFollow) this.inUse = steamId;
@@ -260,6 +267,18 @@ export class InMemoryStore implements ServiceStore {
 
   getLanguage(): Language {
     return this.language;
+  }
+
+  getTheme(): ThemeId {
+    return this.find(this.inUse)?.theme ?? this.setupTheme;
+  }
+
+  setTheme(theme: ThemeId): void {
+    if (theme === this.getTheme()) return;
+    this.write();
+    const account = this.find(this.inUse);
+    if (account) account.theme = theme;
+    else this.setupTheme = theme;
   }
 
   /** As in the real one, what Steam sent already translated is dropped. */
