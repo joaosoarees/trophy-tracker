@@ -38,7 +38,8 @@ Game/
 - **Stack:** Tailwind v4 (config in `src/renderer/src/ui/styles/index.css`, no `tailwind.config`), shadcn/ui components, Lucide icons.
 - **New shadcn component:** `pnpm dlx shadcn@latest add <name>` (it lands in `ui/primitives`). The command tends to install a wrong `cn` package and import from it: remove it with `pnpm remove cn` and point the import to `@ui/utils/cn`.
 - **Dark theme only**, with the Steam palette in the tokens in `ui/styles/index.css` (`--primary` light blue, `--success` green, `--warning` amber).
-- **The window is narrow:** 600 px wide, never under 480. Check that toolbars and buttons fit that width **in every language**. Spanish and French labels are the longest; the Game toolbar is the tightest row.
+- **The window is narrow:** 600 px wide, never under 480. Check that toolbars and buttons fit that width **in every language**. Spanish and French labels are the longest; the Game toolbar is the tightest row. The audit runs in English, so a row that gains something is looked at in French by asking for it (`AUDIT_LANGUAGES=fr pnpm audit:ui`).
+- **A layout adapts to its texts; it is not measured to fit them.** New rows are built to wrap or shrink when a label is longer than expected, so that no check has to run in every language to keep them whole.
 - A row that cannot fit wraps, with the sort select taking the whole second row.
 - **No library with runtime styling:** lightness is the priority.
 
