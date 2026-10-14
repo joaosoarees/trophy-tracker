@@ -14,7 +14,7 @@ The app was dark only, in Steam's own navy, and that was a rule. On 2026-10-13 t
 - **All themes are there from the start.** Unlocking one by finishing a game was considered and left out: it adds a rule, saved state, and odd cases with two accounts.
 - **Palettes keep their names** (Dracula, and later Gruvbox, Solarized, Synthwave) and are credited in About; each is under a licence that allows it. The default is called Navy, not Steam: the app is not affiliated with Valve.
 - **The interface asks for the window to be repainted**, rather than the main process doing it on each change of account or theme: the theme on screen changes in several places there, and only one in the interface (`themeOnScreen.showTheme`).
-- **The first frame is already in the theme.** The main process puts the theme in the window's address; the interface reads it before it draws, and after a reload reads the one it last drew, which the address no longer says.
+- **The first frame is already in the theme.** The main process puts the theme in the window's address; the interface reads it before it draws, and after a reload reads the one it last drew, which the address no longer says. That still left a few frames in the default theme, painted by the stylesheet before any script ran (the audit, reading the field on every frame, saw navy and then the theme): until the theme is drawn the page now paints no field at all, and the window's own shows through.
 
 ## The audit runs once, and layouts adapt to their texts
 
