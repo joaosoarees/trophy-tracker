@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { SystemService } from '@app/services/SystemService';
 import { useStore } from '@app/store';
 import { isLanguage } from '@shared/i18n';
+import { DEFAULT_THEME, type ThemeId } from '@shared/themes';
 import { type IAccount } from '@shared/types/Account';
 import { type ExternalPage } from '@shared/types/Guide';
 import { type LocalFolderId } from '@shared/types/Preferences';
@@ -16,11 +17,13 @@ export function useSettingsController() {
     activeAccount,
     isPlaying,
     language,
+    theme,
     appInfo,
     alwaysOnTop,
     preferences,
     folders,
     changeLanguage,
+    pickTheme,
     switchAccount,
     startAddingAccount,
     restartToUpdate,
@@ -40,11 +43,13 @@ export function useSettingsController() {
         state.session.current?.isRunning === true &&
         state.session.current.isOnAnotherAccount !== true,
       language: state.session.language,
+      theme: state.settings.appState?.theme ?? DEFAULT_THEME,
       appInfo: state.updates.appInfo,
       alwaysOnTop: state.settings.alwaysOnTop,
       preferences: state.settings.preferences,
       folders: state.settings.folders,
       changeLanguage: state.settings.changeLanguage,
+      pickTheme: state.settings.pickTheme,
       switchAccount: state.settings.switchAccount,
       startAddingAccount: state.navigation.startAddingAccount,
       restartToUpdate: state.updates.restart,
@@ -63,11 +68,13 @@ export function useSettingsController() {
     activeAccount,
     isAccountLocked: isPlaying,
     language,
+    theme,
     appInfo,
     alwaysOnTop,
     preferences,
     folders,
     handleChangeLanguage,
+    handlePickTheme: (picked: ThemeId) => void pickTheme(picked),
     handleSwitchAccount: (steamId: string) => void switchAccount(steamId),
     handleAddAccount: startAddingAccount,
     handleToggleAlwaysOnTop: () => void toggleAlwaysOnTop(),

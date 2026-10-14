@@ -126,6 +126,9 @@ export class Ipc {
         return state;
       },
 
+      setTheme: (theme) => setup.setTheme(theme),
+      paintWindow: (theme) => window.paint(theme),
+
       setAchievementSort: (sort) => store.setAchievementSort(sort),
       setDashboardSort: (sort) => store.setDashboardSort(sort),
 

@@ -15,6 +15,7 @@ import {
 } from '@shared/achievementSort';
 import { type IDashboardSort, parseDashboardSort } from '@shared/dashboardSort';
 import { DEFAULT_LANGUAGE, isLanguage, type Language } from '@shared/i18n';
+import { DEFAULT_THEME, isThemeId, type ThemeId } from '@shared/themes';
 import { type AccountStatus, type IAccount } from '@shared/types/Account';
 import { type IGameView } from '@shared/types/Game';
 import {
@@ -50,6 +51,8 @@ interface IStoredAccount {
   keyEnding: string;
   profile: IProfile;
   status: AccountStatus;
+  /** The theme the app is in while this account is in use. */
+  theme?: string;
 }
 
 interface IConfigFile {
@@ -90,6 +93,8 @@ interface ICacheFile {
 interface ISettingsFile {
   alwaysOnTop: boolean;
   language?: string;
+  /** The theme of the setup, shown while there is no account. */
+  theme?: string;
   achievementSort?: unknown;
   dashboardSort?: unknown;
   /** Version the app last closed itself to install. */
@@ -358,6 +363,8 @@ export class Store {
     profile: IProfile,
     { shouldFollow = true } = {},
   ): void {
+    const { accounts, activeSteamId } = this.config;
+    const saved = accounts.find((a) => a.steamId === steamId);
     const account: IStoredAccount = {
       steamId,
       ...(this.cipher
@@ -366,14 +373,42 @@ export class Store {
       keyEnding: apiKey.slice(-4),
       profile,
       status: 'valid',
+      // A new account starts on the theme on screen as it is added; one that
+      // only gets another key keeps its own.
+      theme: saved ? saved.theme : this.getTheme(),
     };
-    const { accounts, activeSteamId } = this.config;
     this.saveConfig({
       ...this.config,
       accounts: this.hasAccount(steamId)
         ? accounts.map((a) => (a.steamId === steamId ? account : a))
         : [...accounts, account],
       activeSteamId: shouldFollow ? steamId : activeSteamId,
+    });
+  }
+
+  /**
+   * The theme on screen: the one of the account in use or, while there is
+   * none, the one picked in the setup. Anything else that is kept (nothing,
+   * the name of a theme a later version has) is the default.
+   */
+  getTheme(): ThemeId {
+    const kept = this.active ? this.active.theme : this.settings.theme;
+    return isThemeId(kept) ? kept : DEFAULT_THEME;
+  }
+
+  /** Changes the theme of the account in use or, with none, of the setup. */
+  setTheme(theme: ThemeId): void {
+    if (theme === this.getTheme()) return;
+    const steamId = this.getActiveSteamId();
+    if (steamId === null) {
+      this.saveSettings({ ...this.settings, theme });
+      return;
+    }
+    this.saveConfig({
+      ...this.config,
+      accounts: this.config.accounts.map((a) =>
+        a.steamId === steamId ? { ...a, theme } : a,
+      ),
     });
   }
 

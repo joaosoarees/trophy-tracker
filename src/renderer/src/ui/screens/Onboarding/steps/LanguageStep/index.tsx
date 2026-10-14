@@ -1,6 +1,5 @@
-import { useFormContext } from 'react-hook-form';
-
 import { useT } from '@app/hooks/useT';
+import { ThemePicker } from '@ui/components/ThemePicker';
 import { Label } from '@ui/primitives/label';
 import { ControlledLanguageSelect } from '@ui/screens/Onboarding/components/ControlledLanguageSelect';
 import { FieldError } from '@ui/screens/Onboarding/components/FieldError';
@@ -9,21 +8,13 @@ import {
   StepperFooter,
   StepperNextButton,
 } from '@ui/screens/Onboarding/components/Stepper';
-import { useStepper } from '@ui/screens/Onboarding/components/Stepper/useStepper';
-import type { OnboardingFormData } from '@ui/screens/Onboarding/schema';
+
+import { useLanguageStepController } from './useLanguageStepController';
 
 export function LanguageStep() {
   const t = useT();
-  const { nextStep } = useStepper();
-  const form = useFormContext<OnboardingFormData>();
-
-  async function handleNextStep() {
-    const isValid = await form.trigger('languageStep', { shouldFocus: true });
-
-    if (isValid) {
-      nextStep();
-    }
-  }
+  const { control, theme, handlePickTheme, handleNextStep } =
+    useLanguageStepController();
 
   return (
     <div>
@@ -35,10 +26,21 @@ export function LanguageStep() {
       <div className="space-y-2">
         <Label>{t.onboarding.language.label}</Label>
         <ControlledLanguageSelect
-          control={form.control}
+          control={control}
           name="languageStep.language"
         />
         <FieldError name="languageStep.language" />
+      </div>
+
+      <div className="mt-4 space-y-2">
+        <p className="text-sm leading-none font-medium">
+          {t.onboarding.language.theme}
+        </p>
+        <ThemePicker
+          label={t.onboarding.language.theme}
+          value={theme}
+          onChange={handlePickTheme}
+        />
       </div>
 
       <div className="mt-5 space-y-2">

@@ -1,6 +1,7 @@
 import { type IAchievementSort } from '@shared/achievementSort';
 import { type IDashboardSort } from '@shared/dashboardSort';
 import { type Language } from '@shared/i18n';
+import { type ThemeId } from '@shared/themes';
 import { type IAppState } from '@shared/types/AppState';
 import {
   type ILocalFolder,
@@ -18,6 +19,10 @@ export class SettingsService extends Service {
   /** Saves the language and drops the translated cache; the caller decides whether to reload. */
   static setLanguage(language: Language): Promise<IAppState> {
     return this.api.setLanguage(language);
+  }
+
+  static setTheme(theme: ThemeId): Promise<IAppState> {
+    return this.api.setTheme(theme);
   }
 
   static setAchievementSort(sort: IAchievementSort): Promise<void> {

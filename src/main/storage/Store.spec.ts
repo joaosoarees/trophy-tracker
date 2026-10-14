@@ -707,6 +707,45 @@ describe('Store', () => {
     });
   });
 
+  describe('theme', () => {
+    it('should answer the theme of the setup when the folder is opened again with no account', () => {
+      const { sut, dir } = setup();
+
+      sut.setTheme('dracula');
+
+      const reopened = new Store(dir);
+      expect(reopened.getTheme()).toBe('dracula');
+    });
+
+    it('should answer the theme of the account in use when the folder is opened again', () => {
+      const { sut, dir } = setupWithAccount();
+
+      sut.setTheme('dracula');
+
+      const reopened = new Store(dir);
+      expect(reopened.getTheme()).toBe('dracula');
+    });
+
+    it('should answer the default theme when the file names one this version does not have', () => {
+      const dir = makeAccountDir();
+      const file = join(dir, 'config.json');
+      const config = JSON.parse(readFileSync(file, 'utf8')) as {
+        accounts: object[];
+      };
+      writeFileSync(
+        file,
+        JSON.stringify({
+          ...config,
+          accounts: config.accounts.map((a) => ({ ...a, theme: 'later' })),
+        }),
+      );
+
+      const theme = new Store(dir).getTheme();
+
+      expect(theme).toBe('navy');
+    });
+  });
+
   describe('window settings', () => {
     it('should answer always-on-top as set when the folder is opened again', () => {
       const { sut, dir } = setup();

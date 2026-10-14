@@ -1,4 +1,5 @@
 import { type Language, type Messages, messagesFor } from '@shared/i18n';
+import { isThemeId, type ThemeId } from '@shared/themes';
 import { type IAppState } from '@shared/types/AppState';
 import { type CheckResult } from '@shared/types/Check';
 
@@ -7,11 +8,13 @@ import { type Store } from '../storage/Store';
 import { type AccountChecks } from './AccountChecks';
 import { type KeyStatus } from './KeyStatus';
 
-/** The part of `Store` that keeps the accounts, the one in use and the language. */
+/** The part of `Store` that keeps the accounts, the one in use, the language and the themes. */
 type SavedSetup = Pick<
   Store,
   | 'getLanguage'
   | 'setLanguage'
+  | 'getTheme'
+  | 'setTheme'
   | 'getCredentials'
   | 'getProfile'
   | 'getAccounts'
@@ -51,6 +54,7 @@ export class SetupService {
     return {
       isConfigured: this.isConfigured,
       language: this.store.getLanguage(),
+      theme: this.store.getTheme(),
       profile: this.store.getProfile(),
       accounts: this.store.getAccounts(),
       activeSteamId: this.store.getActiveSteamId(),
@@ -122,6 +126,16 @@ export class SetupService {
    */
   setLanguage(language: Language): IAppState {
     this.store.setLanguage(language);
+    return this.getState();
+  }
+
+  /**
+   * Changes the theme of the account in use or, during the setup, the one
+   * the first account will start on. A name that is no theme changes nothing:
+   * it comes from the interface as it is.
+   */
+  setTheme(theme: ThemeId): IAppState {
+    if (isThemeId(theme)) this.store.setTheme(theme);
     return this.getState();
   }
 }

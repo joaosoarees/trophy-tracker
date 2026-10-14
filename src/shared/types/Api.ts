@@ -1,6 +1,7 @@
 import { type IAchievementSort } from '../achievementSort';
 import { type IDashboardSort } from '../dashboardSort';
 import { type Language } from '../i18n';
+import { type ThemeId } from '../themes';
 
 import { type IAppInfo, type IUpdateCheck } from './AppInfo';
 import { type IAppState } from './AppState';
@@ -66,6 +67,12 @@ export interface IApi {
 
   /** Saves the language and drops the translated cache; the caller decides whether to reload the window. */
   setLanguage: (language: Language) => Promise<IAppState>;
+
+  /** Changes the theme of the account in use or, during the setup, of the setup. */
+  setTheme: (theme: ThemeId) => Promise<IAppState>;
+
+  /** Puts what the system draws of the window in the theme the interface shows. */
+  paintWindow: (theme: ThemeId) => Promise<void>;
 
   setAchievementSort: (sort: IAchievementSort) => Promise<void>;
   setDashboardSort: (sort: IDashboardSort) => Promise<void>;

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useT } from '@app/hooks/useT';
+import { showTheme } from '@app/lib/themeOnScreen';
 import { connectStore, useStore } from '@app/store';
 
 export function useAppController() {
@@ -36,6 +37,7 @@ export function useAppController() {
 
   const isConfigured = appState?.isConfigured === true;
   const activeSteamId = appState?.activeSteamId ?? null;
+  const theme = appState?.theme;
 
   useEffect(() => {
     void load();
@@ -48,6 +50,11 @@ export function useAppController() {
     document.title = t.appTitle;
     document.documentElement.lang = language;
   }, [t, language]);
+
+  // The theme is the account's: it changes with a pick and with the account.
+  useEffect(() => {
+    if (theme) showTheme(theme);
+  }, [theme]);
 
   // Again for each account: what was read for one says nothing about another.
   useEffect(() => {

@@ -44,7 +44,7 @@ Four things together, each confirmed as essential to what the product is:
 - **Data comes from the official Steam Web API** with the user's key, plus one file of the local Steam client that links counters to achievements. The app never invents a value: an achievement whose counter cannot be read shows no counter.
 - **Steam does not report** which achievements belong to DLC, nor which items are missing in a "collect them all"; the user's checklist exists for that.
 - **Running-game detection** is instant on Windows; on macOS and Linux it depends on the Steam profile showing the game being played.
-- **Dark theme only.**
+- **Themes:** the user picks one of the app's themes, per account; every one keeps the same meanings for its colours and the same contrast (`DESIGN.md`). The one a new install starts on is dark, as a panel beside a game should be.
 - **Terminology:** "achievements" in the interface (the name is Trophy Tracker, but Steam's word is used throughout); "counter" for Steam's numeric progress; "checklist" for the user's own list; "Dashboard" for the list of played games.
 - **Updates:** the app updates itself on Windows and on the Linux AppImage, and announces new versions elsewhere. Installers are not code-signed yet.
 

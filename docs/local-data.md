@@ -4,10 +4,10 @@ The rules below are binding; `CLAUDE.md` sends you here before you change `stora
 
 The folder is `~/.config/trophy-tracker/` (`%APPDATA%\trophy-tracker` on Windows, `~/Library/Application Support/trophy-tracker` on macOS):
 
-- `config.json`: the accounts, each with its SteamID and key; permission 600; keys encrypted only if there is a keyring.
+- `config.json`: the accounts, each with its SteamID, its key and its theme; permission 600; keys encrypted only if there is a keyring.
 - `cache.json`: per account, plus what is common to all.
 - `userdata.json`: notes, pins, checklists and saved links, per account.
-- `settings.json`: language, always on top, list orders, the window's size and position.
+- `settings.json`: language, always on top, list orders, the window's size and position, and the theme of the setup (the one shown while there is no account).
 
 ## Rules
 

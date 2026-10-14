@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { BrowserWindow } from 'electron';
 
 import { type IpcEvent } from '@shared/ipcEvents';
+import { isThemeId, type ThemeId, THEMES } from '@shared/themes';
 
 import { type Browser } from './system/Browser';
 import { type IBounds } from './system/WindowBounds';
@@ -11,6 +12,8 @@ import { WindowFrame } from './system/WindowFrame';
 interface IMainWindowOptions {
   title: string;
   alwaysOnTop: boolean;
+  /** The theme on screen as the app opens: the window is that colour before anything is drawn. */
+  theme: ThemeId;
   /** Size and position to open with; `null` for the defaults. */
   bounds: IBounds | null;
   /** Called with where the window was when it is closed. */
@@ -26,7 +29,13 @@ export class MainWindow {
 
   constructor(private readonly browser: Browser) {}
 
-  open({ title, alwaysOnTop, bounds, onClose }: IMainWindowOptions): void {
+  open({
+    title,
+    alwaysOnTop,
+    theme,
+    bounds,
+    onClose,
+  }: IMainWindowOptions): void {
     const win = new BrowserWindow({
       // Wide enough for the toolbars in the longest language (see
       // docs/interface.md).
@@ -35,11 +44,11 @@ export class MainWindow {
       ...bounds,
       minWidth: MainWindow.MINIMUM_SIZE.width,
       minHeight: MainWindow.MINIMUM_SIZE.height,
-      backgroundColor: '#171a21',
+      backgroundColor: THEMES[theme].colors.background,
       // Linux takes the window icon from here; Windows and macOS from the package.
       icon: join(__dirname, '../../build/icon.png'),
       autoHideMenuBar: true,
-      ...WindowFrame.options(),
+      ...WindowFrame.options(theme),
       title,
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
@@ -63,10 +72,14 @@ export class MainWindow {
       void this.browser.open(url);
     });
 
+    // The theme goes in the address, so the interface is drawn in it from
+    // its first frame, before it has asked for anything.
     if (process.env.ELECTRON_RENDERER_URL) {
-      void win.loadURL(process.env.ELECTRON_RENDERER_URL);
+      void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}?theme=${theme}`);
     } else {
-      void win.loadFile(join(__dirname, '../renderer/index.html'));
+      void win.loadFile(join(__dirname, '../renderer/index.html'), {
+        query: { theme },
+      });
     }
   }
 
@@ -80,6 +93,18 @@ export class MainWindow {
     if (!this.win) return;
     if (this.win.isMinimized()) this.win.restore();
     this.win.focus();
+  }
+
+  /**
+   * Puts what the system draws of the window (its field, and on Windows its
+   * buttons) in the theme the interface is showing. A name that is no theme
+   * paints nothing: it comes from the interface as it is.
+   */
+  paint(theme: ThemeId): void {
+    if (!this.win || !isThemeId(theme)) return;
+    this.win.setBackgroundColor(THEMES[theme].colors.background);
+    const buttons = WindowFrame.repaint(theme);
+    if (buttons) this.win.setTitleBarOverlay(buttons);
   }
 
   setTitle(title: string): void {

@@ -240,12 +240,18 @@ export const fr: Messages = {
   },
   settings: {
     title: 'Paramètres',
+    theme: 'Thème',
+    themeHint:
+      'Le thème appartient au compte utilisé : chaque compte garde le sien.',
+    palettes: 'Palettes des thèmes',
+    paletteCredits: 'Dracula © Dracula Theme, licence MIT.',
     steamId: (id) => `SteamID ${id}`,
     language: 'Langue',
     languageHint:
       'L’application se recharge pour appliquer la langue, y compris aux noms des succès.',
     groups: {
       account: 'Compte',
+      appearance: 'Apparence',
       window: 'Fenêtre et langue',
       data: 'Données et confidentialité',
       about: 'À propos',
@@ -308,6 +314,7 @@ export const fr: Messages = {
 
     language: {
       title: 'Trophy Tracker',
+      theme: 'Thème',
       description:
         'Voyez ce qu’il vous reste à déverrouiller dans le jeu auquel vous jouez.',
       intro:

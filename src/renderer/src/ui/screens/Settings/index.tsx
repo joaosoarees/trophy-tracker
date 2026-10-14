@@ -7,6 +7,7 @@ import { AccountCard, AddAccountCard } from '@ui/components/AccountCard';
 import { DetailGroup, DetailRow } from '@ui/components/DetailList';
 import { OptionSelect } from '@ui/components/OptionSelect';
 import { Switch } from '@ui/components/Switch';
+import { ThemePicker } from '@ui/components/ThemePicker';
 
 import { AccountDetails } from './components/AccountDetails';
 import { FolderRow } from './components/FolderRow';
@@ -24,10 +25,12 @@ export const Settings = memo(function Settings() {
     isAccountLocked,
     language,
     appInfo,
+    theme,
     alwaysOnTop,
     preferences,
     folders,
     handleChangeLanguage,
+    handlePickTheme,
     handleSwitchAccount,
     handleAddAccount,
     handleToggleAlwaysOnTop,
@@ -83,6 +86,19 @@ export const Settings = memo(function Settings() {
           </p>
         )}
       </section>
+
+      <DetailGroup title={t.settings.groups.appearance}>
+        <li className="space-y-2.5 px-2 py-2.5">
+          <ThemePicker
+            label={t.settings.theme}
+            value={theme}
+            onChange={handlePickTheme}
+          />
+          <p className="text-muted-foreground text-xs">
+            {t.settings.themeHint}
+          </p>
+        </li>
+      </DetailGroup>
 
       <DetailGroup title={t.settings.groups.window}>
         <DetailRow
@@ -160,6 +176,10 @@ export const Settings = memo(function Settings() {
           Apache 2.0
           <ExternalLink className="size-4" />
         </DetailRow>
+        <DetailRow
+          label={t.settings.palettes}
+          description={t.settings.paletteCredits}
+        />
       </DetailGroup>
 
       <footer className="text-muted-foreground mt-auto pt-2 text-center text-xs">

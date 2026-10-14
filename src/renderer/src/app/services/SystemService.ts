@@ -1,3 +1,4 @@
+import { type ThemeId } from '@shared/themes';
 import { type IAppInfo, type IUpdateCheck } from '@shared/types/AppInfo';
 import { type GuideSite, type ExternalPage } from '@shared/types/Guide';
 
@@ -16,6 +17,11 @@ export class SystemService extends Service {
 
   static openLink(link: string): Promise<void> {
     return this.api.openLink(link);
+  }
+
+  /** Fire and forget: a window left in the colours of another theme is not worth reporting. */
+  static paintWindow(theme: ThemeId): void {
+    void this.api.paintWindow(theme).catch(() => {});
   }
 
   /** Fire and forget: a failure to log is not worth reporting. */

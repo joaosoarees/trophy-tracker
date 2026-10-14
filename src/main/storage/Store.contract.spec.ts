@@ -754,6 +754,85 @@ describe.each(IMPLEMENTATIONS)(
       });
     });
 
+    describe('theme', () => {
+      it('should answer the default theme when none was chosen', () => {
+        const sut = make();
+
+        const theme = sut.getTheme();
+
+        expect(theme).toBe('navy');
+      });
+
+      it('should answer the theme chosen in the setup when there is no account', () => {
+        const sut = make();
+
+        sut.setTheme('dracula');
+
+        expect(sut.getTheme()).toBe('dracula');
+      });
+
+      it('should start the first account on the theme chosen in the setup', () => {
+        const sut = make();
+        sut.setTheme('dracula');
+
+        sut.setCredentials(CREDENTIALS, PROFILE);
+
+        expect(sut.getTheme()).toBe('dracula');
+      });
+
+      it('should start another account on the theme on screen as it is saved', () => {
+        const { sut } = setupWithAccount();
+        sut.setTheme('dracula');
+
+        sut.setCredentials(OTHER_CREDENTIALS, OTHER_PROFILE);
+
+        expect(sut.getTheme()).toBe('dracula');
+      });
+
+      it('should change only the theme of the account in use', () => {
+        const { sut } = setupWithTwoAccounts();
+
+        sut.setTheme('dracula');
+
+        const ofTheOneInUse = sut.getTheme();
+        sut.setActiveAccount(STEAM_ID);
+        expect({ ofTheOneInUse, ofTheOther: sut.getTheme() }).toEqual({
+          ofTheOneInUse: 'dracula',
+          ofTheOther: 'navy',
+        });
+      });
+
+      it('should answer the theme of an account when it is followed again', () => {
+        const { sut } = setupWithTwoAccounts();
+        sut.setTheme('dracula');
+        sut.setActiveAccount(STEAM_ID);
+
+        sut.setActiveAccount(OTHER_STEAM_ID);
+
+        expect(sut.getTheme()).toBe('dracula');
+      });
+
+      it('should keep the theme of an account when it is given another key', () => {
+        const { sut } = setupWithTwoAccounts();
+        sut.setActiveAccount(STEAM_ID);
+        sut.setTheme('dracula');
+        sut.setActiveAccount(OTHER_STEAM_ID);
+
+        sut.setCredentials({ steamId: STEAM_ID, apiKey: OTHER_KEY }, PROFILE);
+
+        expect(sut.getTheme()).toBe('dracula');
+      });
+
+      it('should go back to the theme of the setup when the last account is removed', () => {
+        const { sut } = setupWithAccount();
+        sut.setTheme('dracula');
+
+        sut.removeAccount(STEAM_ID);
+
+        expect(sut.getTheme()).toBe('navy');
+      });
+    });
+
     describe('a write the disk refuses', () => {
       /**
        * Two accounts with everything read, following `OTHER_STEAM_ID`, whose
@@ -775,6 +854,7 @@ describe.each(IMPLEMENTATIONS)(
       const heldBy = (store: ServiceStore) => ({
         ...accountsOf(store),
         language: store.getLanguage(),
+        theme: store.getTheme(),
         schema: store.getSchema(1),
         summaryOfFirst: store.getSummary(1, STEAM_ID),
       });
@@ -832,6 +912,7 @@ describe.each(IMPLEMENTATIONS)(
           (store) => store.removeAccount(STEAM_ID),
         ],
         ['the language changes', (store) => store.setLanguage('pt-BR')],
+        ['the theme changes', (store) => store.setTheme('dracula')],
       ])('should say so and change nothing when %s', (_change, write) => {
         const { sut } = setupRefusing();
 
@@ -845,6 +926,7 @@ describe.each(IMPLEMENTATIONS)(
             profile: OTHER_PROFILE,
             accounts: [ACCOUNT, { ...OTHER_ACCOUNT, status: 'rejected' }],
             language: 'en',
+            theme: 'navy',
             schema: SCHEMA,
             summaryOfFirst: SUMMARY,
           },
