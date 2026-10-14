@@ -2,6 +2,14 @@
 
 Why things are the way they are, for the choices that are not obvious from the code. `CLAUDE.md` and the other files of this folder hold the rules; this file holds the reasons and what was tried before. Newest first. Add an entry when a choice is made that someone could reasonably want to undo.
 
+## The audit runs once, and layouts adapt to their texts
+
+Until 2026-10-13 `pnpm audit:ui` ran once per language, four apps side by side, and the full run was what counted. The owner cut it to one run, in English: a check that takes minutes should not be what keeps a long label from breaking a row. The layout should adapt to its texts instead, wrapping or shrinking, and that is now a rule for new rows (`docs/interface.md`).
+
+What was given up: Spanish, French and Portuguese are no longer seen on every change, so a text that is cut in one of them, or an achievement name that is not Steam's in that language, is found only when that language is asked for (`AUDIT_LANGUAGES=fr`). The two width measurements (the tab bar, a card's row at 480 px) stay in the single run, where English is the shortest of the four.
+
+Two rows do not adapt yet and were only ever kept whole by measuring: the tab bar, which French fills to the pixel, and a card's row. The tab bar is in `docs/ROADMAP.md`.
+
 ## One saved link per achievement
 
 Asked on 2026-10-13 what was still opened beside the app during a hunt, the owner named one thing: a YouTube video. The card only offered searches, so the right video was found again every session. An achievement now keeps one address, which opens in the browser from the first button of its row.
