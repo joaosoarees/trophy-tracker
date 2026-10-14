@@ -56,6 +56,9 @@ const STEAM_ID = '76561198000000042';
 const NIOH = 3681010;
 const ONIMUSHA = 2638890;
 const OUT = '.audit-ui';
+// The theme the screens are audited in a second time, by the name on its
+// button: `AUDIT_THEME='Solarized Light' pnpm audit:ui` runs another.
+const SECOND_THEME = process.env.AUDIT_THEME ?? 'Dracula';
 const axeSource = readFileSync(
   createRequire(import.meta.url).resolve('axe-core/axe.min.js'),
   'utf8',
@@ -987,26 +990,32 @@ async function auditScreens(page, steam, language) {
  * in it, and the default comes back.
  */
 async function auditThemes(page, userData) {
+  const SECOND_ID = SECOND_THEME.toLowerCase().replaceAll(' ', '-');
   const FLOW = 'themes';
   const failuresBefore = failures.length;
   const THEME = (name) =>
     `[...document.querySelectorAll('main button[aria-pressed]')].find((el) => el.textContent === '${name}')`;
   const FIELD = `getComputedStyle(document.body).backgroundColor`;
-  const DRACULA = 'rgb(40, 42, 54)';
-  const NAVY = 'rgb(23, 26, 33)';
+  // The field of a theme is read from its own sample in the picker.
+  const fieldOf = (name) =>
+    page.evaluate(
+      `getComputedStyle(${THEME(name)}.querySelector('span')).backgroundColor`,
+    );
   const keptTheme = () =>
     JSON.parse(readFileSync(join(userData, 'config.json'), 'utf8')).accounts[0]
       .theme;
 
   await page.evaluate(navButton(-1));
   await sleep(800);
-  await captureHover(page, THEME('Dracula'), 'hover-theme');
-  await page.evaluate(`${THEME('Dracula')}.click()`);
+  const SECOND_FIELD = await fieldOf(SECOND_THEME);
+  const NAVY = await fieldOf('Navy');
+  await captureHover(page, THEME(SECOND_THEME), 'hover-theme');
+  await page.evaluate(`${THEME(SECOND_THEME)}.click()`);
   expectThat(
     FLOW,
     await waitFor(
       page,
-      `${FIELD} === '${DRACULA}' && ${THEME('Dracula')}.getAttribute('aria-pressed') === 'true' && ${THEME('Navy')}.getAttribute('aria-pressed') === 'false'`,
+      `${FIELD} === '${SECOND_FIELD}' && ${THEME(SECOND_THEME)}.getAttribute('aria-pressed') === 'true' && ${THEME('Navy')}.getAttribute('aria-pressed') === 'false'`,
       2000,
     ),
     'picking a theme does not put the window in its colours and mark it as the one picked',
@@ -1014,20 +1023,20 @@ async function auditThemes(page, userData) {
   await sleep(300);
   expectThat(
     FLOW,
-    keptTheme() === 'dracula',
+    keptTheme() === SECOND_ID,
     `the theme picked was not kept for the account (config.json has "${keptTheme()}")`,
   );
-  await audit(page, 'settings-dracula');
+  await audit(page, `settings-${SECOND_ID}`);
   await page.evaluate(navButton(0));
   await sleep(900);
-  await audit(page, 'game-dracula');
+  await audit(page, `game-${SECOND_ID}`);
   await page.evaluate(detailsToggle);
   await sleep(500);
-  await audit(page, 'game-details-dracula');
+  await audit(page, `game-details-${SECOND_ID}`);
   await page.evaluate(detailsToggle);
   await page.evaluate(navButton(1));
   await sleep(1200);
-  await audit(page, 'dashboard-dracula');
+  await audit(page, `dashboard-${SECOND_ID}`);
 
   // The theme is the account's: the other account, added while the default
   // was on screen, is still in it, and coming back brings the picked one.
@@ -1049,7 +1058,7 @@ async function auditThemes(page, userData) {
     FLOW,
     await waitFor(
       page,
-      `${FIELD} === '${DRACULA}' && ${activeAccountCard} === 0`,
+      `${FIELD} === '${SECOND_FIELD}' && ${activeAccountCard} === 0`,
       4000,
     ),
     'switching back to an account does not bring its theme back',
@@ -1087,8 +1096,10 @@ async function auditThemes(page, userData) {
   );
   expectThat(
     FLOW,
-    fields.at(-1) === DRACULA &&
-      fields.every((field) => [DRACULA, 'rgba(0, 0, 0, 0)'].includes(field)),
+    fields.at(-1) === SECOND_FIELD &&
+      fields.every((field) =>
+        [SECOND_FIELD, 'rgba(0, 0, 0, 0)'].includes(field),
+      ),
     `the window reloaded was not in the theme picked on every frame (the fields it painted: ${fields.join(', ')})`,
   );
 

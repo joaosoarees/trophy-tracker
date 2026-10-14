@@ -161,6 +161,23 @@ try {
   await sleep(1200);
   await save('settings', 470);
 
+  // The same game in each of the other themes; the pictures above are in
+  // the one a new install starts on, which is picked again at the end.
+  const pick = (theme) =>
+    evaluate(
+      `[...document.querySelectorAll('main button[aria-pressed]')].find((el) => el.textContent === '${theme}').click()`,
+    );
+  for (const theme of ['Dracula', 'Gruvbox', 'Solarized Light', 'Synthwave']) {
+    await pick(theme);
+    await tab(0);
+    await sleep(1200);
+    await save(`theme-${theme.toLowerCase().replaceAll(' ', '-')}`, 480);
+    await tab(-1);
+    await sleep(800);
+  }
+  await pick('Navy');
+  await sleep(500);
+
   // An achievement unlocked while the game runs, and then the last one.
   // It starts on the game last played, before another one is opened.
   await tab(0);

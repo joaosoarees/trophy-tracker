@@ -243,7 +243,8 @@ export const ptBR: Messages = {
     theme: 'Tema',
     themeHint: 'O tema é da conta em uso: cada conta guarda o seu.',
     palettes: 'Paletas dos temas',
-    paletteCredits: 'Dracula © Dracula Theme, licença MIT.',
+    paletteCredits:
+      'Dracula © Dracula Theme, Gruvbox © Pavel Pertsev, Solarized © Ethan Schoonover. Licença MIT.',
     steamId: (id) => `SteamID ${id}`,
     language: 'Idioma',
     languageHint:
