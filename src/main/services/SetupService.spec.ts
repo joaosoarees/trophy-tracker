@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { type ThemeId } from '@shared/themes';
 import { fakeSteamClient, type ISteamAnswers } from '@tests/fakeSteamClient';
 import {
   fakeFetch,
@@ -78,6 +79,7 @@ describe('SetupService', () => {
       expect(state).toEqual({
         isConfigured: false,
         language: 'en',
+        theme: 'navy',
         profile: null,
         accounts: [],
         activeSteamId: null,
@@ -187,6 +189,42 @@ describe('SetupService', () => {
       sut.setLanguage('pt-BR');
 
       expect(sut.messages.nav.dashboard).toBe('Painel');
+    });
+  });
+
+  describe('setTheme', () => {
+    it('should answer the state in the theme picked during the setup', () => {
+      const { sut } = setup();
+
+      const state = sut.setTheme('dracula');
+
+      expect(state.theme).toBe('dracula');
+    });
+
+    it('should start the first account on the theme picked during the setup', async () => {
+      const { sut } = setup({ summary });
+      sut.setTheme('dracula');
+
+      const added = await sut.addAccount(STEAM_ID, KEY);
+
+      expect(added).toMatchObject({ ok: true, value: { theme: 'dracula' } });
+    });
+
+    it('should answer the theme of the other account when it is followed', async () => {
+      const { sut } = await withTwoAccounts();
+      sut.setTheme('dracula');
+
+      const state = sut.setActiveAccount(STEAM_ID);
+
+      expect(state.theme).toBe('navy');
+    });
+
+    it('should change nothing when given a name that is no theme', () => {
+      const { sut } = setup();
+
+      const state = sut.setTheme('later' as ThemeId);
+
+      expect(state.theme).toBe('navy');
     });
   });
 
@@ -306,6 +344,7 @@ describe('SetupService', () => {
       ['follow another account', (sut) => sut.setActiveAccount(STEAM_ID)],
       ['remove an account', (sut) => sut.removeAccount(OTHER_STEAM_ID)],
       ['change the language', (sut) => sut.setLanguage('fr')],
+      ['change the theme', (sut) => sut.setTheme('dracula')],
     ])(
       'should say so and answer the state it had when asked to %s',
       async (_change, change) => {
