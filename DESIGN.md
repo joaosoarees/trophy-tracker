@@ -6,7 +6,7 @@ colors:
   ink-navy: '#0b1722'
   unlocked-green: '#a4d007'
   pin-amber: '#e8b84a'
-  erase-red: '#e5534b'
+  erase-red: '#ea6058'
   night-navy: '#171a21'
   panel-navy: '#1d2530'
   recessed-slate: '#222b37'
