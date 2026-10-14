@@ -1,8 +1,17 @@
-import { EyeOff, ListChecks, Pin, StickyNote, Trophy } from 'lucide-react';
+import {
+  ExternalLink,
+  EyeOff,
+  Link2,
+  ListChecks,
+  Pin,
+  StickyNote,
+  Trophy,
+} from 'lucide-react';
 import { memo } from 'react';
 
 import { useLocale } from '@app/hooks/useLocale';
 import { useT } from '@app/hooks/useT';
+import { linkHost } from '@shared/link';
 import { type IAchievement } from '@shared/types/Achievement';
 import { type IAchievementUserData } from '@shared/types/UserData';
 import { Collapsible } from '@ui/components/Collapsible';
@@ -12,6 +21,7 @@ import { ProgressBar } from '@ui/components/ProgressBar';
 import { RemoteImage } from '@ui/components/RemoteImage';
 import { Badge } from '@ui/primitives/badge';
 import { Button } from '@ui/primitives/button';
+import { Input } from '@ui/primitives/input';
 import { Textarea } from '@ui/primitives/textarea';
 import { cn } from '@ui/utils/cn';
 import { formatDate, formatNumber, formatPercent } from '@ui/utils/format';
@@ -42,11 +52,18 @@ export const AchievementCard = memo(function AchievementCard(
     checkedCount,
     note,
     isPinned,
+    link,
+    linkText,
+    isLinkOpen,
+    isLinkInvalid,
     isChecklistOpen,
     isNoteVisible,
     shouldFocusNote,
     progress,
     handleOpenGuide,
+    handleOpenLink,
+    handleToggleLink,
+    handleLinkChange,
     handleToggleChecklist,
     handleOpenNote,
     handleCloseNote,
@@ -139,41 +156,69 @@ export const AchievementCard = memo(function AchievementCard(
             </p>
           )
         ) : (
+          // Two groups, so that a row too long for a narrow window breaks
+          // between the searches and the user's tools, never inside either.
           <div className="mt-2.5 flex flex-wrap items-center gap-1">
-            <GuideLinks onOpen={handleOpenGuide} />
-            <span className="flex-1" />
-            <Hint label={t.card.listTitle}>
-              <Button
-                size="xs"
-                variant="ghost"
-                className={cn(isChecklistOpen && TOGGLE_ON)}
-                aria-expanded={isChecklistOpen}
-                onClick={handleToggleChecklist}
-              >
-                <ListChecks />
-                {checklist.length > 0
-                  ? `${checkedCount}/${checklist.length}`
-                  : t.card.list}
-              </Button>
-            </Hint>
-            {!isNoteVisible && (
+            <div className="flex min-w-0 items-center gap-1">
+              {link && (
+                <Hint label={t.card.linkOpen}>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    // The one page the user chose, among searches: in the accent.
+                    className="text-primary hover:text-primary max-w-40 min-w-0 shrink"
+                    onClick={handleOpenLink}
+                  >
+                    <ExternalLink />
+                    <span className="truncate">{linkHost(link)}</span>
+                  </Button>
+                </Hint>
+              )}
+              <GuideLinks onOpen={handleOpenGuide} />
+            </div>
+            <div className="ml-auto flex items-center">
+              <Hint label={t.card.listTitle}>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  className={cn(isChecklistOpen && TOGGLE_ON)}
+                  aria-expanded={isChecklistOpen}
+                  onClick={handleToggleChecklist}
+                >
+                  <ListChecks />
+                  {checklist.length > 0
+                    ? `${checkedCount}/${checklist.length}`
+                    : t.card.list}
+                </Button>
+              </Hint>
               <IconButton
                 size="icon-xs"
-                label={t.card.note}
-                onClick={handleOpenNote}
+                label={link ? t.card.linkChange : t.card.link}
+                className={cn(isLinkOpen && TOGGLE_ON)}
+                aria-expanded={isLinkOpen}
+                onClick={handleToggleLink}
               >
-                <StickyNote />
+                <Link2 />
               </IconButton>
-            )}
-            <IconButton
-              size="icon-xs"
-              label={isPinned ? t.card.unpin : t.card.pin}
-              aria-pressed={isPinned}
-              className={cn(isPinned && 'text-warning hover:text-warning')}
-              onClick={handleTogglePin}
-            >
-              <Pin className={cn(isPinned && 'fill-current')} />
-            </IconButton>
+              {!isNoteVisible && (
+                <IconButton
+                  size="icon-xs"
+                  label={t.card.note}
+                  onClick={handleOpenNote}
+                >
+                  <StickyNote />
+                </IconButton>
+              )}
+              <IconButton
+                size="icon-xs"
+                label={isPinned ? t.card.unpin : t.card.pin}
+                aria-pressed={isPinned}
+                className={cn(isPinned && 'text-warning hover:text-warning')}
+                onClick={handleTogglePin}
+              >
+                <Pin className={cn(isPinned && 'fill-current')} />
+              </IconButton>
+            </div>
           </div>
         )}
 
@@ -185,6 +230,29 @@ export const AchievementCard = memo(function AchievementCard(
             items={checklist}
             onChange={handleChecklistChange}
           />
+        </Collapsible>
+
+        <Collapsible open={isLinkOpen && !achievement.unlocked}>
+          <div className="mt-2.5 space-y-1.5">
+            <Input
+              value={linkText}
+              inputMode="url"
+              autoFocus
+              aria-label={t.card.linkPlaceholder}
+              aria-invalid={isLinkInvalid}
+              placeholder={t.card.linkPlaceholder}
+              className="h-7 text-sm"
+              onChange={(event) => handleLinkChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === 'Escape') {
+                  handleToggleLink();
+                }
+              }}
+            />
+            {isLinkInvalid && (
+              <p className="text-destructive text-xs">{t.card.linkInvalid}</p>
+            )}
+          </div>
         </Collapsible>
 
         <Collapsible open={isNoteVisible}>

@@ -904,6 +904,23 @@ async function auditScreens(page, steam, language) {
     `the tab bar needs ${barNeeds} px, and has ${NARROWEST - SYSTEM_BUTTONS} beside the buttons Windows draws in a window ${NARROWEST} px wide`,
   );
 
+  // The buttons of a card stay on one line at that width too: a row that
+  // wraps makes every card of the list a line taller.
+  const row = JSON.parse(
+    await page.evaluate(`(() => {
+    const row = document.querySelector('main li div.flex-wrap');
+    const gap = (el) => parseFloat(getComputedStyle(el).columnGap) || 0;
+    const needs = (el) => [...el.children].reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) + gap(el) * (el.children.length - 1);
+    const groups = [...row.children].reduce((sum, group) => sum + needs(group), 0) + gap(row) * (row.children.length - 1);
+    return JSON.stringify({ needs: Math.ceil(groups), has: Math.floor(row.clientWidth - (window.innerWidth - ${NARROWEST})) });
+  })()`),
+  );
+  expectThat(
+    FLOW,
+    row.needs <= row.has,
+    `the buttons of a card need ${row.needs} px, and have ${row.has} in a window ${NARROWEST} px wide`,
+  );
+
   // Flows do not depend on the language: once is enough.
   if (language === LANGUAGES[0]) await auditDetailsFlow(page);
   // The details open from the header; they close again for the next screen.
@@ -1120,6 +1137,86 @@ async function auditAccounts(page, steam, home) {
     await waitFor(page, `${NOTE} === null`, 2000),
     'an empty note stays open after it was left',
   );
+
+  // A link is kept only once what was typed is an https address; it then
+  // comes first in the card's row, named by where it leads, and goes when
+  // its field is emptied. The field opens and closes on its button.
+  const LINK_TOGGLE = (label) =>
+    `document.querySelector('main li button[aria-label="${label}"]')`;
+  const LINK_FIELD = `document.querySelector('main li input[inputmode="url"]')`;
+  const LINK_BUTTON = `[...document.querySelectorAll('main li:first-child button')].find((el) => el.textContent === 'youtu.be')`;
+  await page.evaluate(`${LINK_TOGGLE('Save a link')}.click()`);
+  expectThat(
+    FLOW,
+    await waitFor(
+      page,
+      `${LINK_FIELD} !== null && document.activeElement === ${LINK_FIELD} && ${LINK_TOGGLE('Save a link')}.getAttribute('aria-expanded') === 'true'`,
+      2000,
+    ),
+    'the button that saves a link does not open its field with the cursor in it',
+  );
+  await page.send('Input.insertText', { text: 'http://youtu.be/audit' });
+  await sleep(800);
+  expectThat(
+    FLOW,
+    await page.evaluate(
+      `${LINK_FIELD}.getAttribute('aria-invalid') === 'true' && ${LINK_BUTTON} === undefined && ${LINK_TOGGLE('Save a link')} !== null`,
+    ),
+    'an address that is not https was kept as a link, or was not refused under its field',
+  );
+  await page.capture('flow-link-refused');
+  await page.evaluate(
+    `(() => { ${LINK_FIELD}.select(); document.execCommand('delete'); })()`,
+  );
+  await page.send('Input.insertText', { text: 'youtu.be/audit?t=95' });
+  expectThat(
+    FLOW,
+    await waitFor(
+      page,
+      `${LINK_BUTTON} !== undefined && ${LINK_FIELD}.getAttribute('aria-invalid') !== 'true' && ${LINK_TOGGLE('Change the saved link')} !== null`,
+      2000,
+    ),
+    'an https address typed in the field did not become the link of the card',
+  );
+  await page.capture('flow-link-saved');
+  await captureHover(page, LINK_BUTTON, 'hover-saved-link');
+  await page.evaluate(`${LINK_TOGGLE('Change the saved link')}.click()`);
+  expectThat(
+    FLOW,
+    await waitFor(page, `${LINK_FIELD} === null`, 2000),
+    'the field of a link stays open after its button was clicked again',
+  );
+  expectThat(
+    FLOW,
+    await page.evaluate(
+      `${LINK_BUTTON} !== undefined && ${LINK_BUTTON}.getBoundingClientRect().left < [...document.querySelectorAll('main li:first-child button')].find((el) => el.textContent === 'YouTube').getBoundingClientRect().left`,
+    ),
+    'the saved link is not before the searches in the row of its card',
+  );
+  await page.capture('flow-link-closed');
+  await page.evaluate(`${LINK_TOGGLE('Change the saved link')}.click()`);
+  await waitFor(page, `${LINK_FIELD} !== null`, 2000);
+  expectThat(
+    FLOW,
+    await page.evaluate(
+      `${LINK_FIELD}.value === 'https://youtu.be/audit?t=95'`,
+    ),
+    'the field of a saved link does not open on the address that was saved',
+  );
+  await page.evaluate(
+    `(() => { ${LINK_FIELD}.focus(); ${LINK_FIELD}.select(); document.execCommand('delete'); })()`,
+  );
+  expectThat(
+    FLOW,
+    await waitFor(
+      page,
+      `${LINK_BUTTON} === undefined && ${LINK_TOGGLE('Save a link')} !== null`,
+      2000,
+    ),
+    'a link whose field was emptied is still on its card',
+  );
+  await page.evaluate(`${LINK_TOGGLE('Save a link')}.click()`);
+  await waitFor(page, `${LINK_FIELD} === null`, 2000);
 
   await page.evaluate(`${LIST_TOGGLE}.click()`);
   await sleep(500);

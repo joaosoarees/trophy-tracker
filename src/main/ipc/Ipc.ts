@@ -152,6 +152,7 @@ export class Ipc {
             setup.messages.guides.query,
           ),
         ),
+      openLink: (link) => browser.openLink(link),
       openExternal: async (page) =>
         page === 'download'
           ? browser.open(

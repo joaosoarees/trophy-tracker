@@ -89,6 +89,8 @@ export interface IApi {
     game: string,
     achievement: string,
   ) => Promise<void>;
+  /** Opens the link kept for an achievement; anything but an `https` address is refused. */
+  openLink: (link: string) => Promise<void>;
   openExternal: (target: ExternalPage) => Promise<void>;
   /** The running version and, when a later one was released, which. */
   getAppInfo: () => Promise<IAppInfo>;

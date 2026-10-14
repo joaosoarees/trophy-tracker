@@ -50,7 +50,7 @@ It is free, open source, and not affiliated with Valve or Steam.
     </td>
     <td width="50%" valign="top">
       <h3>What Steam does not track, you do</h3>
-      <p>Steam will not tell you which collectibles you are missing. Every achievement can carry your own checklist, a note and a pin, kept on your computer between sessions.</p>
+      <p>Steam will not tell you which collectibles you are missing. Every achievement can carry your own checklist, a note, a pin and a link to the video or guide you follow, kept on your computer between sessions.</p>
       <h3>Every game, by how close it is</h3>
       <p>A dashboard lists what you have played, sorted by how close each game is to 100%, and a finished game gets the one celebration in the app.</p>
       <p><img src="docs/screenshots/dashboard.png" alt="The dashboard: played games with their progress." /></p>
@@ -59,7 +59,7 @@ It is free, open source, and not affiliated with Valve or Steam.
   <tr>
     <td width="50%" valign="top">
       <h3>Several accounts</h3>
-      <p>Add more than one Steam account and switch between them in one click; each keeps its own key, notes and checklists. The app follows whichever account is signed in to Steam.</p>
+      <p>Add more than one Steam account and switch between them in one click; each keeps its own key, notes, checklists and links. The app follows whichever account is signed in to Steam.</p>
       <h3>In your language</h3>
       <p>English, Brazilian Portuguese, Spanish and French. The language changes the whole app, including the achievement names Steam sends.</p>
     </td>
@@ -96,7 +96,7 @@ Trophy Tracker has no account, no server and no telemetry. It talks only to:
 - **Steam** (`api.steampowered.com` and Steam's image servers), with the Web API key and SteamID you provide, to read your games and achievements;
 - **GitHub** (`api.github.com` and `github.com`), to look for a newer version and, on Windows and the Linux AppImage, to download it.
 
-Your keys, notes and checklists are stored only on your computer, in `%APPDATA%\trophy-tracker` (Windows), `~/Library/Application Support/trophy-tracker` (macOS) or `~/.config/trophy-tracker` (Linux). A saved key is never shown again, only its last four characters. Errors are written to a local log file and are never sent anywhere.
+Your keys, notes, checklists and links are stored only on your computer, in `%APPDATA%\trophy-tracker` (Windows), `~/Library/Application Support/trophy-tracker` (macOS) or `~/.config/trophy-tracker` (Linux). A saved key is never shown again, only its last four characters. Errors are written to a local log file and are never sent anywhere.
 
 ## How it is built
 

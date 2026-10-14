@@ -14,6 +14,10 @@ export class SystemService extends Service {
     return this.api.openGuide(site, appid, game, achievement);
   }
 
+  static openLink(link: string): Promise<void> {
+    return this.api.openLink(link);
+  }
+
   /** Fire and forget: a failure to log is not worth reporting. */
   static logError(source: string, detail: string): void {
     void this.api.logError(source, detail).catch(() => {});

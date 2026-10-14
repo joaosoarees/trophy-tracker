@@ -2,6 +2,12 @@
 
 What changed in each version, for whoever uses the app. The section of a version is what its release shows on GitHub.
 
+## Unreleased
+
+### Added
+
+- An achievement can keep a link: the video or the guide you follow for it. The link button on its card opens a field for the address; once saved, the link comes first among the card's buttons, named by the site it leads to, and opens in your browser with one click. Only `https` addresses are kept, one per achievement, and emptying the field takes the link out. The three searches stay where they were.
+
 ## 1.2.1
 
 ### Fixed

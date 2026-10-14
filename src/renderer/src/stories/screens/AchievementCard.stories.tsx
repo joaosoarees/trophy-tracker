@@ -100,6 +100,17 @@ export const WithANote: Story = {
   },
 };
 
+/** A saved link comes first in the row, in the accent, named by where it leads; the searches stay. */
+export const WithASavedLink: Story = {
+  args: {
+    data: {
+      note: '',
+      pinned: false,
+      link: 'https://www.youtube.com/watch?v=abc123&t=95s',
+    },
+  },
+};
+
 /** A checklist with items left to check starts open: which ones are left is what it is for. */
 export const WithAChecklist: Story = {
   args: {
