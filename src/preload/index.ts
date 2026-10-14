@@ -43,6 +43,7 @@ const calls: Record<Call, true> = {
   setUserData: true,
   setLanguage: true,
   setTheme: true,
+  paintWindow: true,
   setAchievementSort: true,
   setDashboardSort: true,
   getAlwaysOnTop: true,

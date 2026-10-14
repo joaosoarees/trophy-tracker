@@ -71,6 +71,9 @@ export interface IApi {
   /** Changes the theme of the account in use or, during the setup, of the setup. */
   setTheme: (theme: ThemeId) => Promise<IAppState>;
 
+  /** Puts what the system draws of the window in the theme the interface shows. */
+  paintWindow: (theme: ThemeId) => Promise<void>;
+
   setAchievementSort: (sort: IAchievementSort) => Promise<void>;
   setDashboardSort: (sort: IDashboardSort) => Promise<void>;
 
