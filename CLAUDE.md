@@ -3,8 +3,8 @@
 Desktop app (Electron + React + TypeScript) that shows, for the game open on Steam, the missing achievements, the hidden ones, progress counters, user checklists and shortcuts to guides. It runs natively on Windows, macOS and Linux, and is developed on WSL.
 
 - **The repository is in English:** code, comments, test names, docs and commit messages.
-- **The interface ships in four languages:** English (default), Brazilian Portuguese, Spanish and French. Text in another language belongs only in its file under `src/shared/i18n/locales/` (`pt-BR.ts`, `es.ts`, `fr.ts`), in test data that checks that locale, and in `README.pt-BR.md`.
-- **A change to one README goes into both** (`README.md`, `README.pt-BR.md`).
+- **The interface ships in four languages:** English (default), Brazilian Portuguese, Spanish and French. Text in another language belongs only in its file under `src/shared/i18n/locales/` (`pt-BR.ts`, `es.ts`, `fr.ts`), in test data that checks that locale, and in that language's README (`README.pt-BR.md`, `README.es.md`, `README.fr.md`).
+- **A change to one README goes into all four** (`README.md`, `README.pt-BR.md`, `README.es.md`, `README.fr.md`): the same sections, in the same order, with the words the app itself uses in that language (its file under `locales/`).
 - The user talks to you in Portuguese; answer in Portuguese.
 - **Never copy a Steam Web API key out of the data folder or print it** (`docs/local-data.md` says where it is kept).
 - **The fake Steam is reachable only when the app is not packaged.** The gate is in `src/main/index.ts`; the user's key is sent to whatever address the client is given, so never widen it (`docs/audit.md`).
