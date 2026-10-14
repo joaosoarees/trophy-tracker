@@ -2,6 +2,22 @@
 
 Why things are the way they are, for the choices that are not obvious from the code. `CLAUDE.md` and the other files of this folder hold the rules; this file holds the reasons and what was tried before. Newest first. Add an entry when a choice is made that someone could reasonably want to undo.
 
+## One saved link per achievement
+
+Asked on 2026-10-13 what was still opened beside the app during a hunt, the owner named one thing: a YouTube video. The card only offered searches, so the right video was found again every session. An achievement now keeps one address, which opens in the browser from the first button of its row.
+
+The choices, each of which could have gone the other way:
+
+- **A field of its own**, not addresses made clickable in the note: the point is one click without opening the note.
+- **One link**, not a list: several would need names and a row of their own in a window 480 px wide. A second address fits in the note.
+- **Any `https` address**, not only YouTube: a written guide or a map of collectibles is the same field. `http`, other schemes, an address with a user or a password, and a host with no dot are refused, by the same function in the card and in the main process (`shared/link.ts`), since the address is handed to the system to open.
+- **The searches stay** beside a saved link: a video can be taken down, and the search is the way out.
+- **The row was tightened to take the new button.** At 480 px it would have broken in two on every card, in the four languages (366 px needed, 352 at hand). The searches lost 2 px of padding a side and the user's tools stand together with no gap, which leaves 338 px (345 in French); the audit now measures it. A card with a saved link still breaks at that width, between the searches and the tools.
+- **The page opens in the browser**, not in the window: a player 480 px wide over a game is small, carries advertising, and would be the first thing the app loads from somewhere other than Steam and GitHub.
+- **No new format version** for `userdata.json`: the field is optional, as the checklist was, and a version before it reads the file and writes the links back as it found them. The one loss: there, an achievement edited down to no note, no pin and no checklist has its entry removed, link included.
+
+Considered in the same conversation and left out by the owner: exporting and importing checklists (a "Copy list" per achievement included), a comparison with friends' achievements, a history of unlocks, a queue of games to complete, and a compact mode for use during a game.
+
 ## No React Compiler
 
 Measured on 2026-10-10 (React 19.3.0, `babel-plugin-react-compiler` 1.0.0) against a rule set beforehand: adopt only if a scenario gains 20% outside the noise, none gets worse, and every check passes. Typing a note, checking a checklist and the dashboard gained 30% to 90%, which is a few milliseconds at most; clearing the achievement search got slower in most runs at the size of a typical game, and the bundle grew 8%. One condition failed, so it stayed off. The numbers and the way to measure again are in `docs/store.md`.

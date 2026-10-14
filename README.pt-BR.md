@@ -52,7 +52,7 @@ A Steam lista as conquistas que faltam sem dizer como consegui-las, esconde as o
     </td>
     <td width="50%" valign="top">
       <h3>O que a Steam não acompanha, você acompanha</h3>
-      <p>A Steam não diz quais colecionáveis faltam. Toda conquista pode ter a sua própria checklist, uma nota e um marcador de fixada, guardados no seu computador entre uma sessão e outra.</p>
+      <p>A Steam não diz quais colecionáveis faltam. Toda conquista pode ter a sua própria checklist, uma nota, um marcador de fixada e um link para o vídeo ou guia que você segue, guardados no seu computador entre uma sessão e outra.</p>
       <h3>Todos os jogos, pelo que falta</h3>
       <p>Um painel lista o que você jogou, ordenado por proximidade dos 100%, e um jogo concluído ganha a única comemoração do app.</p>
       <p><img src="docs/screenshots/dashboard.png" alt="O painel: jogos jogados com o progresso de cada um." /></p>
@@ -61,7 +61,7 @@ A Steam lista as conquistas que faltam sem dizer como consegui-las, esconde as o
   <tr>
     <td width="50%" valign="top">
       <h3>Várias contas</h3>
-      <p>Adicione mais de uma conta Steam e troque entre elas com um clique; cada uma guarda a própria chave, notas e checklists. O app acompanha a conta que estiver conectada na Steam.</p>
+      <p>Adicione mais de uma conta Steam e troque entre elas com um clique; cada uma guarda a própria chave, notas, checklists e links. O app acompanha a conta que estiver conectada na Steam.</p>
       <h3>No seu idioma</h3>
       <p>Inglês, português do Brasil, espanhol e francês. O idioma muda o app inteiro, inclusive os nomes das conquistas enviados pela Steam.</p>
     </td>
@@ -98,7 +98,7 @@ O Trophy Tracker não tem conta, servidor nem telemetria. Ele só se comunica co
 - **a Steam** (`api.steampowered.com` e os servidores de imagem da Steam), com a chave da Web API e o SteamID que você fornece, para ler seus jogos e conquistas;
 - **o GitHub** (`api.github.com` e `github.com`), para procurar uma versão mais nova e, no Windows e no AppImage do Linux, baixá-la.
 
-Suas chaves, notas e checklists ficam guardadas só no seu computador, em `%APPDATA%\trophy-tracker` (Windows), `~/Library/Application Support/trophy-tracker` (macOS) ou `~/.config/trophy-tracker` (Linux). Uma chave salva nunca volta a ser exibida, só os quatro últimos caracteres. Os erros vão para um arquivo de log local e nunca são enviados a lugar nenhum.
+Suas chaves, notas, checklists e links ficam guardados só no seu computador, em `%APPDATA%\trophy-tracker` (Windows), `~/Library/Application Support/trophy-tracker` (macOS) ou `~/.config/trophy-tracker` (Linux). Uma chave salva nunca volta a ser exibida, só os quatro últimos caracteres. Os erros vão para um arquivo de log local e nunca são enviados a lugar nenhum.
 
 ## Como é feito
 

@@ -14,7 +14,7 @@ A 48px icon at the left; to its right the name in title weight, with the
 rarity percentage in caption text at the far end; the description below at 75
 percent opacity; then, when there is one, a progress bar with its count; and a
 last row of ghost buttons, with guide searches at the left in Quiet Steel and
-the user's own tools (checklist, note, pin) at the right.
+the user's own tools (checklist, link, note, pin) at the right.
 
 <Canvas of={AchievementCardStories.Pending} />
 
@@ -37,8 +37,13 @@ checklist, the note and the pin are where the user keeps that. They open
 inside the card, growing to their height, and are saved half a second after
 the last edit.
 
+A saved link is the one page the user chose for the achievement, a video or a
+guide. It comes first in the row, in the accent, named by where it leads; the
+three searches stay beside it, for the day the page is gone.
+
 <Canvas of={AchievementCardStories.Pinned} />
 <Canvas of={AchievementCardStories.WithANote} />
+<Canvas of={AchievementCardStories.WithASavedLink} />
 <Canvas of={AchievementCardStories.WithAChecklist} />
 
 ## Do and don't

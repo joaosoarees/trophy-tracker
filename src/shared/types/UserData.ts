@@ -9,6 +9,8 @@ export interface IAchievementUserData {
   pinned: boolean;
   /** Items the user lists to know which ones are missing (e.g. collectibles). */
   checklist?: IChecklistItem[];
+  /** The page the user keeps for this achievement (see `parseLink`). */
+  link?: string;
 }
 
 export type GameUserData = Record<string, IAchievementUserData>;

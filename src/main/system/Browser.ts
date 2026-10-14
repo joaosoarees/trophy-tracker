@@ -1,5 +1,6 @@
 import { shell } from 'electron';
 
+import { parseLink } from '@shared/link';
 import { type ExternalPage } from '@shared/types/Guide';
 
 import { Windows } from '../steam/Windows';
@@ -26,6 +27,16 @@ export class Browser {
     return Windows.isWsl
       ? this.windows.openInBrowser(url)
       : shell.openExternal(url);
+  }
+
+  /**
+   * A link the user kept. The interface only keeps `https` addresses; it is
+   * checked again here, since this is where an address reaches the system.
+   */
+  openLink(link: string): Promise<void> {
+    const url = parseLink(link);
+    if (!url) return Promise.reject(new Error('Not an https address'));
+    return this.open(url);
   }
 
   openPage(page: Exclude<ExternalPage, 'download'>): Promise<void> {

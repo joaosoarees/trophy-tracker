@@ -30,6 +30,7 @@ const OTHER_PROFILE = { steamId: OTHER_STEAM_ID, name: 'other', avatar: '' };
 const NOTE = { note: 'mine', pinned: false };
 const SUMMARY = { total: 4, unlocked: 1, playtime: 10, lastUnlockAt: 900 };
 const CHECKLIST = [{ id: '1', text: 'Bridge Kodama', done: true }];
+const LINK = 'https://www.youtube.com/watch?v=abc123&t=95s';
 const BOUNDS = { x: 2000, y: 100, width: 640, height: 900 };
 const CACHE_DELAY = 1000;
 
@@ -679,6 +680,27 @@ describe('Store', () => {
       });
 
       sut.setUserData(10, 'A', { note: '', pinned: false, checklist: [] });
+
+      const reopened = new Store(dir);
+      expect(reopened.getUserData(10)).toEqual({});
+    });
+
+    it('should keep an entry when it has only a link', () => {
+      const { sut, dir } = setupWithAccount();
+
+      sut.setUserData(10, 'A', { note: '', pinned: false, link: LINK });
+
+      const reopened = new Store(dir);
+      expect(reopened.getUserData(10)).toEqual({
+        A: { note: '', pinned: false, link: LINK },
+      });
+    });
+
+    it('should remove an entry when its link is taken out', () => {
+      const { sut, dir } = setupWithAccount();
+      sut.setUserData(10, 'A', { note: '', pinned: false, link: LINK });
+
+      sut.setUserData(10, 'A', { note: '', pinned: false, link: undefined });
 
       const reopened = new Store(dir);
       expect(reopened.getUserData(10)).toEqual({});

@@ -648,7 +648,8 @@ export class Store {
     const isEmpty =
       data.note.trim() === '' &&
       !data.pinned &&
-      (data.checklist?.length ?? 0) === 0;
+      (data.checklist?.length ?? 0) === 0 &&
+      !data.link;
     if (isEmpty) delete game[achievementId];
     else game[achievementId] = data;
     this.saveUserData({

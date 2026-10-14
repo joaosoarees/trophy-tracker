@@ -36,8 +36,9 @@ export function GuideLinks({ onOpen }: IGuideLinksProps) {
             size="xs"
             variant="ghost"
             // Quiet at rest: fifteen of these share a screen with the names
-            // and descriptions, which are what is being read.
-            className="text-muted-foreground"
+            // and descriptions, which are what is being read. Narrow, for
+            // the row to hold at the narrowest the window gets.
+            className="text-muted-foreground has-[>svg]:px-1"
             onClick={() => onOpen(site)}
           >
             {icon}

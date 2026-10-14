@@ -51,6 +51,7 @@ const calls: Record<Call, true> = {
   getFolder: true,
   openFolder: true,
   openGuide: true,
+  openLink: true,
   openExternal: true,
   getAppInfo: true,
   checkForUpdates: true,
