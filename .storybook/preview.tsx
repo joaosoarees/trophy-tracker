@@ -2,6 +2,7 @@ import { type Decorator, type Preview } from '@storybook/react-vite';
 import { type ReactNode, useEffect, useState } from 'react';
 import { action } from 'storybook/actions';
 
+import { showTheme } from '@app/lib/themeOnScreen';
 import { useStore } from '@app/store';
 import {
   isLanguage,
@@ -9,6 +10,7 @@ import {
   LANGUAGES,
   type Language,
 } from '@shared/i18n';
+import { DEFAULT_THEME, isThemeId, THEME_IDS, THEMES } from '@shared/themes';
 import { type IApi } from '@shared/types/Api';
 import { TooltipProvider } from '@ui/primitives/tooltip';
 
@@ -27,8 +29,6 @@ window.api = new Proxy({} as IApi, {
           return Promise.resolve(undefined);
         },
 });
-
-document.documentElement.classList.add('dark');
 
 /** Puts the app in the language picked in the toolbar before drawing the story. */
 function InLanguage({
@@ -52,7 +52,11 @@ function InLanguage({
 }
 
 const withApp: Decorator = (Story, context) => {
-  const { locale } = context.globals;
+  const { locale, theme: picked } = context.globals;
+  const shown = isThemeId(picked) ? picked : DEFAULT_THEME;
+
+  // The story is drawn in the theme picked in the toolbar, as the app is.
+  useEffect(() => showTheme(shown), [shown]);
 
   return (
     <InLanguage language={isLanguage(locale) ? locale : 'en'}>
@@ -98,9 +102,18 @@ const preview: Preview = {
         })),
       },
     },
+    theme: {
+      description: 'Theme of the app',
+      toolbar: {
+        icon: 'paintbrush',
+        dynamicTitle: true,
+        items: THEME_IDS.map((id) => ({ value: id, title: THEMES[id].label })),
+      },
+    },
   },
   initialGlobals: {
     locale: 'en',
+    theme: DEFAULT_THEME,
     viewport: { value: 'standard', isRotated: false },
   },
 };
