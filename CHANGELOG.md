@@ -4,7 +4,13 @@ What changed in each version, for whoever uses the app. The section of a version
 
 ## Unreleased
 
+### Added
+
+- Themes. Settings has a new section, "Appearance", where the app's colours are picked, and the setup offers the same choice beside the language. This version has two: Navy, the look the app always had, and Dracula. The theme is the account's: each account keeps its own, and switching accounts changes the colours with it.
+
 ### Fixed
+
+- An error line inside a card (a link that is not an address, a checklist item that is already there) was a little too dark to read comfortably; the red is lighter.
 
 - The Game tab reaches the corner of the window. A strip of empty space was left between the corner and the tab, which showed when the pointer was over it. The tab's icon now lines up with the cards below.
 
