@@ -71,6 +71,17 @@ A Steam lista as conquistas que faltam sem dizer como consegui-las, esconde as o
   </tr>
 </table>
 
+### Nas suas cores
+
+Cinco temas: Navy, com que o app começa e que aparece nas imagens acima, e Dracula, Gruvbox, Solarized Light e Synthwave. Cada conta guarda o seu, então trocar de conta troca as cores junto. Todos os temas passam na mesma verificação de contraste.
+
+<p>
+  <img src="docs/screenshots/theme-dracula.png" width="24%" alt="A tela do jogo no tema Dracula: fundo cinza-arroxeado com destaque roxo." />
+  <img src="docs/screenshots/theme-gruvbox.png" width="24%" alt="A tela do jogo no tema Gruvbox: fundo escuro quente com destaque azul-acinzentado." />
+  <img src="docs/screenshots/theme-solarized-light.png" width="24%" alt="A tela do jogo no tema Solarized Light: fundo creme com destaque azul." />
+  <img src="docs/screenshots/theme-synthwave.png" width="24%" alt="A tela do jogo no tema Synthwave: fundo roxo-noite com destaque rosa." />
+</p>
+
 ## Download
 
 Baixe o instalador do seu sistema na [última versão](https://github.com/joaosoarees/trophy-tracker/releases/latest):
