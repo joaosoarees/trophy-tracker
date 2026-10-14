@@ -244,7 +244,8 @@ export const fr: Messages = {
     themeHint:
       'Le thème appartient au compte utilisé : chaque compte garde le sien.',
     palettes: 'Palettes des thèmes',
-    paletteCredits: 'Dracula © Dracula Theme, licence MIT.',
+    paletteCredits:
+      'Dracula © Dracula Theme, Gruvbox © Pavel Pertsev, Solarized © Ethan Schoonover. Licence MIT.',
     steamId: (id) => `SteamID ${id}`,
     language: 'Langue',
     languageHint:
