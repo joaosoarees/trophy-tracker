@@ -980,6 +980,91 @@ async function auditScreens(page, steam, language) {
   await sleep(600);
 }
 
+/**
+ * A theme picked in Settings: the window takes its colours at once, the
+ * main process keeps it for the account, every screen is audited in it as
+ * in the default one, a reload stays in it, and the default comes back.
+ */
+async function auditThemes(page, userData) {
+  const FLOW = 'themes';
+  const failuresBefore = failures.length;
+  const THEME = (name) =>
+    `[...document.querySelectorAll('main button[aria-pressed]')].find((el) => el.textContent === '${name}')`;
+  const FIELD = `getComputedStyle(document.body).backgroundColor`;
+  const DRACULA = 'rgb(40, 42, 54)';
+  const NAVY = 'rgb(23, 26, 33)';
+  const keptTheme = () =>
+    JSON.parse(readFileSync(join(userData, 'config.json'), 'utf8')).accounts[0]
+      .theme;
+
+  await page.evaluate(navButton(-1));
+  await sleep(800);
+  await captureHover(page, THEME('Dracula'), 'hover-theme');
+  await page.evaluate(`${THEME('Dracula')}.click()`);
+  expectThat(
+    FLOW,
+    await waitFor(
+      page,
+      `${FIELD} === '${DRACULA}' && ${THEME('Dracula')}.getAttribute('aria-pressed') === 'true' && ${THEME('Navy')}.getAttribute('aria-pressed') === 'false'`,
+      2000,
+    ),
+    'picking a theme does not put the window in its colours and mark it as the one picked',
+  );
+  await sleep(300);
+  expectThat(
+    FLOW,
+    keptTheme() === 'dracula',
+    `the theme picked was not kept for the account (config.json has "${keptTheme()}")`,
+  );
+  await audit(page, 'settings-dracula');
+  await page.evaluate(navButton(0));
+  await sleep(900);
+  await audit(page, 'game-dracula');
+  await page.evaluate(detailsToggle);
+  await sleep(500);
+  await audit(page, 'game-details-dracula');
+  await page.evaluate(detailsToggle);
+  await page.evaluate(navButton(1));
+  await sleep(1200);
+  await audit(page, 'dashboard-dracula');
+
+  // The window is drawn again from nothing, as a change of language does:
+  // its first frame is already in the theme, before anything was asked.
+  await page.evaluate(
+    `(() => { addEventListener('beforeunload', () => {}); sessionStorage.setItem('audit-reloaded', '1'); location.reload(); })()`,
+  );
+  expectThat(
+    FLOW,
+    await waitFor(
+      page,
+      `sessionStorage.getItem('audit-reloaded') === '1' && document.readyState === 'complete' && ${FIELD} === '${DRACULA}'`,
+      8000,
+    ),
+    'the window reloaded is not in the theme that was picked',
+  );
+  await sleep(1500);
+
+  await page.evaluate(navButton(-1));
+  await sleep(800);
+  await page.evaluate(`${THEME('Navy')}.click()`);
+  expectThat(
+    FLOW,
+    await waitFor(page, `${FIELD} === '${NAVY}'`, 2000),
+    'picking the default theme again does not bring its colours back',
+  );
+  await sleep(300);
+  expectThat(
+    FLOW,
+    keptTheme() === 'navy',
+    `the default theme picked again was not kept (config.json has "${keptTheme()}")`,
+  );
+  await page.evaluate(navButton(0));
+  await sleep(600);
+  console.log(
+    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: a theme picked in Settings, every screen in it, a reload, and the default picked again`,
+  );
+}
+
 const IS_CRASHED = `document.querySelector('main [role="alert"] h1') !== null`;
 
 /**
@@ -2128,6 +2213,7 @@ for (const language of languages) {
       await sleep(6000);
       await auditOnboarding(page, steam, language, userData);
       await auditScreens(page, steam, language);
+      if (language === LANGUAGES[0]) await auditThemes(page, userData);
       await auditCrash(page, language, userData);
       if (language !== LANGUAGES[0]) return;
       await auditAccounts(page, steam, home);
