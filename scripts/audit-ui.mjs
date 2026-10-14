@@ -182,10 +182,13 @@ async function auditInteraction(page) {
   // So would a focused one: a dialog puts the focus on its first button.
   await page.evaluate(`document.activeElement?.blur()`);
   // A really hovered element would already be in its hover state at "rest".
+  // The pointer is parked in the bottom left corner, inside the margin every
+  // screen keeps; the top left one is the first tab.
+  const height = await page.evaluate(`window.innerHeight`);
   await page.send('Input.dispatchMouseEvent', {
     type: 'mouseMoved',
     x: 1,
-    y: 1,
+    y: height - 2,
   });
 
   const elements = JSON.parse(
@@ -903,6 +906,38 @@ async function auditScreens(page, steam, language) {
     barNeeds <= NARROWEST - SYSTEM_BUTTONS,
     `the tab bar needs ${barNeeds} px, and has ${NARROWEST - SYSTEM_BUTTONS} beside the buttons Windows draws in a window ${NARROWEST} px wide`,
   );
+
+  // With no system buttons at the left, the first tab reaches the window's
+  // edge, so its hover leaves no gap in the corner, and its icon stands on
+  // the margin of the page below it.
+  const firstTab = JSON.parse(
+    await page.evaluate(`(() => {
+    const tab = document.querySelector('nav button');
+    return JSON.stringify({
+      left: tab.getBoundingClientRect().left,
+      icon: Math.round(tab.querySelector('svg').getBoundingClientRect().left),
+      page: Math.round(document.querySelector('main li').getBoundingClientRect().left),
+    });
+  })()`),
+  );
+  expectThat(
+    FLOW,
+    firstTab.left === 0 && firstTab.icon === firstTab.page,
+    `the first tab starts ${firstTab.left} px from the window's edge, with its icon at ${firstTab.icon} px and the page's margin at ${firstTab.page}`,
+  );
+
+  if (language === LANGUAGES[0]) {
+    // The second tab: the first is the current one, whose hover is fainter.
+    await page.evaluate(navButton(1));
+    await sleep(600);
+    await captureHover(
+      page,
+      `document.querySelector('nav button')`,
+      'hover-first-tab',
+    );
+    await page.evaluate(navButton(0));
+    await sleep(600);
+  }
 
   // The buttons of a card stay on one line at that width too: a row that
   // wraps makes every card of the list a line taller.
