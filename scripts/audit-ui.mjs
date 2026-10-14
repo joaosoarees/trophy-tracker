@@ -983,7 +983,8 @@ async function auditScreens(page, steam, language) {
 /**
  * A theme picked in Settings: the window takes its colours at once, the
  * main process keeps it for the account, every screen is audited in it as
- * in the default one, a reload stays in it, and the default comes back.
+ * in the default one, the other account is still in its own, a reload stays
+ * in it, and the default comes back.
  */
 async function auditThemes(page, userData) {
   const FLOW = 'themes';
@@ -1028,21 +1029,68 @@ async function auditThemes(page, userData) {
   await sleep(1200);
   await audit(page, 'dashboard-dracula');
 
-  // The window is drawn again from nothing, as a change of language does:
-  // its first frame is already in the theme, before anything was asked.
-  await page.evaluate(
-    `(() => { addEventListener('beforeunload', () => {}); sessionStorage.setItem('audit-reloaded', '1'); location.reload(); })()`,
-  );
+  // The theme is the account's: the other account, added while the default
+  // was on screen, is still in it, and coming back brings the picked one.
+  await page.evaluate(navButton(-1));
+  await sleep(800);
+  await page.evaluate(clickAccountCard(1));
   expectThat(
     FLOW,
     await waitFor(
       page,
-      `sessionStorage.getItem('audit-reloaded') === '1' && document.readyState === 'complete' && ${FIELD} === '${DRACULA}'`,
-      8000,
+      `${FIELD} === '${NAVY}' && ${activeAccountCard} === 1`,
+      4000,
     ),
-    'the window reloaded is not in the theme that was picked',
+    'switching to an account in the default theme leaves the window in the theme of the account that was left',
   );
-  await sleep(1500);
+  await page.capture('flow-theme-of-the-other-account');
+  await page.evaluate(clickAccountCard(0));
+  expectThat(
+    FLOW,
+    await waitFor(
+      page,
+      `${FIELD} === '${DRACULA}' && ${activeAccountCard} === 0`,
+      4000,
+    ),
+    'switching back to an account does not bring its theme back',
+  );
+  await page.evaluate(navButton(1));
+  await sleep(1200);
+
+  // The window is drawn again from nothing, as a change of language does.
+  // No frame of it may be in another theme: the field the page paints is
+  // read on every frame from before its first script runs. Until the theme
+  // is drawn the page paints none, and the window's own shows through.
+  await page.send('Page.enable');
+  const { identifier } = await page.send(
+    'Page.addScriptToEvaluateOnNewDocument',
+    {
+      source: `(() => {
+        window.auditFields = [];
+        const start = performance.now();
+        const read = () => {
+          if (document.body) {
+            const field = getComputedStyle(document.body).backgroundColor;
+            if (!window.auditFields.includes(field)) window.auditFields.push(field);
+          }
+          if (performance.now() - start < 3000) requestAnimationFrame(read);
+        };
+        read();
+      })()`,
+    },
+  );
+  await page.evaluate(`location.reload()`);
+  await sleep(3500);
+  await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+  const fields = JSON.parse(
+    await page.evaluate(`JSON.stringify(window.auditFields ?? [])`),
+  );
+  expectThat(
+    FLOW,
+    fields.at(-1) === DRACULA &&
+      fields.every((field) => [DRACULA, 'rgba(0, 0, 0, 0)'].includes(field)),
+    `the window reloaded was not in the theme picked on every frame (the fields it painted: ${fields.join(', ')})`,
+  );
 
   await page.evaluate(navButton(-1));
   await sleep(800);
@@ -1061,7 +1109,7 @@ async function auditThemes(page, userData) {
   await page.evaluate(navButton(0));
   await sleep(600);
   console.log(
-    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: a theme picked in Settings, every screen in it, a reload, and the default picked again`,
+    `${failures.length === failuresBefore ? 'ok  ' : 'FAIL'} flow: a theme picked in Settings, every screen in it, the other account in its own, a reload, and the default picked again`,
   );
 }
 
