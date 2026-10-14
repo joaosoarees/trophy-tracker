@@ -75,6 +75,16 @@
     font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
   }
 
+  /*
+   * Until a script has drawn the theme (`themeOnScreen.showTheme`), the page
+   * paints no field of its own: what shows is the window's, which the main
+   * process already put in the theme. Painted here, the first frames would
+   * be in the default theme whatever the account's is.
+   */
+  :root:not([data-theme]) body {
+    background-color: transparent;
+  }
+
   input,
   textarea {
     @apply select-text;
