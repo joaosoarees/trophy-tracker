@@ -6,7 +6,7 @@ What changed in each version, for whoever uses the app. The section of a version
 
 ### Added
 
-- Themes. Settings has a new section, "Appearance", where the app's colours are picked, and the setup offers the same choice beside the language. This version has two: Navy, the look the app always had, and Dracula. The theme is the account's: each account keeps its own, and switching accounts changes the colours with it.
+- Themes. Settings has a new section, "Appearance", where the app's colours are picked, and the setup offers the same choice beside the language. There are five: Navy, the look the app always had, and Dracula, Gruvbox, Solarized Light and Synthwave. The theme is the account's: each account keeps its own, and switching accounts changes the colours with it.
 
 ### Fixed
 
