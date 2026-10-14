@@ -46,7 +46,11 @@ export function AppShell() {
         aria-label={t.nav.label}
         className="window-drag window-buttons-inset flex items-center gap-1 border-b"
       >
-        <TabButton isActive={tab === 'game'} onClick={() => goTo('game')}>
+        <TabButton
+          isActive={tab === 'game'}
+          isFirst
+          onClick={() => goTo('game')}
+        >
           <Trophy />
           {t.nav.game}
         </TabButton>
