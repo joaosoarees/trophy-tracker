@@ -194,6 +194,7 @@ const start = async (): Promise<void> => {
   window.open({
     title: setup.messages.appTitle,
     alwaysOnTop: store.getAlwaysOnTop(),
+    theme: store.getTheme(),
     bounds: store.getPreferences().rememberWindow
       ? WindowBounds.restore(
           store.getWindowBounds(),
